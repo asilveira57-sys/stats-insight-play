@@ -14,16 +14,446 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assinaturas: {
+        Row: {
+          created_at: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          id: string
+          status: Database["public"]["Enums"]["assinatura_status"] | null
+          tipo_plano: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["assinatura_status"] | null
+          tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["assinatura_status"] | null
+          tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      configuracoes: {
+        Row: {
+          chave: string
+          created_at: string | null
+          descricao: string | null
+          id: string
+          updated_at: string | null
+          valor: string | null
+        }
+        Insert: {
+          chave: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          updated_at?: string | null
+          valor?: string | null
+        }
+        Update: {
+          chave?: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          updated_at?: string | null
+          valor?: string | null
+        }
+        Relationships: []
+      }
+      estatisticas: {
+        Row: {
+          cartoes_amarelos: number | null
+          cartoes_vermelhos: number | null
+          created_at: string | null
+          escanteios: number | null
+          faltas: number | null
+          finalizacoes: number | null
+          finalizacoes_no_alvo: number | null
+          id: string
+          impedimentos: number | null
+          partida_id: string
+          passes: number | null
+          passes_certos: number | null
+          posse: number | null
+          time_id: string | null
+          updated_at: string | null
+          xg: number | null
+        }
+        Insert: {
+          cartoes_amarelos?: number | null
+          cartoes_vermelhos?: number | null
+          created_at?: string | null
+          escanteios?: number | null
+          faltas?: number | null
+          finalizacoes?: number | null
+          finalizacoes_no_alvo?: number | null
+          id?: string
+          impedimentos?: number | null
+          partida_id: string
+          passes?: number | null
+          passes_certos?: number | null
+          posse?: number | null
+          time_id?: string | null
+          updated_at?: string | null
+          xg?: number | null
+        }
+        Update: {
+          cartoes_amarelos?: number | null
+          cartoes_vermelhos?: number | null
+          created_at?: string | null
+          escanteios?: number | null
+          faltas?: number | null
+          finalizacoes?: number | null
+          finalizacoes_no_alvo?: number | null
+          id?: string
+          impedimentos?: number | null
+          partida_id?: string
+          passes?: number | null
+          passes_certos?: number | null
+          posse?: number | null
+          time_id?: string | null
+          updated_at?: string | null
+          xg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estatisticas_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estatisticas_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ligas: {
+        Row: {
+          api_id: number | null
+          ativa: boolean | null
+          codigo_api: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          pais: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: number | null
+          ativa?: boolean | null
+          codigo_api?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          pais?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: number | null
+          ativa?: boolean | null
+          codigo_api?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          pais?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      noticias: {
+        Row: {
+          autor_id: string | null
+          created_at: string | null
+          data_publicacao: string | null
+          id: string
+          imagem_url: string | null
+          publicada: boolean | null
+          resumo: string | null
+          texto: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          autor_id?: string | null
+          created_at?: string | null
+          data_publicacao?: string | null
+          id?: string
+          imagem_url?: string | null
+          publicada?: boolean | null
+          resumo?: string | null
+          texto: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          autor_id?: string | null
+          created_at?: string | null
+          data_publicacao?: string | null
+          id?: string
+          imagem_url?: string | null
+          publicada?: boolean | null
+          resumo?: string | null
+          texto?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      palpites: {
+        Row: {
+          analise: string | null
+          confianca: number | null
+          created_at: string | null
+          forca_time_casa: number | null
+          forca_time_fora: number | null
+          id: string
+          partida_id: string
+          placar_casa_estimado: number | null
+          placar_fora_estimado: number | null
+          prob_casa: number | null
+          prob_empate: number | null
+          prob_fora: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          analise?: string | null
+          confianca?: number | null
+          created_at?: string | null
+          forca_time_casa?: number | null
+          forca_time_fora?: number | null
+          id?: string
+          partida_id: string
+          placar_casa_estimado?: number | null
+          placar_fora_estimado?: number | null
+          prob_casa?: number | null
+          prob_empate?: number | null
+          prob_fora?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          analise?: string | null
+          confianca?: number | null
+          created_at?: string | null
+          forca_time_casa?: number | null
+          forca_time_fora?: number | null
+          id?: string
+          partida_id?: string
+          placar_casa_estimado?: number | null
+          placar_fora_estimado?: number | null
+          prob_casa?: number | null
+          prob_empate?: number | null
+          prob_fora?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "palpites_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: true
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partidas: {
+        Row: {
+          api_id: number | null
+          created_at: string | null
+          data: string
+          gols_casa: number | null
+          gols_fora: number | null
+          hora: string | null
+          id: string
+          liga_id: string | null
+          rodada: number | null
+          status: Database["public"]["Enums"]["partida_status"] | null
+          time_casa_id: string | null
+          time_fora_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: number | null
+          created_at?: string | null
+          data: string
+          gols_casa?: number | null
+          gols_fora?: number | null
+          hora?: string | null
+          id?: string
+          liga_id?: string | null
+          rodada?: number | null
+          status?: Database["public"]["Enums"]["partida_status"] | null
+          time_casa_id?: string | null
+          time_fora_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: number | null
+          created_at?: string | null
+          data?: string
+          gols_casa?: number | null
+          gols_fora?: number | null
+          hora?: string | null
+          id?: string
+          liga_id?: string | null
+          rodada?: number | null
+          status?: Database["public"]["Enums"]["partida_status"] | null
+          time_casa_id?: string | null
+          time_fora_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partidas_liga_id_fkey"
+            columns: ["liga_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partidas_time_casa_id_fkey"
+            columns: ["time_casa_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partidas_time_fora_id_fkey"
+            columns: ["time_fora_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          nome: string | null
+          plano: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome?: string | null
+          plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome?: string | null
+          plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      times: {
+        Row: {
+          api_id: number | null
+          created_at: string | null
+          escudo_url: string | null
+          id: string
+          nome: string
+          pais: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: number | null
+          created_at?: string | null
+          escudo_url?: string | null
+          id?: string
+          nome: string
+          pais?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: number | null
+          created_at?: string | null
+          escudo_url?: string | null
+          id?: string
+          nome?: string
+          pais?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      assinatura_status: "active" | "cancelled" | "expired"
+      partida_status:
+        | "scheduled"
+        | "live"
+        | "finished"
+        | "postponed"
+        | "cancelled"
+      plano_tipo: "free" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +580,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      assinatura_status: ["active", "cancelled", "expired"],
+      partida_status: [
+        "scheduled",
+        "live",
+        "finished",
+        "postponed",
+        "cancelled",
+      ],
+      plano_tipo: ["free", "premium"],
+    },
   },
 } as const
