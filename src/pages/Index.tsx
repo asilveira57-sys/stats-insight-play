@@ -4,7 +4,9 @@ import { LeagueCard } from "@/components/cards/LeagueCard";
 import { PredictionCard } from "@/components/cards/PredictionCard";
 import { NewsCard } from "@/components/cards/NewsCard";
 import { Button } from "@/components/ui/button";
-import { leagues, upcomingMatches, predictions, news } from "@/data/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
+import { predictions, news } from "@/data/mockData";
+import { useTodayMatches, useCompetitions, AVAILABLE_COMPETITIONS } from "@/hooks/useFootballData";
 import { 
   Zap, 
   TrendingUp, 
@@ -18,6 +20,27 @@ import {
 import { Link } from "react-router-dom";
 
 export default function Index() {
+  const { data: matches, isLoading: matchesLoading } = useTodayMatches();
+  const { data: competitions, isLoading: competitionsLoading } = useCompetitions();
+
+  // Get featured match (first scheduled match)
+  const featuredMatch = matches?.find((m: { status: string }) => m.status === 'scheduled');
+  
+  // Map competitions to league cards
+  const leagueCards = competitions?.map((comp: { code: string; name: string; emblem: string }) => ({
+    id: comp.code,
+    name: comp.name,
+    country: AVAILABLE_COMPETITIONS.find(c => c.code === comp.code)?.name || '',
+    logo: comp.emblem,
+    matchCount: matches?.filter((m: { league: string }) => m.league === comp.name).length || 0,
+  })) || AVAILABLE_COMPETITIONS.map(c => ({
+    id: c.code,
+    name: c.name,
+    country: '',
+    logo: `https://crests.football-data.org/${c.code}.png`,
+    matchCount: 0,
+  }));
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -187,9 +210,27 @@ export default function Index() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {upcomingMatches.map((match) => (
-            <MatchCard key={match.id} {...match} />
-          ))}
+          {matchesLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="glass-card p-4 space-y-4">
+                <Skeleton className="h-4 w-24" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))
+          ) : matches && matches.length > 0 ? (
+            matches.slice(0, 4).map((match: { id: string; homeTeam: { name: string; logo: string; score?: number }; awayTeam: { name: string; logo: string; score?: number }; date: string; time: string; league: string; status: 'scheduled' | 'live' | 'finished'; matchday?: number }) => (
+              <MatchCard key={match.id} {...match} />
+            ))
+          ) : (
+            <p className="col-span-4 text-center text-muted-foreground py-8">
+              Nenhuma partida encontrada para hoje
+            </p>
+          )}
         </div>
       </section>
 
@@ -232,9 +273,23 @@ export default function Index() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {leagues.map((league) => (
-            <LeagueCard key={league.id} {...league} />
-          ))}
+          {competitionsLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="glass-card p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            leagueCards.map((league: { id: string; name: string; country: string; logo: string; matchCount: number }) => (
+              <LeagueCard key={league.id} {...league} />
+            ))
+          )}
         </div>
       </section>
 
