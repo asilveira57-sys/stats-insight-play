@@ -50,16 +50,21 @@ interface Standing {
   points: number;
 }
 
-// Format date for display
+// Format date for display (using Brazilian timezone)
 const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  // Parse the date as local date (YYYY-MM-DD format from database)
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
-// Format time for display
+// Format time for display (convert UTC to Brazilian time, UTC-3)
 const formatTime = (timeStr: string | null): string => {
   if (!timeStr) return '--:--';
-  return timeStr.substring(0, 5);
+  // Parse UTC time and subtract 3 hours for Brazil timezone
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const brazilHours = (hours - 3 + 24) % 24;
+  return `${brazilHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
 
 // Transform database match to UI format
