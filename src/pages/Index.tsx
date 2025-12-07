@@ -6,7 +6,7 @@ import { NewsCard } from "@/components/cards/NewsCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { predictions, news } from "@/data/mockData";
-import { useTodayMatches, useCompetitions, AVAILABLE_COMPETITIONS } from "@/hooks/useFootballData";
+import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
 import { 
   Zap, 
   TrendingUp, 
@@ -20,26 +20,21 @@ import {
 import { Link } from "react-router-dom";
 
 export default function Index() {
-  const { data: matches, isLoading: matchesLoading } = useTodayMatches();
-  const { data: competitions, isLoading: competitionsLoading } = useCompetitions();
+  const { data: matches, isLoading: matchesLoading } = useTodayMatchesFromDB();
+  const { data: leagues, isLoading: leaguesLoading } = useLeagues();
+  const { data: matchCounts } = useMatchCountByLeague();
 
   // Get featured match (first scheduled match)
-  const featuredMatch = matches?.find((m: { status: string }) => m.status === 'scheduled');
+  const featuredMatch = matches?.find((m) => m.status === 'scheduled');
   
-  // Map competitions to league cards
-  const leagueCards = competitions?.map((comp: { code: string; name: string; emblem: string }) => ({
-    id: comp.code,
-    name: comp.name,
-    country: AVAILABLE_COMPETITIONS.find(c => c.code === comp.code)?.name || '',
-    logo: comp.emblem,
-    matchCount: matches?.filter((m: { league: string }) => m.league === comp.name).length || 0,
-  })) || AVAILABLE_COMPETITIONS.map(c => ({
-    id: c.code,
-    name: c.name,
-    country: '',
-    logo: `https://crests.football-data.org/${c.code}.png`,
-    matchCount: 0,
-  }));
+  // Map leagues to league cards
+  const leagueCards = leagues?.map((league) => ({
+    id: league.codigo_api || league.id,
+    name: league.nome,
+    country: league.pais || '',
+    logo: league.logo_url || '/placeholder.svg',
+    matchCount: matchCounts?.[league.codigo_api || ''] || 0,
+  })) || [];
 
   return (
     <Layout>
@@ -223,7 +218,7 @@ export default function Index() {
               </div>
             ))
           ) : matches && matches.length > 0 ? (
-            matches.slice(0, 4).map((match: { id: string; homeTeam: { name: string; logo: string; score?: number }; awayTeam: { name: string; logo: string; score?: number }; date: string; time: string; league: string; status: 'scheduled' | 'live' | 'finished'; matchday?: number }) => (
+            matches.slice(0, 4).map((match) => (
               <MatchCard key={match.id} {...match} />
             ))
           ) : (
@@ -273,7 +268,7 @@ export default function Index() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {competitionsLoading ? (
+          {leaguesLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="glass-card p-4 space-y-3">
                 <div className="flex items-center gap-3">
@@ -286,7 +281,7 @@ export default function Index() {
               </div>
             ))
           ) : (
-            leagueCards.map((league: { id: string; name: string; country: string; logo: string; matchCount: number }) => (
+            leagueCards.map((league) => (
               <LeagueCard key={league.id} {...league} />
             ))
           )}
