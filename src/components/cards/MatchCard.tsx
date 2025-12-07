@@ -7,13 +7,13 @@ interface Team {
   score?: number;
 }
 
-interface MatchCardProps {
+export interface MatchCardProps {
   homeTeam: Team;
   awayTeam: Team;
   date: string;
   time: string;
   league: string;
-  status: "scheduled" | "live" | "finished";
+  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
   matchday?: number;
   onClick?: () => void;
 }
@@ -43,6 +43,12 @@ export function MatchCard({
         )}
         {status === "finished" && (
           <span className="text-xs text-muted-foreground">Encerrado</span>
+        )}
+        {status === "postponed" && (
+          <span className="text-xs text-destructive">Adiado</span>
+        )}
+        {status === "cancelled" && (
+          <span className="text-xs text-destructive">Cancelado</span>
         )}
         {status === "scheduled" && matchday && (
           <span className="text-xs text-muted-foreground">Rodada {matchday}</span>

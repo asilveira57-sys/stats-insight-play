@@ -1,19 +1,46 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { Button } from "@/components/ui/button";
-import { leagues, upcomingMatches, standings } from "@/data/mockData";
-import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLeagues, useMatchesFromDB } from "@/hooks/useMatchesDB";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Resultados() {
-  const [selectedLeague, setSelectedLeague] = useState("PL");
-  const [selectedDate, setSelectedDate] = useState("today");
+  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+  const [dateOffset, setDateOffset] = useState(0);
+
+  // Calculate date based on offset
+  const selectedDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + dateOffset);
+    return date.toISOString().split('T')[0];
+  }, [dateOffset]);
+
+  const dateLabel = useMemo(() => {
+    if (dateOffset === -1) return "Ontem";
+    if (dateOffset === 0) return "Hoje";
+    if (dateOffset === 1) return "Amanhã";
+    const date = new Date();
+    date.setDate(date.getDate() + dateOffset);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  }, [dateOffset]);
+
+  // Fetch leagues from database
+  const { data: leagues, isLoading: leaguesLoading } = useLeagues();
+
+  // Fetch matches from database
+  const { data: matches, isLoading: matchesLoading } = useMatchesFromDB({
+    leagueCode: selectedLeague || undefined,
+    dateFrom: selectedDate,
+    dateTo: selectedDate,
+  });
 
   const dates = [
-    { id: "yesterday", label: "Ontem" },
-    { id: "today", label: "Hoje" },
-    { id: "tomorrow", label: "Amanhã" },
+    { offset: -1, label: "Ontem" },
+    { offset: 0, label: "Hoje" },
+    { offset: 1, label: "Amanhã" },
   ];
 
   return (
@@ -39,25 +66,48 @@ export default function Resultados() {
                 <span className="text-sm font-medium">Liga</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {leagues.map((league) => (
-                  <button
-                    key={league.id}
-                    onClick={() => setSelectedLeague(league.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                      selectedLeague === league.id
-                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
-                        : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                    )}
-                  >
-                    <img
-                      src={league.logo}
-                      alt={league.name}
-                      className="w-5 h-5 object-contain"
-                    />
-                    <span className="hidden sm:inline">{league.name}</span>
-                  </button>
-                ))}
+                {leaguesLoading ? (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-24" />
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setSelectedLeague(null)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        selectedLeague === null
+                          ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      )}
+                    >
+                      Todas
+                    </button>
+                    {leagues?.map((league) => (
+                      <button
+                        key={league.id}
+                        onClick={() => setSelectedLeague(league.codigo_api)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                          selectedLeague === league.codigo_api
+                            ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
+                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                        )}
+                      >
+                        {league.logo_url && (
+                          <img
+                            src={league.logo_url}
+                            alt={league.nome}
+                            className="w-5 h-5 object-contain"
+                          />
+                        )}
+                        <span className="hidden sm:inline">{league.nome}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -70,17 +120,22 @@ export default function Resultados() {
                 <span className="text-sm font-medium">Data</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={() => setDateOffset(prev => prev - 1)}
+                >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <div className="flex gap-1">
                   {dates.map((date) => (
                     <button
-                      key={date.id}
-                      onClick={() => setSelectedDate(date.id)}
+                      key={date.offset}
+                      onClick={() => setDateOffset(date.offset)}
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                        selectedDate === date.id
+                        dateOffset === date.offset
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted hover:bg-muted/80 text-muted-foreground"
                       )}
@@ -89,90 +144,61 @@ export default function Resultados() {
                     </button>
                   ))}
                 </div>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={() => setDateOffset(prev => prev + 1)}
+                >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
+              {dateOffset < -1 || dateOffset > 1 ? (
+                <div className="text-center text-xs text-muted-foreground mt-2">
+                  {dateLabel}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Matches */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-display font-bold">Jogos do Dia</h2>
-              <Button variant="ghost" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Filtros
-              </Button>
-            </div>
+        {/* Matches */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display font-bold">
+              Jogos - {dateLabel}
+              {matches && matches.length > 0 && (
+                <span className="text-muted-foreground font-normal text-sm ml-2">
+                  ({matches.length} jogos)
+                </span>
+              )}
+            </h2>
+            <Button variant="ghost" size="sm">
+              <Filter className="w-4 h-4 mr-2" />
+              Filtros
+            </Button>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {upcomingMatches.map((match) => (
+          {matchesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : matches && matches.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {matches.map((match) => (
                 <MatchCard key={match.id} {...match} />
               ))}
             </div>
-          </div>
-
-          {/* Standings */}
-          <div className="lg:col-span-1">
-            <div className="glass-card p-4">
-              <h3 className="text-lg font-display font-bold mb-4 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-primary" />
-                Tabela - Premier League
-              </h3>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground border-b border-border/50">
-                      <th className="text-left py-2 px-2">#</th>
-                      <th className="text-left py-2 px-2">Time</th>
-                      <th className="text-center py-2 px-2">J</th>
-                      <th className="text-center py-2 px-2">SG</th>
-                      <th className="text-center py-2 px-2 font-bold">P</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.map((team, index) => (
-                      <tr 
-                        key={team.position}
-                        className={cn(
-                          "border-b border-border/30 hover:bg-muted/50 transition-colors",
-                          index < 4 && "border-l-2 border-l-secondary",
-                          index >= 4 && index < 6 && "border-l-2 border-l-primary"
-                        )}
-                      >
-                        <td className="py-3 px-2 font-medium">{team.position}</td>
-                        <td className="py-3 px-2 font-medium truncate max-w-[120px]">
-                          {team.team}
-                        </td>
-                        <td className="py-3 px-2 text-center text-muted-foreground">
-                          {team.played}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className={cn(
-                            team.gd > 0 ? "text-secondary" : team.gd < 0 ? "text-destructive" : "text-muted-foreground"
-                          )}>
-                            {team.gd > 0 ? `+${team.gd}` : team.gd}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center font-bold text-primary">
-                          {team.points}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <Button variant="ghost" className="w-full mt-4">
-                Ver tabela completa
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+          ) : (
+            <div className="glass-card p-8 text-center">
+              <p className="text-muted-foreground">
+                Nenhum jogo encontrado para {dateLabel.toLowerCase()}.
+              </p>
+              <p className="text-sm text-muted-foreground/70 mt-2">
+                Tente selecionar outra data ou liga.
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </Layout>
