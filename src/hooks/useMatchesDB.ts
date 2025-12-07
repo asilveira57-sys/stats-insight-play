@@ -107,7 +107,7 @@ export function useMatchesFromDB(options?: {
   leagueCode?: string;
   dateFrom?: string;
   dateTo?: string;
-  status?: string;
+  status?: 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
 }) {
   return useQuery({
     queryKey: ['db-matches', options],
