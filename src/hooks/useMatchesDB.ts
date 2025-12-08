@@ -70,6 +70,8 @@ const formatTime = (timeStr: string | null): string => {
 // Transform database match to UI format
 const transformMatch = (match: Partida) => ({
   id: match.id,
+  homeTeamId: match.time_casa?.id,
+  awayTeamId: match.time_fora?.id,
   homeTeam: {
     name: match.time_casa?.nome || 'TBD',
     logo: match.time_casa?.escudo_url || '/placeholder.svg',

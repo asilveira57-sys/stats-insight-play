@@ -10,8 +10,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { MatchDetailsModal } from "@/components/match/MatchDetailsModal";
+
+interface SelectedMatch {
+  id: string;
+  homeTeam: { id: string; name: string; logo: string; score?: number };
+  awayTeam: { id: string; name: string; logo: string; score?: number };
+  date: string;
+  league: string;
+}
 
 export default function Resultados() {
+  const [selectedMatch, setSelectedMatch] = useState<SelectedMatch | null>(null);
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [dateOffset, setDateOffset] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -234,7 +244,27 @@ export default function Resultados() {
           ) : matches && matches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {matches.map((match) => (
-                <MatchCard key={match.id} {...match} />
+                <MatchCard 
+                  key={match.id} 
+                  {...match} 
+                  onClick={() => setSelectedMatch({
+                    id: match.id,
+                    homeTeam: { 
+                      id: match.homeTeamId || '', 
+                      name: match.homeTeam.name, 
+                      logo: match.homeTeam.logo,
+                      score: match.homeTeam.score
+                    },
+                    awayTeam: { 
+                      id: match.awayTeamId || '', 
+                      name: match.awayTeam.name, 
+                      logo: match.awayTeam.logo,
+                      score: match.awayTeam.score
+                    },
+                    date: match.date,
+                    league: match.league,
+                  })}
+                />
               ))}
             </div>
           ) : (
@@ -249,6 +279,17 @@ export default function Resultados() {
           )}
         </div>
       </div>
+
+      {/* Match Details Modal */}
+      <MatchDetailsModal
+        open={!!selectedMatch}
+        onOpenChange={(open) => !open && setSelectedMatch(null)}
+        matchId={selectedMatch?.id || null}
+        homeTeam={selectedMatch?.homeTeam || { id: '', name: '', logo: '' }}
+        awayTeam={selectedMatch?.awayTeam || { id: '', name: '', logo: '' }}
+        date={selectedMatch?.date || ''}
+        league={selectedMatch?.league || ''}
+      />
     </Layout>
   );
 }
