@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeagues, useMatchesFromDB } from "@/hooks/useMatchesDB";
+import { useRealtimeMatches } from "@/hooks/useRealtimeMatches";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Resultados() {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [dateOffset, setDateOffset] = useState(0);
+
+  // Subscribe to real-time updates for matches
+  useRealtimeMatches();
 
   // Calculate date based on offset
   const selectedDate = useMemo(() => {
