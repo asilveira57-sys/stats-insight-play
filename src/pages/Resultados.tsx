@@ -2,18 +2,51 @@ import { useState, useMemo } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2 } from "lucide-react";
+import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeagues, useMatchesFromDB } from "@/hooks/useMatchesDB";
 import { useRealtimeMatches } from "@/hooks/useRealtimeMatches";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Resultados() {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [dateOffset, setDateOffset] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Subscribe to real-time updates for matches
   useRealtimeMatches();
+
+  const handleRefreshScores = async () => {
+    setIsRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-live-scores');
+      
+      if (error) throw error;
+      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['db-matches'] });
+      queryClient.invalidateQueries({ queryKey: ['db-live-matches'] });
+      
+      toast({
+        title: "Placares atualizados",
+        description: `${data.matchesUpdated || 0} partidas atualizadas`,
+      });
+    } catch (error) {
+      console.error('Error refreshing scores:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar os placares",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Calculate date based on offset
   const selectedDate = useMemo(() => {
@@ -177,10 +210,21 @@ export default function Resultados() {
                 </span>
               )}
             </h2>
-            <Button variant="ghost" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Filtros
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefreshScores}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")} />
+                Atualizar
+              </Button>
+              <Button variant="ghost" size="sm">
+                <Filter className="w-4 h-4 mr-2" />
+                Filtros
+              </Button>
+            </div>
           </div>
 
           {matchesLoading ? (
