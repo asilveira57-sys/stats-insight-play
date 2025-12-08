@@ -27,20 +27,21 @@ interface TeamStats {
 export interface Prediction {
   id: string;
   matchId: string;
+  palpiteId?: string;
   homeTeam: {
     name: string;
-    logo: string;
+    logo: string | null;
     probability: number;
     strength: number;
   };
   awayTeam: {
     name: string;
-    logo: string;
+    logo: string | null;
     probability: number;
     strength: number;
   };
   drawProbability: number;
-  predictedScore: string;
+  predictedScore: { home: number; away: number };
   confidence: "high" | "medium" | "low";
   league: string;
   leagueCode: string;
@@ -215,23 +216,31 @@ async function generatePrediction(match: any): Promise<Prediction | null> {
     awayStats.goalsConceded
   );
 
+  // Check if there's an existing system palpite
+  const { data: existingPalpite } = await supabase
+    .from('palpites')
+    .select('id')
+    .eq('partida_id', match.id)
+    .maybeSingle();
+
   return {
     id: match.id,
     matchId: match.id,
+    palpiteId: existingPalpite?.id,
     homeTeam: {
       name: homeStats.nome,
-      logo: homeStats.escudo_url || '/placeholder.svg',
+      logo: homeStats.escudo_url,
       probability: probs.homeWin,
       strength: homeStrength,
     },
     awayTeam: {
       name: awayStats.nome,
-      logo: awayStats.escudo_url || '/placeholder.svg',
+      logo: awayStats.escudo_url,
       probability: probs.awayWin,
       strength: awayStrength,
     },
     drawProbability: probs.draw,
-    predictedScore: `${likelyScore.homeGoals} - ${likelyScore.awayGoals}`,
+    predictedScore: { home: likelyScore.homeGoals, away: likelyScore.awayGoals },
     confidence,
     league: match.ligas?.nome || 'Liga',
     leagueCode: match.ligas?.codigo_api || '',
