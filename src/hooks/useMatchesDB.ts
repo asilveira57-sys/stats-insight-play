@@ -19,11 +19,13 @@ interface Partida {
     id: string;
     nome: string;
     escudo_url: string | null;
+    cores: { primary: string; secondary: string } | null;
   } | null;
   time_fora: {
     id: string;
     nome: string;
     escudo_url: string | null;
+    cores: { primary: string; secondary: string } | null;
   } | null;
 }
 
@@ -76,11 +78,15 @@ const transformMatch = (match: Partida) => ({
     name: match.time_casa?.nome || 'TBD',
     logo: match.time_casa?.escudo_url || '/placeholder.svg',
     score: match.gols_casa,
+    primaryColor: (match.time_casa?.cores as any)?.primary || '#6B7280',
+    secondaryColor: (match.time_casa?.cores as any)?.secondary || '#FFFFFF',
   },
   awayTeam: {
     name: match.time_fora?.nome || 'TBD',
     logo: match.time_fora?.escudo_url || '/placeholder.svg',
     score: match.gols_fora,
+    primaryColor: (match.time_fora?.cores as any)?.primary || '#6B7280',
+    secondaryColor: (match.time_fora?.cores as any)?.secondary || '#FFFFFF',
   },
   date: formatDate(match.data),
   time: formatTime(match.hora),
@@ -154,8 +160,8 @@ export function useMatchesFromDB(options?: {
           status,
           rodada,
           liga:ligas!partidas_liga_id_fkey(id, nome, logo_url, codigo_api),
-          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url),
-          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url)
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url, cores)
         `)
         .order('data', { ascending: true })
         .order('hora', { ascending: true });
@@ -245,8 +251,8 @@ export function useLiveMatchesFromDB() {
           status,
           rodada,
           liga:ligas!partidas_liga_id_fkey(id, nome, logo_url, codigo_api),
-          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url),
-          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url)
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url, cores)
         `)
         .eq('status', 'live');
 

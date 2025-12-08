@@ -759,6 +759,7 @@ export type Database = {
       times: {
         Row: {
           api_id: number | null
+          cores: Json | null
           created_at: string | null
           escudo_url: string | null
           id: string
@@ -768,6 +769,7 @@ export type Database = {
         }
         Insert: {
           api_id?: number | null
+          cores?: Json | null
           created_at?: string | null
           escudo_url?: string | null
           id?: string
@@ -777,6 +779,7 @@ export type Database = {
         }
         Update: {
           api_id?: number | null
+          cores?: Json | null
           created_at?: string | null
           escudo_url?: string | null
           id?: string
