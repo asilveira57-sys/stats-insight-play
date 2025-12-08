@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { LeagueCard } from "@/components/cards/LeagueCard";
@@ -5,10 +6,13 @@ import { PredictionCard } from "@/components/cards/PredictionCard";
 import { NewsCard } from "@/components/cards/NewsCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { predictions } from "@/data/mockData";
 import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
 import { useFeaturedMatch } from "@/hooks/useFeaturedMatch";
-import { useLatestNoticias } from "@/hooks/useNoticias";
+import { useLatestNoticias, useNoticia } from "@/hooks/useNoticias";
+import { Calendar, Loader2 } from "lucide-react";
 import { 
   Zap, 
   TrendingUp, 
@@ -23,11 +27,13 @@ import {
 import { Link } from "react-router-dom";
 
 export default function Index() {
+  const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null);
   const { data: matches, isLoading: matchesLoading } = useTodayMatchesFromDB();
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: matchCounts } = useMatchCountByLeague();
   const { data: featuredMatch, isLoading: featuredLoading } = useFeaturedMatch();
   const { data: noticias, isLoading: noticiasLoading } = useLatestNoticias(3);
+  const { data: selectedNews, isLoading: newsDetailLoading } = useNoticia(selectedNewsId);
 
   // Map leagues to league cards
   const leagueCards = leagues?.map((league) => ({
@@ -386,11 +392,11 @@ export default function Index() {
         ) : noticias && noticias.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
-              <NewsCard {...noticias[0]} featured />
+              <NewsCard {...noticias[0]} featured onClick={() => setSelectedNewsId(noticias[0].id)} />
             </div>
             <div className="flex flex-col gap-4">
               {noticias.slice(1).map((item) => (
-                <NewsCard key={item.id} {...item} />
+                <NewsCard key={item.id} {...item} onClick={() => setSelectedNewsId(item.id)} />
               ))}
             </div>
           </div>
@@ -431,6 +437,48 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* News Detail Modal */}
+      <Dialog open={!!selectedNewsId} onOpenChange={(open) => !open && setSelectedNewsId(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          {newsDetailLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : selectedNews ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">{selectedNews.titulo}</DialogTitle>
+              </DialogHeader>
+              {selectedNews.imagem_url && (
+                <img
+                  src={selectedNews.imagem_url}
+                  alt={selectedNews.titulo}
+                  className="w-full h-48 object-cover rounded-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
+                  }}
+                />
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                {selectedNews.data_publicacao
+                  ? new Date(selectedNews.data_publicacao).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : ""}
+              </div>
+              <ScrollArea className="max-h-[40vh]">
+                <div className="prose prose-invert max-w-none">
+                  <p className="whitespace-pre-wrap">{selectedNews.texto}</p>
+                </div>
+              </ScrollArea>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
