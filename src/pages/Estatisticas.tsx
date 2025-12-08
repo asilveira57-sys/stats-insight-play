@@ -3,7 +3,14 @@ import { Layout } from "@/components/layout/Layout";
 import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTeams, useTeamStats, useTeamSearch, TeamStats } from "@/hooks/useTeamsDB";
+import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, TeamStats } from "@/hooks/useTeamsDB";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Trophy, 
   Target, 
@@ -17,7 +24,8 @@ import {
   Home,
   Plane,
   Users,
-  X
+  X,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +36,12 @@ export default function Estatisticas() {
   const [showSearch, setShowSearch] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [searchingFor, setSearchingFor] = useState<'main' | 'compare'>('main');
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
 
   const { data: teams, isLoading: teamsLoading } = useTeams();
-  const { data: searchResults } = useTeamSearch(searchTerm);
+  const { data: leagues } = useLeagues();
+  const { data: leagueTeams } = useTeamsByLeague(selectedLeagueId);
+  const { data: searchResults } = useTeamSearch(searchTerm, selectedLeagueId);
   const { data: teamStats, isLoading: statsLoading } = useTeamStats(selectedTeamId);
   const { data: compareTeamStats, isLoading: compareStatsLoading } = useTeamStats(compareTeamId);
 
@@ -40,6 +51,13 @@ export default function Estatisticas() {
       setSelectedTeamId(teams[0].id);
     }
   }, [teams, selectedTeamId]);
+
+  const handleLeagueChange = (value: string) => {
+    setSelectedLeagueId(value === 'all' ? null : value);
+    setSelectedTeamId(null);
+    setCompareTeamId(null);
+    setCompareMode(false);
+  };
 
   const formColors = {
     V: "bg-secondary text-secondary-foreground",    // Vitória
@@ -140,12 +158,33 @@ export default function Estatisticas() {
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* League Filter */}
+            <Select value={selectedLeagueId || 'all'} onValueChange={handleLeagueChange}>
+              <SelectTrigger className="w-full sm:w-48 bg-muted border-border">
+                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Filtrar por liga" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border z-50">
+                <SelectItem value="all">Todas as ligas</SelectItem>
+                {leagues?.map((league) => (
+                  <SelectItem key={league.id} value={league.id}>
+                    <div className="flex items-center gap-2">
+                      {league.logo_url && (
+                        <img src={league.logo_url} alt={league.nome} className="w-4 h-4 object-contain" />
+                      )}
+                      {league.nome}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Buscar time..."
+                placeholder={selectedLeagueId ? "Buscar time na liga..." : "Buscar time..."}
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);

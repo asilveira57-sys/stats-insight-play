@@ -182,11 +182,39 @@ export function useTeamStats(teamId: string | null) {
   });
 }
 
-export function useTeamSearch(searchTerm: string) {
+export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
   return useQuery({
-    queryKey: ['team-search', searchTerm],
+    queryKey: ['team-search', searchTerm, leagueId],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];
+      
+      // Se tem filtro de liga, buscar times que jogaram nessa liga
+      if (leagueId) {
+        const { data: matchTeams, error: matchError } = await supabase
+          .from('partidas')
+          .select('time_casa_id, time_fora_id')
+          .eq('liga_id', leagueId);
+        
+        if (matchError) throw matchError;
+        
+        const teamIds = new Set<string>();
+        matchTeams?.forEach(m => {
+          if (m.time_casa_id) teamIds.add(m.time_casa_id);
+          if (m.time_fora_id) teamIds.add(m.time_fora_id);
+        });
+        
+        if (teamIds.size === 0) return [];
+        
+        const { data, error } = await supabase
+          .from('times')
+          .select('*')
+          .in('id', Array.from(teamIds))
+          .ilike('nome', `%${searchTerm}%`)
+          .limit(10);
+        
+        if (error) throw error;
+        return data as Time[];
+      }
       
       const { data, error } = await supabase
         .from('times')
@@ -198,5 +226,63 @@ export function useTeamSearch(searchTerm: string) {
       return data as Time[];
     },
     enabled: searchTerm.length >= 2,
+  });
+}
+
+export interface Liga {
+  id: string;
+  nome: string;
+  logo_url: string | null;
+  pais: string | null;
+}
+
+export function useLeagues() {
+  return useQuery({
+    queryKey: ['leagues'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ligas')
+        .select('*')
+        .eq('ativa', true)
+        .order('nome');
+      
+      if (error) throw error;
+      return data as Liga[];
+    },
+  });
+}
+
+export function useTeamsByLeague(leagueId: string | null) {
+  return useQuery({
+    queryKey: ['teams-by-league', leagueId],
+    queryFn: async () => {
+      if (!leagueId) return [];
+      
+      // Buscar times que participaram de partidas nessa liga
+      const { data: matches, error: matchError } = await supabase
+        .from('partidas')
+        .select('time_casa_id, time_fora_id')
+        .eq('liga_id', leagueId);
+      
+      if (matchError) throw matchError;
+      
+      const teamIds = new Set<string>();
+      matches?.forEach(m => {
+        if (m.time_casa_id) teamIds.add(m.time_casa_id);
+        if (m.time_fora_id) teamIds.add(m.time_fora_id);
+      });
+      
+      if (teamIds.size === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('times')
+        .select('*')
+        .in('id', Array.from(teamIds))
+        .order('nome');
+      
+      if (error) throw error;
+      return data as Time[];
+    },
+    enabled: !!leagueId,
   });
 }
