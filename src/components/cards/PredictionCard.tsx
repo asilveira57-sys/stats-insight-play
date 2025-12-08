@@ -4,18 +4,18 @@ import { cn } from "@/lib/utils";
 interface PredictionCardProps {
   homeTeam: {
     name: string;
-    logo: string;
+    logo: string | null;
     probability: number;
     strength: number;
   };
   awayTeam: {
     name: string;
-    logo: string;
+    logo: string | null;
     probability: number;
     strength: number;
   };
   drawProbability: number;
-  predictedScore: string;
+  predictedScore: { home: number; away: number };
   confidence: "high" | "medium" | "low";
   league: string;
   date: string;
@@ -67,11 +67,15 @@ export function PredictionCard({
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex-1 flex flex-col items-center gap-2">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            <img
-              src={homeTeam.logo}
-              alt={homeTeam.name}
-              className="w-10 h-10 object-contain"
-            />
+            {homeTeam.logo ? (
+              <img
+                src={homeTeam.logo}
+                alt={homeTeam.name}
+                className="w-10 h-10 object-contain"
+              />
+            ) : (
+              <span className="text-lg font-bold">{homeTeam.name.charAt(0)}</span>
+            )}
           </div>
           <span className="text-sm font-medium text-center line-clamp-1">
             {homeTeam.name}
@@ -80,18 +84,22 @@ export function PredictionCard({
 
         <div className="flex flex-col items-center">
           <span className="text-2xl font-display font-bold gradient-text">
-            {predictedScore}
+            {predictedScore.home} - {predictedScore.away}
           </span>
           <span className="text-xs text-muted-foreground">Placar Estimado</span>
         </div>
 
         <div className="flex-1 flex flex-col items-center gap-2">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            <img
-              src={awayTeam.logo}
-              alt={awayTeam.name}
-              className="w-10 h-10 object-contain"
-            />
+            {awayTeam.logo ? (
+              <img
+                src={awayTeam.logo}
+                alt={awayTeam.name}
+                className="w-10 h-10 object-contain"
+              />
+            ) : (
+              <span className="text-lg font-bold">{awayTeam.name.charAt(0)}</span>
+            )}
           </div>
           <span className="text-sm font-medium text-center line-clamp-1">
             {awayTeam.name}
