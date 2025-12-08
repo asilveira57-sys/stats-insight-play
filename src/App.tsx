@@ -12,6 +12,7 @@ import Noticias from "./pages/Noticias";
 import Precos from "./pages/Precos";
 import Auth from "./pages/Auth";
 import Retrospectiva from "./pages/Retrospectiva";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/precos" element={<Precos />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/retrospectiva/brasileirao-2024" element={<Retrospectiva />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
