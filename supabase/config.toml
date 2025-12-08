@@ -1,5 +1,8 @@
 project_id = "wlvwcbxegrmobefloikr"
 
+[functions.sync-historical-data]
+verify_jwt = false
+
 [functions.football-data]
 verify_jwt = false
 

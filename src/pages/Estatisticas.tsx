@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTeams, useTeamStats, useTeamSearch } from "@/hooks/useTeamsDB";
+import { useTeams, useTeamStats, useTeamSearch, TeamStats } from "@/hooks/useTeamsDB";
 import { 
   Trophy, 
   Target, 
@@ -16,19 +16,23 @@ import {
   ChevronRight,
   Home,
   Plane,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Estatisticas() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [compareTeamId, setCompareTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
+  const [searchingFor, setSearchingFor] = useState<'main' | 'compare'>('main');
 
   const { data: teams, isLoading: teamsLoading } = useTeams();
   const { data: searchResults } = useTeamSearch(searchTerm);
   const { data: teamStats, isLoading: statsLoading } = useTeamStats(selectedTeamId);
+  const { data: compareTeamStats, isLoading: compareStatsLoading } = useTeamStats(compareTeamId);
 
   // Selecionar primeiro time automaticamente se não houver seleção
   useMemo(() => {
@@ -44,9 +48,22 @@ export default function Estatisticas() {
   };
 
   const handleTeamSelect = (teamId: string) => {
-    setSelectedTeamId(teamId);
+    if (searchingFor === 'compare') {
+      setCompareTeamId(teamId);
+    } else {
+      setSelectedTeamId(teamId);
+    }
     setSearchTerm("");
     setShowSearch(false);
+  };
+
+  const handleCompareClick = () => {
+    if (compareMode) {
+      setCompareMode(false);
+      setCompareTeamId(null);
+    } else {
+      setCompareMode(true);
+    }
   };
 
   const avgGoalsScored = teamStats && teamStats.jogos > 0 
@@ -57,10 +74,57 @@ export default function Estatisticas() {
     ? (teamStats.golsSofridos / teamStats.jogos).toFixed(2) 
     : "0.00";
 
-  // Clean sheets estimation (jogos sem sofrer gols)
-  const cleanSheets = teamStats 
-    ? Math.round((teamStats.jogos - teamStats.golsSofridos / Math.max(teamStats.jogos, 1)) * 0.3)
-    : 0;
+  const compareAvgGoalsScored = compareTeamStats && compareTeamStats.jogos > 0 
+    ? (compareTeamStats.golsMarcados / compareTeamStats.jogos).toFixed(2) 
+    : "0.00";
+
+  const compareAvgGoalsConceded = compareTeamStats && compareTeamStats.jogos > 0 
+    ? (compareTeamStats.golsSofridos / compareTeamStats.jogos).toFixed(2) 
+    : "0.00";
+
+  const renderTeamForm = (forma: string[]) => (
+    <div className="flex items-center gap-1">
+      {forma.map((result, index) => (
+        <span
+          key={index}
+          className={cn(
+            "w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold",
+            formColors[result as keyof typeof formColors]
+          )}
+        >
+          {result}
+        </span>
+      ))}
+    </div>
+  );
+
+  const renderComparisonBar = (value1: number, value2: number, label: string, inverse: boolean = false) => {
+    const total = value1 + value2 || 1;
+    const pct1 = (value1 / total) * 100;
+    const pct2 = (value2 / total) * 100;
+    const better1 = inverse ? value1 < value2 : value1 > value2;
+    const better2 = inverse ? value2 < value1 : value2 > value1;
+
+    return (
+      <div className="mb-4">
+        <div className="flex justify-between text-sm mb-1">
+          <span className={cn("font-bold", better1 && "text-secondary")}>{value1}</span>
+          <span className="text-muted-foreground text-xs">{label}</span>
+          <span className={cn("font-bold", better2 && "text-secondary")}>{value2}</span>
+        </div>
+        <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+          <div 
+            className={cn("transition-all", better1 ? "bg-secondary" : "bg-primary/50")}
+            style={{ width: `${pct1}%` }}
+          />
+          <div 
+            className={cn("transition-all", better2 ? "bg-secondary" : "bg-primary/50")}
+            style={{ width: `${pct2}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout>
@@ -86,8 +150,12 @@ export default function Estatisticas() {
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setShowSearch(true);
+                  setSearchingFor('main');
                 }}
-                onFocus={() => setShowSearch(true)}
+                onFocus={() => {
+                  setShowSearch(true);
+                  setSearchingFor('main');
+                }}
                 className="pl-10 pr-4 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm w-full md:w-64"
               />
               
@@ -113,13 +181,60 @@ export default function Estatisticas() {
             </div>
             <Button 
               variant={compareMode ? "default" : "outline"}
-              onClick={() => setCompareMode(!compareMode)}
+              onClick={handleCompareClick}
             >
               <Activity className="w-4 h-4" />
-              Comparar
+              {compareMode ? "Cancelar" : "Comparar"}
             </Button>
           </div>
         </div>
+
+        {/* Compare Mode - Select Second Team */}
+        {compareMode && !compareTeamId && (
+          <div className="glass-card p-6 mb-8 border-2 border-primary/50">
+            <div className="flex items-center gap-3 mb-4">
+              <Activity className="w-5 h-5 text-primary" />
+              <h3 className="font-display font-bold">Selecione o segundo time para comparar</h3>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar time para comparar..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowSearch(true);
+                  setSearchingFor('compare');
+                }}
+                onFocus={() => {
+                  setShowSearch(true);
+                  setSearchingFor('compare');
+                }}
+                className="pl-10 pr-4 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm w-full"
+              />
+              
+              {showSearch && searchResults && searchResults.length > 0 && searchingFor === 'compare' && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {searchResults.filter(t => t.id !== selectedTeamId).map((team) => (
+                    <button
+                      key={team.id}
+                      onClick={() => handleTeamSelect(team.id)}
+                      className="w-full px-4 py-2 flex items-center gap-3 hover:bg-muted transition-colors text-left"
+                    >
+                      <img
+                        src={team.escudo_url || '/placeholder.svg'}
+                        alt={team.nome}
+                        className="w-6 h-6 object-contain"
+                      />
+                      <span className="text-sm">{team.nome}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {(teamsLoading || statsLoading) && !teamStats ? (
@@ -139,7 +254,130 @@ export default function Estatisticas() {
               Use a busca acima para encontrar um time
             </p>
           </div>
+        ) : compareMode && compareTeamStats ? (
+          /* Comparison View */
+          <div className="space-y-8">
+            {/* Teams Header Comparison */}
+            <div className="glass-card p-6 md:p-8 neon-border">
+              <div className="grid grid-cols-3 gap-4 items-center">
+                {/* Team 1 */}
+                <div className="text-center">
+                  <img
+                    src={teamStats.escudo_url || '/placeholder.svg'}
+                    alt={teamStats.nome}
+                    className="w-20 h-20 md:w-24 md:h-24 mx-auto object-contain mb-3"
+                  />
+                  <h2 className="text-lg md:text-xl font-display font-bold mb-2">
+                    {teamStats.nome}
+                  </h2>
+                  {teamStats.forma.length > 0 && renderTeamForm(teamStats.forma)}
+                </div>
+
+                {/* VS */}
+                <div className="text-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 mx-auto rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                    <span className="text-2xl md:text-3xl font-display font-bold text-primary">VS</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setCompareTeamId(null)}
+                    className="text-muted-foreground"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Trocar
+                  </Button>
+                </div>
+
+                {/* Team 2 */}
+                <div className="text-center">
+                  <img
+                    src={compareTeamStats.escudo_url || '/placeholder.svg'}
+                    alt={compareTeamStats.nome}
+                    className="w-20 h-20 md:w-24 md:h-24 mx-auto object-contain mb-3"
+                  />
+                  <h2 className="text-lg md:text-xl font-display font-bold mb-2">
+                    {compareTeamStats.nome}
+                  </h2>
+                  {compareTeamStats.forma.length > 0 && renderTeamForm(compareTeamStats.forma)}
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Comparison */}
+            <div className="glass-card p-6">
+              <h3 className="font-display font-bold text-lg mb-6 text-center">Comparativo de Desempenho</h3>
+              
+              <div className="max-w-2xl mx-auto">
+                {renderComparisonBar(teamStats.jogos, compareTeamStats.jogos, "Jogos")}
+                {renderComparisonBar(teamStats.vitorias, compareTeamStats.vitorias, "Vitórias")}
+                {renderComparisonBar(teamStats.empates, compareTeamStats.empates, "Empates")}
+                {renderComparisonBar(teamStats.derrotas, compareTeamStats.derrotas, "Derrotas", true)}
+                {renderComparisonBar(teamStats.golsMarcados, compareTeamStats.golsMarcados, "Gols Marcados")}
+                {renderComparisonBar(teamStats.golsSofridos, compareTeamStats.golsSofridos, "Gols Sofridos", true)}
+                {renderComparisonBar(
+                  teamStats.golsMarcados - teamStats.golsSofridos, 
+                  compareTeamStats.golsMarcados - compareTeamStats.golsSofridos, 
+                  "Saldo de Gols"
+                )}
+              </div>
+            </div>
+
+            {/* Average Stats Comparison */}
+            <div className="glass-card p-6">
+              <h3 className="font-display font-bold text-lg mb-6 text-center">Médias por Jogo</h3>
+              
+              <div className="max-w-2xl mx-auto">
+                {renderComparisonBar(
+                  parseFloat(avgGoalsScored), 
+                  parseFloat(compareAvgGoalsScored), 
+                  "Média Gols Marcados"
+                )}
+                {renderComparisonBar(
+                  parseFloat(avgGoalsConceded), 
+                  parseFloat(compareAvgGoalsConceded), 
+                  "Média Gols Sofridos",
+                  true
+                )}
+                {renderComparisonBar(
+                  teamStats.jogos > 0 ? (teamStats.vitorias / teamStats.jogos) * 100 : 0,
+                  compareTeamStats.jogos > 0 ? (compareTeamStats.vitorias / compareTeamStats.jogos) * 100 : 0,
+                  "% Vitórias"
+                )}
+              </div>
+            </div>
+
+            {/* Home vs Away Comparison */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Home Stats */}
+              <div className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Home className="w-5 h-5 text-secondary" />
+                  <h3 className="font-display font-bold">Desempenho em Casa</h3>
+                </div>
+                <div className="space-y-4">
+                  {renderComparisonBar(teamStats.vitoriasCasa, compareTeamStats.vitoriasCasa, "Vitórias")}
+                  {renderComparisonBar(teamStats.golsMarcadosCasa, compareTeamStats.golsMarcadosCasa, "Gols Marcados")}
+                  {renderComparisonBar(teamStats.golsSofridosCasa, compareTeamStats.golsSofridosCasa, "Gols Sofridos", true)}
+                </div>
+              </div>
+
+              {/* Away Stats */}
+              <div className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Plane className="w-5 h-5 text-primary" />
+                  <h3 className="font-display font-bold">Desempenho Fora</h3>
+                </div>
+                <div className="space-y-4">
+                  {renderComparisonBar(teamStats.vitoriasFora, compareTeamStats.vitoriasFora, "Vitórias")}
+                  {renderComparisonBar(teamStats.golsMarcadosFora, compareTeamStats.golsMarcadosFora, "Gols Marcados")}
+                  {renderComparisonBar(teamStats.golsSofridosFora, compareTeamStats.golsSofridosFora, "Gols Sofridos", true)}
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
+          /* Single Team View */
           <>
             {/* Team Header */}
             <div className="glass-card p-6 md:p-8 mb-8 neon-border">
@@ -400,7 +638,7 @@ export default function Estatisticas() {
                 </div>
 
                 <div className="text-center p-4 rounded-xl bg-muted/50">
-                  <p className="text-4xl font-display font-bold text-primary mb-2">
+                  <p className="text-4xl font-display font-bold text-destructive mb-2">
                     {avgGoalsConceded}
                   </p>
                   <p className="text-sm text-muted-foreground">Média Gols Sofridos</p>
@@ -410,7 +648,7 @@ export default function Estatisticas() {
                   <p className="text-4xl font-display font-bold text-secondary mb-2">
                     {teamStats.jogos > 0 ? ((teamStats.vitorias / teamStats.jogos) * 100).toFixed(0) : 0}%
                   </p>
-                  <p className="text-sm text-muted-foreground">Aproveitamento</p>
+                  <p className="text-sm text-muted-foreground">Taxa de Vitória</p>
                 </div>
               </div>
             </div>
