@@ -1,5 +1,4 @@
 import { Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
 
 interface NewsCardProps {
   id: string;
@@ -8,20 +7,30 @@ interface NewsCardProps {
   image: string;
   date: string;
   featured?: boolean;
+  onClick?: () => void;
 }
 
-export function NewsCard({ id, title, excerpt, image, date, featured }: NewsCardProps) {
+export function NewsCard({ id, title, excerpt, image, date, featured, onClick }: NewsCardProps) {
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    }
+  };
+
   if (featured) {
     return (
-      <Link
-        to={`/noticias/${id}`}
-        className="glass-card overflow-hidden group hover-glow block"
+      <div
+        onClick={handleClick}
+        className="glass-card overflow-hidden group hover-glow block cursor-pointer"
       >
         <div className="relative h-64 overflow-hidden">
           <img
             src={image}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -38,20 +47,23 @@ export function NewsCard({ id, title, excerpt, image, date, featured }: NewsCard
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     );
   }
 
   return (
-    <Link
-      to={`/noticias/${id}`}
-      className="glass-card overflow-hidden group hover-glow flex gap-4 p-4"
+    <div
+      onClick={handleClick}
+      className="glass-card overflow-hidden group hover-glow flex gap-4 p-4 cursor-pointer"
     >
       <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
         <img
           src={image}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
+          }}
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -64,6 +76,6 @@ export function NewsCard({ id, title, excerpt, image, date, featured }: NewsCard
           {date}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
