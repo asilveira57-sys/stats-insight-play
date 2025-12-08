@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sync-football-data]
 verify_jwt = false
+
+[functions.generate-predictions]
+verify_jwt = false
