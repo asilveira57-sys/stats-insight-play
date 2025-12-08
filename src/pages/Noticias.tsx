@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { NewsCard } from "@/components/cards/NewsCard";
 import { useNoticias, useNoticia, type NoticiaCard } from "@/hooks/useNoticias";
@@ -8,11 +9,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Noticias() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: noticias, isLoading } = useNoticias(20);
   const [selectedNoticiaId, setSelectedNoticiaId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: selectedNoticia, isLoading: noticiaLoading } = useNoticia(selectedNoticiaId);
+
+  // Check for artigo parameter in URL on mount
+  useEffect(() => {
+    const artigoId = searchParams.get("artigo");
+    if (artigoId) {
+      setSelectedNoticiaId(artigoId);
+    }
+  }, [searchParams]);
+
+  // Clear URL param when modal closes
+  const handleModalClose = (open: boolean) => {
+    if (!open) {
+      setSelectedNoticiaId(null);
+      searchParams.delete("artigo");
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   const filteredNoticias = noticias?.filter(
     (n) =>
@@ -109,7 +128,7 @@ export default function Noticias() {
       </div>
 
       {/* News Detail Modal */}
-      <Dialog open={!!selectedNoticiaId} onOpenChange={(open) => !open && setSelectedNoticiaId(null)}>
+      <Dialog open={!!selectedNoticiaId} onOpenChange={handleModalClose}>
         <DialogContent className="max-w-2xl max-h-[90vh]">
           {noticiaLoading ? (
             <div className="flex items-center justify-center py-12">
