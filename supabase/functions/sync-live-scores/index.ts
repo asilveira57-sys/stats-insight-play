@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
     console.log('Fetching live matches from Football-Data.org...');
 
     // Fetch all live matches across all competitions
-    const response = await fetch(`${FOOTBALL_DATA_BASE_URL}/matches?status=LIVE,IN_PLAY,PAUSED,HALFTIME`, {
+    // Valid status values: TIMED, SCHEDULED, LIVE, IN_PLAY, PAUSED, FINISHED, POSTPONED, SUSPENDED, CANCELLED
+    const response = await fetch(`${FOOTBALL_DATA_BASE_URL}/matches?status=LIVE,IN_PLAY,PAUSED`, {
       headers: {
         'X-Auth-Token': apiKey,
       },
