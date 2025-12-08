@@ -140,7 +140,9 @@ export default function Palpites() {
       p.confidence === "high" ? "Alta" : p.confidence === "medium" ? "Média" : "Baixa"
     ]);
     
-    const csvContent = [headers, ...rows].map(row => row.join(";")).join("\n");
+    // Add UTF-8 BOM for proper character encoding in Excel
+    const BOM = "\uFEFF";
+    const csvContent = BOM + [headers, ...rows].map(row => row.join(";")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
