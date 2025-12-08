@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { usePredictions, useLeaguesForPredictions, useLeagueMatchCounts, Prediction } from "@/hooks/usePalpitesDB";
 import { UserPalpiteModal } from "@/components/palpites/UserPalpiteModal";
 import { UserPalpitesHistory } from "@/components/palpites/UserPalpitesHistory";
+import { BrasileiraoRetrospectiva } from "@/components/palpites/BrasileiraoRetrospectiva";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Zap, 
@@ -16,8 +17,7 @@ import {
   Lock,
   History,
   Target,
-  CalendarX,
-  Calendar
+  CalendarX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -220,49 +220,54 @@ export default function Palpites() {
                 ))}
               </div>
             ) : (
-              <div className="glass-card p-8 text-center">
-                {selectedLeague !== 'all' ? (
-                  <>
-                    <CalendarX className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Temporada encerrada</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {leagues?.find(l => l.codigo_api === selectedLeague)?.nome || 'Esta liga'} não possui jogos agendados no momento.
-                      {selectedLeague === 'BSA' && ' A nova temporada do Brasileirão geralmente começa em abril.'}
-                    </p>
-                    
-                    {/* Suggest other leagues with matches */}
-                    {leagueMatchCounts && Array.from(leagueMatchCounts.entries()).filter(([_, count]) => count > 0).length > 0 && (
-                      <div className="mt-6">
-                        <p className="text-sm text-muted-foreground mb-3">Confira outras ligas com jogos disponíveis:</p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                          {leagues?.filter(l => (leagueMatchCounts.get(l.codigo_api || '') || 0) > 0).slice(0, 4).map(league => (
-                            <button
-                              key={league.id}
-                              onClick={() => setSelectedLeague(league.codigo_api || '')}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-all"
-                            >
-                              {league.logo_url && (
-                                <img src={league.logo_url} alt={league.nome} className="w-4 h-4 object-contain" />
-                              )}
-                              {league.nome}
-                              <span className="text-xs opacity-70">
-                                ({leagueMatchCounts.get(league.codigo_api || '')})
-                              </span>
-                            </button>
-                          ))}
+              <div className="space-y-6">
+                {/* Retrospectiva for BSA */}
+                {selectedLeague === 'BSA' && <BrasileiraoRetrospectiva />}
+                
+                <div className="glass-card p-8 text-center">
+                  {selectedLeague !== 'all' ? (
+                    <>
+                      <CalendarX className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Temporada encerrada</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {leagues?.find(l => l.codigo_api === selectedLeague)?.nome || 'Esta liga'} não possui jogos agendados no momento.
+                        {selectedLeague === 'BSA' && ' A nova temporada do Brasileirão geralmente começa em abril.'}
+                      </p>
+                      
+                      {/* Suggest other leagues with matches */}
+                      {leagueMatchCounts && Array.from(leagueMatchCounts.entries()).filter(([_, count]) => count > 0).length > 0 && (
+                        <div className="mt-6">
+                          <p className="text-sm text-muted-foreground mb-3">Confira outras ligas com jogos disponíveis:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {leagues?.filter(l => (leagueMatchCounts.get(l.codigo_api || '') || 0) > 0).slice(0, 4).map(league => (
+                              <button
+                                key={league.id}
+                                onClick={() => setSelectedLeague(league.codigo_api || '')}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-all"
+                              >
+                                {league.logo_url && (
+                                  <img src={league.logo_url} alt={league.nome} className="w-4 h-4 object-contain" />
+                                )}
+                                {league.nome}
+                                <span className="text-xs opacity-70">
+                                  ({leagueMatchCounts.get(league.codigo_api || '')})
+                                </span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Nenhum palpite disponível</h3>
-                    <p className="text-muted-foreground">
-                      Não há partidas agendadas com dados suficientes para gerar palpites no momento.
-                    </p>
-                  </>
-                )}
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Nenhum palpite disponível</h3>
+                      <p className="text-muted-foreground">
+                        Não há partidas agendadas com dados suficientes para gerar palpites no momento.
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
