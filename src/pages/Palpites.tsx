@@ -2,23 +2,32 @@ import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { PredictionCard } from "@/components/cards/PredictionCard";
 import { Button } from "@/components/ui/button";
-import { predictions, leagues } from "@/data/mockData";
+import { usePredictions, useLeaguesForPredictions } from "@/hooks/usePalpitesDB";
 import { 
   Zap, 
   Filter,
-  Calendar,
   TrendingUp,
   Info,
   ChevronRight,
   Crown,
-  Lock
+  Lock,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Palpites() {
   const [selectedLeague, setSelectedLeague] = useState("all");
   const [selectedConfidence, setSelectedConfidence] = useState("all");
+
+  const { data: predictions, isLoading: loadingPredictions } = usePredictions({
+    leagueCode: selectedLeague,
+    confidence: selectedConfidence,
+    days: 7,
+  });
+
+  const { data: leagues, isLoading: loadingLeagues } = useLeaguesForPredictions();
 
   const confidenceFilters = [
     { id: "all", label: "Todos" },
@@ -81,25 +90,31 @@ export default function Palpites() {
               >
                 Todas
               </button>
-              {leagues.slice(0, 4).map((league) => (
-                <button
-                  key={league.id}
-                  onClick={() => setSelectedLeague(league.id)}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                    selectedLeague === league.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                  )}
-                >
-                  <img
-                    src={league.logo}
-                    alt={league.name}
-                    className="w-4 h-4 object-contain"
-                  />
-                  <span className="hidden sm:inline">{league.name}</span>
-                </button>
-              ))}
+              {loadingLeagues ? (
+                <Skeleton className="h-9 w-32" />
+              ) : (
+                leagues?.slice(0, 6).map((league) => (
+                  <button
+                    key={league.id}
+                    onClick={() => setSelectedLeague(league.codigo_api || '')}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                      selectedLeague === league.codigo_api
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                    )}
+                  >
+                    {league.logo_url && (
+                      <img
+                        src={league.logo_url}
+                        alt={league.nome}
+                        className="w-4 h-4 object-contain"
+                      />
+                    )}
+                    <span className="hidden sm:inline">{league.nome}</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -129,11 +144,48 @@ export default function Palpites() {
         </div>
 
         {/* Predictions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {predictions.map((prediction) => (
-            <PredictionCard key={prediction.id} {...prediction} />
-          ))}
-        </div>
+        {loadingPredictions ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="glass-card p-5">
+                <div className="flex justify-between mb-4">
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-24" />
+                </div>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                  <div className="flex flex-col items-center gap-2">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-2 w-full" />
+                  <Skeleton className="h-2 w-full" />
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : predictions && predictions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {predictions.map((prediction) => (
+              <PredictionCard key={prediction.id} {...prediction} />
+            ))}
+          </div>
+        ) : (
+          <div className="glass-card p-8 text-center mb-8">
+            <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum palpite disponível</h3>
+            <p className="text-muted-foreground">
+              Não há partidas agendadas com dados suficientes para gerar palpites no momento.
+            </p>
+          </div>
+        )}
 
         {/* Methodology Section */}
         <div className="glass-card p-6 md:p-8 mb-8">
@@ -159,7 +211,7 @@ export default function Palpites() {
               </div>
               <h3 className="font-semibold mb-2">Forma Recente</h3>
               <p className="text-sm text-muted-foreground">
-                Analisamos os últimos 5 jogos para identificar tendências de desempenho.
+                Analisamos os últimos jogos para identificar tendências de desempenho.
               </p>
             </div>
 
@@ -167,9 +219,9 @@ export default function Palpites() {
               <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center mb-3">
                 <span className="font-display font-bold text-accent">3</span>
               </div>
-              <h3 className="font-semibold mb-2">xG Analysis</h3>
+              <h3 className="font-semibold mb-2">Ataque vs Defesa</h3>
               <p className="text-sm text-muted-foreground">
-                Usamos Expected Goals para medir a qualidade das chances criadas.
+                Comparamos força de ataque e fraqueza defensiva de cada time.
               </p>
             </div>
 
