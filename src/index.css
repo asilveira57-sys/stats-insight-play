@@ -156,11 +156,35 @@
   }
 
   .live-indicator {
-    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-bold uppercase tracking-wider;
+    animation: live-glow 2s ease-in-out infinite;
   }
 
   .live-indicator::before {
-    @apply content-[''] w-2 h-2 rounded-full bg-destructive animate-pulse;
+    content: '';
+    @apply w-2 h-2 rounded-full bg-destructive;
+    animation: live-pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px hsl(var(--destructive));
+  }
+
+  @keyframes live-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.3);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes live-glow {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(var(--destructive) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 15px hsl(var(--destructive) / 0.5), 0 0 30px hsl(var(--destructive) / 0.2);
+    }
   }
 }
 
