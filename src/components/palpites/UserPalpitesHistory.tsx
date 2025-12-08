@@ -12,7 +12,8 @@ import {
   Clock,
   Sparkles,
   Bot,
-  User as UserIcon
+  User as UserIcon,
+  Goal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -74,11 +75,21 @@ export function UserPalpitesHistory() {
     return 'wrong';
   };
 
+  // Helper to get result label
+  const getResultLabel = (result: string) => {
+    switch (result) {
+      case 'casa': return 'Vitória Casa';
+      case 'fora': return 'Vitória Fora';
+      case 'empate': return 'Empate';
+      default: return result;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* User Stats */}
+        {/* User Stats - Result Focused */}
         <Card className="glass-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -87,25 +98,43 @@ export function UserPalpitesHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-secondary">
-                  {userStats?.percentualResultado.toFixed(1) || 0}%
+            <div className="space-y-3">
+              {/* Result accuracy - PRIMARY */}
+              <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Trophy className="w-3 h-3" />
+                    Acertos de Resultado
+                  </span>
+                  <span className="text-xs text-secondary font-medium">
+                    {userStats?.acertosResultado || 0}/{userStats?.totalPalpites || 0}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-secondary">
+                    {userStats?.percentualResultado.toFixed(1) || 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Exact score - Secondary */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Goal className="w-3 h-3" />
+                  Placar Exato
                 </span>
-                <span className="text-xs text-muted-foreground">resultados</span>
-              </div>
-              <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>{userStats?.acertosResultado || 0} acertos</span>
-                <span>{userStats?.totalPalpites || 0} total</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Placar exato: {userStats?.percentualPlacar.toFixed(1) || 0}%
+                <div className="text-right">
+                  <span className="font-semibold">{userStats?.percentualPlacar.toFixed(1) || 0}%</span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({userStats?.acertosPlacar || 0})
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* AI Stats */}
+        {/* AI Stats - Result Focused */}
         <Card className="glass-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -114,19 +143,37 @@ export function UserPalpitesHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-primary">
-                  {systemStats?.percentualResultado.toFixed(1) || 0}%
+            <div className="space-y-3">
+              {/* Result accuracy - PRIMARY */}
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Trophy className="w-3 h-3" />
+                    Acertos de Resultado
+                  </span>
+                  <span className="text-xs text-primary font-medium">
+                    {systemStats?.acertosResultado || 0}/{systemStats?.total || 0}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-primary">
+                    {systemStats?.percentualResultado.toFixed(1) || 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Exact score - Secondary */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Goal className="w-3 h-3" />
+                  Placar Exato
                 </span>
-                <span className="text-xs text-muted-foreground">resultados</span>
-              </div>
-              <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>{systemStats?.acertosResultado || 0} acertos</span>
-                <span>{systemStats?.total || 0} total</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Placar exato: {systemStats?.percentualPlacar.toFixed(1) || 0}%
+                <div className="text-right">
+                  <span className="font-semibold">{systemStats?.percentualPlacar.toFixed(1) || 0}%</span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({systemStats?.acertosPlacar || 0})
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -141,18 +188,25 @@ export function UserPalpitesHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold">
-                  {userStats?.percentualIA.toFixed(1) || 0}%
-                </span>
-                <span className="text-xs text-muted-foreground">acertos</span>
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-background/50 border border-border/50">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Trophy className="w-3 h-3" />
+                    Acertos de Resultado
+                  </span>
+                  <span className="text-xs font-medium">
+                    {userStats?.acertosComIA || 0}/{userStats?.palpitesComIA || 0}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold">
+                    {userStats?.percentualIA.toFixed(1) || 0}%
+                  </span>
+                </div>
               </div>
-              <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>{userStats?.acertosComIA || 0} de {userStats?.palpitesComIA || 0}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {userStats?.palpitesComIA || 0} palpites com sugestão da IA
+              <div className="text-xs text-muted-foreground text-center">
+                {userStats?.palpitesComIA || 0} palpites seguindo sugestão da IA
               </div>
             </div>
           </CardContent>
@@ -178,6 +232,16 @@ export function UserPalpitesHistory() {
             {palpites.map((palpite) => {
               const status = getResultStatus(palpite);
               const match = palpite.partida;
+
+              // Calculate user predicted result
+              const userResult = palpite.placar_casa > palpite.placar_fora ? 'casa'
+                : palpite.placar_casa < palpite.placar_fora ? 'fora' : 'empate';
+              
+              // Calculate official result if finished
+              const officialResult = match.status === 'finished' && match.gols_casa !== null
+                ? (match.gols_casa > match.gols_fora ? 'casa'
+                  : match.gols_casa < match.gols_fora ? 'fora' : 'empate')
+                : null;
 
               return (
                 <div
@@ -208,7 +272,7 @@ export function UserPalpitesHistory() {
                       </div>
                     </div>
 
-                    {/* Scores */}
+                    {/* Scores and Results */}
                     <div className="flex items-center gap-4">
                       {/* User Prediction */}
                       <div className="text-center">
@@ -225,6 +289,9 @@ export function UserPalpitesHistory() {
                         <div className="font-bold">
                           {palpite.placar_casa} x {palpite.placar_fora}
                         </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {getResultLabel(userResult)}
+                        </div>
                       </div>
 
                       {/* Official Result */}
@@ -233,6 +300,9 @@ export function UserPalpitesHistory() {
                           <div className="text-xs text-muted-foreground mb-1">Oficial</div>
                           <div className="font-bold text-foreground">
                             {match.gols_casa} x {match.gols_fora}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {officialResult && getResultLabel(officialResult)}
                           </div>
                         </div>
                       )}
@@ -254,7 +324,7 @@ export function UserPalpitesHistory() {
                         {status === 'wrong' && <XCircle className="w-3 h-3 mr-1" />}
                         {status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
                         {status === 'exact' ? 'Placar Exato!' :
-                         status === 'correct' ? 'Acertou' :
+                         status === 'correct' ? 'Resultado Certo' :
                          status === 'wrong' ? 'Errou' : 'Aguardando'}
                       </Badge>
                     </div>

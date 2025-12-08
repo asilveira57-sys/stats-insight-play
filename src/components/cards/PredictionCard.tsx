@@ -1,4 +1,4 @@
-import { TrendingUp, Zap } from "lucide-react";
+import { TrendingUp, Zap, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PredictionCardProps {
@@ -20,6 +20,7 @@ interface PredictionCardProps {
   league: string;
   date: string;
   time: string;
+  hasPalpite?: boolean;
   onClick?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function PredictionCard({
   league,
   date,
   time,
+  hasPalpite = false,
   onClick,
 }: PredictionCardProps) {
   const confidenceColors = {
@@ -48,15 +50,27 @@ export function PredictionCard({
 
   return (
     <div
-      className="glass-card p-5 cursor-pointer hover-glow group"
+      className={cn(
+        "glass-card p-5 cursor-pointer hover-glow group relative",
+        hasPalpite && "ring-2 ring-secondary/50"
+      )}
       onClick={onClick}
     >
+      {/* Palpite Badge */}
+      {hasPalpite && (
+        <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-secondary/20 text-secondary text-xs font-medium">
+          <CheckCircle className="w-3 h-3" />
+          Palpite Feito
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <span className="league-badge text-xs">{league}</span>
         <span className={cn(
           "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border",
-          confidenceColors[confidence]
+          confidenceColors[confidence],
+          hasPalpite && "mr-24"
         )}>
           <Zap className="w-3 h-3" />
           {confidenceLabels[confidence]}
