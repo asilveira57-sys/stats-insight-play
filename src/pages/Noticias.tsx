@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { Layout } from "@/components/layout/Layout";
 import { NewsCard } from "@/components/cards/NewsCard";
 import { useNoticias, useNoticia, type NoticiaCard } from "@/hooks/useNoticias";
-import { Newspaper, Search, Loader2, X } from "lucide-react";
+import { Newspaper, Search, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -169,7 +170,7 @@ export default function Noticias() {
               <ScrollArea className="max-h-[40vh]">
                 <div 
                   className="prose prose-sm prose-invert max-w-none text-foreground [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mt-4 [&>h2]:mb-2 [&>h3]:text-base [&>h3]:font-medium [&>h3]:mt-3 [&>h3]:mb-1 [&>p]:mb-3 [&>p]:leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: selectedNoticia.texto }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedNoticia.texto) }}
                 />
               </ScrollArea>
             </>
