@@ -132,15 +132,15 @@ export function useTeamStats(teamId: string | null) {
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
         
-        if (isHome) {
-          if (golsCasa > golsFora) return 'W';
-          if (golsCasa === golsFora) return 'D';
-          return 'L';
-        } else {
-          if (golsFora > golsCasa) return 'W';
-          if (golsFora === golsCasa) return 'D';
-          return 'L';
-        }
+      if (isHome) {
+        if (golsCasa > golsFora) return 'V';
+        if (golsCasa === golsFora) return 'E';
+        return 'D';
+      } else {
+        if (golsFora > golsCasa) return 'V';
+        if (golsFora === golsCasa) return 'E';
+        return 'D';
+      }
       });
 
       // Pegar liga da última partida

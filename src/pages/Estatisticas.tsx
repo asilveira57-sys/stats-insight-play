@@ -42,9 +42,9 @@ export default function Estatisticas() {
   }, [teams, selectedTeamId]);
 
   const formColors = {
-    W: "bg-secondary text-secondary-foreground",
-    D: "bg-muted text-muted-foreground",
-    L: "bg-destructive text-destructive-foreground",
+    V: "bg-secondary text-secondary-foreground",    // Vitória
+    E: "bg-muted text-muted-foreground",            // Empate
+    D: "bg-destructive text-destructive-foreground", // Derrota
   };
 
   const handleTeamSelect = (teamId: string) => {
