@@ -11,6 +11,7 @@ import Palpites from "./pages/Palpites";
 import Noticias from "./pages/Noticias";
 import Precos from "./pages/Precos";
 import Auth from "./pages/Auth";
+import Retrospectiva from "./pages/Retrospectiva";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/precos" element={<Precos />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/retrospectiva/brasileirao-2024" element={<Retrospectiva />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

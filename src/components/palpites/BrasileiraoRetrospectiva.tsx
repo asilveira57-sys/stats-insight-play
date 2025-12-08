@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Trophy, Target, TrendingUp, Calendar, Award } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 interface RetrospectiveStats {
   total_partidas: number;
@@ -71,10 +73,17 @@ export function BrasileiraoRetrospectiva() {
   return (
     <Card className="bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Trophy className="h-5 w-5 text-primary" />
-          Retrospectiva Brasileirão 2024
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trophy className="h-5 w-5 text-primary" />
+            Retrospectiva Brasileirão 2024
+          </CardTitle>
+          <Link to="/retrospectiva/brasileirao-2024">
+            <Button variant="outline" size="sm" className="text-xs">
+              Ver Detalhes
+            </Button>
+          </Link>
+        </div>
         <p className="text-sm text-muted-foreground">
           Temporada encerrada em 07/12/2025 • Nova temporada em abril 2026
         </p>
