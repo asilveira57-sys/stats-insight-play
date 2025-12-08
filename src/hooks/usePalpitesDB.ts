@@ -351,3 +351,41 @@ export function useLeaguesForPredictions() {
     },
   });
 }
+
+// Hook to get match counts per league for the next 7 days
+export function useLeagueMatchCounts() {
+  return useQuery({
+    queryKey: ['league-match-counts'],
+    queryFn: async () => {
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 7);
+
+      const { data, error } = await supabase
+        .from('partidas')
+        .select(`
+          id,
+          ligas (
+            codigo_api
+          )
+        `)
+        .eq('status', 'scheduled')
+        .gte('data', today.toISOString().split('T')[0])
+        .lte('data', futureDate.toISOString().split('T')[0]);
+
+      if (error) throw error;
+
+      // Count matches per league
+      const counts = new Map<string, number>();
+      (data || []).forEach(match => {
+        const leagueCode = (match.ligas as any)?.codigo_api;
+        if (leagueCode) {
+          counts.set(leagueCode, (counts.get(leagueCode) || 0) + 1);
+        }
+      });
+
+      return counts;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
