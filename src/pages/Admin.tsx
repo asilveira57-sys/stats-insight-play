@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 
@@ -34,6 +34,7 @@ export default function Admin() {
   const [selectedMatch, setSelectedMatch] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [generatingPalpites, setGeneratingPalpites] = useState(false);
 
   // Check if user is admin
   useEffect(() => {
@@ -85,8 +86,7 @@ export default function Admin() {
           hora,
           time_casa:times!partidas_time_casa_id_fkey(nome, cores),
           time_fora:times!partidas_time_fora_id_fkey(nome, cores),
-          liga:ligas(nome),
-          palpites(id)
+          liga:ligas(nome)
         `)
         .eq("status", "scheduled")
         .gte("data", today)
@@ -100,20 +100,21 @@ export default function Admin() {
         return;
       }
 
-      // Get news for these matches
       const matchIds = matchesData?.map(m => m.id) || [];
-      const { data: newsData } = await supabase
-        .from("noticias")
-        .select("partida_id")
-        .in("partida_id", matchIds);
 
-      const newsMatchIds = new Set(newsData?.map(n => n.partida_id) || []);
+      // Fetch news and palpites separately for more reliable results
+      const [newsResult, palpitesResult] = await Promise.all([
+        supabase.from("noticias").select("partida_id").in("partida_id", matchIds),
+        supabase.from("palpites").select("partida_id").in("partida_id", matchIds)
+      ]);
+
+      const newsMatchIds = new Set(newsResult.data?.map(n => n.partida_id) || []);
+      const palpiteMatchIds = new Set(palpitesResult.data?.map(p => p.partida_id) || []);
 
       const formattedMatches: ScheduledMatch[] = (matchesData || []).map(m => {
         const timeCasa = Array.isArray(m.time_casa) ? m.time_casa[0] : m.time_casa;
         const timeFora = Array.isArray(m.time_fora) ? m.time_fora[0] : m.time_fora;
         const liga = Array.isArray(m.liga) ? m.liga[0] : m.liga;
-        const palpites = Array.isArray(m.palpites) ? m.palpites : [];
 
         return {
           id: m.id,
@@ -123,7 +124,7 @@ export default function Admin() {
           time_fora: timeFora || { nome: "Time Fora", cores: { primary: "#333", secondary: "#fff" } },
           liga: liga || { nome: "Liga" },
           has_news: newsMatchIds.has(m.id),
-          has_palpite: palpites.length > 0
+          has_palpite: palpiteMatchIds.has(m.id)
         };
       });
 
@@ -215,6 +216,39 @@ export default function Admin() {
       });
     } finally {
       setGeneratingAll(false);
+    }
+  };
+
+  const generateMissingPalpites = async () => {
+    setGeneratingPalpites(true);
+    
+    try {
+      const response = await supabase.functions.invoke("generate-predictions", {
+        body: {}
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Palpites gerados!",
+        description: `${result.generated || 0} palpites criados, ${result.failed || 0} falhas.`,
+      });
+
+      // Refresh matches list
+      window.location.reload();
+    } catch (error) {
+      console.error("Error generating predictions:", error);
+      toast({
+        title: "Erro ao gerar palpites",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingPalpites(false);
     }
   };
 
@@ -396,24 +430,45 @@ export default function Admin() {
                 </div>
               </div>
 
-              <Button 
-                onClick={generateAllAnalyses}
-                disabled={generatingAll}
-                variant="secondary"
-                className="w-full"
-              >
-                {generatingAll ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando partidas...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Gerar Todas as Análises Pendentes
-                  </>
-                )}
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  onClick={generateMissingPalpites}
+                  disabled={generatingPalpites}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {generatingPalpites ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Gerando palpites...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Gerar Palpites Faltantes
+                    </>
+                  )}
+                </Button>
+
+                <Button 
+                  onClick={generateAllAnalyses}
+                  disabled={generatingAll}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  {generatingAll ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando partidas...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Gerar Todas as Análises Pendentes
+                    </>
+                  )}
+                </Button>
+              </div>
 
               <p className="text-xs text-muted-foreground">
                 Este processo pode levar alguns minutos dependendo do número de partidas.
