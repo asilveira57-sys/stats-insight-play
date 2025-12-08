@@ -228,6 +228,40 @@ export default function Estatisticas() {
           </div>
         </div>
 
+        {/* League Teams Grid */}
+        {selectedLeagueId && leagueTeams && leagueTeams.length > 0 && !compareMode && (
+          <div className="mb-8">
+            <h3 className="font-display font-bold mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              Times da Liga ({leagueTeams.length})
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              {leagueTeams.map((team) => (
+                <button
+                  key={team.id}
+                  onClick={() => {
+                    setSelectedTeamId(team.id);
+                    setShowSearch(false);
+                  }}
+                  className={cn(
+                    "p-3 rounded-xl border transition-all flex flex-col items-center gap-2 hover:scale-105",
+                    selectedTeamId === team.id 
+                      ? "border-primary bg-primary/10 shadow-lg" 
+                      : "border-border bg-card hover:border-primary/50"
+                  )}
+                >
+                  <img
+                    src={team.escudo_url || '/placeholder.svg'}
+                    alt={team.nome}
+                    className="w-10 h-10 object-contain"
+                  />
+                  <span className="text-xs text-center line-clamp-2 font-medium">{team.nome}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Compare Mode - Select Second Team */}
         {compareMode && !compareTeamId && (
           <div className="glass-card p-6 mb-8 border-2 border-primary/50">
