@@ -47,6 +47,81 @@ export type Database = {
         }
         Relationships: []
       }
+      comparativo_resultados: {
+        Row: {
+          created_at: string | null
+          id: string
+          palpite_sistema_id: string | null
+          partida_id: string
+          placar_oficial_casa: number | null
+          placar_oficial_fora: number | null
+          resultado_oficial: string | null
+          sistema_acertou_placar: boolean | null
+          sistema_acertou_resultado: boolean | null
+          sistema_placar_casa: number | null
+          sistema_placar_fora: number | null
+          sistema_prob_resultado: number | null
+          sistema_resultado_previsto: string | null
+          total_usuarios_palpitaram: number | null
+          updated_at: string | null
+          usuarios_acertaram_placar: number | null
+          usuarios_acertaram_resultado: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          palpite_sistema_id?: string | null
+          partida_id: string
+          placar_oficial_casa?: number | null
+          placar_oficial_fora?: number | null
+          resultado_oficial?: string | null
+          sistema_acertou_placar?: boolean | null
+          sistema_acertou_resultado?: boolean | null
+          sistema_placar_casa?: number | null
+          sistema_placar_fora?: number | null
+          sistema_prob_resultado?: number | null
+          sistema_resultado_previsto?: string | null
+          total_usuarios_palpitaram?: number | null
+          updated_at?: string | null
+          usuarios_acertaram_placar?: number | null
+          usuarios_acertaram_resultado?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          palpite_sistema_id?: string | null
+          partida_id?: string
+          placar_oficial_casa?: number | null
+          placar_oficial_fora?: number | null
+          resultado_oficial?: string | null
+          sistema_acertou_placar?: boolean | null
+          sistema_acertou_resultado?: boolean | null
+          sistema_placar_casa?: number | null
+          sistema_placar_fora?: number | null
+          sistema_prob_resultado?: number | null
+          sistema_resultado_previsto?: string | null
+          total_usuarios_palpitaram?: number | null
+          updated_at?: string | null
+          usuarios_acertaram_placar?: number | null
+          usuarios_acertaram_resultado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comparativo_resultados_palpite_sistema_id_fkey"
+            columns: ["palpite_sistema_id"]
+            isOneToOne: false
+            referencedRelation: "palpites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comparativo_resultados_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: true
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes: {
         Row: {
           chave: string
@@ -277,6 +352,57 @@ export type Database = {
           },
         ]
       }
+      palpites_usuarios: {
+        Row: {
+          aceitou_sugestao: boolean | null
+          created_at: string | null
+          id: string
+          palpite_sistema_id: string | null
+          partida_id: string
+          placar_casa: number
+          placar_fora: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          aceitou_sugestao?: boolean | null
+          created_at?: string | null
+          id?: string
+          palpite_sistema_id?: string | null
+          partida_id: string
+          placar_casa: number
+          placar_fora: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          aceitou_sugestao?: boolean | null
+          created_at?: string | null
+          id?: string
+          palpite_sistema_id?: string | null
+          partida_id?: string
+          placar_casa?: number
+          placar_fora?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "palpites_usuarios_palpite_sistema_id_fkey"
+            columns: ["palpite_sistema_id"]
+            isOneToOne: false
+            referencedRelation: "palpites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "palpites_usuarios_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partidas: {
         Row: {
           api_id: number | null
@@ -436,12 +562,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gerar_palpite_sistema: { Args: { p_partida_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      processar_resultado_partida: {
+        Args: { p_partida_id: string }
+        Returns: undefined
       }
     }
     Enums: {
