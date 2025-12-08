@@ -131,7 +131,7 @@ export function useLeagues() {
   });
 }
 
-// Hook to fetch matches from database
+// Hook to fetch matches from database with auto-refresh for live matches
 export function useMatchesFromDB(options?: {
   leagueCode?: string;
   dateFrom?: string;
@@ -188,7 +188,8 @@ export function useMatchesFromDB(options?: {
       
       return (data as unknown as Partida[]).map(transformMatch);
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30, // 30 seconds - refresh more often for live scores
+    refetchInterval: 1000 * 30, // Auto-refetch every 30 seconds for live updates
   });
 }
 
@@ -226,7 +227,7 @@ export function useRecentResultsFromDB(days: number = 3) {
   });
 }
 
-// Hook to fetch live matches from database
+// Hook to fetch live matches from database with real-time updates
 export function useLiveMatchesFromDB() {
   return useQuery({
     queryKey: ['db-live-matches'],
@@ -251,8 +252,8 @@ export function useLiveMatchesFromDB() {
       
       return (data as unknown as Partida[]).map(transformMatch);
     },
-    staleTime: 1000 * 30, // 30 seconds for live data
-    refetchInterval: 1000 * 60, // Refetch every minute
+    staleTime: 1000 * 10, // 10 seconds for live data
+    refetchInterval: 1000 * 30, // Refetch every 30 seconds
   });
 }
 
