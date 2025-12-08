@@ -22,8 +22,12 @@ import {
   CalendarX,
   Sparkles,
   CheckCircle,
-  Circle
+  Circle,
+  LayoutGrid,
+  List
 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +41,7 @@ export default function Palpites() {
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
     leagueCode: selectedLeague,
@@ -143,9 +148,34 @@ export default function Palpites() {
           </TabsList>
 
           <TabsContent value="predictions" className="space-y-6">
-            {/* Bulk Accept Button */}
-            {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
-              <div className="flex justify-end">
+            {/* Actions Row */}
+            <div className="flex items-center justify-between gap-4">
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={cn(
+                    "p-2 rounded-md transition-all",
+                    viewMode === "grid" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  )}
+                  title="Visualização em Cards"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "p-2 rounded-md transition-all",
+                    viewMode === "list" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                  )}
+                  title="Visualização em Lista"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Bulk Accept Button */}
+              {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
                 <Button
                   variant="outline"
                   onClick={() => setBulkModalOpen(true)}
@@ -154,8 +184,8 @@ export default function Palpites() {
                   <Sparkles className="w-4 h-4" />
                   Aceitar Todos os Palpites da IA
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Filters */}
             <div className="flex flex-col gap-4">
@@ -311,16 +341,115 @@ export default function Palpites() {
                 ))}
               </div>
             ) : filteredPredictions && filteredPredictions.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPredictions.map((prediction) => (
-                  <PredictionCard
-                    key={prediction.id}
-                    {...prediction}
-                    hasPalpite={existingPalpites?.get(prediction.matchId) || false}
-                    onClick={() => handlePredictionClick(prediction)}
-                  />
-                ))}
-              </div>
+              viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredPredictions.map((prediction) => (
+                    <PredictionCard
+                      key={prediction.id}
+                      {...prediction}
+                      hasPalpite={existingPalpites?.get(prediction.matchId) || false}
+                      onClick={() => handlePredictionClick(prediction)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[140px]">Data/Hora</TableHead>
+                        <TableHead>Partida</TableHead>
+                        <TableHead className="text-center">Placar</TableHead>
+                        <TableHead className="text-center">Probabilidades</TableHead>
+                        <TableHead className="text-center w-[100px]">Confiança</TableHead>
+                        <TableHead className="text-center w-[100px]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPredictions.map((prediction) => {
+                        const hasPalpite = existingPalpites?.get(prediction.matchId) || false;
+                        const confidenceColors: Record<string, string> = {
+                          high: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                          medium: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                          low: "bg-red-500/20 text-red-400 border-red-500/30",
+                        };
+                        const confidenceLabels: Record<string, string> = {
+                          high: "Alta",
+                          medium: "Média",
+                          low: "Baixa",
+                        };
+                        return (
+                          <TableRow 
+                            key={prediction.id} 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => handlePredictionClick(prediction)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="text-sm">{prediction.date}</div>
+                              <div className="text-xs text-muted-foreground">{prediction.time}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  {prediction.homeTeam.logo ? (
+                                    <img src={prediction.homeTeam.logo} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                                      {prediction.homeTeam.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="truncate text-sm">{prediction.homeTeam.name}</span>
+                                </div>
+                                <span className="text-muted-foreground text-xs">vs</span>
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <span className="truncate text-sm">{prediction.awayTeam.name}</span>
+                                  {prediction.awayTeam.logo ? (
+                                    <img src={prediction.awayTeam.logo} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                                      {prediction.awayTeam.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">{prediction.league}</div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="font-mono font-bold text-lg">
+                                {prediction.predictedScore.home} - {prediction.predictedScore.away}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-center gap-2 text-xs">
+                                <span className="text-emerald-400">{(prediction.homeTeam.probability * 100).toFixed(0)}%</span>
+                                <span className="text-muted-foreground">{(prediction.drawProbability * 100).toFixed(0)}%</span>
+                                <span className="text-blue-400">{(prediction.awayTeam.probability * 100).toFixed(0)}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge className={cn("text-xs border", confidenceColors[prediction.confidence])}>
+                                {confidenceLabels[prediction.confidence]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {hasPalpite ? (
+                                <Badge className="bg-secondary/20 text-secondary border border-secondary/30 text-xs">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Feito
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  A fazer
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
             ) : (
               <div className="space-y-6">
                 {/* Retrospectiva for BSA */}
