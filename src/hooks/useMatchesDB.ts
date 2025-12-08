@@ -89,7 +89,26 @@ const transformMatch = (match: Partida) => ({
   rawDate: match.data,
 });
 
-// Hook to fetch leagues from database
+// Priority order for leagues (Brazilian first, then South American, then European)
+const LEAGUE_PRIORITY: Record<string, number> = {
+  'BSA': 1,  // Campeonato Brasileiro Série A
+  'BSB': 2,  // Campeonato Brasileiro Série B
+  'CLI': 3,  // Copa Libertadores
+  'CSA': 4,  // Copa Sudamericana
+  'CL': 5,   // UEFA Champions League
+  'PL': 6,   // Premier League
+  'PD': 7,   // La Liga
+  'SA': 8,   // Serie A (Italy)
+  'BL1': 9,  // Bundesliga
+  'FL1': 10, // Ligue 1
+};
+
+function getLeaguePriority(codigoApi: string | null): number {
+  if (!codigoApi) return 100;
+  return LEAGUE_PRIORITY[codigoApi] ?? 50;
+}
+
+// Hook to fetch leagues from database (sorted with Brazilian first)
 export function useLeagues() {
   return useQuery({
     queryKey: ['db-leagues'],
@@ -97,11 +116,16 @@ export function useLeagues() {
       const { data, error } = await supabase
         .from('ligas')
         .select('*')
-        .eq('ativa', true)
-        .order('nome');
+        .eq('ativa', true);
 
       if (error) throw error;
-      return data as Liga[];
+      
+      // Sort by priority (Brazilian leagues first)
+      const sorted = (data as Liga[]).sort((a, b) => {
+        return getLeaguePriority(a.codigo_api) - getLeaguePriority(b.codigo_api);
+      });
+      
+      return sorted;
     },
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
