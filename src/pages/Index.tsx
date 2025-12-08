@@ -5,9 +5,10 @@ import { PredictionCard } from "@/components/cards/PredictionCard";
 import { NewsCard } from "@/components/cards/NewsCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { predictions, news } from "@/data/mockData";
+import { predictions } from "@/data/mockData";
 import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
 import { useFeaturedMatch } from "@/hooks/useFeaturedMatch";
+import { useLatestNoticias } from "@/hooks/useNoticias";
 import { 
   Zap, 
   TrendingUp, 
@@ -26,6 +27,7 @@ export default function Index() {
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: matchCounts } = useMatchCountByLeague();
   const { data: featuredMatch, isLoading: featuredLoading } = useFeaturedMatch();
+  const { data: noticias, isLoading: noticiasLoading } = useLatestNoticias(3);
 
   // Map leagues to league cards
   const leagueCards = leagues?.map((league) => ({
@@ -371,16 +373,32 @@ export default function Index() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <NewsCard {...news[0]} featured />
+        {noticiasLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <Skeleton className="h-64 rounded-xl" />
+            </div>
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-28 rounded-xl" />
+              <Skeleton className="h-28 rounded-xl" />
+            </div>
           </div>
-          <div className="flex flex-col gap-4">
-            {news.slice(1).map((item) => (
-              <NewsCard key={item.id} {...item} />
-            ))}
+        ) : noticias && noticias.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <NewsCard {...noticias[0]} featured />
+            </div>
+            <div className="flex flex-col gap-4">
+              {noticias.slice(1).map((item) => (
+                <NewsCard key={item.id} {...item} />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="glass-card p-8 text-center text-muted-foreground">
+            Nenhuma notícia publicada ainda
+          </div>
+        )}
       </section>
 
       {/* CTA Premium */}
