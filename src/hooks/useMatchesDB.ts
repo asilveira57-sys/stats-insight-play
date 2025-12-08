@@ -271,24 +271,19 @@ export function useSyncFootballData() {
   });
 }
 
-// Hook to get match count by league
+// Hook to get match count by league (today only)
 export function useMatchCountByLeague() {
   return useQuery({
-    queryKey: ['db-match-count-by-league'],
+    queryKey: ['db-match-count-by-league-today'],
     queryFn: async () => {
-      const today = new Date();
-      const dateFrom = new Date(today);
-      dateFrom.setDate(dateFrom.getDate() - 3);
-      const dateTo = new Date(today);
-      dateTo.setDate(dateTo.getDate() + 7);
+      const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('partidas')
         .select(`
           liga:ligas!partidas_liga_id_fkey(codigo_api)
         `)
-        .gte('data', dateFrom.toISOString().split('T')[0])
-        .lte('data', dateTo.toISOString().split('T')[0]);
+        .eq('data', today);
 
       if (error) throw error;
 
