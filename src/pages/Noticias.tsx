@@ -167,11 +167,10 @@ export default function Noticias() {
               </div>
               
               <ScrollArea className="max-h-[40vh]">
-                <div className="prose prose-sm prose-invert max-w-none">
-                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-                    {selectedNoticia.texto}
-                  </p>
-                </div>
+                <div 
+                  className="prose prose-sm prose-invert max-w-none text-foreground [&>h2]:text-lg [&>h2]:font-semibold [&>h2]:mt-4 [&>h2]:mb-2 [&>h3]:text-base [&>h3]:font-medium [&>h3]:mt-3 [&>h3]:mb-1 [&>p]:mb-3 [&>p]:leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: selectedNoticia.texto }}
+                />
               </ScrollArea>
             </>
           ) : (
