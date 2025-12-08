@@ -308,6 +308,20 @@ export function usePredictions(options?: {
   });
 }
 
+// Priority order for leagues (Brazilian first)
+const LEAGUE_PRIORITY: Record<string, number> = {
+  'BSA': 1, // Campeonato Brasileiro Série A
+  'BSB': 2, // Campeonato Brasileiro Série B
+  'CLI': 3, // Copa Libertadores
+  'CSA': 4, // Copa Sudamericana
+  'CL': 5,  // UEFA Champions League
+  'PL': 6,  // Premier League
+  'PD': 7,  // La Liga
+  'SA': 8,  // Serie A (Italy)
+  'BL1': 9, // Bundesliga
+  'FL1': 10, // Ligue 1
+};
+
 export function useLeaguesForPredictions() {
   return useQuery({
     queryKey: ['leagues-predictions'],
@@ -315,11 +329,16 @@ export function useLeaguesForPredictions() {
       const { data, error } = await supabase
         .from('ligas')
         .select('id, nome, logo_url, codigo_api')
-        .eq('ativa', true)
-        .order('nome');
+        .eq('ativa', true);
 
       if (error) throw error;
-      return data || [];
+      
+      // Sort by priority (Brazilian leagues first)
+      return (data || []).sort((a, b) => {
+        const priorityA = LEAGUE_PRIORITY[a.codigo_api || ''] ?? 50;
+        const priorityB = LEAGUE_PRIORITY[b.codigo_api || ''] ?? 50;
+        return priorityA - priorityB;
+      });
     },
   });
 }
