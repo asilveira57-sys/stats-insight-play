@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { LeagueCard } from "@/components/cards/LeagueCard";
@@ -9,6 +10,7 @@ import { predictions } from "@/data/mockData";
 import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
 import { useFeaturedMatch } from "@/hooks/useFeaturedMatch";
 import { useLatestNoticias } from "@/hooks/useNoticias";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Zap, 
   TrendingUp, 
@@ -24,6 +26,14 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function Index() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect logged-in users to /palpites
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/palpites', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   const { data: matches, isLoading: matchesLoading } = useTodayMatchesFromDB();
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: matchCounts } = useMatchCountByLeague();
@@ -38,6 +48,20 @@ export default function Index() {
     logo: league.logo_url || '/placeholder.svg',
     matchCount: matchCounts?.[league.codigo_api || ''] || 0,
   })) || [];
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

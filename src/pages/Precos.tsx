@@ -1,5 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import { 
   Check, 
   X, 
@@ -10,9 +12,11 @@ import {
   TrendingUp,
   Bell,
   Download,
-  Headphones
+  Headphones,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 const plans = [
   {
@@ -103,6 +107,32 @@ const features = [
 ];
 
 export default function Precos() {
+  const { user } = useAuth();
+  const { data: userPlan, isLoading: loadingPlan } = useUserPlan();
+
+  const getButtonState = (planName: string) => {
+    if (!user) {
+      return { text: "Criar Conta", disabled: false, showLink: true };
+    }
+    
+    if (loadingPlan) {
+      return { text: "Carregando...", disabled: true, showLink: false };
+    }
+
+    if (planName === "Gratuito") {
+      if (!userPlan?.isPremium) {
+        return { text: "Plano Atual", disabled: true, showLink: false };
+      }
+      return { text: "Plano Gratuito", disabled: true, showLink: false };
+    }
+
+    if (userPlan?.isPremium) {
+      return { text: "Plano Ativo", disabled: true, showLink: false };
+    }
+
+    return { text: planName === "Premium" ? "Assinar Premium" : "Assinar Anual", disabled: false, showLink: false };
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-16">
@@ -179,14 +209,32 @@ export default function Precos() {
                 ))}
               </ul>
 
-              <Button
-                variant={plan.variant}
-                className="w-full"
-                disabled={plan.name === "Gratuito"}
-              >
-                {plan.name === "Premium" && <Crown className="w-4 h-4" />}
-                {plan.cta}
-              </Button>
+              {(() => {
+                const btnState = getButtonState(plan.name);
+                
+                if (btnState.showLink) {
+                  return (
+                    <Link to="/auth" className="w-full">
+                      <Button variant={plan.variant} className="w-full">
+                        {plan.name === "Premium" && <Crown className="w-4 h-4" />}
+                        {btnState.text}
+                      </Button>
+                    </Link>
+                  );
+                }
+
+                return (
+                  <Button
+                    variant={plan.variant}
+                    className="w-full"
+                    disabled={btnState.disabled}
+                  >
+                    {loadingPlan && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {plan.name === "Premium" && !loadingPlan && <Crown className="w-4 h-4" />}
+                    {btnState.text}
+                  </Button>
+                );
+              })()}
             </div>
           ))}
         </div>

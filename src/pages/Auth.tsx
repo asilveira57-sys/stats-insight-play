@@ -28,7 +28,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/precos', { replace: true });
     }
   }, [user, navigate]);
 
