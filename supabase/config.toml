@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.sync-live-scores]
 verify_jwt = false
+
+[functions.sync-match-details]
+verify_jwt = false

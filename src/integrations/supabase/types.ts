@@ -47,6 +47,57 @@ export type Database = {
         }
         Relationships: []
       }
+      cartoes_partida: {
+        Row: {
+          created_at: string | null
+          id: string
+          jogador_api_id: number | null
+          jogador_nome: string
+          minuto: number
+          partida_id: string
+          time_id: string | null
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome: string
+          minuto: number
+          partida_id: string
+          time_id?: string | null
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome?: string
+          minuto?: number
+          partida_id?: string
+          time_id?: string | null
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cartoes_partida_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cartoes_partida_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comparativo_resultados: {
         Row: {
           created_at: string | null
@@ -149,6 +200,63 @@ export type Database = {
         }
         Relationships: []
       }
+      escalacoes: {
+        Row: {
+          created_at: string | null
+          formacao: string | null
+          id: string
+          jogador_api_id: number | null
+          jogador_nome: string
+          numero_camisa: number | null
+          partida_id: string
+          posicao: string | null
+          time_id: string | null
+          titular: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          formacao?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome: string
+          numero_camisa?: number | null
+          partida_id: string
+          posicao?: string | null
+          time_id?: string | null
+          titular?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          formacao?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome?: string
+          numero_camisa?: number | null
+          partida_id?: string
+          posicao?: string | null
+          time_id?: string | null
+          titular?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalacoes_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalacoes_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estatisticas: {
         Row: {
           cartoes_amarelos: number | null
@@ -214,6 +322,72 @@ export type Database = {
           },
           {
             foreignKeyName: "estatisticas_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gols_partida: {
+        Row: {
+          acrescimo: number | null
+          assistente_api_id: number | null
+          assistente_nome: string | null
+          created_at: string | null
+          id: string
+          jogador_api_id: number | null
+          jogador_nome: string
+          minuto: number
+          partida_id: string
+          placar_casa: number | null
+          placar_fora: number | null
+          time_id: string | null
+          tipo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          acrescimo?: number | null
+          assistente_api_id?: number | null
+          assistente_nome?: string | null
+          created_at?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome: string
+          minuto: number
+          partida_id: string
+          placar_casa?: number | null
+          placar_fora?: number | null
+          time_id?: string | null
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          acrescimo?: number | null
+          assistente_api_id?: number | null
+          assistente_nome?: string | null
+          created_at?: string | null
+          id?: string
+          jogador_api_id?: number | null
+          jogador_nome?: string
+          minuto?: number
+          partida_id?: string
+          placar_casa?: number | null
+          placar_fora?: number | null
+          time_id?: string | null
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gols_partida_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gols_partida_time_id_fkey"
             columns: ["time_id"]
             isOneToOne: false
             referencedRelation: "times"
@@ -408,6 +582,7 @@ export type Database = {
           api_id: number | null
           created_at: string | null
           data: string
+          detalhes_sincronizados: boolean | null
           gols_casa: number | null
           gols_fora: number | null
           hora: string | null
@@ -423,6 +598,7 @@ export type Database = {
           api_id?: number | null
           created_at?: string | null
           data: string
+          detalhes_sincronizados?: boolean | null
           gols_casa?: number | null
           gols_fora?: number | null
           hora?: string | null
@@ -438,6 +614,7 @@ export type Database = {
           api_id?: number | null
           created_at?: string | null
           data?: string
+          detalhes_sincronizados?: boolean | null
           gols_casa?: number | null
           gols_fora?: number | null
           hora?: string | null
@@ -503,6 +680,79 @@ export type Database = {
           plano?: Database["public"]["Enums"]["plano_tipo"] | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      tecnico_partida: {
+        Row: {
+          created_at: string | null
+          id: string
+          partida_id: string
+          tecnico_id: string | null
+          time_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          partida_id: string
+          tecnico_id?: string | null
+          time_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          partida_id?: string
+          tecnico_id?: string | null
+          time_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tecnico_partida_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tecnico_partida_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tecnico_partida_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tecnicos: {
+        Row: {
+          api_id: number | null
+          created_at: string | null
+          id: string
+          nacionalidade: string | null
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: number | null
+          created_at?: string | null
+          id?: string
+          nacionalidade?: string | null
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: number | null
+          created_at?: string | null
+          id?: string
+          nacionalidade?: string | null
+          nome?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
