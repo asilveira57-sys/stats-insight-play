@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { predictions, news } from "@/data/mockData";
 import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
+import { useFeaturedMatch } from "@/hooks/useFeaturedMatch";
 import { 
   Zap, 
   TrendingUp, 
@@ -15,7 +16,8 @@ import {
   Play, 
   BarChart3,
   Target,
-  Crown
+  Crown,
+  Flame
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -23,10 +25,8 @@ export default function Index() {
   const { data: matches, isLoading: matchesLoading } = useTodayMatchesFromDB();
   const { data: leagues, isLoading: leaguesLoading } = useLeagues();
   const { data: matchCounts } = useMatchCountByLeague();
+  const { data: featuredMatch, isLoading: featuredLoading } = useFeaturedMatch();
 
-  // Get featured match (first scheduled match)
-  const featuredMatch = matches?.find((m) => m.status === 'scheduled');
-  
   // Map leagues to league cards
   const leagueCards = leagues?.map((league) => ({
     id: league.codigo_api || league.id,
@@ -81,7 +81,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Video Showcase */}
+      {/* Video Showcase / Featured Classic */}
       <section className="container mx-auto px-4 py-8">
         <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 neon-border">
           <div className="w-full md:w-2/5 aspect-video rounded-xl bg-muted overflow-hidden relative group">
@@ -98,17 +98,39 @@ export default function Index() {
           </div>
           <div className="flex-1">
             <span className="text-primary text-sm font-medium mb-2 block">Em Destaque</span>
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-              Análise Completa: El Clásico
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              Confira nossa análise estatística completa do confronto entre Real Madrid e Barcelona. 
-              Dados históricos, tendências e probabilidades calculadas.
-            </p>
-            <Button variant="neon">
-              Assistir Análise
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+            {featuredLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : featuredMatch?.classicName ? (
+              <>
+                <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
+                  {featuredMatch.classicName}
+                </h2>
+                <p className="text-muted-foreground mb-4">
+                  {featuredMatch.homeTeam.name} x {featuredMatch.awayTeam.name} - {featuredMatch.league}.{" "}
+                  Confira nossa análise estatística completa do confronto.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
+                  Análise Estatística
+                </h2>
+                <p className="text-muted-foreground mb-4">
+                  Confira nossas análises matemáticas das principais partidas. 
+                  Dados históricos, tendências e probabilidades calculadas.
+                </p>
+              </>
+            )}
+            <Link to="/palpites">
+              <Button variant="neon">
+                Ver Análises
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -122,7 +144,12 @@ export default function Index() {
             </div>
             <div>
               <h2 className="text-xl font-display font-bold">Próximo Grande Jogo</h2>
-              <p className="text-sm text-muted-foreground">Premier League - Rodada 17</p>
+              {featuredMatch && (
+                <p className="text-sm text-muted-foreground">
+                  {featuredMatch.league}
+                  {featuredMatch.matchday && ` - Rodada ${featuredMatch.matchday}`}
+                </p>
+              )}
             </div>
           </div>
           <Link to="/resultados">
@@ -134,56 +161,95 @@ export default function Index() {
         </div>
 
         <div className="glass-card p-8 neon-border">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            {/* Home Team */}
-            <div className="flex-1 flex flex-col items-center gap-4">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
-                <img
-                  src="https://crests.football-data.org/65.png"
-                  alt="Manchester City"
-                  className="w-20 h-20 md:w-28 md:h-28 object-contain"
-                />
+          {featuredLoading ? (
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="flex-1 flex flex-col items-center gap-4">
+                <Skeleton className="w-24 h-24 md:w-32 md:h-32 rounded-full" />
+                <Skeleton className="h-6 w-32" />
               </div>
-              <h3 className="text-xl md:text-2xl font-bold text-center">Manchester City</h3>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-secondary/20 text-secondary text-sm font-medium">
-                  52% Prob.
-                </span>
+              <div className="flex flex-col items-center gap-4">
+                <Skeleton className="h-12 w-24" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+              <div className="flex-1 flex flex-col items-center gap-4">
+                <Skeleton className="w-24 h-24 md:w-32 md:h-32 rounded-full" />
+                <Skeleton className="h-6 w-32" />
               </div>
             </div>
+          ) : featuredMatch ? (
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              {/* Classic Name Badge */}
+              {featuredMatch.classicName && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-medium flex items-center gap-2">
+                  <Flame className="w-4 h-4" />
+                  {featuredMatch.classicName}
+                </div>
+              )}
+              
+              {/* Home Team */}
+              <div className="flex-1 flex flex-col items-center gap-4">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
+                  <img
+                    src={featuredMatch.homeTeam.logo}
+                    alt={featuredMatch.homeTeam.name}
+                    className="w-20 h-20 md:w-28 md:h-28 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.homeTeam.name}</h3>
+                {featuredMatch.prediction && (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-secondary/20 text-secondary text-sm font-medium">
+                      {Math.round(featuredMatch.prediction.probHome)}% Prob.
+                    </span>
+                  </div>
+                )}
+              </div>
 
-            {/* VS */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-5xl md:text-6xl font-display font-bold text-muted-foreground">VS</div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">14:30</p>
-                <p className="text-sm text-muted-foreground">15 Dezembro</p>
+              {/* VS */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-5xl md:text-6xl font-display font-bold text-muted-foreground">VS</div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">{featuredMatch.time}</p>
+                  <p className="text-sm text-muted-foreground">{featuredMatch.date}</p>
+                </div>
+                <Link to={`/palpites`}>
+                  <Button variant="premium">
+                    <Target className="w-4 h-4" />
+                    Ver Palpite
+                  </Button>
+                </Link>
               </div>
-              <Link to="/palpites/1">
-                <Button variant="premium">
-                  <Target className="w-4 h-4" />
-                  Ver Palpite
-                </Button>
-              </Link>
-            </div>
 
-            {/* Away Team */}
-            <div className="flex-1 flex flex-col items-center gap-4">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
-                <img
-                  src="https://crests.football-data.org/64.png"
-                  alt="Liverpool"
-                  className="w-20 h-20 md:w-28 md:h-28 object-contain"
-                />
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-center">Liverpool</h3>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
-                  28% Prob.
-                </span>
+              {/* Away Team */}
+              <div className="flex-1 flex flex-col items-center gap-4">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
+                  <img
+                    src={featuredMatch.awayTeam.logo}
+                    alt={featuredMatch.awayTeam.name}
+                    className="w-20 h-20 md:w-28 md:h-28 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.awayTeam.name}</h3>
+                {featuredMatch.prediction && (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+                      {Math.round(featuredMatch.prediction.probAway)}% Prob.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum jogo programado para os próximos dias
+            </div>
+          )}
         </div>
       </section>
 
