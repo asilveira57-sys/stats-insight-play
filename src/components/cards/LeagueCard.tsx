@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Calendar, CalendarOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface LeagueCardProps {
@@ -10,10 +10,14 @@ interface LeagueCardProps {
 }
 
 export function LeagueCard({ id, name, country, logo, matchCount }: LeagueCardProps) {
+  const hasMatchesToday = matchCount !== undefined && matchCount > 0;
+  
   return (
     <Link
       to={`/resultados?liga=${id}`}
-      className="glass-card p-4 flex items-center gap-4 hover-glow group transition-all duration-300 hover:border-primary/50"
+      className={`glass-card p-4 flex items-center gap-4 hover-glow group transition-all duration-300 hover:border-primary/50 ${
+        !hasMatchesToday && matchCount !== undefined ? 'opacity-70' : ''
+      }`}
     >
       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
         <img
@@ -31,7 +35,17 @@ export function LeagueCard({ id, name, country, logo, matchCount }: LeagueCardPr
         </h3>
         <p className="text-xs text-muted-foreground">{country}</p>
         {matchCount !== undefined && (
-          <p className="text-xs text-primary mt-1">{matchCount} jogos hoje</p>
+          hasMatchesToday ? (
+            <p className="text-xs text-primary mt-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {matchCount} jogos hoje
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <CalendarOff className="w-3 h-3" />
+              Sem jogos hoje
+            </p>
+          )
         )}
       </div>
       <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
