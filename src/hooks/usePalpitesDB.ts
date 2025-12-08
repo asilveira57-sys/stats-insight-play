@@ -12,6 +12,7 @@ interface TeamStats {
   id: string;
   nome: string;
   escudo_url: string | null;
+  cores: { primary: string; secondary: string } | null;
   totalMatches: number;
   wins: number;
   draws: number;
@@ -33,12 +34,16 @@ export interface Prediction {
     logo: string | null;
     probability: number;
     strength: number;
+    primaryColor: string;
+    secondaryColor: string;
   };
   awayTeam: {
     name: string;
     logo: string | null;
     probability: number;
     strength: number;
+    primaryColor: string;
+    secondaryColor: string;
   };
   drawProbability: number;
   predictedScore: { home: number; away: number };
@@ -74,7 +79,7 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
   // Get team info
   const { data: team } = await supabase
     .from('times')
-    .select('id, nome, escudo_url')
+    .select('id, nome, escudo_url, cores')
     .eq('id', teamId)
     .maybeSingle();
 
@@ -135,6 +140,7 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
     id: team.id,
     nome: team.nome,
     escudo_url: team.escudo_url,
+    cores: team.cores as { primary: string; secondary: string } | null,
     totalMatches: (homeMatches?.length || 0) + (awayMatches?.length || 0),
     wins,
     draws,
@@ -232,12 +238,16 @@ async function generatePrediction(match: any): Promise<Prediction | null> {
       logo: homeStats.escudo_url,
       probability: probs.homeWin,
       strength: homeStrength,
+      primaryColor: homeStats.cores?.primary || '#6B7280',
+      secondaryColor: homeStats.cores?.secondary || '#FFFFFF',
     },
     awayTeam: {
       name: awayStats.nome,
       logo: awayStats.escudo_url,
       probability: probs.awayWin,
       strength: awayStrength,
+      primaryColor: awayStats.cores?.primary || '#6B7280',
+      secondaryColor: awayStats.cores?.secondary || '#FFFFFF',
     },
     drawProbability: probs.draw,
     predictedScore: { home: likelyScore.homeGoals, away: likelyScore.awayGoals },

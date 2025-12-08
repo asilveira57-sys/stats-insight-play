@@ -14,8 +14,8 @@ import { MatchDetailsModal } from "@/components/match/MatchDetailsModal";
 
 interface SelectedMatch {
   id: string;
-  homeTeam: { id: string; name: string; logo: string; score?: number };
-  awayTeam: { id: string; name: string; logo: string; score?: number };
+  homeTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
+  awayTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
   date: string;
   league: string;
 }
@@ -253,13 +253,17 @@ export default function Resultados() {
                       id: match.homeTeamId || '', 
                       name: match.homeTeam.name, 
                       logo: match.homeTeam.logo,
-                      score: match.homeTeam.score
+                      score: match.homeTeam.score,
+                      primaryColor: match.homeTeam.primaryColor,
+                      secondaryColor: match.homeTeam.secondaryColor,
                     },
                     awayTeam: { 
                       id: match.awayTeamId || '', 
                       name: match.awayTeam.name, 
                       logo: match.awayTeam.logo,
-                      score: match.awayTeam.score
+                      score: match.awayTeam.score,
+                      primaryColor: match.awayTeam.primaryColor,
+                      secondaryColor: match.awayTeam.secondaryColor,
                     },
                     date: match.date,
                     league: match.league,

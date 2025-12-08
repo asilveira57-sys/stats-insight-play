@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { 
   Goal, 
   Users, 
@@ -20,6 +21,8 @@ interface Team {
   name: string;
   logo: string;
   score?: number;
+  primaryColor?: string;
+  secondaryColor?: string;
 }
 
 interface MatchDetailsModalProps {
@@ -77,16 +80,12 @@ export function MatchDetailsModal({
           <div className="flex items-center justify-between gap-4 mt-4">
             {/* Home Team */}
             <div className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                <img
-                  src={homeTeam.logo}
-                  alt={homeTeam.name}
-                  className="w-12 h-12 object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/48";
-                  }}
-                />
-              </div>
+              <TeamBadge
+                name={homeTeam.name}
+                primaryColor={homeTeam.primaryColor}
+                secondaryColor={homeTeam.secondaryColor}
+                size="xl"
+              />
               <span className="text-sm font-medium text-center">{homeTeam.name}</span>
               {homeFormation && (
                 <Badge variant="secondary" className="text-[10px]">{homeFormation}</Badge>
@@ -106,16 +105,12 @@ export function MatchDetailsModal({
 
             {/* Away Team */}
             <div className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                <img
-                  src={awayTeam.logo}
-                  alt={awayTeam.name}
-                  className="w-12 h-12 object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/48";
-                  }}
-                />
-              </div>
+              <TeamBadge
+                name={awayTeam.name}
+                primaryColor={awayTeam.primaryColor}
+                secondaryColor={awayTeam.secondaryColor}
+                size="xl"
+              />
               <span className="text-sm font-medium text-center">{awayTeam.name}</span>
               {awayFormation && (
                 <Badge variant="secondary" className="text-[10px]">{awayFormation}</Badge>
@@ -225,16 +220,12 @@ function GoalsTimeline({
             goal.isHome ? "flex-row" : "flex-row-reverse"
           )}
         >
-          <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              src={goal.isHome ? homeTeam.logo : awayTeam.logo}
-              alt=""
-              className="w-8 h-8 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://via.placeholder.com/32";
-              }}
-            />
-          </div>
+          <TeamBadge
+            name={goal.isHome ? homeTeam.name : awayTeam.name}
+            primaryColor={goal.isHome ? homeTeam.primaryColor : awayTeam.primaryColor}
+            secondaryColor={goal.isHome ? homeTeam.secondaryColor : awayTeam.secondaryColor}
+            size="md"
+          />
           
           <div className={cn(
             "flex-1",
@@ -305,13 +296,12 @@ function LineupsView({
       {/* Home Team */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-            <img
-              src={homeTeam.logo}
-              alt={homeTeam.name}
-              className="w-5 h-5 object-contain"
-            />
-          </div>
+          <TeamBadge
+            name={homeTeam.name}
+            primaryColor={homeTeam.primaryColor}
+            secondaryColor={homeTeam.secondaryColor}
+            size="sm"
+          />
           <span className="text-sm font-medium">{homeTeam.name}</span>
         </div>
         
@@ -343,13 +333,12 @@ function LineupsView({
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-2 border-b border-border/50 justify-end">
           <span className="text-sm font-medium">{awayTeam.name}</span>
-          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-            <img
-              src={awayTeam.logo}
-              alt={awayTeam.name}
-              className="w-5 h-5 object-contain"
-            />
-          </div>
+          <TeamBadge
+            name={awayTeam.name}
+            primaryColor={awayTeam.primaryColor}
+            secondaryColor={awayTeam.secondaryColor}
+            size="sm"
+          />
         </div>
         
         {awayCoach && (
@@ -444,16 +433,12 @@ function CardsView({
             card.isHome ? "flex-row" : "flex-row-reverse"
           )}
         >
-          <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              src={card.isHome ? homeTeam.logo : awayTeam.logo}
-              alt=""
-              className="w-8 h-8 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://via.placeholder.com/32";
-              }}
-            />
-          </div>
+          <TeamBadge
+            name={card.isHome ? homeTeam.name : awayTeam.name}
+            primaryColor={card.isHome ? homeTeam.primaryColor : awayTeam.primaryColor}
+            secondaryColor={card.isHome ? homeTeam.secondaryColor : awayTeam.secondaryColor}
+            size="md"
+          />
           
           <div className={cn(
             "flex-1",

@@ -1,10 +1,13 @@
-import { Calendar, Clock } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 interface Team {
   name: string;
   logo: string;
   score?: number;
+  primaryColor?: string;
+  secondaryColor?: string;
 }
 
 export interface MatchCardProps {
@@ -59,16 +62,12 @@ export function MatchCard({
       <div className="flex items-center justify-between gap-4">
         {/* Home Team */}
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-            <img
-              src={homeTeam.logo}
-              alt={homeTeam.name}
-              className="w-10 h-10 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
-              }}
-            />
-          </div>
+          <TeamBadge
+            name={homeTeam.name}
+            primaryColor={homeTeam.primaryColor}
+            secondaryColor={homeTeam.secondaryColor}
+            size="lg"
+          />
           <span className="text-sm font-medium text-center line-clamp-1">
             {homeTeam.name}
           </span>
@@ -101,16 +100,12 @@ export function MatchCard({
 
         {/* Away Team */}
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-            <img
-              src={awayTeam.logo}
-              alt={awayTeam.name}
-              className="w-10 h-10 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
-              }}
-            />
-          </div>
+          <TeamBadge
+            name={awayTeam.name}
+            primaryColor={awayTeam.primaryColor}
+            secondaryColor={awayTeam.secondaryColor}
+            size="lg"
+          />
           <span className="text-sm font-medium text-center line-clamp-1">
             {awayTeam.name}
           </span>

@@ -1,5 +1,6 @@
 import { TrendingUp, Zap, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 interface PredictionCardProps {
   homeTeam: {
@@ -7,12 +8,16 @@ interface PredictionCardProps {
     logo: string | null;
     probability: number;
     strength: number;
+    primaryColor?: string;
+    secondaryColor?: string;
   };
   awayTeam: {
     name: string;
     logo: string | null;
     probability: number;
     strength: number;
+    primaryColor?: string;
+    secondaryColor?: string;
   };
   drawProbability: number;
   predictedScore: { home: number; away: number };
@@ -80,17 +85,12 @@ export function PredictionCard({
       {/* Teams & Score */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            {homeTeam.logo ? (
-              <img
-                src={homeTeam.logo}
-                alt={homeTeam.name}
-                className="w-10 h-10 object-contain"
-              />
-            ) : (
-              <span className="text-lg font-bold">{homeTeam.name.charAt(0)}</span>
-            )}
-          </div>
+          <TeamBadge
+            name={homeTeam.name}
+            primaryColor={homeTeam.primaryColor}
+            secondaryColor={homeTeam.secondaryColor}
+            size="lg"
+          />
           <span className="text-sm font-medium text-center line-clamp-1">
             {homeTeam.name}
           </span>
@@ -104,17 +104,12 @@ export function PredictionCard({
         </div>
 
         <div className="flex-1 flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            {awayTeam.logo ? (
-              <img
-                src={awayTeam.logo}
-                alt={awayTeam.name}
-                className="w-10 h-10 object-contain"
-              />
-            ) : (
-              <span className="text-lg font-bold">{awayTeam.name.charAt(0)}</span>
-            )}
-          </div>
+          <TeamBadge
+            name={awayTeam.name}
+            primaryColor={awayTeam.primaryColor}
+            secondaryColor={awayTeam.secondaryColor}
+            size="lg"
+          />
           <span className="text-sm font-medium text-center line-clamp-1">
             {awayTeam.name}
           </span>
