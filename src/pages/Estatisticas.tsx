@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, TeamStats } from "@/hooks/useTeamsDB";
+import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, useHeadToHead, TeamStats } from "@/hooks/useTeamsDB";
 import { 
   Select,
   SelectContent,
@@ -44,6 +44,7 @@ export default function Estatisticas() {
   const { data: searchResults } = useTeamSearch(searchTerm, selectedLeagueId);
   const { data: teamStats, isLoading: statsLoading } = useTeamStats(selectedTeamId);
   const { data: compareTeamStats, isLoading: compareStatsLoading } = useTeamStats(compareTeamId);
+  const { data: headToHead } = useHeadToHead(selectedTeamId, compareTeamId);
 
   // Selecionar primeiro time automaticamente se não houver seleção
   useMemo(() => {
@@ -419,6 +420,76 @@ export default function Estatisticas() {
                 )}
               </div>
             </div>
+
+            {/* Head to Head */}
+            {headToHead && headToHead.totalJogos > 0 && (
+              <div className="glass-card p-6 border-2 border-secondary/30">
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <Zap className="w-5 h-5 text-secondary" />
+                  <h3 className="font-display font-bold text-lg">Confronto Direto</h3>
+                  <span className="text-sm text-muted-foreground">({headToHead.totalJogos} jogos)</span>
+                </div>
+                
+                {/* Summary */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 rounded-xl bg-secondary/20">
+                    <div className="text-3xl font-bold text-secondary">{headToHead.vitoriasTime1}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Vitórias</div>
+                    <div className="text-xs font-medium truncate">{teamStats.nome}</div>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-muted">
+                    <div className="text-3xl font-bold text-muted-foreground">{headToHead.empates}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Empates</div>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-primary/20">
+                    <div className="text-3xl font-bold text-primary">{headToHead.vitoriasTime2}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Vitórias</div>
+                    <div className="text-xs font-medium truncate">{compareTeamStats.nome}</div>
+                  </div>
+                </div>
+
+                {/* Goals */}
+                <div className="mb-6">
+                  {renderComparisonBar(headToHead.golsTime1, headToHead.golsTime2, "Gols no Confronto")}
+                </div>
+
+                {/* Last Matches */}
+                {headToHead.ultimosJogos.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-3 text-center">Últimos Confrontos</h4>
+                    <div className="space-y-2">
+                      {headToHead.ultimosJogos.map((jogo, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
+                          <div className="flex items-center gap-2 flex-1">
+                            <img 
+                              src={jogo.time1EmCasa ? teamStats.escudo_url : compareTeamStats.escudo_url || '/placeholder.svg'} 
+                              alt="" 
+                              className="w-5 h-5 object-contain"
+                            />
+                            <span className="truncate text-xs">
+                              {jogo.time1EmCasa ? teamStats.nome : compareTeamStats.nome}
+                            </span>
+                          </div>
+                          <div className="font-bold px-3 min-w-[60px] text-center">
+                            {jogo.golsCasa} - {jogo.golsFora}
+                          </div>
+                          <div className="flex items-center gap-2 flex-1 justify-end">
+                            <span className="truncate text-xs text-right">
+                              {jogo.time1EmCasa ? compareTeamStats.nome : teamStats.nome}
+                            </span>
+                            <img 
+                              src={jogo.time1EmCasa ? compareTeamStats.escudo_url : teamStats.escudo_url || '/placeholder.svg'} 
+                              alt="" 
+                              className="w-5 h-5 object-contain"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Home vs Away Comparison */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

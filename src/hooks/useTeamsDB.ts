@@ -286,3 +286,103 @@ export function useTeamsByLeague(leagueId: string | null) {
     enabled: !!leagueId,
   });
 }
+
+export interface HeadToHead {
+  totalJogos: number;
+  vitoriasTime1: number;
+  vitoriasTime2: number;
+  empates: number;
+  golsTime1: number;
+  golsTime2: number;
+  ultimosJogos: {
+    data: string;
+    golsCasa: number;
+    golsFora: number;
+    time1EmCasa: boolean;
+  }[];
+}
+
+export function useHeadToHead(team1Id: string | null, team2Id: string | null) {
+  return useQuery({
+    queryKey: ['head-to-head', team1Id, team2Id],
+    queryFn: async () => {
+      if (!team1Id || !team2Id) return null;
+      
+      // Buscar partidas onde os dois times se enfrentaram
+      const { data: matches, error } = await supabase
+        .from('partidas')
+        .select('*')
+        .eq('status', 'finished')
+        .or(`and(time_casa_id.eq.${team1Id},time_fora_id.eq.${team2Id}),and(time_casa_id.eq.${team2Id},time_fora_id.eq.${team1Id})`)
+        .order('data', { ascending: false });
+      
+      if (error) throw error;
+      
+      let vitoriasTime1 = 0;
+      let vitoriasTime2 = 0;
+      let empates = 0;
+      let golsTime1 = 0;
+      let golsTime2 = 0;
+      
+      const ultimosJogos = (matches || []).slice(0, 5).map(match => {
+        const time1EmCasa = match.time_casa_id === team1Id;
+        const golsCasa = match.gols_casa ?? 0;
+        const golsFora = match.gols_fora ?? 0;
+        
+        // Calcular gols por time
+        if (time1EmCasa) {
+          golsTime1 += golsCasa;
+          golsTime2 += golsFora;
+          if (golsCasa > golsFora) vitoriasTime1++;
+          else if (golsCasa < golsFora) vitoriasTime2++;
+          else empates++;
+        } else {
+          golsTime1 += golsFora;
+          golsTime2 += golsCasa;
+          if (golsFora > golsCasa) vitoriasTime1++;
+          else if (golsFora < golsCasa) vitoriasTime2++;
+          else empates++;
+        }
+        
+        return {
+          data: match.data,
+          golsCasa,
+          golsFora,
+          time1EmCasa,
+        };
+      });
+      
+      // Contar todos os jogos
+      (matches || []).slice(5).forEach(match => {
+        const time1EmCasa = match.time_casa_id === team1Id;
+        const golsCasa = match.gols_casa ?? 0;
+        const golsFora = match.gols_fora ?? 0;
+        
+        if (time1EmCasa) {
+          golsTime1 += golsCasa;
+          golsTime2 += golsFora;
+          if (golsCasa > golsFora) vitoriasTime1++;
+          else if (golsCasa < golsFora) vitoriasTime2++;
+          else empates++;
+        } else {
+          golsTime1 += golsFora;
+          golsTime2 += golsCasa;
+          if (golsFora > golsCasa) vitoriasTime1++;
+          else if (golsFora < golsCasa) vitoriasTime2++;
+          else empates++;
+        }
+      });
+      
+      return {
+        totalJogos: matches?.length || 0,
+        vitoriasTime1,
+        vitoriasTime2,
+        empates,
+        golsTime1,
+        golsTime2,
+        ultimosJogos,
+      } as HeadToHead;
+    },
+    enabled: !!team1Id && !!team2Id,
+  });
+}
