@@ -438,6 +438,7 @@ export type Database = {
           data_publicacao: string | null
           id: string
           imagem_url: string | null
+          partida_id: string | null
           publicada: boolean | null
           resumo: string | null
           texto: string
@@ -450,6 +451,7 @@ export type Database = {
           data_publicacao?: string | null
           id?: string
           imagem_url?: string | null
+          partida_id?: string | null
           publicada?: boolean | null
           resumo?: string | null
           texto: string
@@ -462,13 +464,22 @@ export type Database = {
           data_publicacao?: string | null
           id?: string
           imagem_url?: string | null
+          partida_id?: string | null
           publicada?: boolean | null
           resumo?: string | null
           texto?: string
           titulo?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "noticias_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       palpites: {
         Row: {
