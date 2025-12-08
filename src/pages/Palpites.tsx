@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { PredictionCard } from "@/components/cards/PredictionCard";
 import { Button } from "@/components/ui/button";
-import { usePredictions, useLeaguesForPredictions, Prediction } from "@/hooks/usePalpitesDB";
+import { usePredictions, useLeaguesForPredictions, useLeagueMatchCounts, Prediction } from "@/hooks/usePalpitesDB";
 import { UserPalpiteModal } from "@/components/palpites/UserPalpiteModal";
 import { UserPalpitesHistory } from "@/components/palpites/UserPalpitesHistory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +15,9 @@ import {
   Crown,
   Lock,
   History,
-  Target
+  Target,
+  CalendarX,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -34,6 +36,7 @@ export default function Palpites() {
   });
 
   const { data: leagues, isLoading: loadingLeagues } = useLeaguesForPredictions();
+  const { data: leagueMatchCounts } = useLeagueMatchCounts();
 
   const confidenceFilters = [
     { id: "all", label: "Todos" },
@@ -118,27 +121,37 @@ export default function Palpites() {
                   {loadingLeagues ? (
                     <Skeleton className="h-9 w-32" />
                   ) : (
-                    leagues?.slice(0, 6).map((league) => (
-                      <button
-                        key={league.id}
-                        onClick={() => setSelectedLeague(league.codigo_api || '')}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          selectedLeague === league.codigo_api
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                        )}
-                      >
-                        {league.logo_url && (
-                          <img
-                            src={league.logo_url}
-                            alt={league.nome}
-                            className="w-4 h-4 object-contain"
-                          />
-                        )}
-                        <span className="hidden sm:inline">{league.nome}</span>
-                      </button>
-                    ))
+                    leagues?.slice(0, 6).map((league) => {
+                      const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || 0;
+                      return (
+                        <button
+                          key={league.id}
+                          onClick={() => setSelectedLeague(league.codigo_api || '')}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all relative",
+                            selectedLeague === league.codigo_api
+                              ? "bg-primary text-primary-foreground"
+                              : matchCount === 0 
+                                ? "bg-muted/50 hover:bg-muted/60 text-muted-foreground/60"
+                                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                          )}
+                        >
+                          {league.logo_url && (
+                            <img
+                              src={league.logo_url}
+                              alt={league.nome}
+                              className={cn("w-4 h-4 object-contain", matchCount === 0 && "opacity-50")}
+                            />
+                          )}
+                          <span className="hidden sm:inline">{league.nome}</span>
+                          {matchCount > 0 && (
+                            <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                              {matchCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -208,11 +221,48 @@ export default function Palpites() {
               </div>
             ) : (
               <div className="glass-card p-8 text-center">
-                <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nenhum palpite disponível</h3>
-                <p className="text-muted-foreground">
-                  Não há partidas agendadas com dados suficientes para gerar palpites no momento.
-                </p>
+                {selectedLeague !== 'all' ? (
+                  <>
+                    <CalendarX className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Temporada encerrada</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {leagues?.find(l => l.codigo_api === selectedLeague)?.nome || 'Esta liga'} não possui jogos agendados no momento.
+                      {selectedLeague === 'BSA' && ' A nova temporada do Brasileirão geralmente começa em abril.'}
+                    </p>
+                    
+                    {/* Suggest other leagues with matches */}
+                    {leagueMatchCounts && Array.from(leagueMatchCounts.entries()).filter(([_, count]) => count > 0).length > 0 && (
+                      <div className="mt-6">
+                        <p className="text-sm text-muted-foreground mb-3">Confira outras ligas com jogos disponíveis:</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {leagues?.filter(l => (leagueMatchCounts.get(l.codigo_api || '') || 0) > 0).slice(0, 4).map(league => (
+                            <button
+                              key={league.id}
+                              onClick={() => setSelectedLeague(league.codigo_api || '')}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-all"
+                            >
+                              {league.logo_url && (
+                                <img src={league.logo_url} alt={league.nome} className="w-4 h-4 object-contain" />
+                              )}
+                              {league.nome}
+                              <span className="text-xs opacity-70">
+                                ({leagueMatchCounts.get(league.codigo_api || '')})
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nenhum palpite disponível</h3>
+                    <p className="text-muted-foreground">
+                      Não há partidas agendadas com dados suficientes para gerar palpites no momento.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
