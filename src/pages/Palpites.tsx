@@ -24,10 +24,15 @@ import {
   CheckCircle,
   Circle,
   LayoutGrid,
-  List
+  List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Download
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,6 +47,8 @@ export default function Palpites() {
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState<"date" | "confidence" | "league">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
     leagueCode: selectedLeague,
@@ -59,15 +66,31 @@ export default function Palpites() {
   // Filter predictions based on palpite status
   const filteredPredictions = useMemo(() => {
     if (!predictions) return [];
-    if (selectedPalpiteStatus === "all") return predictions;
     
-    return predictions.filter(p => {
-      const hasPalpite = existingPalpites?.get(p.matchId) || false;
-      if (selectedPalpiteStatus === "done") return hasPalpite;
-      if (selectedPalpiteStatus === "pending") return !hasPalpite;
-      return true;
+    let filtered = predictions;
+    if (selectedPalpiteStatus !== "all") {
+      filtered = predictions.filter(p => {
+        const hasPalpite = existingPalpites?.get(p.matchId) || false;
+        if (selectedPalpiteStatus === "done") return hasPalpite;
+        if (selectedPalpiteStatus === "pending") return !hasPalpite;
+        return true;
+      });
+    }
+
+    // Sort predictions
+    const confidenceOrder = { high: 3, medium: 2, low: 1 };
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "date") {
+        comparison = a.date.localeCompare(b.date) || a.time.localeCompare(b.time);
+      } else if (sortBy === "confidence") {
+        comparison = confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
+      } else if (sortBy === "league") {
+        comparison = a.league.localeCompare(b.league);
+      }
+      return sortDir === "asc" ? comparison : -comparison;
     });
-  }, [predictions, existingPalpites, selectedPalpiteStatus]);
+  }, [predictions, existingPalpites, selectedPalpiteStatus, sortBy, sortDir]);
 
   // Count predictions by status
   const palpiteStatusCounts = useMemo(() => {
@@ -98,6 +121,33 @@ export default function Palpites() {
   const handlePredictionClick = (prediction: Prediction) => {
     setSelectedPrediction(prediction);
     setModalOpen(true);
+  };
+
+  const handleExportCSV = () => {
+    if (!filteredPredictions || filteredPredictions.length === 0) return;
+    
+    const headers = ["Data", "Hora", "Liga", "Time Casa", "Time Fora", "Placar Previsto", "Prob Casa", "Prob Empate", "Prob Fora", "Confiança"];
+    const rows = filteredPredictions.map(p => [
+      p.date,
+      p.time,
+      p.league,
+      p.homeTeam.name,
+      p.awayTeam.name,
+      `${p.predictedScore.home}-${p.predictedScore.away}`,
+      `${(p.homeTeam.probability * 100).toFixed(1)}%`,
+      `${(p.drawProbability * 100).toFixed(1)}%`,
+      `${(p.awayTeam.probability * 100).toFixed(1)}%`,
+      p.confidence === "high" ? "Alta" : p.confidence === "medium" ? "Média" : "Baixa"
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.join(";")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `palpites_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -149,42 +199,85 @@ export default function Palpites() {
 
           <TabsContent value="predictions" className="space-y-6">
             {/* Actions Row */}
-            <div className="flex items-center justify-between gap-4">
-              {/* View Toggle */}
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "grid" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                  )}
-                  title="Visualização em Cards"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "list" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                  )}
-                  title="Visualização em Lista"
-                >
-                  <List className="w-4 h-4" />
-                </button>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Left Controls */}
+              <div className="flex items-center gap-3">
+                {/* View Toggle */}
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "p-2 rounded-md transition-all",
+                      viewMode === "grid" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                    )}
+                    title="Visualização em Cards"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "p-2 rounded-md transition-all",
+                      viewMode === "list" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                    )}
+                    title="Visualização em Lista"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Sort Controls */}
+                {viewMode === "list" && (
+                  <div className="flex items-center gap-2">
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as "date" | "confidence" | "league")}>
+                      <SelectTrigger className="w-[130px] h-9 bg-muted border-0">
+                        <ArrowUpDown className="w-3 h-3 mr-1" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border border-border z-50">
+                        <SelectItem value="date">Data</SelectItem>
+                        <SelectItem value="confidence">Confiança</SelectItem>
+                        <SelectItem value="league">Liga</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <button
+                      onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                      className="p-2 rounded-md bg-muted hover:bg-muted/80 transition-all"
+                      title={sortDir === "asc" ? "Crescente" : "Decrescente"}
+                    >
+                      {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Bulk Accept Button */}
-              {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkModalOpen(true)}
-                  className="gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Aceitar Todos os Palpites da IA
-                </Button>
-              )}
+              {/* Right Controls */}
+              <div className="flex items-center gap-2">
+                {/* Export Button */}
+                {filteredPredictions && filteredPredictions.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCSV}
+                    className="gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Exportar CSV</span>
+                  </Button>
+                )}
+
+                {/* Bulk Accept Button */}
+                {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkModalOpen(true)}
+                    className="gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span className="hidden sm:inline">Aceitar Todos da IA</span>
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Filters */}
