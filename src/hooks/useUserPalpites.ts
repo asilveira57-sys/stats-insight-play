@@ -145,11 +145,11 @@ export function useCreateUserPalpite() {
   });
 }
 
-export function useUserAccuracyStats() {
+export function useUserAccuracyStats(startDate?: string, endDate?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-accuracy-stats', user?.id],
+    queryKey: ['user-accuracy-stats', user?.id, startDate, endDate],
     queryFn: async () => {
       if (!user) return null;
 
@@ -159,16 +159,21 @@ export function useUserAccuracyStats() {
         .select(`
           id, placar_casa, placar_fora, aceitou_sugestao,
           partida:partidas!inner(
-            id, status, gols_casa, gols_fora
+            id, status, gols_casa, gols_fora, data
           )
         `)
         .eq('user_id', user.id);
 
       if (palpitesError) throw palpitesError;
 
-      const finishedPalpites = (userPalpites || []).filter(
-        (p: any) => p.partida?.status === 'finished'
-      );
+      // Filter by finished and date range
+      const finishedPalpites = (userPalpites || []).filter((p: any) => {
+        if (p.partida?.status !== 'finished') return false;
+        const matchDate = p.partida?.data;
+        if (startDate && matchDate < startDate) return false;
+        if (endDate && matchDate > endDate) return false;
+        return true;
+      });
 
       let totalPalpites = finishedPalpites.length;
       let acertosResultado = 0;
@@ -217,17 +222,30 @@ export function useUserAccuracyStats() {
   });
 }
 
-export function useSystemAccuracyStats() {
+export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
   return useQuery({
-    queryKey: ['system-accuracy-stats'],
+    queryKey: ['system-accuracy-stats', startDate, endDate],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('comparativo_resultados')
-        .select('*');
+        .select('*, partida:partidas(data)');
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const results = data || [];
+      // Filter by date range if provided
+      let results = data || [];
+      if (startDate || endDate) {
+        results = results.filter((r: any) => {
+          const matchDate = r.partida?.data;
+          if (!matchDate) return true;
+          if (startDate && matchDate < startDate) return false;
+          if (endDate && matchDate > endDate) return false;
+          return true;
+        });
+      }
+
       const total = results.length;
       const acertosResultado = results.filter(r => r.sistema_acertou_resultado).length;
       const acertosPlacar = results.filter(r => r.sistema_acertou_placar).length;
