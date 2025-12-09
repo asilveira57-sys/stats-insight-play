@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.generate-match-analysis]
 verify_jwt = false
+
+[functions.generate-retroactive-predictions]
+verify_jwt = false

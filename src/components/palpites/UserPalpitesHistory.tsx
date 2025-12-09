@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useUserPalpites, useUserAccuracyStats, useSystemAccuracyStats } from '@/hooks/useUserPalpites';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Trophy, 
   Target, 
@@ -13,19 +16,63 @@ import {
   Sparkles,
   Bot,
   User as UserIcon,
-  Goal
+  Goal,
+  Calendar,
+  Filter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 export function UserPalpitesHistory() {
   const { user } = useAuth();
+  
+  // Date filter state - default to last 30 days
+  const [startDate, setStartDate] = useState<string>(() => 
+    format(subMonths(new Date(), 1), 'yyyy-MM-dd')
+  );
+  const [endDate, setEndDate] = useState<string>(() => 
+    format(new Date(), 'yyyy-MM-dd')
+  );
+  
   const { data: palpites, isLoading } = useUserPalpites();
-  const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats();
-  const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats();
+  const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats(startDate, endDate);
+  const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats(startDate, endDate);
+
+  // Quick date presets
+  const setDatePreset = (preset: 'week' | 'month' | '3months' | 'year' | 'all') => {
+    const today = new Date();
+    setEndDate(format(today, 'yyyy-MM-dd'));
+    
+    switch (preset) {
+      case 'week':
+        setStartDate(format(subDays(today, 7), 'yyyy-MM-dd'));
+        break;
+      case 'month':
+        setStartDate(format(subMonths(today, 1), 'yyyy-MM-dd'));
+        break;
+      case '3months':
+        setStartDate(format(subMonths(today, 3), 'yyyy-MM-dd'));
+        break;
+      case 'year':
+        setStartDate(format(subMonths(today, 12), 'yyyy-MM-dd'));
+        break;
+      case 'all':
+        setStartDate('2020-01-01');
+        break;
+    }
+  };
+
+  // Filter palpites by date
+  const filteredPalpites = palpites?.filter(p => {
+    const matchDate = p.partida?.data;
+    if (!matchDate) return true;
+    if (startDate && matchDate < startDate) return false;
+    if (endDate && matchDate > endDate) return false;
+    return true;
+  });
 
   if (!user) {
     return (
@@ -75,7 +122,6 @@ export function UserPalpitesHistory() {
     return 'wrong';
   };
 
-  // Helper to get result label
   const getResultLabel = (result: string) => {
     switch (result) {
       case 'casa': return 'Vitória Casa';
@@ -87,6 +133,86 @@ export function UserPalpitesHistory() {
 
   return (
     <div className="space-y-6">
+      {/* Date Filter */}
+      <div className="glass-card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium">Filtrar por Período</span>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Quick Presets */}
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDatePreset('week')}
+              className="text-xs"
+            >
+              7 dias
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDatePreset('month')}
+              className="text-xs"
+            >
+              30 dias
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDatePreset('3months')}
+              className="text-xs"
+            >
+              3 meses
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDatePreset('year')}
+              className="text-xs"
+            >
+              1 ano
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDatePreset('all')}
+              className="text-xs"
+            >
+              Tudo
+            </Button>
+          </div>
+
+          <div className="h-6 w-px bg-border hidden md:block" />
+
+          {/* Custom Date Range */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="startDate" className="text-xs text-muted-foreground">De:</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="endDate" className="text-xs text-muted-foreground">Até:</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* User Stats - Result Focused */}
@@ -99,7 +225,6 @@ export function UserPalpitesHistory() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {/* Result accuracy - PRIMARY */}
               <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -116,8 +241,6 @@ export function UserPalpitesHistory() {
                   </span>
                 </div>
               </div>
-
-              {/* Exact score - Secondary */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Goal className="w-3 h-3" />
@@ -144,7 +267,6 @@ export function UserPalpitesHistory() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {/* Result accuracy - PRIMARY */}
               <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -161,8 +283,6 @@ export function UserPalpitesHistory() {
                   </span>
                 </div>
               </div>
-
-              {/* Exact score - Secondary */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Goal className="w-3 h-3" />
@@ -218,26 +338,31 @@ export function UserPalpitesHistory() {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Trophy className="w-5 h-5 text-primary" />
           Histórico de Palpites
+          {filteredPalpites && filteredPalpites.length > 0 && (
+            <span className="text-sm font-normal text-muted-foreground">
+              ({filteredPalpites.length} palpites)
+            </span>
+          )}
         </h3>
 
-        {!palpites || palpites.length === 0 ? (
+        {!filteredPalpites || filteredPalpites.length === 0 ? (
           <div className="text-center py-8">
             <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
-              Você ainda não fez nenhum palpite. Clique em um jogo acima para começar!
+              {palpites && palpites.length > 0 
+                ? 'Nenhum palpite encontrado no período selecionado.'
+                : 'Você ainda não fez nenhum palpite. Clique em um jogo acima para começar!'}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {palpites.map((palpite) => {
+            {filteredPalpites.map((palpite) => {
               const status = getResultStatus(palpite);
               const match = palpite.partida;
 
-              // Calculate user predicted result
               const userResult = palpite.placar_casa > palpite.placar_fora ? 'casa'
                 : palpite.placar_casa < palpite.placar_fora ? 'fora' : 'empate';
               
-              // Calculate official result if finished
               const officialResult = match.status === 'finished' && match.gols_casa !== null
                 ? (match.gols_casa > match.gols_fora ? 'casa'
                   : match.gols_casa < match.gols_fora ? 'fora' : 'empate')
@@ -255,7 +380,6 @@ export function UserPalpitesHistory() {
                   )}
                 >
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    {/* Match Info */}
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         {match.time_casa?.escudo_url && (
@@ -272,9 +396,7 @@ export function UserPalpitesHistory() {
                       </div>
                     </div>
 
-                    {/* Scores and Results */}
                     <div className="flex items-center gap-4">
-                      {/* User Prediction */}
                       <div className="text-center">
                         <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                           {palpite.aceitou_sugestao ? (
@@ -294,7 +416,6 @@ export function UserPalpitesHistory() {
                         </div>
                       </div>
 
-                      {/* Official Result */}
                       {status !== 'pending' && (
                         <div className="text-center">
                           <div className="text-xs text-muted-foreground mb-1">Oficial</div>
@@ -307,7 +428,6 @@ export function UserPalpitesHistory() {
                         </div>
                       )}
 
-                      {/* Status Badge */}
                       <Badge
                         variant={
                           status === 'exact' ? 'default' :
