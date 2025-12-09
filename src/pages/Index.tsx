@@ -411,11 +411,15 @@ export default function Index() {
         ) : noticias && noticias.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
-              <NewsCard {...noticias[0]} featured onClick={() => navigate(`/noticias?artigo=${noticias[0].id}`)} />
+              <Link to={`/noticias/${noticias[0].slug}`}>
+                <NewsCard {...noticias[0]} featured />
+              </Link>
             </div>
             <div className="flex flex-col gap-4">
               {noticias.slice(1).map((item) => (
-                <NewsCard key={item.id} {...item} onClick={() => navigate(`/noticias?artigo=${item.id}`)} />
+                <Link key={item.id} to={`/noticias/${item.slug}`}>
+                  <NewsCard {...item} />
+                </Link>
               ))}
             </div>
           </div>

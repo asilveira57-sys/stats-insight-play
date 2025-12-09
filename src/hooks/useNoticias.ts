@@ -10,6 +10,7 @@ export interface Noticia {
   data_publicacao: string | null;
   publicada: boolean;
   created_at: string;
+  slug: string | null;
 }
 
 export interface NoticiaCard {
@@ -18,12 +19,25 @@ export interface NoticiaCard {
   excerpt: string;
   image: string;
   date: string;
+  slug: string;
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function generateSlug(title: string, id: string): string {
+  const baseSlug = title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Remove consecutive hyphens
+    .slice(0, 80);
+  return baseSlug || id;
 }
 
 function transformNoticia(noticia: Noticia): NoticiaCard {
@@ -33,6 +47,7 @@ function transformNoticia(noticia: Noticia): NoticiaCard {
     excerpt: noticia.resumo || noticia.texto.slice(0, 150) + "...",
     image: noticia.imagem_url || "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800",
     date: formatDate(noticia.data_publicacao || noticia.created_at),
+    slug: noticia.slug || generateSlug(noticia.titulo, noticia.id),
   };
 }
 
@@ -54,7 +69,7 @@ export function useNoticias(limit: number = 10) {
 
       return (data as Noticia[]).map(transformNoticia);
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -79,6 +94,30 @@ export function useNoticia(id: string | null) {
       return data as Noticia;
     },
     enabled: !!id,
+  });
+}
+
+export function useNoticiaBySlug(slug: string | null) {
+  return useQuery({
+    queryKey: ["noticia-slug", slug],
+    queryFn: async (): Promise<Noticia | null> => {
+      if (!slug) return null;
+
+      const { data, error } = await supabase
+        .from("noticias")
+        .select("*")
+        .eq("slug", slug)
+        .eq("publicada", true)
+        .single();
+
+      if (error) {
+        console.error("Error fetching noticia by slug:", error);
+        return null;
+      }
+
+      return data as Noticia;
+    },
+    enabled: !!slug,
   });
 }
 
