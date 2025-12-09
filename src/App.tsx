@@ -9,6 +9,7 @@ import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
 import Palpites from "./pages/Palpites";
 import Noticias from "./pages/Noticias";
+import NoticiaDetalhes from "./pages/NoticiaDetalhes";
 import Precos from "./pages/Precos";
 import Auth from "./pages/Auth";
 import Retrospectiva from "./pages/Retrospectiva";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/estatisticas" element={<Estatisticas />} />
             <Route path="/palpites" element={<Palpites />} />
             <Route path="/noticias" element={<Noticias />} />
+            <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
             <Route path="/precos" element={<Precos />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/retrospectiva/brasileirao-2024" element={<Retrospectiva />} />

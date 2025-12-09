@@ -441,6 +441,7 @@ export type Database = {
           partida_id: string | null
           publicada: boolean | null
           resumo: string | null
+          slug: string | null
           texto: string
           titulo: string
           updated_at: string | null
@@ -454,6 +455,7 @@ export type Database = {
           partida_id?: string | null
           publicada?: boolean | null
           resumo?: string | null
+          slug?: string | null
           texto: string
           titulo: string
           updated_at?: string | null
@@ -467,6 +469,7 @@ export type Database = {
           partida_id?: string | null
           publicada?: boolean | null
           resumo?: string | null
+          slug?: string | null
           texto?: string
           titulo?: string
           updated_at?: string | null
@@ -838,6 +841,7 @@ export type Database = {
         Args: { p_partida_id: string }
         Returns: undefined
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

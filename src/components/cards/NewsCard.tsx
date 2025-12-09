@@ -6,23 +6,14 @@ interface NewsCardProps {
   excerpt: string;
   image: string;
   date: string;
+  slug?: string;
   featured?: boolean;
-  onClick?: () => void;
 }
 
-export function NewsCard({ id, title, excerpt, image, date, featured, onClick }: NewsCardProps) {
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    }
-  };
-
+export function NewsCard({ title, excerpt, image, date, featured }: NewsCardProps) {
   if (featured) {
     return (
-      <div
-        onClick={handleClick}
-        className="glass-card overflow-hidden group hover-glow block cursor-pointer"
-      >
+      <div className="glass-card overflow-hidden group hover-glow block cursor-pointer">
         <div className="relative h-64 overflow-hidden">
           <img
             src={image}
@@ -52,10 +43,7 @@ export function NewsCard({ id, title, excerpt, image, date, featured, onClick }:
   }
 
   return (
-    <div
-      onClick={handleClick}
-      className="glass-card overflow-hidden group hover-glow flex gap-4 p-4 cursor-pointer"
-    >
+    <div className="glass-card overflow-hidden group hover-glow flex gap-4 p-4 cursor-pointer">
       <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
         <img
           src={image}
