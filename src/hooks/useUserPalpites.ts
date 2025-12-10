@@ -226,11 +226,11 @@ export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: ['system-accuracy-stats', startDate, endDate],
     queryFn: async () => {
-      let query = supabase
+      // Fetch all records without the default 1000 limit
+      const { data, error } = await supabase
         .from('comparativo_resultados')
-        .select('*, partida:partidas(data)');
-
-      const { data, error } = await query;
+        .select('*, partida:partidas(data)')
+        .limit(10000);
 
       if (error) throw error;
 
