@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 
@@ -20,6 +20,12 @@ interface ScheduledMatch {
   liga: { nome: string };
   has_news: boolean;
   has_palpite: boolean;
+}
+
+interface FinishedMatchStats {
+  total: number;
+  withPalpite: number;
+  withoutPalpite: number;
 }
 
 export default function Admin() {
@@ -35,6 +41,8 @@ export default function Admin() {
   const [generating, setGenerating] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [generatingPalpites, setGeneratingPalpites] = useState(false);
+  const [generatingRetroactive, setGeneratingRetroactive] = useState(false);
+  const [finishedStats, setFinishedStats] = useState<FinishedMatchStats>({ total: 0, withPalpite: 0, withoutPalpite: 0 });
 
   // Check if user is admin
   useEffect(() => {
@@ -132,8 +140,33 @@ export default function Admin() {
       setLoadingMatches(false);
     }
 
+    async function fetchFinishedStats() {
+      // Get total finished matches
+      const { count: totalFinished } = await supabase
+        .from("partidas")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "finished");
+
+      // Get finished matches with palpites
+      const { data: finishedWithPalpite } = await supabase
+        .from("partidas")
+        .select("id, palpites!inner(id)")
+        .eq("status", "finished")
+        .limit(10000);
+
+      const withPalpite = finishedWithPalpite?.length || 0;
+      const total = totalFinished || 0;
+
+      setFinishedStats({
+        total,
+        withPalpite,
+        withoutPalpite: total - withPalpite
+      });
+    }
+
     if (isAdmin) {
       fetchMatches();
+      fetchFinishedStats();
     }
   }, [isAdmin]);
 
@@ -249,6 +282,39 @@ export default function Admin() {
       });
     } finally {
       setGeneratingPalpites(false);
+    }
+  };
+
+  const generateRetroactivePredictions = async () => {
+    setGeneratingRetroactive(true);
+    
+    try {
+      const response = await supabase.functions.invoke("generate-retroactive-predictions", {
+        body: { limit: 500 }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Palpites retroativos gerados!",
+        description: `${result.generated || 0} palpites criados, ${result.failed || 0} falhas. ${result.matchesSample ? `Amostra: ${result.matchesSample.length} IDs` : ''}`,
+      });
+
+      // Refresh stats
+      window.location.reload();
+    } catch (error) {
+      console.error("Error generating retroactive predictions:", error);
+      toast({
+        title: "Erro ao gerar palpites retroativos",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingRetroactive(false);
     }
   };
 
@@ -472,6 +538,64 @@ export default function Admin() {
 
               <p className="text-xs text-muted-foreground">
                 Este processo pode levar alguns minutos dependendo do número de partidas.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Retroactive Predictions */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Palpites Retroativos
+              </CardTitle>
+              <CardDescription>
+                Gerar palpites para partidas finalizadas que não possuem palpite
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Estatísticas de Partidas Finalizadas</h4>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Total finalizadas</p>
+                    <p className="text-2xl font-bold">{finishedStats.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Com palpite</p>
+                    <p className="text-2xl font-bold text-green-500">
+                      {finishedStats.withPalpite}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Sem palpite</p>
+                    <p className="text-2xl font-bold text-destructive">
+                      {finishedStats.withoutPalpite}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                onClick={generateRetroactivePredictions}
+                disabled={generatingRetroactive || finishedStats.withoutPalpite === 0}
+                className="w-full"
+              >
+                {generatingRetroactive ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Gerando palpites históricos...
+                  </>
+                ) : (
+                  <>
+                    <History className="mr-2 h-4 w-4" />
+                    Gerar Palpites Históricos ({finishedStats.withoutPalpite} pendentes)
+                  </>
+                )}
+              </Button>
+
+              <p className="text-xs text-muted-foreground">
+                Processa até 500 partidas por vez. Execute múltiplas vezes para popular todos os dados históricos.
               </p>
             </CardContent>
           </Card>
