@@ -398,6 +398,7 @@ export type Database = {
       ligas: {
         Row: {
           api_id: number | null
+          api_source: string | null
           ativa: boolean | null
           codigo_api: string | null
           created_at: string | null
@@ -409,6 +410,7 @@ export type Database = {
         }
         Insert: {
           api_id?: number | null
+          api_source?: string | null
           ativa?: boolean | null
           codigo_api?: string | null
           created_at?: string | null
@@ -420,6 +422,7 @@ export type Database = {
         }
         Update: {
           api_id?: number | null
+          api_source?: string | null
           ativa?: boolean | null
           codigo_api?: string | null
           created_at?: string | null
