@@ -147,20 +147,18 @@ export default function Admin() {
         .select("id", { count: "exact", head: true })
         .eq("status", "finished");
 
-      // Get finished matches with palpites
-      const { data: finishedWithPalpite } = await supabase
-        .from("partidas")
-        .select("id, palpites!inner(id)")
-        .eq("status", "finished")
-        .limit(10000);
+      // Count palpites for finished matches using distinct partida_id count
+      const { count: withPalpiteCount } = await supabase
+        .from("palpites")
+        .select("partida_id", { count: "exact", head: true });
 
-      const withPalpite = finishedWithPalpite?.length || 0;
       const total = totalFinished || 0;
+      const withPalpite = withPalpiteCount || 0;
 
       setFinishedStats({
         total,
         withPalpite,
-        withoutPalpite: total - withPalpite
+        withoutPalpite: Math.max(0, total - withPalpite)
       });
     }
 
