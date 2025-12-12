@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 
@@ -42,6 +42,8 @@ export default function Admin() {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [generatingPalpites, setGeneratingPalpites] = useState(false);
   const [generatingRetroactive, setGeneratingRetroactive] = useState(false);
+  const [syncingFootballData, setSyncingFootballData] = useState(false);
+  const [syncingApiFootball, setSyncingApiFootball] = useState(false);
   const [finishedStats, setFinishedStats] = useState<FinishedMatchStats>({ total: 0, withPalpite: 0, withoutPalpite: 0 });
 
   // Check if user is admin
@@ -313,6 +315,70 @@ export default function Admin() {
       });
     } finally {
       setGeneratingRetroactive(false);
+    }
+  };
+
+  const syncFootballData = async () => {
+    setSyncingFootballData(true);
+    
+    try {
+      const response = await supabase.functions.invoke("sync-football-data", {
+        body: {}
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Sincronização concluída!",
+        description: `${result.stats?.matchesSynced || 0} partidas sincronizadas do Football-Data.org`,
+      });
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error syncing Football-Data:", error);
+      toast({
+        title: "Erro na sincronização",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncingFootballData(false);
+    }
+  };
+
+  const syncApiFootball = async () => {
+    setSyncingApiFootball(true);
+    
+    try {
+      const response = await supabase.functions.invoke("sync-api-football", {
+        body: { leagues: [73, 13, 11] } // Copa do Brasil, Libertadores, Sudamericana
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Sincronização concluída!",
+        description: `${result.matchesUpserted || 0} partidas e ${result.teamsUpserted || 0} times sincronizados da API-Football`,
+      });
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error syncing API-Football:", error);
+      toast({
+        title: "Erro na sincronização",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncingApiFootball(false);
     }
   };
 
@@ -594,6 +660,76 @@ export default function Admin() {
 
               <p className="text-xs text-muted-foreground">
                 Processa até 500 partidas por vez. Execute múltiplas vezes para popular todos os dados históricos.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* API Synchronization */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5" />
+                Sincronização de APIs
+              </CardTitle>
+              <CardDescription>
+                Sincronizar dados de competições das APIs externas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Football-Data.org</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Brasileirão, Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League
+                  </p>
+                  <Button 
+                    onClick={syncFootballData}
+                    disabled={syncingFootballData}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {syncingFootballData ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Sincronizar Football-Data
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">API-Football</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Copa do Brasil, Copa Libertadores, Copa Sudamericana
+                  </p>
+                  <Button 
+                    onClick={syncApiFootball}
+                    disabled={syncingApiFootball}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {syncingApiFootball ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Sincronizar API-Football
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                API-Football tem limite de 100 requisições/dia no plano gratuito. Use com moderação.
               </p>
             </CardContent>
           </Card>

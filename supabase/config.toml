@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.generate-retroactive-predictions]
 verify_jwt = false
+
+[functions.sync-api-football]
+verify_jwt = false
