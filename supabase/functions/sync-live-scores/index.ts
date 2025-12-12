@@ -175,7 +175,10 @@ Deno.serve(async (req) => {
 
       try {
         const response = await fetch(`${API_FOOTBALL_BASE_URL}/fixtures?live=all`, {
-          headers: { 'x-apisports-key': apiFootballKey },
+          headers: { 
+            'x-rapidapi-key': apiFootballKey,
+            'x-rapidapi-host': 'v3.football.api-sports.io',
+          },
         });
 
         if (response.ok) {
