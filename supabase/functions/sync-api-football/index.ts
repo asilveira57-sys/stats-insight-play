@@ -50,7 +50,8 @@ async function fetchFromApiFootball(endpoint: string, apiKey: string): Promise<a
   
   const response = await fetch(url, {
     headers: {
-      'x-apisports-key': apiKey,
+      'x-rapidapi-key': apiKey,
+      'x-rapidapi-host': 'v3.football.api-sports.io',
     },
   });
 
