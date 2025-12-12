@@ -100,15 +100,16 @@ const transformMatch = (match: Partida) => ({
 // Priority order for leagues (Brazilian first, then South American, then European)
 const LEAGUE_PRIORITY: Record<string, number> = {
   'BSA': 1,  // Campeonato Brasileiro Série A
-  'BSB': 2,  // Campeonato Brasileiro Série B
-  'CLI': 3,  // Copa Libertadores
-  'CSA': 4,  // Copa Sudamericana
-  'CL': 5,   // UEFA Champions League
-  'PL': 6,   // Premier League
-  'PD': 7,   // La Liga
-  'SA': 8,   // Serie A (Italy)
-  'BL1': 9,  // Bundesliga
-  'FL1': 10, // Ligue 1
+  'CDB': 2,  // Copa do Brasil ⭐
+  'BSB': 3,  // Campeonato Brasileiro Série B
+  'CLI': 4,  // Copa Libertadores
+  'CSA': 5,  // Copa Sudamericana
+  'CL': 6,   // UEFA Champions League
+  'PL': 7,   // Premier League
+  'PD': 8,   // La Liga
+  'SA': 9,   // Serie A (Italy)
+  'BL1': 10, // Bundesliga
+  'FL1': 11, // Ligue 1
 };
 
 function getLeaguePriority(codigoApi: string | null): number {
