@@ -15,6 +15,13 @@ import Auth from "./pages/Auth";
 import Retrospectiva from "./pages/Retrospectiva";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import HubDashboard from "./pages/hub/Dashboard";
+import HubSources from "./pages/hub/Sources";
+import HubMatches from "./pages/hub/Matches";
+import HubCompetitions from "./pages/hub/Competitions";
+import HubTeams from "./pages/hub/Teams";
+import HubHighlights from "./pages/hub/Highlights";
+import HubLogs from "./pages/hub/Logs";
 
 const queryClient = new QueryClient();
 
@@ -26,7 +33,14 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<HubDashboard />} />
+            <Route path="/hub" element={<HubDashboard />} />
+            <Route path="/hub/sources" element={<HubSources />} />
+            <Route path="/hub/matches" element={<HubMatches />} />
+            <Route path="/hub/competitions" element={<HubCompetitions />} />
+            <Route path="/hub/teams" element={<HubTeams />} />
+            <Route path="/hub/highlights" element={<HubHighlights />} />
+            <Route path="/hub/logs" element={<HubLogs />} />
             <Route path="/resultados" element={<Resultados />} />
             <Route path="/estatisticas" element={<Estatisticas />} />
             <Route path="/palpites" element={<Palpites />} />
