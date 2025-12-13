@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_request_cache: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          expires_at: string
+          id: string
+          params_hash: string
+          response: Json | null
+          source_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          expires_at: string
+          id?: string
+          params_hash: string
+          response?: Json | null
+          source_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          expires_at?: string
+          id?: string
+          params_hash?: string
+          response?: Json | null
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_request_cache_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assinaturas: {
         Row: {
           created_at: string | null
@@ -173,6 +211,48 @@ export type Database = {
           },
         ]
       }
+      competition_aliases: {
+        Row: {
+          alias: string
+          created_at: string | null
+          id: string
+          league_id: string | null
+          normalized_alias: string
+          source_id: string | null
+        }
+        Insert: {
+          alias: string
+          created_at?: string | null
+          id?: string
+          league_id?: string | null
+          normalized_alias: string
+          source_id?: string | null
+        }
+        Update: {
+          alias?: string
+          created_at?: string | null
+          id?: string
+          league_id?: string | null
+          normalized_alias?: string
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_aliases_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_aliases_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes: {
         Row: {
           chave: string
@@ -197,6 +277,126 @@ export type Database = {
           id?: string
           updated_at?: string | null
           valor?: string | null
+        }
+        Relationships: []
+      }
+      data_conflicts: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          field_name: string
+          id: string
+          internal_id: string | null
+          notes: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_value: string | null
+          source_a_id: string | null
+          source_b_id: string | null
+          value_a: string | null
+          value_b: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type: string
+          field_name: string
+          id?: string
+          internal_id?: string | null
+          notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_value?: string | null
+          source_a_id?: string | null
+          source_b_id?: string | null
+          value_a?: string | null
+          value_b?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          field_name?: string
+          id?: string
+          internal_id?: string | null
+          notes?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_value?: string | null
+          source_a_id?: string | null
+          source_b_id?: string | null
+          value_a?: string | null
+          value_b?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_conflicts_source_a_id_fkey"
+            columns: ["source_a_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_conflicts_source_b_id_fkey"
+            columns: ["source_b_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_sources: {
+        Row: {
+          api_key_secret_name: string | null
+          base_url: string | null
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          last_reset_date: string | null
+          name: string
+          priority: number | null
+          rate_limit_per_day: number | null
+          rate_limit_per_minute: number | null
+          requests_today: number | null
+          status: Database["public"]["Enums"]["entity_status"]
+          type: Database["public"]["Enums"]["source_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          api_key_secret_name?: string | null
+          base_url?: string | null
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          last_reset_date?: string | null
+          name: string
+          priority?: number | null
+          rate_limit_per_day?: number | null
+          rate_limit_per_minute?: number | null
+          requests_today?: number | null
+          status?: Database["public"]["Enums"]["entity_status"]
+          type?: Database["public"]["Enums"]["source_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          api_key_secret_name?: string | null
+          base_url?: string | null
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          last_reset_date?: string | null
+          name?: string
+          priority?: number | null
+          rate_limit_per_day?: number | null
+          rate_limit_per_minute?: number | null
+          requests_today?: number | null
+          status?: Database["public"]["Enums"]["entity_status"]
+          type?: Database["public"]["Enums"]["source_type"]
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -329,6 +529,50 @@ export type Database = {
           },
         ]
       }
+      external_id_map: {
+        Row: {
+          confidence: Database["public"]["Enums"]["match_confidence"] | null
+          created_at: string | null
+          entity_type: string
+          external_id: string
+          id: string
+          internal_id: string
+          metadata: Json | null
+          source_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: Database["public"]["Enums"]["match_confidence"] | null
+          created_at?: string | null
+          entity_type: string
+          external_id: string
+          id?: string
+          internal_id: string
+          metadata?: Json | null
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: Database["public"]["Enums"]["match_confidence"] | null
+          created_at?: string | null
+          entity_type?: string
+          external_id?: string
+          id?: string
+          internal_id?: string
+          metadata?: Json | null
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_id_map_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gols_partida: {
         Row: {
           acrescimo: number | null
@@ -395,6 +639,69 @@ export type Database = {
           },
         ]
       }
+      highlights: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          embed_url: string | null
+          id: string
+          match_id: string | null
+          metadata: Json | null
+          provider: string
+          published_at: string | null
+          source_id: string | null
+          thumbnail_url: string | null
+          title: string | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          embed_url?: string | null
+          id?: string
+          match_id?: string | null
+          metadata?: Json | null
+          provider: string
+          published_at?: string | null
+          source_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          embed_url?: string | null
+          id?: string
+          match_id?: string | null
+          metadata?: Json | null
+          provider?: string
+          published_at?: string | null
+          source_id?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "highlights_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "highlights_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ligas: {
         Row: {
           api_id: number | null
@@ -433,6 +740,93 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      match_events: {
+        Row: {
+          assist_player_id: string | null
+          assist_player_name: string | null
+          created_at: string | null
+          detail: string | null
+          event_type: string
+          extra_time: number | null
+          id: string
+          match_id: string | null
+          metadata: Json | null
+          minute: number
+          player_id: string | null
+          player_name: string | null
+          source_id: string | null
+          team_id: string | null
+        }
+        Insert: {
+          assist_player_id?: string | null
+          assist_player_name?: string | null
+          created_at?: string | null
+          detail?: string | null
+          event_type: string
+          extra_time?: number | null
+          id?: string
+          match_id?: string | null
+          metadata?: Json | null
+          minute: number
+          player_id?: string | null
+          player_name?: string | null
+          source_id?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          assist_player_id?: string | null
+          assist_player_name?: string | null
+          created_at?: string | null
+          detail?: string | null
+          event_type?: string
+          extra_time?: number | null
+          id?: string
+          match_id?: string | null
+          metadata?: Json | null
+          minute?: number
+          player_id?: string | null
+          player_name?: string | null
+          source_id?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_events_assist_player_id_fkey"
+            columns: ["assist_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       noticias: {
         Row: {
@@ -667,6 +1061,59 @@ export type Database = {
           },
         ]
       }
+      players: {
+        Row: {
+          created_at: string | null
+          current_team_id: string | null
+          date_of_birth: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          nationality: string | null
+          photo_url: string | null
+          position: string | null
+          shirt_number: number | null
+          short_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_team_id?: string | null
+          date_of_birth?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          nationality?: string | null
+          photo_url?: string | null
+          position?: string | null
+          shirt_number?: number | null
+          short_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_team_id?: string | null
+          date_of_birth?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          nationality?: string | null
+          photo_url?: string | null
+          position?: string | null
+          shirt_number?: number | null
+          short_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_current_team_id_fkey"
+            columns: ["current_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -699,6 +1146,289 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      seasons: {
+        Row: {
+          created_at: string | null
+          current_matchday: number | null
+          end_date: string | null
+          id: string
+          league_id: string | null
+          metadata: Json | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["entity_status"] | null
+          total_matchdays: number | null
+          updated_at: string | null
+          winner_team_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          current_matchday?: number | null
+          end_date?: string | null
+          id?: string
+          league_id?: string | null
+          metadata?: Json | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          total_matchdays?: number | null
+          updated_at?: string | null
+          winner_team_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          current_matchday?: number | null
+          end_date?: string | null
+          id?: string
+          league_id?: string | null
+          metadata?: Json | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["entity_status"] | null
+          total_matchdays?: number | null
+          updated_at?: string | null
+          winner_team_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasons_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seasons_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      standings: {
+        Row: {
+          drawn: number | null
+          form: string | null
+          goal_difference: number | null
+          goals_against: number | null
+          goals_for: number | null
+          id: string
+          lost: number | null
+          matchday: number | null
+          played: number | null
+          points: number | null
+          position: number
+          season_id: string | null
+          team_id: string | null
+          updated_at: string | null
+          won: number | null
+        }
+        Insert: {
+          drawn?: number | null
+          form?: string | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          id?: string
+          lost?: number | null
+          matchday?: number | null
+          played?: number | null
+          points?: number | null
+          position: number
+          season_id?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          won?: number | null
+        }
+        Update: {
+          drawn?: number | null
+          form?: string | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          id?: string
+          lost?: number | null
+          matchday?: number | null
+          played?: number | null
+          points?: number | null
+          position?: number
+          season_id?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          won?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "standings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "standings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          details: Json | null
+          entity_type: string
+          error_message: string | null
+          id: string
+          items_created: number | null
+          items_failed: number | null
+          items_processed: number | null
+          items_updated: number | null
+          requests_made: number | null
+          source_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["sync_status"]
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          items_created?: number | null
+          items_failed?: number | null
+          items_processed?: number | null
+          items_updated?: number | null
+          requests_made?: number | null
+          source_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["sync_status"]
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          items_created?: number | null
+          items_failed?: number | null
+          items_processed?: number | null
+          items_updated?: number | null
+          requests_made?: number | null
+          source_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["sync_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_schedules: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          cron_expression: string | null
+          enabled: boolean | null
+          entity_type: string
+          frequency: string
+          id: string
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          source_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          cron_expression?: string | null
+          enabled?: boolean | null
+          entity_type: string
+          frequency: string
+          id?: string
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          cron_expression?: string | null
+          enabled?: boolean | null
+          entity_type?: string
+          frequency?: string
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_schedules_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_aliases: {
+        Row: {
+          alias: string
+          created_at: string | null
+          id: string
+          normalized_alias: string
+          source_id: string | null
+          team_id: string | null
+        }
+        Insert: {
+          alias: string
+          created_at?: string | null
+          id?: string
+          normalized_alias: string
+          source_id?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          alias?: string
+          created_at?: string | null
+          id?: string
+          normalized_alias?: string
+          source_id?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_aliases_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_aliases_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tecnico_partida: {
         Row: {
@@ -849,6 +1579,9 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       assinatura_status: "active" | "cancelled" | "expired"
+      competition_type: "league" | "cup" | "tournament" | "friendly"
+      entity_status: "active" | "inactive" | "pending" | "error"
+      match_confidence: "low" | "medium" | "high" | "exact"
       partida_status:
         | "scheduled"
         | "live"
@@ -856,6 +1589,8 @@ export type Database = {
         | "postponed"
         | "cancelled"
       plano_tipo: "free" | "premium"
+      source_type: "api" | "github" | "manual"
+      sync_status: "pending" | "running" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -985,6 +1720,9 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       assinatura_status: ["active", "cancelled", "expired"],
+      competition_type: ["league", "cup", "tournament", "friendly"],
+      entity_status: ["active", "inactive", "pending", "error"],
+      match_confidence: ["low", "medium", "high", "exact"],
       partida_status: [
         "scheduled",
         "live",
@@ -993,6 +1731,8 @@ export const Constants = {
         "cancelled",
       ],
       plano_tipo: ["free", "premium"],
+      source_type: ["api", "github", "manual"],
+      sync_status: ["pending", "running", "completed", "failed"],
     },
   },
 } as const
