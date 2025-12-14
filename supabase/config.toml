@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.sync-hub-data]
 verify_jwt = false
+
+[functions.sync-openfootball]
+verify_jwt = false
