@@ -136,8 +136,9 @@ export default function HubTeams() {
               <Card key={team.id} className="glass-card hover-glow cursor-pointer group">
                 <CardContent className="p-4 text-center">
                   <TeamBadge
-                    teamName={team.nome}
-                    colors={team.cores as any}
+                    name={team.nome}
+                    primaryColor={(team.cores as any)?.primary}
+                    secondaryColor={(team.cores as any)?.secondary}
                     size="lg"
                     className="mx-auto mb-3"
                   />

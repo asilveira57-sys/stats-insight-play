@@ -252,8 +252,9 @@ export default function HubMatches() {
                         {match.time_casa?.nome || 'TBD'}
                       </span>
                       <TeamBadge
-                        teamName={match.time_casa?.nome || '?'}
-                        colors={match.time_casa?.cores as any}
+                        name={match.time_casa?.nome || '?'}
+                        primaryColor={(match.time_casa?.cores as any)?.primary}
+                        secondaryColor={(match.time_casa?.cores as any)?.secondary}
                         size="sm"
                       />
                     </div>
@@ -274,8 +275,9 @@ export default function HubMatches() {
                     {/* Away Team */}
                     <div className="flex items-center gap-2">
                       <TeamBadge
-                        teamName={match.time_fora?.nome || '?'}
-                        colors={match.time_fora?.cores as any}
+                        name={match.time_fora?.nome || '?'}
+                        primaryColor={(match.time_fora?.cores as any)?.primary}
+                        secondaryColor={(match.time_fora?.cores as any)?.secondary}
                         size="sm"
                       />
                       <span className="font-medium truncate">
