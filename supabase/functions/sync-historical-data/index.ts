@@ -8,9 +8,6 @@ const corsHeaders = {
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 
-// Competitions to sync (free tier available)
-const COMPETITIONS_TO_SYNC = ['PL', 'PD', 'SA', 'BL1', 'FL1', 'BSA', 'CL'];
-
 interface FootballDataTeam {
   id: number;
   name: string;
@@ -51,7 +48,7 @@ async function fetchFromFootballData(endpoint: string, apiKey: string) {
   if (!response.ok) {
     const error = await response.text();
     console.error(`API Error: ${response.status} - ${error}`);
-    throw new Error(`API Error: ${response.status}`);
+    throw new Error(`API Error: ${response.status} - ${error}`);
   }
 
   return response.json();
@@ -92,13 +89,13 @@ serve(async (req) => {
     }
 
     // Parse request body for options
-    let startDate = '2025-01-01';
-    let competitionsToSync = COMPETITIONS_TO_SYNC;
+    let competition = 'BSA'; // Default: Brasileirão Série A
+    let seasons: number[] = [2024, 2023, 2022, 2021, 2020]; // Default: 5 years
     
     try {
       const body = await req.json();
-      if (body.startDate) startDate = body.startDate;
-      if (body.competitions) competitionsToSync = body.competitions;
+      if (body.competition) competition = body.competition;
+      if (body.seasons) seasons = body.seasons;
     } catch {
       // Use defaults if no body
     }
@@ -108,37 +105,70 @@ serve(async (req) => {
     const stats = {
       teams: { synced: 0, errors: 0 },
       matches: { synced: 0, errors: 0 },
+      seasons: [] as { season: number; matches: number; status: string }[],
     };
 
-    console.log(`Starting historical sync from ${startDate}...`);
+    console.log(`Starting historical sync for ${competition}, seasons: ${seasons.join(', ')}...`);
 
-    // Get league IDs from database
-    const { data: dbLeagues } = await supabase
+    // Create sync log
+    const { data: syncLog } = await supabase
+      .from('sync_logs')
+      .insert({
+        entity_type: `historical-${competition}`,
+        status: 'running',
+        started_at: new Date().toISOString(),
+        details: { competition, seasons },
+      })
+      .select('id')
+      .single();
+
+    // Ensure league exists in database
+    const { data: competitionData } = await fetchFromFootballData(`/competitions/${competition}`, apiKey);
+    
+    const { data: league, error: leagueError } = await supabase
       .from('ligas')
-      .select('id, api_id, codigo_api')
-      .in('codigo_api', competitionsToSync);
+      .upsert({
+        api_id: competitionData.id,
+        nome: competitionData.name,
+        codigo_api: competitionData.code,
+        logo_url: competitionData.emblem,
+        pais: competitionData.area?.name,
+        api_source: 'football-data',
+        ativa: true,
+      }, { onConflict: 'api_id' })
+      .select('id')
+      .single();
 
-    const leagueMap = new Map(dbLeagues?.map(l => [l.api_id, l.id]) || []);
+    if (leagueError) {
+      console.error('Error creating league:', leagueError);
+    }
 
-    // Sync matches for each competition
-    for (const compCode of competitionsToSync) {
+    const ligaId = league?.id;
+    console.log(`League ${competition} ID: ${ligaId}`);
+
+    // Wait to respect rate limit
+    await new Promise(resolve => setTimeout(resolve, 6500));
+
+    // Sync each season
+    for (const season of seasons) {
       try {
-        console.log(`Syncing historical matches for ${compCode}...`);
+        console.log(`\n=== Syncing ${competition} season ${season} ===`);
         
-        // Fetch finished matches from start of year until today
-        const today = new Date().toISOString().split('T')[0];
-        
+        // Fetch all matches for the season
         const matchesData = await fetchFromFootballData(
-          `/competitions/${compCode}/matches?dateFrom=${startDate}&dateTo=${today}&status=FINISHED`,
+          `/competitions/${competition}/matches?season=${season}`,
           apiKey
         );
 
-        console.log(`Found ${matchesData.matches?.length || 0} finished matches for ${compCode}`);
+        const matches = matchesData.matches as FootballDataMatch[];
+        console.log(`Found ${matches.length} matches for season ${season}`);
 
-        for (const match of matchesData.matches as FootballDataMatch[]) {
+        let seasonMatches = 0;
+
+        for (const match of matches) {
           try {
             // Upsert home team
-            const { data: homeTeam } = await supabase
+            const { data: homeTeam, error: homeError } = await supabase
               .from('times')
               .upsert({
                 api_id: match.homeTeam.id,
@@ -149,8 +179,12 @@ serve(async (req) => {
               .select('id')
               .single();
 
+            if (homeError) {
+              console.error(`Error upserting home team ${match.homeTeam.name}:`, homeError);
+            }
+
             // Upsert away team
-            const { data: awayTeam } = await supabase
+            const { data: awayTeam, error: awayError } = await supabase
               .from('times')
               .upsert({
                 api_id: match.awayTeam.id,
@@ -161,12 +195,13 @@ serve(async (req) => {
               .select('id')
               .single();
 
+            if (awayError) {
+              console.error(`Error upserting away team ${match.awayTeam.name}:`, awayError);
+            }
+
             if (homeTeam && awayTeam) {
               stats.teams.synced += 2;
             }
-
-            // Get league ID
-            const ligaId = leagueMap.get(match.competition.id);
 
             // Parse date and time
             const matchDate = new Date(match.utcDate);
@@ -194,30 +229,60 @@ serve(async (req) => {
               stats.matches.errors++;
             } else {
               stats.matches.synced++;
+              seasonMatches++;
             }
-          } catch (e) {
+          } catch (e: unknown) {
             console.error(`Error processing match ${match.id}:`, e);
             stats.matches.errors++;
           }
         }
 
-        // Add delay to respect rate limits (10 requests/minute for free tier)
-        console.log(`Waiting 7 seconds before next competition (rate limit)...`);
+        stats.seasons.push({ season, matches: seasonMatches, status: 'completed' });
+        console.log(`Season ${season} completed: ${seasonMatches} matches synced`);
+
+        // Wait to respect rate limit (10 requests/minute for free tier)
+        console.log(`Waiting 7 seconds before next season (rate limit)...`);
         await new Promise(resolve => setTimeout(resolve, 7000));
         
-      } catch (e) {
-        console.error(`Error syncing competition ${compCode}:`, e);
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+        console.error(`Error syncing season ${season}:`, errorMessage);
+        stats.seasons.push({ season, matches: 0, status: `error: ${errorMessage}` });
+        
+        // Wait longer on error (might be rate limited)
+        await new Promise(resolve => setTimeout(resolve, 10000));
       }
     }
 
-    console.log('Historical sync completed:', stats);
+    // Update sync log
+    if (syncLog?.id) {
+      await supabase
+        .from('sync_logs')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          items_processed: stats.matches.synced + stats.matches.errors,
+          items_created: stats.matches.synced,
+          items_failed: stats.matches.errors,
+          details: { competition, seasons: stats.seasons },
+        })
+        .eq('id', syncLog.id);
+    }
+
+    console.log('\n=== Historical sync completed ===');
+    console.log('Stats:', JSON.stringify(stats, null, 2));
 
     return new Response(
-      JSON.stringify({ success: true, stats, startDate }),
+      JSON.stringify({ 
+        success: true, 
+        competition,
+        stats,
+        message: `Sincronizados ${stats.matches.synced} jogos de ${stats.seasons.length} temporadas do ${competition}`
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Sync error:', errorMessage);
     return new Response(
