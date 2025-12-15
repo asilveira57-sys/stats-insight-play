@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Database, 
   Settings, 
@@ -23,7 +30,9 @@ import {
   Clock,
   ChevronLeft,
   Activity,
-  Loader2
+  Loader2,
+  History,
+  Calendar
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,10 +40,24 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 
+const HISTORICAL_COMPETITIONS = [
+  { code: 'BSA', name: 'Brasileirão Série A', country: 'Brasil' },
+  { code: 'BSB', name: 'Brasileirão Série B', country: 'Brasil' },
+  { code: 'PL', name: 'Premier League', country: 'Inglaterra' },
+  { code: 'PD', name: 'La Liga', country: 'Espanha' },
+  { code: 'SA', name: 'Serie A', country: 'Itália' },
+  { code: 'BL1', name: 'Bundesliga', country: 'Alemanha' },
+  { code: 'FL1', name: 'Ligue 1', country: 'França' },
+  { code: 'CL', name: 'Champions League', country: 'Europa' },
+];
+
 export default function HubSources() {
   const queryClient = useQueryClient();
   const [selectedSource, setSelectedSource] = useState<any>(null);
   const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
+  const [syncingHistorical, setSyncingHistorical] = useState(false);
+  const [selectedCompetition, setSelectedCompetition] = useState('BSA');
+  const [selectedSeasons, setSelectedSeasons] = useState<number[]>([2024, 2023, 2022, 2021, 2020]);
 
   const { data: sources, isLoading } = useQuery({
     queryKey: ['data-sources'],
@@ -74,7 +97,6 @@ export default function HubSources() {
       let functionName = '';
       let body: Record<string, any> = {};
       
-      // Determine which edge function to call based on source name
       switch (source.name) {
         case 'football-data.org':
           functionName = 'sync-football-data';
@@ -87,10 +109,9 @@ export default function HubSources() {
           break;
         case 'openfootball':
           functionName = 'sync-openfootball';
-          body = { league: 'en', season: '2024-25' }; // Default params
+          body = { league: 'en', season: '2024-25' };
           break;
         default:
-          // Generic hub sync for other sources
           functionName = 'sync-hub-data';
           body = { sourceId: source.id, entityType: 'matches' };
       }
@@ -117,17 +138,49 @@ export default function HubSources() {
     }
   };
 
-  const getSourceIcon = (type: string) => {
-    return type === 'api' ? Globe : Github;
+  const syncHistoricalData = async () => {
+    setSyncingHistorical(true);
+    const comp = HISTORICAL_COMPETITIONS.find(c => c.code === selectedCompetition);
+    
+    toast.info(`Iniciando sync histórico: ${comp?.name}`, {
+      description: `Temporadas: ${selectedSeasons.join(', ')} - Isso pode levar alguns minutos...`
+    });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-historical-data', {
+        body: {
+          competition: selectedCompetition,
+          seasons: selectedSeasons
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Sync histórico concluído: ${comp?.name}`, {
+        description: data?.message || `${data?.stats?.matches?.synced || 0} partidas sincronizadas`
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
+    } catch (error: unknown) {
+      console.error('Historical sync error:', error);
+      toast.error(`Erro no sync histórico: ${comp?.name}`, {
+        description: error instanceof Error ? error.message : 'Verifique os logs'
+      });
+    } finally {
+      setSyncingHistorical(false);
+    }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-secondary/20 text-secondary border-secondary/30';
-      case 'inactive': return 'bg-muted text-muted-foreground border-border';
-      case 'error': return 'bg-destructive/20 text-destructive border-destructive/30';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
+  const toggleSeason = (season: number) => {
+    setSelectedSeasons(prev => 
+      prev.includes(season) 
+        ? prev.filter(s => s !== season)
+        : [...prev, season].sort((a, b) => b - a)
+    );
+  };
+
+  const getSourceIcon = (type: string) => {
+    return type === 'api' ? Globe : Github;
   };
 
   const getQuotaPercentage = (used: number, limit: number) => {
@@ -156,7 +209,85 @@ export default function HubSources() {
           </Button>
         </div>
 
+        {/* Historical Sync Section */}
+        <Card className="glass-card mb-8 border-primary/30">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                <History className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Sincronização Histórica</CardTitle>
+                <CardDescription>
+                  Importe dados de temporadas anteriores via Football-Data.org
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Competição</Label>
+                <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
+                  <SelectTrigger className="bg-muted/50 border-border">
+                    <SelectValue placeholder="Selecione a competição" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HISTORICAL_COMPETITIONS.map(comp => (
+                      <SelectItem key={comp.code} value={comp.code}>
+                        <span className="flex items-center gap-2">
+                          {comp.name}
+                          <Badge variant="outline" className="text-xs">{comp.country}</Badge>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Temporadas</Label>
+                <div className="flex flex-wrap gap-2">
+                  {[2024, 2023, 2022, 2021, 2020, 2019, 2018].map(season => (
+                    <Button
+                      key={season}
+                      variant={selectedSeasons.includes(season) ? "default" : "outline"}
+                      size="sm"
+                      className={selectedSeasons.includes(season) ? "bg-primary" : ""}
+                      onClick={() => toggleSeason(season)}
+                    >
+                      <Calendar className="w-3 h-3 mr-1" />
+                      {season}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {HISTORICAL_COMPETITIONS.find(c => c.code === selectedCompetition)?.name}
+                </span>
+                {' • '}{selectedSeasons.length} temporada(s) selecionada(s)
+              </div>
+              <Button 
+                onClick={syncHistoricalData}
+                disabled={syncingHistorical || selectedSeasons.length === 0}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {syncingHistorical ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {syncingHistorical ? 'Sincronizando...' : 'Sincronizar Histórico'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Sources Grid */}
+        <h2 className="text-lg font-semibold mb-4">Fontes Configuradas</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sources?.map((source) => {
             const Icon = getSourceIcon(source.type);
