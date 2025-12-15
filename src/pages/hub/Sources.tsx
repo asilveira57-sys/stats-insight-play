@@ -11,7 +11,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
   Database, 
@@ -23,9 +22,8 @@ import {
   Key,
   Clock,
   ChevronLeft,
-  AlertCircle,
-  CheckCircle,
-  Activity
+  Activity,
+  Loader2
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +34,7 @@ import { toast } from "sonner";
 export default function HubSources() {
   const queryClient = useQueryClient();
   const [selectedSource, setSelectedSource] = useState<any>(null);
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
 
   const { data: sources, isLoading } = useQuery({
     queryKey: ['data-sources'],
@@ -67,6 +66,56 @@ export default function HubSources() {
       toast.error('Erro ao atualizar fonte');
     }
   });
+
+  const syncSource = async (source: any) => {
+    setSyncingSourceId(source.id);
+    
+    try {
+      let functionName = '';
+      let body: Record<string, any> = {};
+      
+      // Determine which edge function to call based on source name
+      switch (source.name) {
+        case 'football-data.org':
+          functionName = 'sync-football-data';
+          break;
+        case 'api-football':
+          functionName = 'sync-api-football';
+          break;
+        case 'scorebat':
+          functionName = 'sync-highlights';
+          break;
+        case 'openfootball':
+          functionName = 'sync-openfootball';
+          body = { league: 'en', season: '2024-25' }; // Default params
+          break;
+        default:
+          // Generic hub sync for other sources
+          functionName = 'sync-hub-data';
+          body = { sourceId: source.id, entityType: 'matches' };
+      }
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body
+      });
+
+      if (error) throw error;
+
+      toast.success(`Sincronização concluída: ${source.name}`, {
+        description: data?.message || `${data?.matches?.synced || data?.processed || 0} itens processados`
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['data-sources'] });
+      queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
+    } catch (error: unknown) {
+      console.error('Sync error:', error);
+      toast.error(`Erro ao sincronizar ${source.name}`, {
+        description: error instanceof Error ? error.message : 'Verifique os logs para mais detalhes'
+      });
+    } finally {
+      setSyncingSourceId(null);
+    }
+  };
 
   const getSourceIcon = (type: string) => {
     return type === 'api' ? Globe : Github;
@@ -192,10 +241,15 @@ export default function HubSources() {
                       variant="outline" 
                       size="sm" 
                       className="flex-1 border-primary/50 text-primary hover:bg-primary/10"
-                      disabled={source.status !== 'active'}
+                      disabled={source.status !== 'active' || syncingSourceId === source.id}
+                      onClick={() => syncSource(source)}
                     >
-                      <RefreshCw className="w-4 h-4 mr-1" />
-                      Sincronizar
+                      {syncingSourceId === source.id ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                      )}
+                      {syncingSourceId === source.id ? 'Sincronizando...' : 'Sincronizar'}
                     </Button>
                   </div>
                 </CardContent>
