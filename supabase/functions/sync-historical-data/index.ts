@@ -123,7 +123,11 @@ serve(async (req) => {
       .single();
 
     // Ensure league exists in database
-    const { data: competitionData } = await fetchFromFootballData(`/competitions/${competition}`, apiKey);
+    const competitionData = await fetchFromFootballData(`/competitions/${competition}`, apiKey);
+    
+    if (!competitionData || !competitionData.id) {
+      throw new Error(`Competition ${competition} not found`);
+    }
     
     const { data: league, error: leagueError } = await supabase
       .from('ligas')
