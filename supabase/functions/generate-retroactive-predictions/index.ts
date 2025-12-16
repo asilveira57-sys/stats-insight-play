@@ -20,39 +20,64 @@ Deno.serve(async (req) => {
 
     console.log(`Starting retroactive prediction generation (limit: ${limit})...`)
 
-    // Get all existing prediction partida_ids first
-    const { data: existingPalpites, error: palpitesError } = await supabase
-      .from('palpites')
-      .select('partida_id')
+    // Get all existing prediction partida_ids using pagination to avoid 1000 row limit
+    const existingPartidaIds = new Set<string>()
+    let offset = 0
+    const batchSize = 1000
+    
+    while (true) {
+      const { data: existingPalpites, error: palpitesError } = await supabase
+        .from('palpites')
+        .select('partida_id')
+        .range(offset, offset + batchSize - 1)
 
-    if (palpitesError) {
-      console.error('Error fetching existing predictions:', palpitesError)
-      throw palpitesError
+      if (palpitesError) {
+        console.error('Error fetching existing predictions:', palpitesError)
+        throw palpitesError
+      }
+
+      if (!existingPalpites || existingPalpites.length === 0) break
+      
+      existingPalpites.forEach(p => existingPartidaIds.add(p.partida_id))
+      
+      if (existingPalpites.length < batchSize) break
+      offset += batchSize
     }
-
-    const existingPartidaIds = new Set(existingPalpites?.map(p => p.partida_id) || [])
+    
     console.log(`Found ${existingPartidaIds.size} existing predictions`)
 
-    // Get finished matches without predictions
-    const { data: matches, error: matchesError } = await supabase
-      .from('partidas')
-      .select('id, data, hora, time_casa_id, time_fora_id, gols_casa, gols_fora')
-      .eq('status', 'finished')
-      .not('gols_casa', 'is', null)
-      .not('gols_fora', 'is', null)
-      .order('data', { ascending: false })
-      .limit(limit * 3)
+    // Get ALL finished matches using pagination
+    let allMatches: any[] = []
+    offset = 0
+    
+    while (true) {
+      const { data: matches, error: matchesError } = await supabase
+        .from('partidas')
+        .select('id, data, hora, time_casa_id, time_fora_id, gols_casa, gols_fora')
+        .eq('status', 'finished')
+        .not('gols_casa', 'is', null)
+        .not('gols_fora', 'is', null)
+        .order('data', { ascending: true }) // Oldest first so we process historical data first
+        .range(offset, offset + batchSize - 1)
 
-    if (matchesError) {
-      console.error('Error fetching matches:', matchesError)
-      throw matchesError
+      if (matchesError) {
+        console.error('Error fetching matches:', matchesError)
+        throw matchesError
+      }
+
+      if (!matches || matches.length === 0) break
+      
+      allMatches = allMatches.concat(matches)
+      
+      if (matches.length < batchSize) break
+      offset += batchSize
     }
 
-    console.log(`Found ${matches?.length || 0} finished matches`)
+    console.log(`Found ${allMatches.length} finished matches`)
 
     // Filter matches without predictions
-    const matchesWithoutPredictions = (matches || [])
-      .filter(m => !existingPartidaIds.has(m.id))
+    const matchesWithoutPredictions = allMatches
+      .filter((m: any) => !existingPartidaIds.has(m.id))
       .slice(0, limit)
 
     console.log(`${matchesWithoutPredictions.length} finished matches need predictions`)
@@ -98,7 +123,7 @@ Deno.serve(async (req) => {
 
     const result = {
       success: true,
-      totalFinished: matches?.length || 0,
+      totalFinished: allMatches.length,
       alreadyHadPredictions: existingPartidaIds.size,
       generated: successCount,
       failed: errorCount,
