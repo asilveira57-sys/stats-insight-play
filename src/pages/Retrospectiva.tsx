@@ -29,10 +29,23 @@ import {
   CheckCircle2,
   XCircle,
   ArrowLeft,
-  Filter
+  Filter,
+  BarChart3
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend,
+  Area,
+  AreaChart
+} from "recharts";
 
 interface MatchComparison {
   id: string;
@@ -157,6 +170,40 @@ export default function Retrospectiva() {
     probMedia: filteredMatches.reduce((acc, m) => acc + (m.sistema_prob_resultado || 0), 0) / filteredMatches.length
   } : null;
 
+  // Calculate accuracy per round for chart
+  const chartData = useMemo(() => {
+    if (!matches) return [];
+    
+    // Group matches by season and round
+    const matchesBySeason = selectedSeason !== "all" 
+      ? filteredMatches 
+      : matches;
+    
+    const roundStats: Record<number, { total: number; acertos: number; placares: number }> = {};
+    
+    matchesBySeason.forEach(m => {
+      const rodada = m.partidas?.rodada;
+      if (!rodada) return;
+      
+      if (!roundStats[rodada]) {
+        roundStats[rodada] = { total: 0, acertos: 0, placares: 0 };
+      }
+      
+      roundStats[rodada].total++;
+      if (m.sistema_acertou_resultado) roundStats[rodada].acertos++;
+      if (m.sistema_acertou_placar) roundStats[rodada].placares++;
+    });
+    
+    return Object.entries(roundStats)
+      .map(([rodada, stats]) => ({
+        rodada: parseInt(rodada),
+        taxaResultado: stats.total > 0 ? Math.round((stats.acertos / stats.total) * 100) : 0,
+        taxaPlacar: stats.total > 0 ? Math.round((stats.placares / stats.total) * 100) : 0,
+        partidas: stats.total
+      }))
+      .sort((a, b) => a.rodada - b.rodada);
+  }, [matches, filteredMatches, selectedSeason]);
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -275,6 +322,88 @@ export default function Retrospectiva() {
               sublabel="nas previsões"
             />
           </div>
+        )}
+
+        {/* Accuracy Evolution Chart */}
+        {!isLoading && chartData.length > 0 && (
+          <Card className="bg-card/50 border-border/50 mb-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Evolução da Precisão por Rodada</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorResultado" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorPlacar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="rodada" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickFormatter={(value) => `R${value}`}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickFormatter={(value) => `${value}%`}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        color: 'hsl(var(--foreground))'
+                      }}
+                      formatter={(value: number, name: string) => [
+                        `${value}%`, 
+                        name === 'taxaResultado' ? 'Taxa de Resultado' : 'Taxa de Placar'
+                      ]}
+                      labelFormatter={(label) => `Rodada ${label}`}
+                    />
+                    <Legend 
+                      formatter={(value) => value === 'taxaResultado' ? 'Acertos de Resultado' : 'Placares Exatos'}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="taxaResultado" 
+                      stroke="hsl(var(--primary))" 
+                      fillOpacity={1}
+                      fill="url(#colorResultado)"
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 3 }}
+                      activeDot={{ r: 5, strokeWidth: 0 }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="taxaPlacar" 
+                      stroke="hsl(142, 76%, 36%)" 
+                      fillOpacity={1}
+                      fill="url(#colorPlacar)"
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 3 }}
+                      activeDot={{ r: 5, strokeWidth: 0 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Mostrando {chartData.length} rodadas • Passe o mouse para ver detalhes
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Matches Table */}
