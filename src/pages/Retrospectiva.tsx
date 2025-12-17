@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/layout/Layout";
@@ -13,6 +14,13 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Trophy, 
   Target, 
   TrendingUp, 
@@ -20,7 +28,8 @@ import {
   Award,
   CheckCircle2,
   XCircle,
-  ArrowLeft
+  ArrowLeft,
+  Filter
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -57,7 +66,15 @@ function getResultLabel(result: string | null): string {
   return '-';
 }
 
+function getSeasonFromDate(dateStr: string): string {
+  const date = new Date(dateStr + 'T12:00:00');
+  return date.getFullYear().toString();
+}
+
 export default function Retrospectiva() {
+  const [selectedSeason, setSelectedSeason] = useState<string>("all");
+  const [selectedRodada, setSelectedRodada] = useState<string>("all");
+
   const { data: matches, isLoading } = useQuery({
     queryKey: ['brasileirao-retrospective-details'],
     queryFn: async () => {
@@ -92,11 +109,52 @@ export default function Retrospectiva() {
     }
   });
 
-  const stats = matches ? {
-    total: matches.length,
-    acertosResultado: matches.filter(m => m.sistema_acertou_resultado).length,
-    acertosPlacar: matches.filter(m => m.sistema_acertou_placar).length,
-    probMedia: matches.reduce((acc, m) => acc + (m.sistema_prob_resultado || 0), 0) / (matches.length || 1)
+  // Extract available seasons and rodadas
+  const { seasons, rodadas } = useMemo(() => {
+    if (!matches) return { seasons: [], rodadas: [] };
+    
+    const seasonsSet = new Set<string>();
+    const rodadasSet = new Set<number>();
+    
+    matches.forEach(m => {
+      if (m.partidas?.data) {
+        seasonsSet.add(getSeasonFromDate(m.partidas.data));
+      }
+      if (m.partidas?.rodada) {
+        rodadasSet.add(m.partidas.rodada);
+      }
+    });
+    
+    return {
+      seasons: Array.from(seasonsSet).sort((a, b) => b.localeCompare(a)),
+      rodadas: Array.from(rodadasSet).sort((a, b) => a - b)
+    };
+  }, [matches]);
+
+  // Filter matches based on selection
+  const filteredMatches = useMemo(() => {
+    if (!matches) return [];
+    
+    return matches.filter(m => {
+      const matchSeason = m.partidas?.data ? getSeasonFromDate(m.partidas.data) : null;
+      const matchRodada = m.partidas?.rodada;
+      
+      if (selectedSeason !== "all" && matchSeason !== selectedSeason) {
+        return false;
+      }
+      if (selectedRodada !== "all" && matchRodada !== parseInt(selectedRodada)) {
+        return false;
+      }
+      return true;
+    });
+  }, [matches, selectedSeason, selectedRodada]);
+
+  // Calculate stats based on filtered matches
+  const stats = filteredMatches.length > 0 ? {
+    total: filteredMatches.length,
+    acertosResultado: filteredMatches.filter(m => m.sistema_acertou_resultado).length,
+    acertosPlacar: filteredMatches.filter(m => m.sistema_acertou_placar).length,
+    probMedia: filteredMatches.reduce((acc, m) => acc + (m.sistema_prob_resultado || 0), 0) / filteredMatches.length
   } : null;
 
   return (
@@ -113,13 +171,73 @@ export default function Retrospectiva() {
           <div className="flex items-center gap-3">
             <Trophy className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">Retrospectiva Brasileirão 2024</h1>
+              <h1 className="text-3xl font-bold">
+                Retrospectiva Brasileirão {selectedSeason !== "all" ? selectedSeason : ""}
+              </h1>
               <p className="text-muted-foreground">
-                Análise completa de todas as partidas com palpites do sistema
+                Análise completa de {filteredMatches.length > 0 ? filteredMatches.length : 'todas as'} partidas com palpites do sistema
+                {selectedRodada !== "all" && ` • Rodada ${selectedRodada}`}
               </p>
             </div>
           </div>
         </div>
+
+        {/* Filters */}
+        <Card className="bg-card/50 border-border/50 mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                <span className="text-sm font-medium">Filtros:</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Temporada:</span>
+                <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+                  <SelectTrigger className="w-[120px] bg-background">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border-border">
+                    <SelectItem value="all">Todas</SelectItem>
+                    {seasons.map(season => (
+                      <SelectItem key={season} value={season}>{season}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rodada:</span>
+                <Select value={selectedRodada} onValueChange={setSelectedRodada}>
+                  <SelectTrigger className="w-[120px] bg-background">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border-border max-h-[300px]">
+                    <SelectItem value="all">Todas</SelectItem>
+                    {rodadas.map(rodada => (
+                      <SelectItem key={rodada} value={rodada.toString()}>
+                        Rodada {rodada}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {(selectedSeason !== "all" || selectedRodada !== "all") && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedSeason("all");
+                    setSelectedRodada("all");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Summary */}
         {isLoading ? (
@@ -171,7 +289,7 @@ export default function Retrospectiva() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : matches && matches.length > 0 ? (
+            ) : filteredMatches.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -187,7 +305,7 @@ export default function Retrospectiva() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {matches.map((match) => (
+                    {filteredMatches.map((match) => (
                       <TableRow key={match.id}>
                         <TableCell className="text-muted-foreground">
                           {match.partidas?.rodada || '-'}
