@@ -44,7 +44,10 @@ import {
   ResponsiveContainer,
   Legend,
   Area,
-  AreaChart
+  AreaChart,
+  BarChart,
+  Bar,
+  Cell
 } from "recharts";
 
 interface MatchComparison {
@@ -204,6 +207,37 @@ export default function Retrospectiva() {
       .sort((a, b) => a.rodada - b.rodada);
   }, [matches, filteredMatches, selectedSeason]);
 
+  // Calculate accuracy per season for comparison chart
+  const seasonComparisonData = useMemo(() => {
+    if (!matches) return [];
+    
+    const seasonStats: Record<string, { total: number; acertos: number; placares: number }> = {};
+    
+    matches.forEach(m => {
+      const season = m.partidas?.data ? getSeasonFromDate(m.partidas.data) : null;
+      if (!season) return;
+      
+      if (!seasonStats[season]) {
+        seasonStats[season] = { total: 0, acertos: 0, placares: 0 };
+      }
+      
+      seasonStats[season].total++;
+      if (m.sistema_acertou_resultado) seasonStats[season].acertos++;
+      if (m.sistema_acertou_placar) seasonStats[season].placares++;
+    });
+    
+    return Object.entries(seasonStats)
+      .map(([season, stats]) => ({
+        temporada: season,
+        taxaResultado: stats.total > 0 ? Math.round((stats.acertos / stats.total) * 100) : 0,
+        taxaPlacar: stats.total > 0 ? Math.round((stats.placares / stats.total) * 100) : 0,
+        partidas: stats.total,
+        acertos: stats.acertos,
+        placares: stats.placares
+      }))
+      .sort((a, b) => a.temporada.localeCompare(b.temporada));
+  }, [matches]);
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -324,12 +358,78 @@ export default function Retrospectiva() {
           </div>
         )}
 
+        {/* Season Comparison Chart */}
+        {!isLoading && seasonComparisonData.length > 1 && (
+          <Card className="bg-card/50 border-border/50 mb-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Comparativo de Precisão entre Temporadas</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={seasonComparisonData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="temporada" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickFormatter={(value) => `${value}%`}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        color: 'hsl(var(--foreground))'
+                      }}
+                      formatter={(value: number, name: string, props: any) => {
+                        const entry = props.payload;
+                        if (name === 'taxaResultado') {
+                          return [`${value}% (${entry.acertos}/${entry.partidas})`, 'Acertos de Resultado'];
+                        }
+                        return [`${value}% (${entry.placares}/${entry.partidas})`, 'Placares Exatos'];
+                      }}
+                      labelFormatter={(label) => `Temporada ${label}`}
+                    />
+                    <Legend 
+                      formatter={(value) => value === 'taxaResultado' ? 'Acertos de Resultado' : 'Placares Exatos'}
+                    />
+                    <Bar 
+                      dataKey="taxaResultado" 
+                      fill="hsl(var(--primary))" 
+                      radius={[4, 4, 0, 0]}
+                      name="taxaResultado"
+                    />
+                    <Bar 
+                      dataKey="taxaPlacar" 
+                      fill="hsl(142, 76%, 36%)" 
+                      radius={[4, 4, 0, 0]}
+                      name="taxaPlacar"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Comparando {seasonComparisonData.length} temporadas • Total de {seasonComparisonData.reduce((acc, s) => acc + s.partidas, 0)} partidas analisadas
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Accuracy Evolution Chart */}
         {!isLoading && chartData.length > 0 && (
           <Card className="bg-card/50 border-border/50 mb-6">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
+                <TrendingUp className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg">Evolução da Precisão por Rodada</CardTitle>
               </div>
             </CardHeader>
