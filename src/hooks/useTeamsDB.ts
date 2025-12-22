@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+
+export interface TeamColors {
+  primary: string;
+  secondary: string;
+}
 
 export interface Time {
   id: string;
@@ -7,6 +13,7 @@ export interface Time {
   escudo_url: string | null;
   pais: string | null;
   api_id: number | null;
+  cores: TeamColors | null;
 }
 
 export interface TeamStats {
@@ -14,6 +21,7 @@ export interface TeamStats {
   nome: string;
   escudo_url: string | null;
   pais: string | null;
+  cores: TeamColors | null;
   jogos: number;
   vitorias: number;
   empates: number;
@@ -37,6 +45,28 @@ export interface TeamStats {
   ligaLogo?: string;
 }
 
+// Helper to safely parse team colors from Json
+function parseTeamColors(cores: Json | null): TeamColors | null {
+  if (!cores || typeof cores !== 'object' || Array.isArray(cores)) return null;
+  const obj = cores as Record<string, unknown>;
+  if (typeof obj.primary === 'string' && typeof obj.secondary === 'string') {
+    return { primary: obj.primary, secondary: obj.secondary };
+  }
+  return null;
+}
+
+// Helper to map DB row to Time interface
+function mapToTime(row: any): Time {
+  return {
+    id: row.id,
+    nome: row.nome,
+    escudo_url: row.escudo_url,
+    pais: row.pais,
+    api_id: row.api_id,
+    cores: parseTeamColors(row.cores),
+  };
+}
+
 export function useTeams() {
   return useQuery({
     queryKey: ['teams'],
@@ -47,7 +77,7 @@ export function useTeams() {
         .order('nome');
       
       if (error) throw error;
-      return data as Time[];
+      return (data || []).map(mapToTime);
     },
   });
 }
@@ -153,6 +183,7 @@ export function useTeamStats(teamId: string | null) {
         nome: team.nome,
         escudo_url: team.escudo_url,
         pais: team.pais,
+        cores: team.cores as { primary: string; secondary: string } | null,
         jogos: (homeMatches?.length || 0) + (awayMatches?.length || 0),
         vitorias: vitoriasCasa + vitoriasFora,
         empates: empatesCasa + empatesFora,
@@ -213,7 +244,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
           .limit(10);
         
         if (error) throw error;
-        return data as Time[];
+        return (data || []).map(mapToTime);
       }
       
       const { data, error } = await supabase
@@ -223,7 +254,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
         .limit(10);
       
       if (error) throw error;
-      return data as Time[];
+      return (data || []).map(mapToTime);
     },
     enabled: searchTerm.length >= 2,
   });
@@ -281,7 +312,7 @@ export function useTeamsByLeague(leagueId: string | null) {
         .order('nome');
       
       if (error) throw error;
-      return data as Time[];
+      return (data || []).map(mapToTime);
     },
     enabled: !!leagueId,
   });

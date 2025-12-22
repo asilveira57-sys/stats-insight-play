@@ -3,7 +3,8 @@ import { Layout } from "@/components/layout/Layout";
 import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, useHeadToHead, TeamStats } from "@/hooks/useTeamsDB";
+import { TeamBadge } from "@/components/ui/TeamBadge";
+import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, useHeadToHead, TeamStats, Time } from "@/hooks/useTeamsDB";
 import { 
   Select,
   SelectContent,
@@ -208,10 +209,11 @@ export default function Estatisticas() {
                       onClick={() => handleTeamSelect(team.id)}
                       className="w-full px-4 py-2 flex items-center gap-3 hover:bg-muted transition-colors text-left"
                     >
-                      <img
-                        src={team.escudo_url || '/placeholder.svg'}
-                        alt={team.nome}
-                        className="w-6 h-6 object-contain"
+                      <TeamBadge
+                        name={team.nome}
+                        primaryColor={team.cores?.primary}
+                        secondaryColor={team.cores?.secondary}
+                        size="sm"
                       />
                       <span className="text-sm">{team.nome}</span>
                     </button>
@@ -251,10 +253,11 @@ export default function Estatisticas() {
                       : "border-border bg-card hover:border-primary/50"
                   )}
                 >
-                  <img
-                    src={team.escudo_url || '/placeholder.svg'}
-                    alt={team.nome}
-                    className="w-10 h-10 object-contain"
+                  <TeamBadge
+                    name={team.nome}
+                    primaryColor={team.cores?.primary}
+                    secondaryColor={team.cores?.secondary}
+                    size="md"
                   />
                   <span className="text-xs text-center line-clamp-2 font-medium">{team.nome}</span>
                 </button>
@@ -296,10 +299,11 @@ export default function Estatisticas() {
                       onClick={() => handleTeamSelect(team.id)}
                       className="w-full px-4 py-2 flex items-center gap-3 hover:bg-muted transition-colors text-left"
                     >
-                      <img
-                        src={team.escudo_url || '/placeholder.svg'}
-                        alt={team.nome}
-                        className="w-6 h-6 object-contain"
+                      <TeamBadge
+                        name={team.nome}
+                        primaryColor={team.cores?.primary}
+                        secondaryColor={team.cores?.secondary}
+                        size="sm"
                       />
                       <span className="text-sm">{team.nome}</span>
                     </button>
@@ -336,10 +340,12 @@ export default function Estatisticas() {
               <div className="grid grid-cols-3 gap-4 items-center">
                 {/* Team 1 */}
                 <div className="text-center">
-                  <img
-                    src={teamStats.escudo_url || '/placeholder.svg'}
-                    alt={teamStats.nome}
-                    className="w-20 h-20 md:w-24 md:h-24 mx-auto object-contain mb-3"
+                  <TeamBadge
+                    name={teamStats.nome}
+                    primaryColor={teamStats.cores?.primary}
+                    secondaryColor={teamStats.cores?.secondary}
+                    size="xl"
+                    className="mx-auto mb-3"
                   />
                   <h2 className="text-lg md:text-xl font-display font-bold mb-2">
                     {teamStats.nome}
@@ -365,10 +371,12 @@ export default function Estatisticas() {
 
                 {/* Team 2 */}
                 <div className="text-center">
-                  <img
-                    src={compareTeamStats.escudo_url || '/placeholder.svg'}
-                    alt={compareTeamStats.nome}
-                    className="w-20 h-20 md:w-24 md:h-24 mx-auto object-contain mb-3"
+                  <TeamBadge
+                    name={compareTeamStats.nome}
+                    primaryColor={compareTeamStats.cores?.primary}
+                    secondaryColor={compareTeamStats.cores?.secondary}
+                    size="xl"
+                    className="mx-auto mb-3"
                   />
                   <h2 className="text-lg md:text-xl font-display font-bold mb-2">
                     {compareTeamStats.nome}
@@ -461,10 +469,11 @@ export default function Estatisticas() {
                       {headToHead.ultimosJogos.map((jogo, idx) => (
                         <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
                           <div className="flex items-center gap-2 flex-1">
-                            <img 
-                              src={jogo.time1EmCasa ? teamStats.escudo_url : compareTeamStats.escudo_url || '/placeholder.svg'} 
-                              alt="" 
-                              className="w-5 h-5 object-contain"
+                            <TeamBadge
+                              name={jogo.time1EmCasa ? teamStats.nome : compareTeamStats.nome}
+                              primaryColor={jogo.time1EmCasa ? teamStats.cores?.primary : compareTeamStats.cores?.primary}
+                              secondaryColor={jogo.time1EmCasa ? teamStats.cores?.secondary : compareTeamStats.cores?.secondary}
+                              size="sm"
                             />
                             <span className="truncate text-xs">
                               {jogo.time1EmCasa ? teamStats.nome : compareTeamStats.nome}
@@ -477,10 +486,11 @@ export default function Estatisticas() {
                             <span className="truncate text-xs text-right">
                               {jogo.time1EmCasa ? compareTeamStats.nome : teamStats.nome}
                             </span>
-                            <img 
-                              src={jogo.time1EmCasa ? compareTeamStats.escudo_url : teamStats.escudo_url || '/placeholder.svg'} 
-                              alt="" 
-                              className="w-5 h-5 object-contain"
+                            <TeamBadge
+                              name={jogo.time1EmCasa ? compareTeamStats.nome : teamStats.nome}
+                              primaryColor={jogo.time1EmCasa ? compareTeamStats.cores?.primary : teamStats.cores?.primary}
+                              secondaryColor={jogo.time1EmCasa ? compareTeamStats.cores?.secondary : teamStats.cores?.secondary}
+                              size="sm"
                             />
                           </div>
                         </div>
@@ -526,13 +536,13 @@ export default function Estatisticas() {
             {/* Team Header */}
             <div className="glass-card p-6 md:p-8 mb-8 neon-border">
               <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-muted flex items-center justify-center">
-                  <img
-                    src={teamStats.escudo_url || '/placeholder.svg'}
-                    alt={teamStats.nome}
-                    className="w-20 h-20 md:w-28 md:h-28 object-contain"
-                  />
-                </div>
+                <TeamBadge
+                  name={teamStats.nome}
+                  primaryColor={teamStats.cores?.primary}
+                  secondaryColor={teamStats.cores?.secondary}
+                  size="xl"
+                  className="w-24 h-24 md:w-32 md:h-32"
+                />
                 <div className="text-center md:text-left flex-1">
                   <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
                     {teamStats.nome}
