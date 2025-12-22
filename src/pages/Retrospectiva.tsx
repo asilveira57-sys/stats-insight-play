@@ -30,7 +30,10 @@ import {
   XCircle,
   ArrowLeft,
   Filter,
-  BarChart3
+  BarChart3,
+  Users,
+  TrophyIcon,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -237,6 +240,69 @@ export default function Retrospectiva() {
       }))
       .sort((a, b) => a.temporada.localeCompare(b.temporada));
   }, [matches]);
+
+  // Calculate team ranking based on prediction accuracy
+  const teamRankingData = useMemo(() => {
+    if (!filteredMatches || filteredMatches.length === 0) return { top: [], bottom: [] };
+    
+    const teamStats: Record<string, { 
+      nome: string; 
+      escudo_url: string | null;
+      total: number; 
+      acertos: number; 
+      placares: number 
+    }> = {};
+    
+    filteredMatches.forEach(m => {
+      // Process home team
+      const timeCasa = m.partidas?.time_casa;
+      if (timeCasa?.nome) {
+        if (!teamStats[timeCasa.nome]) {
+          teamStats[timeCasa.nome] = { 
+            nome: timeCasa.nome, 
+            escudo_url: timeCasa.escudo_url, 
+            total: 0, 
+            acertos: 0, 
+            placares: 0 
+          };
+        }
+        teamStats[timeCasa.nome].total++;
+        if (m.sistema_acertou_resultado) teamStats[timeCasa.nome].acertos++;
+        if (m.sistema_acertou_placar) teamStats[timeCasa.nome].placares++;
+      }
+      
+      // Process away team
+      const timeFora = m.partidas?.time_fora;
+      if (timeFora?.nome) {
+        if (!teamStats[timeFora.nome]) {
+          teamStats[timeFora.nome] = { 
+            nome: timeFora.nome, 
+            escudo_url: timeFora.escudo_url, 
+            total: 0, 
+            acertos: 0, 
+            placares: 0 
+          };
+        }
+        teamStats[timeFora.nome].total++;
+        if (m.sistema_acertou_resultado) teamStats[timeFora.nome].acertos++;
+        if (m.sistema_acertou_placar) teamStats[timeFora.nome].placares++;
+      }
+    });
+    
+    const teamList = Object.values(teamStats)
+      .filter(t => t.total >= 3) // Minimum 3 matches
+      .map(t => ({
+        ...t,
+        taxaResultado: Math.round((t.acertos / t.total) * 100),
+        taxaPlacar: Math.round((t.placares / t.total) * 100)
+      }))
+      .sort((a, b) => b.taxaResultado - a.taxaResultado);
+    
+    return {
+      top: teamList.slice(0, 5),
+      bottom: teamList.slice(-5).reverse()
+    };
+  }, [filteredMatches]);
 
   return (
     <Layout>
@@ -504,6 +570,87 @@ export default function Retrospectiva() {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Team Ranking */}
+        {!isLoading && (teamRankingData.top.length > 0 || teamRankingData.bottom.length > 0) && (
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            {/* Top Teams - Easier to Predict */}
+            {teamRankingData.top.length > 0 && (
+              <Card className="bg-card/50 border-border/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <TrophyIcon className="h-5 w-5 text-green-500" />
+                    <CardTitle className="text-lg">Mais Fáceis de Prever</CardTitle>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Times com maior taxa de acerto nas previsões</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {teamRankingData.top.map((team, index) => (
+                    <div key={team.nome} className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                        ${index === 0 ? 'bg-yellow-500/20 text-yellow-500' : 
+                          index === 1 ? 'bg-gray-400/20 text-gray-400' : 
+                          index === 2 ? 'bg-orange-600/20 text-orange-600' : 
+                          'bg-muted text-muted-foreground'}`}>
+                        {index + 1}
+                      </span>
+                      {team.escudo_url ? (
+                        <img src={team.escudo_url} alt="" className="h-6 w-6 object-contain" />
+                      ) : (
+                        <div className="h-6 w-6 bg-muted rounded-full" />
+                      )}
+                      <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                          {team.taxaResultado}%
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          ({team.acertos}/{team.total})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Bottom Teams - Harder to Predict */}
+            {teamRankingData.bottom.length > 0 && (
+              <Card className="bg-card/50 border-border/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    <CardTitle className="text-lg">Mais Difíceis de Prever</CardTitle>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Times com menor taxa de acerto nas previsões</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {teamRankingData.bottom.map((team, index) => (
+                    <div key={team.nome} className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-muted text-muted-foreground">
+                        {teamRankingData.top.length + teamRankingData.bottom.length - index}
+                      </span>
+                      {team.escudo_url ? (
+                        <img src={team.escudo_url} alt="" className="h-6 w-6 object-contain" />
+                      ) : (
+                        <div className="h-6 w-6 bg-muted rounded-full" />
+                      )}
+                      <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
+                          {team.taxaResultado}%
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          ({team.acertos}/{team.total})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
 
         {/* Matches Table */}
