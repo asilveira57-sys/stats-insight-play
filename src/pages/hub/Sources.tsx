@@ -40,9 +40,9 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
 
+// Only leagues available in football-data.org free tier
 const HISTORICAL_COMPETITIONS = [
   { code: 'BSA', name: 'Brasileirão Série A', country: 'Brasil' },
-  { code: 'BSB', name: 'Brasileirão Série B', country: 'Brasil' },
   { code: 'PL', name: 'Premier League', country: 'Inglaterra' },
   { code: 'PD', name: 'La Liga', country: 'Espanha' },
   { code: 'SA', name: 'Serie A', country: 'Itália' },
