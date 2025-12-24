@@ -60,37 +60,33 @@ Deno.serve(async (req) => {
       console.error('[OpenFootball] Error creating sync log:', logError)
     }
 
-    // OpenFootball GitHub raw URLs - various league/season combinations
-    const leagueMap: Record<string, string> = {
-      'br': 'brazil',
-      'en': 'england', 
-      'de': 'deutschland',
-      'es': 'espana',
-      'it': 'italy',
-      'fr': 'france',
-      'pt': 'portugal',
-      'at': 'austria'
-    }
-
-    const countryPath = leagueMap[league] || league
-    const baseUrl = `https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${countryPath}.json`
+    // OpenFootball GitHub raw URLs - try multiple URL formats
+    const urls = getOpenFootballUrls(league, season)
     
-    console.log(`[OpenFootball] Fetching from: ${baseUrl}`)
-
-    const response = await fetch(baseUrl)
+    let data: any = null
+    let successUrl = ''
     
-    if (!response.ok) {
-      // Try alternative URL format
-      const altUrl = `https://raw.githubusercontent.com/openfootball/${countryPath}/master/${season}/1-${getLeagueName(league)}.json`
-      console.log(`[OpenFootball] Trying alternative URL: ${altUrl}`)
-      
-      const altResponse = await fetch(altUrl)
-      if (!altResponse.ok) {
-        throw new Error(`Failed to fetch OpenFootball data: ${response.status}`)
+    for (const url of urls) {
+      console.log(`[OpenFootball] Trying URL: ${url}`)
+      try {
+        const response = await fetch(url)
+        if (response.ok) {
+          data = await response.json()
+          successUrl = url
+          console.log(`[OpenFootball] Success with URL: ${url}`)
+          break
+        } else {
+          console.log(`[OpenFootball] URL returned ${response.status}: ${url}`)
+        }
+      } catch (e) {
+        console.log(`[OpenFootball] Fetch error for URL: ${url}`)
       }
     }
 
-    const data = await response.json()
+    if (!data) {
+      throw new Error(`No valid data found for ${league} ${season}. Tried ${urls.length} URLs.`)
+    }
+
     console.log(`[OpenFootball] Received data with ${data.rounds?.length || 0} rounds`)
 
     let itemsProcessed = 0
@@ -218,7 +214,7 @@ Deno.serve(async (req) => {
           items_updated: itemsUpdated,
           items_failed: itemsFailed,
           requests_made: 1,
-          details: { league, season, rounds: rounds.length }
+          details: { league, season, rounds: rounds.length, url: successUrl }
         })
         .eq('id', syncLog.id)
     }
@@ -229,6 +225,7 @@ Deno.serve(async (req) => {
       success: true,
       league,
       season,
+      url: successUrl,
       stats: {
         processed: itemsProcessed,
         created: itemsCreated,
@@ -252,22 +249,64 @@ Deno.serve(async (req) => {
   }
 })
 
+function getOpenFootballUrls(league: string, season: string): string[] {
+  // Map league codes to various URL formats that OpenFootball uses
+  const urls: string[] = []
+  
+  // Format season for different URL patterns (e.g., "2024-25" or "2024")
+  const seasonYear = season.split('-')[0]
+  
+  // League-specific paths
+  const leagueConfigs: Record<string, { repo: string; paths: string[] }> = {
+    'br': { 
+      repo: 'brazil', 
+      paths: [`${season}/1-brasileirao-serie-a.json`, `${seasonYear}/1-brasileirao-serie-a.json`]
+    },
+    'en': { 
+      repo: 'england', 
+      paths: [`${season}/1-premierleague.json`, `${season}/1-premier-league.json`, `${seasonYear}/1-premierleague.json`]
+    },
+    'de': { 
+      repo: 'deutschland', 
+      paths: [`${season}/1-bundesliga.json`, `${seasonYear}/1-bundesliga.json`]
+    },
+    'es': { 
+      repo: 'espana', 
+      paths: [`${season}/1-liga.json`, `${season}/1-laliga.json`, `${seasonYear}/1-liga.json`]
+    },
+    'it': { 
+      repo: 'italy', 
+      paths: [`${season}/1-seriea.json`, `${season}/1-serie-a.json`, `${seasonYear}/1-seriea.json`]
+    },
+    'fr': { 
+      repo: 'france', 
+      paths: [`${season}/1-ligue1.json`, `${season}/1-ligue-1.json`, `${seasonYear}/1-ligue1.json`]
+    },
+    'at': { 
+      repo: 'austria', 
+      paths: [`${season}/1-bundesliga.json`, `${seasonYear}/1-bundesliga.json`]
+    }
+  }
+
+  const config = leagueConfigs[league]
+  
+  if (config) {
+    // Try openfootball/football.json repo first (has combined data)
+    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.repo}.json`)
+    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.repo}.json`)
+    
+    // Then try specific league repos
+    for (const path of config.paths) {
+      urls.push(`https://raw.githubusercontent.com/openfootball/${config.repo}/master/${path}`)
+    }
+  }
+
+  return urls
+}
+
 function extractRoundNumber(roundName: string): number | null {
   const match = roundName.match(/(\d+)/)
   return match ? parseInt(match[1]) : null
-}
-
-function getLeagueName(code: string): string {
-  const names: Record<string, string> = {
-    'br': 'brasileirao',
-    'en': 'premier-league',
-    'de': 'bundesliga',
-    'es': 'la-liga',
-    'it': 'serie-a',
-    'fr': 'ligue-1',
-    'pt': 'primeira-liga'
-  }
-  return names[code] || code
 }
 
 function getLeagueInfo(code: string): { name: string; country: string } {
