@@ -5,13 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Match format varies between repos - support multiple formats
 interface OpenFootballMatch {
   date: string
   time?: string
-  team1: string
-  team2: string
+  team1: string | { name: string; code?: string }
+  team2: string | { name: string; code?: string }
   score?: { ft?: number[]; ht?: number[] }
+  score1?: number
+  score2?: number
   round?: string
+  group?: string
 }
 
 interface OpenFootballRound {
@@ -70,6 +74,8 @@ Deno.serve(async (req) => {
     // OpenFootball GitHub raw URLs - try multiple URL formats
     const urls = getOpenFootballUrls(league, season)
     
+    console.log(`[OpenFootball] Will try ${urls.length} URLs:`, urls)
+    
     let data: OpenFootballData | null = null
     let successUrl = ''
     
@@ -86,12 +92,12 @@ Deno.serve(async (req) => {
           console.log(`[OpenFootball] URL returned ${response.status}: ${url}`)
         }
       } catch (e) {
-        console.log(`[OpenFootball] Fetch error for URL: ${url}`)
+        console.log(`[OpenFootball] Fetch error for URL: ${url}`, e)
       }
     }
 
     if (!data) {
-      throw new Error(`No valid data found for ${league} ${season}. Tried ${urls.length} URLs.`)
+      throw new Error(`No valid data found for ${league} ${season}. Tried ${urls.length} URLs: ${urls.join(', ')}`)
     }
 
     // Handle both formats: data with rounds array OR flat matches array
@@ -127,14 +133,14 @@ Deno.serve(async (req) => {
     const leagueId = dbLeague?.id
 
     // Process matches - handle both formats
-    let allMatches: { match: OpenFootballMatch; roundNumber: number | null }[] = []
+    let allMatches: { match: OpenFootballMatch; roundNumber: number | null; roundName?: string }[] = []
     
     if (hasRounds && data.rounds) {
       // Format with rounds array
       for (const round of data.rounds) {
         const roundNumber = extractRoundNumber(round.name)
         for (const match of round.matches || []) {
-          allMatches.push({ match, roundNumber })
+          allMatches.push({ match, roundNumber, roundName: round.name })
         }
       }
     } else if (hasMatches && data.matches) {
@@ -151,12 +157,16 @@ Deno.serve(async (req) => {
       try {
         itemsProcessed++
 
+        // Get team names - handle both string and object formats
+        const team1Name = getTeamName(match.team1)
+        const team2Name = getTeamName(match.team2)
+
         // Find or create home team
-        const homeTeam = await findOrCreateTeam(supabase, match.team1, leagueInfo.country, source.id)
-        const awayTeam = await findOrCreateTeam(supabase, match.team2, leagueInfo.country, source.id)
+        const homeTeam = await findOrCreateTeam(supabase, team1Name, leagueInfo.country, source.id)
+        const awayTeam = await findOrCreateTeam(supabase, team2Name, leagueInfo.country, source.id)
 
         if (!homeTeam || !awayTeam) {
-          console.warn(`[OpenFootball] Could not find/create teams: ${match.team1} vs ${match.team2}`)
+          console.warn(`[OpenFootball] Could not find/create teams: ${team1Name} vs ${team2Name}`)
           itemsFailed++
           continue
         }
@@ -165,8 +175,10 @@ Deno.serve(async (req) => {
         const matchDate = new Date(match.date)
         const dateStr = matchDate.toISOString().split('T')[0]
 
-        // Determine match status
-        const hasScore = match.score?.ft && match.score.ft.length === 2
+        // Determine match status - handle both score formats
+        const hasScoreFt = match.score?.ft && match.score.ft.length === 2
+        const hasScore12 = match.score1 !== undefined && match.score2 !== undefined
+        const hasScore = hasScoreFt || hasScore12
         const status = hasScore ? 'finished' : 'scheduled'
 
         // Upsert match
@@ -180,9 +192,13 @@ Deno.serve(async (req) => {
           status: status
         }
 
-        if (hasScore && match.score?.ft) {
+        // Extract score - handle both formats
+        if (hasScoreFt && match.score?.ft) {
           matchData.gols_casa = match.score.ft[0]
           matchData.gols_fora = match.score.ft[1]
+        } else if (hasScore12) {
+          matchData.gols_casa = match.score1
+          matchData.gols_fora = match.score2
         }
 
         // Check if match exists
@@ -216,7 +232,7 @@ Deno.serve(async (req) => {
               .upsert({
                 source_id: source.id,
                 entity_type: 'match',
-                external_id: `${league}-${season}-${match.team1}-${match.team2}-${dateStr}`,
+                external_id: `${league}-${season}-${team1Name}-${team2Name}-${dateStr}`,
                 internal_id: internalId,
                 confidence: 'high'
               }, { onConflict: 'source_id,entity_type,external_id' })
@@ -276,6 +292,14 @@ Deno.serve(async (req) => {
   }
 })
 
+// Extract team name from string or object format
+function getTeamName(team: string | { name: string; code?: string }): string {
+  if (typeof team === 'string') {
+    return team
+  }
+  return team.name
+}
+
 function getOpenFootballUrls(league: string, season: string): string[] {
   const urls: string[] = []
   
@@ -285,7 +309,8 @@ function getOpenFootballUrls(league: string, season: string): string[] {
     division?: number
     altRepo?: string
     type: 'league' | 'cup' | 'international'
-    cupRepo?: string
+    jsonRepo?: string  // The .json repository name
+    fileName?: string  // The actual filename inside the repo
   }
   
   const leagueConfigs: Record<string, LeagueConfig> = {
@@ -301,49 +326,44 @@ function getOpenFootballUrls(league: string, season: string): string[] {
     'pt': { code: 'pt', division: 1, altRepo: 'portugal', type: 'league' },
     'ru': { code: 'ru', division: 1, altRepo: 'russia', type: 'league' },
     'mx': { code: 'mx', division: 1, altRepo: 'mexico', type: 'league' },
-    // International tournaments
-    'world': { code: 'world', type: 'international', cupRepo: 'world-cup' },
-    'euro': { code: 'euro', type: 'international', cupRepo: 'euro-cup' },
-    'copa-america': { code: 'copa-america', type: 'international', cupRepo: 'copa-america' },
-    'africa': { code: 'africa', type: 'international', cupRepo: 'africa-cup' },
+    // International tournaments - use correct .json repos
+    'world': { code: 'world', type: 'international', jsonRepo: 'worldcup.json', fileName: 'worldcup' },
+    'euro': { code: 'euro', type: 'international', jsonRepo: 'euro.json', fileName: 'euro' },
+    'copa-america': { code: 'copa', type: 'international', jsonRepo: 'copa-america.json', fileName: 'copa' },
+    'africa': { code: 'africa', type: 'international', jsonRepo: 'africa-cup.json', fileName: 'africacup' },
     // European cups
-    'cl': { code: 'cl', type: 'cup', cupRepo: 'champions-league' },
-    'el': { code: 'el', type: 'cup', cupRepo: 'europa-league' },
-    'ecl': { code: 'ecl', type: 'cup', cupRepo: 'europa-conference-league' }
+    'cl': { code: 'cl', type: 'cup', jsonRepo: 'champions-league.json', fileName: 'cl' },
+    'el': { code: 'el', type: 'cup', jsonRepo: 'europa-league.json', fileName: 'el' },
+    'ecl': { code: 'ecl', type: 'cup', jsonRepo: 'europa-conference-league.json', fileName: 'ecl' }
   }
 
   const config = leagueConfigs[league]
+  const year = season.split('-')[0]
   
   if (config) {
     if (config.type === 'league' && config.division) {
       // National league format: football.json repo with code.division.json pattern
       urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.${config.division}.json`)
-      
-      // Try season year only for older seasons
-      const seasonYear = season.split('-')[0]
-      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.code}.${config.division}.json`)
+      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${year}/${config.code}.${config.division}.json`)
       
       // Try OpenFootball Pages mirror
       if (config.altRepo) {
         urls.push(`https://openfootball.github.io/${config.altRepo}/${season}/1-${getLeagueFileName(league)}.json`)
       }
     } else if (config.type === 'international' || config.type === 'cup') {
-      // International tournaments and cups
-      const cupRepo = config.cupRepo || league
+      // Use the dedicated .json repositories
+      if (config.jsonRepo && config.fileName) {
+        // Primary: dedicated .json repo (e.g., worldcup.json, euro.json)
+        urls.push(`https://raw.githubusercontent.com/openfootball/${config.jsonRepo}/master/${year}/${config.fileName}.json`)
+        urls.push(`https://raw.githubusercontent.com/openfootball/${config.jsonRepo}/master/${season}/${config.fileName}.json`)
+        
+        // Alternative file names
+        urls.push(`https://raw.githubusercontent.com/openfootball/${config.jsonRepo}/master/${year}/cup.json`)
+        urls.push(`https://raw.githubusercontent.com/openfootball/${config.jsonRepo}/master/${year}/${config.code}.json`)
+      }
       
-      // World Cup format: 2022 (year only)
-      const year = season.split('-')[0]
-      
-      // Try football.json repo first (has World Cup data)
+      // Fallback: try football.json repo
       urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${year}/${config.code}.json`)
-      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.json`)
-      
-      // Try dedicated cup repos
-      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}/master/${year}/cup.json`)
-      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}/master/${season}/cup.json`)
-      
-      // Try alternative naming patterns
-      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}.json/master/${year}/${config.code}.json`)
     }
   }
 
@@ -373,14 +393,17 @@ function extractRoundNumber(roundName: string): number | null {
   if (roundLower.includes('final') && !roundLower.includes('quarter') && !roundLower.includes('semi')) {
     return 100 // Final
   }
-  if (roundLower.includes('semi')) return 99
-  if (roundLower.includes('quarter')) return 98
-  if (roundLower.includes('round of 16') || roundLower.includes('round16')) return 97
-  if (roundLower.includes('round of 32') || roundLower.includes('round32')) return 96
-  if (roundLower.includes('group')) {
-    const groupMatch = roundLower.match(/matchday\s*(\d+)|round\s*(\d+)|(\d+)/)
-    if (groupMatch) {
-      return parseInt(groupMatch[1] || groupMatch[2] || groupMatch[3])
+  if (roundLower.includes('3rd place') || roundLower.includes('third place')) return 99
+  if (roundLower.includes('semi')) return 98
+  if (roundLower.includes('quarter')) return 97
+  if (roundLower.includes('round of 16') || roundLower.includes('round16')) return 96
+  if (roundLower.includes('round of 32') || roundLower.includes('round32')) return 95
+  
+  // Group stage - try to extract matchday number
+  if (roundLower.includes('group') || roundLower.includes('matchday')) {
+    const matchdayMatch = roundLower.match(/matchday\s*(\d+)|round\s*(\d+)|(\d+)/)
+    if (matchdayMatch) {
+      return parseInt(matchdayMatch[1] || matchdayMatch[2] || matchdayMatch[3])
     }
     return 1
   }
