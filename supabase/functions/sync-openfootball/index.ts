@@ -279,31 +279,71 @@ Deno.serve(async (req) => {
 function getOpenFootballUrls(league: string, season: string): string[] {
   const urls: string[] = []
   
-  // The football.json repo uses country code + division number format
-  // e.g., en.1.json for Premier League, de.1.json for Bundesliga
-  const leagueConfigs: Record<string, { code: string; division: number; altRepo?: string }> = {
-    'br': { code: 'br', division: 1, altRepo: 'brazil' },
-    'en': { code: 'en', division: 1, altRepo: 'england' },
-    'de': { code: 'de', division: 1, altRepo: 'deutschland' },
-    'es': { code: 'es', division: 1, altRepo: 'espana' },
-    'it': { code: 'it', division: 1, altRepo: 'italy' },
-    'fr': { code: 'fr', division: 1, altRepo: 'france' },
-    'at': { code: 'at', division: 1, altRepo: 'austria' }
+  // Configuration for different league types
+  interface LeagueConfig {
+    code: string
+    division?: number
+    altRepo?: string
+    type: 'league' | 'cup' | 'international'
+    cupRepo?: string
+  }
+  
+  const leagueConfigs: Record<string, LeagueConfig> = {
+    // National leagues
+    'br': { code: 'br', division: 1, altRepo: 'brazil', type: 'league' },
+    'en': { code: 'en', division: 1, altRepo: 'england', type: 'league' },
+    'de': { code: 'de', division: 1, altRepo: 'deutschland', type: 'league' },
+    'es': { code: 'es', division: 1, altRepo: 'espana', type: 'league' },
+    'it': { code: 'it', division: 1, altRepo: 'italy', type: 'league' },
+    'fr': { code: 'fr', division: 1, altRepo: 'france', type: 'league' },
+    'at': { code: 'at', division: 1, altRepo: 'austria', type: 'league' },
+    'nl': { code: 'nl', division: 1, altRepo: 'netherlands', type: 'league' },
+    'pt': { code: 'pt', division: 1, altRepo: 'portugal', type: 'league' },
+    'ru': { code: 'ru', division: 1, altRepo: 'russia', type: 'league' },
+    'mx': { code: 'mx', division: 1, altRepo: 'mexico', type: 'league' },
+    // International tournaments
+    'world': { code: 'world', type: 'international', cupRepo: 'world-cup' },
+    'euro': { code: 'euro', type: 'international', cupRepo: 'euro-cup' },
+    'copa-america': { code: 'copa-america', type: 'international', cupRepo: 'copa-america' },
+    'africa': { code: 'africa', type: 'international', cupRepo: 'africa-cup' },
+    // European cups
+    'cl': { code: 'cl', type: 'cup', cupRepo: 'champions-league' },
+    'el': { code: 'el', type: 'cup', cupRepo: 'europa-league' },
+    'ecl': { code: 'ecl', type: 'cup', cupRepo: 'europa-conference-league' }
   }
 
   const config = leagueConfigs[league]
   
   if (config) {
-    // Primary format: football.json repo with code.division.json pattern
-    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.${config.division}.json`)
-    
-    // Also try without leading zero for older seasons
-    const seasonYear = season.split('-')[0]
-    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.code}.${config.division}.json`)
-    
-    // Try OpenFootball Pages mirror
-    if (config.altRepo) {
-      urls.push(`https://openfootball.github.io/${config.altRepo}/${season}/1-${getLeagueFileName(league)}.json`)
+    if (config.type === 'league' && config.division) {
+      // National league format: football.json repo with code.division.json pattern
+      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.${config.division}.json`)
+      
+      // Try season year only for older seasons
+      const seasonYear = season.split('-')[0]
+      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.code}.${config.division}.json`)
+      
+      // Try OpenFootball Pages mirror
+      if (config.altRepo) {
+        urls.push(`https://openfootball.github.io/${config.altRepo}/${season}/1-${getLeagueFileName(league)}.json`)
+      }
+    } else if (config.type === 'international' || config.type === 'cup') {
+      // International tournaments and cups
+      const cupRepo = config.cupRepo || league
+      
+      // World Cup format: 2022 (year only)
+      const year = season.split('-')[0]
+      
+      // Try football.json repo first (has World Cup data)
+      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${year}/${config.code}.json`)
+      urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.json`)
+      
+      // Try dedicated cup repos
+      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}/master/${year}/cup.json`)
+      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}/master/${season}/cup.json`)
+      
+      // Try alternative naming patterns
+      urls.push(`https://raw.githubusercontent.com/openfootball/${cupRepo}.json/master/${year}/${config.code}.json`)
     }
   }
 
@@ -318,18 +358,40 @@ function getLeagueFileName(code: string): string {
     'es': 'liga',
     'it': 'seriea',
     'fr': 'ligue1',
-    'at': 'bundesliga'
+    'at': 'bundesliga',
+    'nl': 'eredivisie',
+    'pt': 'primeiraliga',
+    'ru': 'premierliga',
+    'mx': 'liga-mx'
   }
   return names[code] || code
 }
 
 function extractRoundNumber(roundName: string): number | null {
+  // Handle international tournament rounds
+  const roundLower = roundName.toLowerCase()
+  if (roundLower.includes('final') && !roundLower.includes('quarter') && !roundLower.includes('semi')) {
+    return 100 // Final
+  }
+  if (roundLower.includes('semi')) return 99
+  if (roundLower.includes('quarter')) return 98
+  if (roundLower.includes('round of 16') || roundLower.includes('round16')) return 97
+  if (roundLower.includes('round of 32') || roundLower.includes('round32')) return 96
+  if (roundLower.includes('group')) {
+    const groupMatch = roundLower.match(/matchday\s*(\d+)|round\s*(\d+)|(\d+)/)
+    if (groupMatch) {
+      return parseInt(groupMatch[1] || groupMatch[2] || groupMatch[3])
+    }
+    return 1
+  }
+  
   const match = roundName.match(/(\d+)/)
   return match ? parseInt(match[1]) : null
 }
 
 function getLeagueInfo(code: string): { name: string; country: string } {
   const info: Record<string, { name: string; country: string }> = {
+    // National leagues
     'br': { name: 'Brasileirão Série A', country: 'Brazil' },
     'en': { name: 'Premier League', country: 'England' },
     'de': { name: 'Bundesliga', country: 'Germany' },
@@ -337,7 +399,19 @@ function getLeagueInfo(code: string): { name: string; country: string } {
     'it': { name: 'Serie A', country: 'Italy' },
     'fr': { name: 'Ligue 1', country: 'France' },
     'pt': { name: 'Primeira Liga', country: 'Portugal' },
-    'at': { name: 'Bundesliga', country: 'Austria' }
+    'at': { name: 'Bundesliga', country: 'Austria' },
+    'nl': { name: 'Eredivisie', country: 'Netherlands' },
+    'ru': { name: 'Premier Liga', country: 'Russia' },
+    'mx': { name: 'Liga MX', country: 'Mexico' },
+    // International tournaments
+    'world': { name: 'FIFA World Cup', country: 'International' },
+    'euro': { name: 'UEFA Euro', country: 'Europe' },
+    'copa-america': { name: 'Copa América', country: 'South America' },
+    'africa': { name: 'Africa Cup of Nations', country: 'Africa' },
+    // European cups
+    'cl': { name: 'UEFA Champions League', country: 'Europe' },
+    'el': { name: 'UEFA Europa League', country: 'Europe' },
+    'ecl': { name: 'UEFA Conference League', country: 'Europe' }
   }
   return info[code] || { name: code.toUpperCase(), country: 'Unknown' }
 }
