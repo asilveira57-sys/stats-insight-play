@@ -7,15 +7,22 @@ const corsHeaders = {
 
 interface OpenFootballMatch {
   date: string
+  time?: string
   team1: string
   team2: string
-  score?: { ft?: number[] }
+  score?: { ft?: number[]; ht?: number[] }
   round?: string
 }
 
 interface OpenFootballRound {
   name: string
   matches: OpenFootballMatch[]
+}
+
+interface OpenFootballData {
+  name?: string
+  rounds?: OpenFootballRound[]
+  matches?: OpenFootballMatch[]
 }
 
 Deno.serve(async (req) => {
@@ -63,7 +70,7 @@ Deno.serve(async (req) => {
     // OpenFootball GitHub raw URLs - try multiple URL formats
     const urls = getOpenFootballUrls(league, season)
     
-    let data: any = null
+    let data: OpenFootballData | null = null
     let successUrl = ''
     
     for (const url of urls) {
@@ -87,7 +94,12 @@ Deno.serve(async (req) => {
       throw new Error(`No valid data found for ${league} ${season}. Tried ${urls.length} URLs.`)
     }
 
-    console.log(`[OpenFootball] Received data with ${data.rounds?.length || 0} rounds`)
+    // Handle both formats: data with rounds array OR flat matches array
+    const hasRounds = data.rounds && data.rounds.length > 0
+    const hasMatches = data.matches && data.matches.length > 0
+    
+    console.log(`[OpenFootball] Data format: rounds=${hasRounds}, matches=${hasMatches}`)
+    console.log(`[OpenFootball] Received data with ${data.rounds?.length || 0} rounds, ${data.matches?.length || 0} matches`)
 
     let itemsProcessed = 0
     let itemsCreated = 0
@@ -114,91 +126,106 @@ Deno.serve(async (req) => {
 
     const leagueId = dbLeague?.id
 
-    // Process rounds and matches
-    const rounds: OpenFootballRound[] = data.rounds || []
+    // Process matches - handle both formats
+    let allMatches: { match: OpenFootballMatch; roundNumber: number | null }[] = []
     
-    for (const round of rounds) {
-      const roundNumber = extractRoundNumber(round.name)
-      
-      for (const match of round.matches || []) {
-        try {
-          itemsProcessed++
-
-          // Find or create home team
-          const homeTeam = await findOrCreateTeam(supabase, match.team1, leagueInfo.country, source.id)
-          const awayTeam = await findOrCreateTeam(supabase, match.team2, leagueInfo.country, source.id)
-
-          if (!homeTeam || !awayTeam) {
-            console.warn(`[OpenFootball] Could not find/create teams: ${match.team1} vs ${match.team2}`)
-            itemsFailed++
-            continue
-          }
-
-          // Parse match date
-          const matchDate = new Date(match.date)
-          const dateStr = matchDate.toISOString().split('T')[0]
-
-          // Determine match status
-          const hasScore = match.score?.ft && match.score.ft.length === 2
-          const status = hasScore ? 'finished' : 'scheduled'
-
-          // Upsert match
-          const matchData: Record<string, unknown> = {
-            data: dateStr,
-            time_casa_id: homeTeam.id,
-            time_fora_id: awayTeam.id,
-            liga_id: leagueId,
-            rodada: roundNumber,
-            status: status
-          }
-
-          if (hasScore) {
-            matchData.gols_casa = match.score!.ft![0]
-            matchData.gols_fora = match.score!.ft![1]
-          }
-
-          // Check if match exists
-          const { data: existingMatch } = await supabase
-            .from('partidas')
-            .select('id')
-            .eq('data', dateStr)
-            .eq('time_casa_id', homeTeam.id)
-            .eq('time_fora_id', awayTeam.id)
-            .maybeSingle()
-
-          if (existingMatch) {
-            await supabase
-              .from('partidas')
-              .update(matchData)
-              .eq('id', existingMatch.id)
-            itemsUpdated++
-          } else {
-            await supabase
-              .from('partidas')
-              .insert(matchData)
-            itemsCreated++
-          }
-
-          // Register external ID mapping
-          if (existingMatch || itemsCreated > 0) {
-            const internalId = existingMatch?.id
-            if (internalId) {
-              await supabase
-                .from('external_id_map')
-                .upsert({
-                  source_id: source.id,
-                  entity_type: 'match',
-                  external_id: `${league}-${season}-${match.team1}-${match.team2}-${dateStr}`,
-                  internal_id: internalId,
-                  confidence: 'high'
-                }, { onConflict: 'source_id,entity_type,external_id' })
-            }
-          }
-
-        } catch (error: unknown) {
-          console.error(`[OpenFootball] Error processing match:`, error)
-          itemsFailed++
+    if (hasRounds && data.rounds) {
+      // Format with rounds array
+      for (const round of data.rounds) {
+        const roundNumber = extractRoundNumber(round.name)
+        for (const match of round.matches || []) {
+          allMatches.push({ match, roundNumber })
         }
+      }
+    } else if (hasMatches && data.matches) {
+      // Flat matches array format
+      for (const match of data.matches) {
+        const roundNumber = match.round ? extractRoundNumber(match.round) : null
+        allMatches.push({ match, roundNumber })
+      }
+    }
+
+    console.log(`[OpenFootball] Processing ${allMatches.length} matches`)
+
+    for (const { match, roundNumber } of allMatches) {
+      try {
+        itemsProcessed++
+
+        // Find or create home team
+        const homeTeam = await findOrCreateTeam(supabase, match.team1, leagueInfo.country, source.id)
+        const awayTeam = await findOrCreateTeam(supabase, match.team2, leagueInfo.country, source.id)
+
+        if (!homeTeam || !awayTeam) {
+          console.warn(`[OpenFootball] Could not find/create teams: ${match.team1} vs ${match.team2}`)
+          itemsFailed++
+          continue
+        }
+
+        // Parse match date
+        const matchDate = new Date(match.date)
+        const dateStr = matchDate.toISOString().split('T')[0]
+
+        // Determine match status
+        const hasScore = match.score?.ft && match.score.ft.length === 2
+        const status = hasScore ? 'finished' : 'scheduled'
+
+        // Upsert match
+        const matchData: Record<string, unknown> = {
+          data: dateStr,
+          hora: match.time || null,
+          time_casa_id: homeTeam.id,
+          time_fora_id: awayTeam.id,
+          liga_id: leagueId,
+          rodada: roundNumber,
+          status: status
+        }
+
+        if (hasScore && match.score?.ft) {
+          matchData.gols_casa = match.score.ft[0]
+          matchData.gols_fora = match.score.ft[1]
+        }
+
+        // Check if match exists
+        const { data: existingMatch } = await supabase
+          .from('partidas')
+          .select('id')
+          .eq('data', dateStr)
+          .eq('time_casa_id', homeTeam.id)
+          .eq('time_fora_id', awayTeam.id)
+          .maybeSingle()
+
+        if (existingMatch) {
+          await supabase
+            .from('partidas')
+            .update(matchData)
+            .eq('id', existingMatch.id)
+          itemsUpdated++
+        } else {
+          await supabase
+            .from('partidas')
+            .insert(matchData)
+          itemsCreated++
+        }
+
+        // Register external ID mapping
+        if (existingMatch || itemsCreated > 0) {
+          const internalId = existingMatch?.id
+          if (internalId) {
+            await supabase
+              .from('external_id_map')
+              .upsert({
+                source_id: source.id,
+                entity_type: 'match',
+                external_id: `${league}-${season}-${match.team1}-${match.team2}-${dateStr}`,
+                internal_id: internalId,
+                confidence: 'high'
+              }, { onConflict: 'source_id,entity_type,external_id' })
+          }
+        }
+
+      } catch (error: unknown) {
+        console.error(`[OpenFootball] Error processing match:`, error)
+        itemsFailed++
       }
     }
 
@@ -214,7 +241,7 @@ Deno.serve(async (req) => {
           items_updated: itemsUpdated,
           items_failed: itemsFailed,
           requests_made: 1,
-          details: { league, season, rounds: rounds.length, url: successUrl }
+          details: { league, season, url: successUrl, matchCount: allMatches.length }
         })
         .eq('id', syncLog.id)
     }
@@ -250,58 +277,50 @@ Deno.serve(async (req) => {
 })
 
 function getOpenFootballUrls(league: string, season: string): string[] {
-  // Map league codes to various URL formats that OpenFootball uses
   const urls: string[] = []
   
-  // Format season for different URL patterns (e.g., "2024-25" or "2024")
-  const seasonYear = season.split('-')[0]
-  
-  // League-specific paths
-  const leagueConfigs: Record<string, { repo: string; paths: string[] }> = {
-    'br': { 
-      repo: 'brazil', 
-      paths: [`${season}/1-brasileirao-serie-a.json`, `${seasonYear}/1-brasileirao-serie-a.json`]
-    },
-    'en': { 
-      repo: 'england', 
-      paths: [`${season}/1-premierleague.json`, `${season}/1-premier-league.json`, `${seasonYear}/1-premierleague.json`]
-    },
-    'de': { 
-      repo: 'deutschland', 
-      paths: [`${season}/1-bundesliga.json`, `${seasonYear}/1-bundesliga.json`]
-    },
-    'es': { 
-      repo: 'espana', 
-      paths: [`${season}/1-liga.json`, `${season}/1-laliga.json`, `${seasonYear}/1-liga.json`]
-    },
-    'it': { 
-      repo: 'italy', 
-      paths: [`${season}/1-seriea.json`, `${season}/1-serie-a.json`, `${seasonYear}/1-seriea.json`]
-    },
-    'fr': { 
-      repo: 'france', 
-      paths: [`${season}/1-ligue1.json`, `${season}/1-ligue-1.json`, `${seasonYear}/1-ligue1.json`]
-    },
-    'at': { 
-      repo: 'austria', 
-      paths: [`${season}/1-bundesliga.json`, `${seasonYear}/1-bundesliga.json`]
-    }
+  // The football.json repo uses country code + division number format
+  // e.g., en.1.json for Premier League, de.1.json for Bundesliga
+  const leagueConfigs: Record<string, { code: string; division: number; altRepo?: string }> = {
+    'br': { code: 'br', division: 1, altRepo: 'brazil' },
+    'en': { code: 'en', division: 1, altRepo: 'england' },
+    'de': { code: 'de', division: 1, altRepo: 'deutschland' },
+    'es': { code: 'es', division: 1, altRepo: 'espana' },
+    'it': { code: 'it', division: 1, altRepo: 'italy' },
+    'fr': { code: 'fr', division: 1, altRepo: 'france' },
+    'at': { code: 'at', division: 1, altRepo: 'austria' }
   }
 
   const config = leagueConfigs[league]
   
   if (config) {
-    // Try openfootball/football.json repo first (has combined data)
-    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.repo}.json`)
-    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.repo}.json`)
+    // Primary format: football.json repo with code.division.json pattern
+    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${config.code}.${config.division}.json`)
     
-    // Then try specific league repos
-    for (const path of config.paths) {
-      urls.push(`https://raw.githubusercontent.com/openfootball/${config.repo}/master/${path}`)
+    // Also try without leading zero for older seasons
+    const seasonYear = season.split('-')[0]
+    urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${seasonYear}/${config.code}.${config.division}.json`)
+    
+    // Try OpenFootball Pages mirror
+    if (config.altRepo) {
+      urls.push(`https://openfootball.github.io/${config.altRepo}/${season}/1-${getLeagueFileName(league)}.json`)
     }
   }
 
   return urls
+}
+
+function getLeagueFileName(code: string): string {
+  const names: Record<string, string> = {
+    'br': 'brasileirao-serie-a',
+    'en': 'premierleague',
+    'de': 'bundesliga',
+    'es': 'liga',
+    'it': 'seriea',
+    'fr': 'ligue1',
+    'at': 'bundesliga'
+  }
+  return names[code] || code
 }
 
 function extractRoundNumber(roundName: string): number | null {
