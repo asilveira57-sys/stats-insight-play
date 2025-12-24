@@ -51,13 +51,49 @@ const HISTORICAL_COMPETITIONS = [
   { code: 'CL', name: 'Champions League', country: 'Europa' },
 ];
 
+// OpenFootball leagues (free, GitHub-based)
+const OPENFOOTBALL_COMPETITIONS = [
+  // National leagues
+  { code: 'br', name: 'Brasileirão Série A', country: 'Brasil', type: 'league' },
+  { code: 'en', name: 'Premier League', country: 'Inglaterra', type: 'league' },
+  { code: 'de', name: 'Bundesliga', country: 'Alemanha', type: 'league' },
+  { code: 'es', name: 'La Liga', country: 'Espanha', type: 'league' },
+  { code: 'it', name: 'Serie A', country: 'Itália', type: 'league' },
+  { code: 'fr', name: 'Ligue 1', country: 'França', type: 'league' },
+  { code: 'at', name: 'Bundesliga', country: 'Áustria', type: 'league' },
+  { code: 'nl', name: 'Eredivisie', country: 'Holanda', type: 'league' },
+  { code: 'pt', name: 'Primeira Liga', country: 'Portugal', type: 'league' },
+  { code: 'mx', name: 'Liga MX', country: 'México', type: 'league' },
+  // International tournaments
+  { code: 'world', name: 'Copa do Mundo FIFA', country: 'Internacional', type: 'international' },
+  { code: 'euro', name: 'Eurocopa UEFA', country: 'Europa', type: 'international' },
+  { code: 'copa-america', name: 'Copa América', country: 'América do Sul', type: 'international' },
+  { code: 'africa', name: 'Copa das Nações Africanas', country: 'África', type: 'international' },
+  // European cups
+  { code: 'cl', name: 'Champions League', country: 'Europa', type: 'cup' },
+  { code: 'el', name: 'Europa League', country: 'Europa', type: 'cup' },
+];
+
+// Season formats for different competition types
+const getSeasonOptions = (compType: string) => {
+  if (compType === 'international') {
+    // International tournaments happen every 4 years (or 2 for some)
+    return ['2024', '2022', '2021', '2020', '2019', '2018', '2016', '2014', '2012', '2010'];
+  }
+  // League seasons span two years
+  return ['2024-25', '2023-24', '2022-23', '2021-22', '2020-21', '2019-20', '2018-19'];
+};
+
 export default function HubSources() {
   const queryClient = useQueryClient();
   const [selectedSource, setSelectedSource] = useState<any>(null);
   const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
   const [syncingHistorical, setSyncingHistorical] = useState(false);
+  const [syncingOpenFootball, setSyncingOpenFootball] = useState(false);
   const [selectedCompetition, setSelectedCompetition] = useState('BSA');
   const [selectedSeasons, setSelectedSeasons] = useState<number[]>([2024, 2023, 2022, 2021, 2020]);
+  const [selectedOFCompetition, setSelectedOFCompetition] = useState('br');
+  const [selectedOFSeason, setSelectedOFSeason] = useState('2024-25');
 
   const { data: sources, isLoading } = useQuery({
     queryKey: ['data-sources'],
@@ -171,6 +207,39 @@ export default function HubSources() {
     }
   };
 
+  const syncOpenFootballData = async () => {
+    setSyncingOpenFootball(true);
+    const comp = OPENFOOTBALL_COMPETITIONS.find(c => c.code === selectedOFCompetition);
+    
+    toast.info(`Iniciando sync OpenFootball: ${comp?.name}`, {
+      description: `Temporada: ${selectedOFSeason}`
+    });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-openfootball', {
+        body: {
+          league: selectedOFCompetition,
+          season: selectedOFSeason
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Sync OpenFootball concluído: ${comp?.name}`, {
+        description: `${data?.stats?.created || 0} criadas, ${data?.stats?.updated || 0} atualizadas`
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
+    } catch (error: unknown) {
+      console.error('OpenFootball sync error:', error);
+      toast.error(`Erro no sync OpenFootball: ${comp?.name}`, {
+        description: error instanceof Error ? error.message : 'Verifique os logs'
+      });
+    } finally {
+      setSyncingOpenFootball(false);
+    }
+  };
+
   const toggleSeason = (season: number) => {
     setSelectedSeasons(prev => 
       prev.includes(season) 
@@ -281,6 +350,107 @@ export default function HubSources() {
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
                 {syncingHistorical ? 'Sincronizando...' : 'Sincronizar Histórico'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* OpenFootball Sync Section */}
+        <Card className="glass-card mb-8 border-secondary/30">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
+                <Github className="w-6 h-6 text-secondary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">OpenFootball (Gratuito)</CardTitle>
+                <CardDescription>
+                  Dados de ligas nacionais e torneios internacionais via GitHub
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Competição</Label>
+                <Select value={selectedOFCompetition} onValueChange={(val) => {
+                  setSelectedOFCompetition(val);
+                  const comp = OPENFOOTBALL_COMPETITIONS.find(c => c.code === val);
+                  const seasons = getSeasonOptions(comp?.type || 'league');
+                  setSelectedOFSeason(seasons[0]);
+                }}>
+                  <SelectTrigger className="bg-muted/50 border-border">
+                    <SelectValue placeholder="Selecione a competição" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Ligas Nacionais</div>
+                    {OPENFOOTBALL_COMPETITIONS.filter(c => c.type === 'league').map(comp => (
+                      <SelectItem key={comp.code} value={comp.code}>
+                        <span className="flex items-center gap-2">
+                          {comp.name}
+                          <Badge variant="outline" className="text-xs">{comp.country}</Badge>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Torneios Internacionais</div>
+                    {OPENFOOTBALL_COMPETITIONS.filter(c => c.type === 'international').map(comp => (
+                      <SelectItem key={comp.code} value={comp.code}>
+                        <span className="flex items-center gap-2">
+                          🏆 {comp.name}
+                          <Badge variant="outline" className="text-xs">{comp.country}</Badge>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Competições Europeias</div>
+                    {OPENFOOTBALL_COMPETITIONS.filter(c => c.type === 'cup').map(comp => (
+                      <SelectItem key={comp.code} value={comp.code}>
+                        <span className="flex items-center gap-2">
+                          ⭐ {comp.name}
+                          <Badge variant="outline" className="text-xs">{comp.country}</Badge>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Temporada</Label>
+                <Select value={selectedOFSeason} onValueChange={setSelectedOFSeason}>
+                  <SelectTrigger className="bg-muted/50 border-border">
+                    <SelectValue placeholder="Selecione a temporada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getSeasonOptions(OPENFOOTBALL_COMPETITIONS.find(c => c.code === selectedOFCompetition)?.type || 'league').map(season => (
+                      <SelectItem key={season} value={season}>
+                        {season}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {OPENFOOTBALL_COMPETITIONS.find(c => c.code === selectedOFCompetition)?.name}
+                </span>
+                {' • '}Temporada {selectedOFSeason}
+                <Badge variant="secondary" className="ml-2 text-xs">Grátis</Badge>
+              </div>
+              <Button 
+                onClick={syncOpenFootballData}
+                disabled={syncingOpenFootball}
+                variant="outline"
+                className="border-secondary/50 text-secondary hover:bg-secondary/10"
+              >
+                {syncingOpenFootball ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {syncingOpenFootball ? 'Sincronizando...' : 'Sincronizar'}
               </Button>
             </div>
           </CardContent>
