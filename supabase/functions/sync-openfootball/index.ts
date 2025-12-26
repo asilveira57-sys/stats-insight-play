@@ -366,7 +366,14 @@ function getOpenFootballUrls(league: string, season: string): string[] {
         urls.push(`https://openfootball.github.io/${config.altRepo}/${season}/1-${getLeagueFileName(league)}.json`)
       }
     } else if (config.type === 'international' || config.type === 'cup') {
-      // Use the dedicated .json repositories
+      // For international tournaments, try football.json repo FIRST (has scores)
+      // World Cup uses special naming in football.json
+      if (league === 'world') {
+        urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${year}/worldcup.json`)
+        urls.push(`https://raw.githubusercontent.com/openfootball/football.json/master/${year}/wc.json`)
+      }
+      
+      // Use the dedicated .json repositories as fallback
       if (config.jsonRepo && config.fileName) {
         // Primary: dedicated .json repo (e.g., worldcup.json, euro.json)
         urls.push(`https://raw.githubusercontent.com/openfootball/${config.jsonRepo}/master/${year}/${config.fileName}.json`)
@@ -467,7 +474,7 @@ async function findOrCreateTeam(
     .replace(/\s*fc/i, '')
     .trim()
 
-  // Check team aliases first
+  // Check team aliases first (exact match on normalized name)
   const { data: alias } = await supabase
     .from('team_aliases')
     .select('team_id')
@@ -478,25 +485,48 @@ async function findOrCreateTeam(
     return { id: alias.team_id, nome: teamName }
   }
 
-  // Try direct name match
-  const { data: existingTeam } = await supabase
+  // Try EXACT name match first (case-insensitive)
+  const { data: exactMatch } = await supabase
     .from('times')
     .select('id, nome')
-    .ilike('nome', `%${teamName}%`)
+    .ilike('nome', teamName)
     .maybeSingle()
 
-  if (existingTeam) {
+  if (exactMatch) {
     // Register alias for future matching
     await supabase
       .from('team_aliases')
       .upsert({
-        team_id: existingTeam.id,
+        team_id: exactMatch.id,
         source_id: sourceId,
         alias: teamName,
         normalized_alias: normalizedName
       }, { onConflict: 'team_id,alias' })
 
-    return existingTeam
+    return exactMatch
+  }
+
+  // For international teams (short country names), skip partial matching to avoid false matches
+  // Only do partial matching for club teams with longer names (>10 chars)
+  if (teamName.length > 10) {
+    const { data: partialMatch } = await supabase
+      .from('times')
+      .select('id, nome')
+      .ilike('nome', `%${teamName}%`)
+      .maybeSingle()
+
+    if (partialMatch) {
+      await supabase
+        .from('team_aliases')
+        .upsert({
+          team_id: partialMatch.id,
+          source_id: sourceId,
+          alias: teamName,
+          normalized_alias: normalizedName
+        }, { onConflict: 'team_id,alias' })
+
+      return partialMatch
+    }
   }
 
   // Create new team
