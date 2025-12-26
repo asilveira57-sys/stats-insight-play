@@ -309,3 +309,53 @@ export function useMatchCountByLeague() {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
 }
+
+// Hook to get the most recent match date for a specific league
+export function useLatestMatchDateByLeague(leagueCode: string | null) {
+  return useQuery({
+    queryKey: ['db-latest-match-date', leagueCode],
+    queryFn: async () => {
+      if (!leagueCode) return null;
+      
+      // Get the league ID first
+      const { data: league } = await supabase
+        .from('ligas')
+        .select('id')
+        .eq('codigo_api', leagueCode)
+        .maybeSingle();
+      
+      if (!league) return null;
+
+      // Get the most recent match date for this league
+      const today = new Date().toISOString().split('T')[0];
+      
+      // First, try to find matches on or after today (upcoming matches)
+      const { data: upcomingMatch } = await supabase
+        .from('partidas')
+        .select('data')
+        .eq('liga_id', league.id)
+        .gte('data', today)
+        .order('data', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      if (upcomingMatch) {
+        return upcomingMatch.data;
+      }
+
+      // If no upcoming matches, get the most recent past match
+      const { data: pastMatch } = await supabase
+        .from('partidas')
+        .select('data')
+        .eq('liga_id', league.id)
+        .lt('data', today)
+        .order('data', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return pastMatch?.data || null;
+    },
+    enabled: !!leagueCode,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}

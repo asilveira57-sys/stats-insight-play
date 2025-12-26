@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { Button } from "@/components/ui/button";
 import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLeagues, useMatchesFromDB } from "@/hooks/useMatchesDB";
+import { useLeagues, useMatchesFromDB, useLatestMatchDateByLeague } from "@/hooks/useMatchesDB";
 import { useRealtimeMatches } from "@/hooks/useRealtimeMatches";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,8 +25,34 @@ export default function Resultados() {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [dateOffset, setDateOffset] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [manualDateSet, setManualDateSet] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch the latest match date for the selected league
+  const { data: latestMatchDate } = useLatestMatchDateByLeague(selectedLeague);
+
+  // Auto-navigate to the latest match date when a league is selected
+  useEffect(() => {
+    if (selectedLeague && latestMatchDate && !manualDateSet) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const matchDate = new Date(latestMatchDate + 'T00:00:00');
+      matchDate.setHours(0, 0, 0, 0);
+      
+      // Calculate the offset from today
+      const diffTime = matchDate.getTime() - today.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      
+      setDateOffset(diffDays);
+    }
+  }, [selectedLeague, latestMatchDate, manualDateSet]);
+
+  // Reset manual date flag when league changes
+  useEffect(() => {
+    setManualDateSet(false);
+  }, [selectedLeague]);
 
   // Subscribe to real-time updates for matches
   useRealtimeMatches();
@@ -56,6 +82,12 @@ export default function Resultados() {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  // Handle manual date changes
+  const handleDateChange = (newOffset: number) => {
+    setManualDateSet(true);
+    setDateOffset(newOffset);
   };
 
   // Calculate date based on offset
@@ -122,7 +154,11 @@ export default function Resultados() {
                 ) : (
                   <>
                     <button
-                      onClick={() => setSelectedLeague(null)}
+                      onClick={() => {
+                        setSelectedLeague(null);
+                        setManualDateSet(false);
+                        setDateOffset(0);
+                      }}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                         selectedLeague === null
@@ -171,7 +207,7 @@ export default function Resultados() {
                   variant="ghost" 
                   size="icon" 
                   className="h-9 w-9"
-                  onClick={() => setDateOffset(prev => prev - 1)}
+                  onClick={() => handleDateChange(dateOffset - 1)}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -179,7 +215,7 @@ export default function Resultados() {
                   {dates.map((date) => (
                     <button
                       key={date.offset}
-                      onClick={() => setDateOffset(date.offset)}
+                      onClick={() => handleDateChange(date.offset)}
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                         dateOffset === date.offset
@@ -195,7 +231,7 @@ export default function Resultados() {
                   variant="ghost" 
                   size="icon" 
                   className="h-9 w-9"
-                  onClick={() => setDateOffset(prev => prev + 1)}
+                  onClick={() => handleDateChange(dateOffset + 1)}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
