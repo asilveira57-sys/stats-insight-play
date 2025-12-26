@@ -114,23 +114,38 @@ Deno.serve(async (req) => {
 
     // Get or create league
     const leagueInfo = getLeagueInfo(league)
-    const { data: dbLeague, error: leagueError } = await supabase
+    const leagueCode = league.toUpperCase()
+    
+    // First try to find existing league
+    let { data: dbLeague } = await supabase
       .from('ligas')
-      .upsert({
-        nome: leagueInfo.name,
-        pais: leagueInfo.country,
-        codigo_api: league.toUpperCase(),
-        api_source: 'openfootball',
-        ativa: true
-      }, { onConflict: 'codigo_api' })
-      .select()
-      .single()
-
-    if (leagueError) {
-      console.error('[OpenFootball] Error upserting league:', leagueError)
+      .select('*')
+      .eq('codigo_api', leagueCode)
+      .maybeSingle()
+    
+    // If not found, create it
+    if (!dbLeague) {
+      const { data: newLeague, error: leagueError } = await supabase
+        .from('ligas')
+        .insert({
+          nome: leagueInfo.name,
+          pais: leagueInfo.country,
+          codigo_api: leagueCode,
+          api_source: 'openfootball',
+          ativa: true
+        })
+        .select()
+        .single()
+      
+      if (leagueError) {
+        console.error('[OpenFootball] Error creating league:', leagueError)
+      } else {
+        dbLeague = newLeague
+      }
     }
 
     const leagueId = dbLeague?.id
+    console.log(`[OpenFootball] Using league: ${dbLeague?.nome} (${leagueId})`)
 
     // Process matches - handle both formats
     let allMatches: { match: OpenFootballMatch; roundNumber: number | null; roundName?: string }[] = []
