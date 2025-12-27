@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Filter, ChevronLeft, ChevronRight, Trophy, Loader2, RefreshCw } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, ChevronLeft, ChevronRight, Trophy, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeagues, useMatchesFromDB, useLatestMatchDateByLeague } from "@/hooks/useMatchesDB";
 import { useRealtimeMatches } from "@/hooks/useRealtimeMatches";
@@ -11,6 +11,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { MatchDetailsModal } from "@/components/match/MatchDetailsModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface SelectedMatch {
   id: string;
@@ -199,7 +203,7 @@ export default function Resultados() {
           <div className="lg:w-auto">
             <div className="glass-card p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Calendar className="w-4 h-4 text-primary" />
+                <CalendarIcon className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium">Data</span>
               </div>
               <div className="flex items-center gap-2">
@@ -235,6 +239,43 @@ export default function Resultados() {
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
+                
+                {/* Month/Year Picker */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "ml-2 gap-2",
+                        (dateOffset < -1 || dateOffset > 1) && "border-primary text-primary"
+                      )}
+                    >
+                      <CalendarIcon className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {format(new Date(selectedDate), "MMM yyyy", { locale: ptBR })}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(selectedDate + 'T12:00:00')}
+                      onSelect={(date) => {
+                        if (date) {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          date.setHours(0, 0, 0, 0);
+                          const diffTime = date.getTime() - today.getTime();
+                          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                          handleDateChange(diffDays);
+                        }
+                      }}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {dateOffset < -1 || dateOffset > 1 ? (
                 <div className="text-center text-xs text-muted-foreground mt-2">
