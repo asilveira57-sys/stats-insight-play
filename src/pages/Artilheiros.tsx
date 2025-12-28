@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Trophy, TrendingUp, Goal, Shield } from "lucide-react";
+import { Target, Trophy, TrendingUp, Goal, Shield, User } from "lucide-react";
 
 export default function Artilheiros() {
   const [selectedCompetition, setSelectedCompetition] = useState<string>("");
@@ -17,46 +17,48 @@ export default function Artilheiros() {
     : allCompetitions;
 
   // Get overall top scorers across all competitions
-  const allTeamScorers = allCompetitions.flatMap(comp => 
-    comp.teams.map(team => ({
-      ...team,
+  const allPlayerScorers = allCompetitions.flatMap(comp => 
+    comp.scorers.filter(s => !s.playerName.includes('(Seleção)')).map(scorer => ({
+      ...scorer,
       competition: comp.competitionName
     }))
   );
 
-  // Aggregate by team across competitions
-  const aggregatedTeams = new Map<string, {
-    name: string;
-    logo: string | null;
+  // Aggregate by player across competitions
+  const aggregatedPlayers = new Map<string, {
+    teamName: string;
+    teamLogo: string | null;
     totalGoals: number;
     totalMatches: number;
     competitions: string[];
   }>();
 
-  allTeamScorers.forEach(scorer => {
-    if (!aggregatedTeams.has(scorer.teamId)) {
-      aggregatedTeams.set(scorer.teamId, {
-        name: scorer.teamName,
-        logo: scorer.teamLogo,
+  allPlayerScorers.forEach(scorer => {
+    if (!aggregatedPlayers.has(scorer.playerName)) {
+      aggregatedPlayers.set(scorer.playerName, {
+        teamName: scorer.teamName,
+        teamLogo: scorer.teamLogo,
         totalGoals: 0,
         totalMatches: 0,
         competitions: []
       });
     }
-    const agg = aggregatedTeams.get(scorer.teamId)!;
-    agg.totalGoals += scorer.goalsScored;
+    const agg = aggregatedPlayers.get(scorer.playerName)!;
+    agg.totalGoals += scorer.goals;
     agg.totalMatches += scorer.matches;
     if (!agg.competitions.includes(scorer.competition)) {
       agg.competitions.push(scorer.competition);
     }
   });
 
-  const topTeamsOverall = Array.from(aggregatedTeams.values())
+  const topPlayersOverall = Array.from(aggregatedPlayers.entries())
+    .map(([name, stats]) => ({ name, ...stats }))
     .sort((a, b) => b.totalGoals - a.totalGoals)
     .slice(0, 5);
 
   const totalGoalsAllComps = allCompetitions.reduce((sum, c) => sum + c.totalGoals, 0);
   const totalMatchesAllComps = allCompetitions.reduce((sum, c) => sum + c.totalMatches, 0);
+  const uniquePlayers = aggregatedPlayers.size;
 
   return (
     <Layout>
@@ -66,7 +68,7 @@ export default function Artilheiros() {
             Artilheiros por Competição
           </h1>
           <p className="text-muted-foreground">
-            Ranking de seleções com mais gols em competições internacionais históricas
+            Ranking de artilheiros em competições internacionais históricas
           </p>
         </div>
 
@@ -119,7 +121,7 @@ export default function Artilheiros() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{totalGoalsAllComps}</p>
-                      <p className="text-xs text-muted-foreground">Gols Totais</p>
+                      <p className="text-xs text-muted-foreground">Gols</p>
                     </div>
                   </div>
                 </CardContent>
@@ -129,11 +131,11 @@ export default function Artilheiros() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-accent/20">
-                      <Target className="w-5 h-5 text-accent" />
+                      <User className="w-5 h-5 text-accent" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{totalMatchesAllComps}</p>
-                      <p className="text-xs text-muted-foreground">Partidas</p>
+                      <p className="text-2xl font-bold">{uniquePlayers}</p>
+                      <p className="text-xs text-muted-foreground">Artilheiros</p>
                     </div>
                   </div>
                 </CardContent>
@@ -157,7 +159,7 @@ export default function Artilheiros() {
             </div>
 
             {/* Top 5 Overall */}
-            {!selectedCompetition && topTeamsOverall.length > 0 && (
+            {!selectedCompetition && topPlayersOverall.length > 0 && (
               <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30 mb-8">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -167,9 +169,9 @@ export default function Artilheiros() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {topTeamsOverall.map((team, index) => (
+                    {topPlayersOverall.map((player, index) => (
                       <div 
-                        key={team.name}
+                        key={player.name}
                         className="flex items-center gap-4 p-3 rounded-lg bg-background/50"
                       >
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
@@ -181,23 +183,23 @@ export default function Artilheiros() {
                           {index + 1}
                         </div>
                         
-                        {team.logo ? (
-                          <img src={team.logo} alt={team.name} className="w-10 h-10 object-contain" />
+                        {player.teamLogo ? (
+                          <img src={player.teamLogo} alt={player.teamName} className="w-8 h-8 object-contain" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-muted-foreground" />
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                            <Shield className="w-4 h-4 text-muted-foreground" />
                           </div>
                         )}
                         
                         <div className="flex-1">
-                          <p className="font-semibold">{team.name}</p>
+                          <p className="font-semibold">{player.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {team.competitions.length} competições • {team.totalMatches} jogos
+                            {player.teamName} • {player.competitions.length} competição(ões)
                           </p>
                         </div>
                         
                         <div className="text-right">
-                          <p className="text-xl font-bold text-primary">{team.totalGoals}</p>
+                          <p className="text-xl font-bold text-primary">{player.totalGoals}</p>
                           <p className="text-xs text-muted-foreground">gols</p>
                         </div>
                       </div>
@@ -215,15 +217,15 @@ export default function Artilheiros() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{competition.competitionName}</CardTitle>
                       <Badge variant="secondary">
-                        {competition.totalGoals} gols em {competition.totalMatches} jogos
+                        {competition.totalGoals} gols
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {competition.teams.slice(0, 10).map((team, index) => (
+                      {competition.scorers.slice(0, 10).map((scorer, index) => (
                         <div 
-                          key={team.teamId}
+                          key={`${scorer.playerName}-${scorer.teamId}`}
                           className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <span className={`w-6 text-center font-medium ${
@@ -232,19 +234,22 @@ export default function Artilheiros() {
                             {index + 1}
                           </span>
                           
-                          {team.teamLogo ? (
-                            <img src={team.teamLogo} alt={team.teamName} className="w-6 h-6 object-contain" />
+                          {scorer.teamLogo ? (
+                            <img src={scorer.teamLogo} alt={scorer.teamName} className="w-6 h-6 object-contain" />
                           ) : (
                             <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
                               <Shield className="w-3 h-3" />
                             </div>
                           )}
                           
-                          <span className="flex-1 text-sm truncate">{team.teamName}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{scorer.playerName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{scorer.teamName}</p>
+                          </div>
                           
                           <div className="flex items-center gap-4 text-sm">
-                            <span className="text-muted-foreground">{team.matches}j</span>
-                            <span className="font-bold text-primary w-8 text-right">{team.goalsScored}</span>
+                            <span className="text-muted-foreground">{scorer.matches}j</span>
+                            <span className="font-bold text-primary w-6 text-right">{scorer.goals}</span>
                           </div>
                         </div>
                       ))}
