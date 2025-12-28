@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.sync-worldcup-scores]
 verify_jwt = false
+
+[functions.sync-copa-america]
+verify_jwt = false
