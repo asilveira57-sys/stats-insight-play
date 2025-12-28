@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.sync-copa-america]
 verify_jwt = false
+
+[functions.sync-historical-scorers]
+verify_jwt = false
