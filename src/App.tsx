@@ -13,6 +13,7 @@ import NoticiaDetalhes from "./pages/NoticiaDetalhes";
 import Precos from "./pages/Precos";
 import Auth from "./pages/Auth";
 import Retrospectiva from "./pages/Retrospectiva";
+import RankingSelecoes from "./pages/RankingSelecoes";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import HubDashboard from "./pages/hub/Dashboard";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/precos" element={<Precos />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/retrospectiva/brasileirao-2024" element={<Retrospectiva />} />
+            <Route path="/ranking-selecoes" element={<RankingSelecoes />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
