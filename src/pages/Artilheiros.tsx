@@ -1,23 +1,94 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useTopScorers } from "@/hooks/useTopScorers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Trophy, TrendingUp, Goal, Shield, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Target, Trophy, TrendingUp, Goal, Shield, User, X } from "lucide-react";
+
+// Extract competition type and year from competition name
+const parseCompetitionInfo = (name: string) => {
+  const lowerName = name.toLowerCase();
+  
+  // Extract year from the name
+  const yearMatch = name.match(/\d{4}/);
+  const year = yearMatch ? yearMatch[0] : null;
+  
+  // Determine competition type
+  let type = "Outros";
+  if (lowerName.includes("world cup") || lowerName.includes("copa do mundo")) {
+    type = "Copa do Mundo";
+  } else if (lowerName.includes("euro") || lowerName.includes("eurocopa")) {
+    type = "Eurocopa";
+  } else if (lowerName.includes("copa america") || lowerName.includes("copa américa")) {
+    type = "Copa América";
+  } else if (lowerName.includes("nations league") || lowerName.includes("liga das nações")) {
+    type = "Liga das Nações";
+  }
+  
+  return { type, year };
+};
 
 export default function Artilheiros() {
   const [selectedCompetition, setSelectedCompetition] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const { data: competitionStats, isLoading } = useTopScorers(selectedCompetition || undefined);
 
   const allCompetitions = competitionStats || [];
-  const displayStats = selectedCompetition 
-    ? allCompetitions.filter(c => c.competitionId === selectedCompetition)
-    : allCompetitions;
 
-  // Get overall top scorers across all competitions
-  const allPlayerScorers = allCompetitions.flatMap(comp => 
+  // Get unique competition types and years
+  const { competitionTypes, years } = useMemo(() => {
+    const types = new Set<string>();
+    const yearsSet = new Set<string>();
+    
+    allCompetitions.forEach(comp => {
+      const { type, year } = parseCompetitionInfo(comp.competitionName);
+      types.add(type);
+      if (year) yearsSet.add(year);
+    });
+    
+    return {
+      competitionTypes: Array.from(types).sort(),
+      years: Array.from(yearsSet).sort((a, b) => Number(b) - Number(a))
+    };
+  }, [allCompetitions]);
+
+  // Filter competitions based on selected filters
+  const filteredCompetitions = useMemo(() => {
+    return allCompetitions.filter(comp => {
+      if (selectedCompetition && comp.competitionId !== selectedCompetition) {
+        return false;
+      }
+      
+      const { type, year } = parseCompetitionInfo(comp.competitionName);
+      
+      if (selectedType && type !== selectedType) {
+        return false;
+      }
+      
+      if (selectedYear && year !== selectedYear) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [allCompetitions, selectedCompetition, selectedType, selectedYear]);
+
+  const displayStats = filteredCompetitions;
+
+  const hasActiveFilters = selectedCompetition || selectedType || selectedYear;
+
+  const clearFilters = () => {
+    setSelectedCompetition("");
+    setSelectedType("");
+    setSelectedYear("");
+  };
+
+  // Get overall top scorers across filtered competitions
+  const allPlayerScorers = displayStats.flatMap(comp => 
     comp.scorers.filter(s => !s.playerName.includes('(Seleção)')).map(scorer => ({
       ...scorer,
       competition: comp.competitionName
@@ -56,8 +127,8 @@ export default function Artilheiros() {
     .sort((a, b) => b.totalGoals - a.totalGoals)
     .slice(0, 5);
 
-  const totalGoalsAllComps = allCompetitions.reduce((sum, c) => sum + c.totalGoals, 0);
-  const totalMatchesAllComps = allCompetitions.reduce((sum, c) => sum + c.totalMatches, 0);
+  const totalGoalsAllComps = displayStats.reduce((sum, c) => sum + c.totalGoals, 0);
+  const totalMatchesAllComps = displayStats.reduce((sum, c) => sum + c.totalMatches, 0);
   const uniquePlayers = aggregatedPlayers.size;
 
   return (
@@ -72,11 +143,39 @@ export default function Artilheiros() {
           </p>
         </div>
 
-        {/* Filter */}
-        <div className="mb-6">
+        {/* Filters */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-3">
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-full sm:w-[200px] bg-card border-border">
+              <SelectValue placeholder="Tipo de competição" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Todos os tipos</SelectItem>
+              {competitionTypes.map(type => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-full sm:w-[140px] bg-card border-border">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Todos os anos</SelectItem>
+              {years.map(year => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
-            <SelectTrigger className="w-full md:w-[300px] bg-card border-border">
-              <SelectValue placeholder="Todas as competições" />
+            <SelectTrigger className="w-full sm:w-[280px] bg-card border-border">
+              <SelectValue placeholder="Competição específica" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">Todas as competições</SelectItem>
@@ -87,6 +186,18 @@ export default function Artilheiros() {
               ))}
             </SelectContent>
           </Select>
+
+          {hasActiveFilters && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={clearFilters}
+              className="flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              Limpar filtros
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
@@ -158,13 +269,13 @@ export default function Artilheiros() {
               </Card>
             </div>
 
-            {/* Top 5 Overall */}
-            {!selectedCompetition && topPlayersOverall.length > 0 && (
+            {/* Top 5 Overall - show when filtering or no specific competition */}
+            {topPlayersOverall.length > 0 && (
               <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30 mb-8">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-primary" />
-                    Top 5 Artilheiros (Todas Competições)
+                    Top 5 Artilheiros {hasActiveFilters ? "(Filtro Aplicado)" : "(Geral)"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
