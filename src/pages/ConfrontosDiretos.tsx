@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Swords, Trophy, Target, Calendar, ArrowRightLeft } from "lucide-react";
+import { Shield, Swords, Trophy, Target, Calendar, ArrowRightLeft, TrendingUp, Flame, Award, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -192,7 +192,7 @@ export default function ConfrontosDiretos() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {h2h.totalJogos > 0 ? (h2h.golsTime1 / h2h.totalJogos).toFixed(1) : 0}/jogo
+                      {h2h.mediaGolsTime1.toFixed(1)}/jogo
                     </p>
                   </div>
                 </CardContent>
@@ -211,12 +211,159 @@ export default function ConfrontosDiretos() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {h2h.totalJogos > 0 ? (h2h.golsTime2 / h2h.totalJogos).toFixed(1) : 0}/jogo
+                      {h2h.mediaGolsTime2.toFixed(1)}/jogo
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Advanced Statistics */}
+            <Card className="bg-card/50 border-border/50 mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  Estatísticas Avançadas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Average Goals */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <TrendingUp className="w-4 h-4" />
+                      Média de Gols
+                    </div>
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10">
+                      <p className="text-3xl font-bold text-center">{h2h.mediaGolsPorJogo.toFixed(1)}</p>
+                      <p className="text-xs text-muted-foreground text-center mt-1">gols por jogo</p>
+                    </div>
+                    {h2h.jogoMaisGols && (
+                      <div className="text-xs text-muted-foreground text-center">
+                        <span className="font-medium">Jogo mais gols:</span> {h2h.jogoMaisGols.placar} ({h2h.jogoMaisGols.total} gols)
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Winning Streaks */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Flame className="w-4 h-4" />
+                      Sequências de Vitórias
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
+                        <div className="flex items-center gap-2">
+                          {team1.escudo_url && (
+                            <img src={team1.escudo_url} alt={team1.nome} className="w-5 h-5 object-contain" />
+                          )}
+                          <span className="text-sm font-medium truncate max-w-[100px]">{team1.nome}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary">{h2h.maiorSequenciaTime1}</p>
+                          <p className="text-xs text-muted-foreground">maior sequência</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/10">
+                        <div className="flex items-center gap-2">
+                          {team2.escudo_url && (
+                            <img src={team2.escudo_url} alt={team2.nome} className="w-5 h-5 object-contain" />
+                          )}
+                          <span className="text-sm font-medium truncate max-w-[100px]">{team2.nome}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-secondary">{h2h.maiorSequenciaTime2}</p>
+                          <p className="text-xs text-muted-foreground">maior sequência</p>
+                        </div>
+                      </div>
+                    </div>
+                    {(h2h.sequenciaAtualTime1 > 1 || h2h.sequenciaAtualTime2 > 1) && (
+                      <div className="text-xs text-center text-muted-foreground">
+                        {h2h.sequenciaAtualTime1 > 1 && (
+                          <span className="text-primary font-medium">{team1.nome} com {h2h.sequenciaAtualTime1} vitórias seguidas</span>
+                        )}
+                        {h2h.sequenciaAtualTime2 > 1 && (
+                          <span className="text-secondary font-medium">{team2.nome} com {h2h.sequenciaAtualTime2} vitórias seguidas</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Biggest Victories */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Award className="w-4 h-4" />
+                      Maiores Vitórias
+                    </div>
+                    <div className="space-y-3">
+                      {h2h.maiorVitoriaTime1 && (
+                        <div className="p-3 rounded-lg bg-primary/10">
+                          <div className="flex items-center gap-2 mb-1">
+                            {team1.escudo_url && (
+                              <img src={team1.escudo_url} alt={team1.nome} className="w-4 h-4 object-contain" />
+                            )}
+                            <span className="text-sm font-medium">{team1.nome}</span>
+                          </div>
+                          <p className="text-lg font-bold text-primary">{h2h.maiorVitoriaTime1.placar}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(h2h.maiorVitoriaTime1.data), "dd/MM/yyyy")}
+                          </p>
+                        </div>
+                      )}
+                      {h2h.maiorVitoriaTime2 && (
+                        <div className="p-3 rounded-lg bg-secondary/10">
+                          <div className="flex items-center gap-2 mb-1">
+                            {team2.escudo_url && (
+                              <img src={team2.escudo_url} alt={team2.nome} className="w-4 h-4 object-contain" />
+                            )}
+                            <span className="text-sm font-medium">{team2.nome}</span>
+                          </div>
+                          <p className="text-lg font-bold text-secondary">{h2h.maiorVitoriaTime2.placar}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(h2h.maiorVitoriaTime2.data), "dd/MM/yyyy")}
+                          </p>
+                        </div>
+                      )}
+                      {!h2h.maiorVitoriaTime1 && !h2h.maiorVitoriaTime2 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Sem vitórias registradas</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Unbeaten Streaks */}
+                {(h2h.sequenciaInvictoTime1 > 2 || h2h.sequenciaInvictoTime2 > 2) && (
+                  <div className="mt-6 pt-6 border-t border-border/50">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
+                      <Trophy className="w-4 h-4" />
+                      Maior Sequência Invicta
+                    </div>
+                    <div className="flex flex-wrap gap-4 justify-center">
+                      {h2h.sequenciaInvictoTime1 > 2 && (
+                        <Badge variant="outline" className="px-3 py-1.5 text-sm">
+                          <div className="flex items-center gap-2">
+                            {team1.escudo_url && (
+                              <img src={team1.escudo_url} alt={team1.nome} className="w-4 h-4 object-contain" />
+                            )}
+                            {team1.nome}: {h2h.sequenciaInvictoTime1} jogos
+                          </div>
+                        </Badge>
+                      )}
+                      {h2h.sequenciaInvictoTime2 > 2 && (
+                        <Badge variant="outline" className="px-3 py-1.5 text-sm">
+                          <div className="flex items-center gap-2">
+                            {team2.escudo_url && (
+                              <img src={team2.escudo_url} alt={team2.nome} className="w-4 h-4 object-contain" />
+                            )}
+                            {team2.nome}: {h2h.sequenciaInvictoTime2} jogos
+                          </div>
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Match History */}
             <Card className="bg-card/50 border-border/50">
