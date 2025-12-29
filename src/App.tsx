@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import Retrospectiva from "./pages/Retrospectiva";
 import RankingSelecoes from "./pages/RankingSelecoes";
 import Artilheiros from "./pages/Artilheiros";
+import ConfrontosDiretos from "./pages/ConfrontosDiretos";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import HubDashboard from "./pages/hub/Dashboard";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/retrospectiva/brasileirao-2024" element={<Retrospectiva />} />
             <Route path="/ranking-selecoes" element={<RankingSelecoes />} />
             <Route path="/artilheiros" element={<Artilheiros />} />
+            <Route path="/confrontos" element={<ConfrontosDiretos />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

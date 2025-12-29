@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Zap, Trophy, BarChart3, Target, Newspaper, Crown, Search, LogIn, LogOut, User, Flag, Goal } from "lucide-react";
+import { Menu, X, Zap, Trophy, BarChart3, Target, Newspaper, Crown, Search, LogIn, LogOut, User, Flag, Goal, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ const navLinks = [
   { href: "/palpites", label: "Palpites", icon: Zap },
   { href: "/ranking-selecoes", label: "Seleções", icon: Flag },
   { href: "/artilheiros", label: "Artilheiros", icon: Goal },
+  { href: "/confrontos", label: "Confrontos", icon: Swords },
   { href: "/noticias", label: "Notícias", icon: Newspaper },
 ];
 
