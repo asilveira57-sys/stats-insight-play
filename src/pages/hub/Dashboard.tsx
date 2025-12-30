@@ -270,7 +270,7 @@ export default function HubDashboard() {
         </div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
           <Link to="/hub/matches">
             <Card className="glass-card hover-glow cursor-pointer transition-transform hover:scale-[1.02]">
               <CardContent className="p-4 text-center">
@@ -307,6 +307,16 @@ export default function HubDashboard() {
                 <Play className="w-8 h-8 text-destructive mx-auto mb-2" />
                 <div className="font-medium">Highlights</div>
                 <div className="text-xs text-muted-foreground">Vídeos e gols</div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/hub/sync-details">
+            <Card className="glass-card hover-glow cursor-pointer transition-transform hover:scale-[1.02]">
+              <CardContent className="p-4 text-center">
+                <Zap className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                <div className="font-medium">Sync Detalhes</div>
+                <div className="text-xs text-muted-foreground">Gols, escalações</div>
               </CardContent>
             </Card>
           </Link>

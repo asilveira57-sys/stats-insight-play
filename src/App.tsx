@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import HubDashboard from "./pages/hub/Dashboard";
 import HubSources from "./pages/hub/Sources";
 import HubMatches from "./pages/hub/Matches";
+import HubSyncDetails from "./pages/hub/SyncDetails";
 import HubCompetitions from "./pages/hub/Competitions";
 import HubTeams from "./pages/hub/Teams";
 import HubHighlights from "./pages/hub/Highlights";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/hub/teams" element={<HubTeams />} />
             <Route path="/hub/highlights" element={<HubHighlights />} />
             <Route path="/hub/logs" element={<HubLogs />} />
+            <Route path="/hub/sync-details" element={<HubSyncDetails />} />
             <Route path="/resultados" element={<Resultados />} />
             <Route path="/estatisticas" element={<Estatisticas />} />
             <Route path="/palpites" element={<Palpites />} />
