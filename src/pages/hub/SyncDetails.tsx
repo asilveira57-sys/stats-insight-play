@@ -20,7 +20,8 @@ import {
   Pause,
   Database,
   Zap,
-  ListFilter
+  ListFilter,
+  Calendar
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -309,6 +310,36 @@ export default function HubSyncDetails() {
           </CardHeader>
           <CardContent>
             <Progress value={Number(progressPercent)} className="h-3" />
+          </CardContent>
+        </Card>
+
+        {/* Cron Job Status */}
+        <Card className="glass-card mb-8 border-secondary/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-secondary" />
+              Sincronização Automática
+            </CardTitle>
+            <CardDescription>
+              Cron job configurado para sincronizar detalhes automaticamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/10">
+              <CheckCircle className="w-6 h-6 text-secondary" />
+              <div className="flex-1">
+                <p className="font-medium">Agendamento Ativo</p>
+                <p className="text-sm text-muted-foreground">
+                  Executa a cada 2 horas, sincronizando 10 partidas por execução
+                </p>
+              </div>
+              <Badge className="bg-secondary/20 text-secondary">
+                0 */2 * * *
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Com 10 partidas a cada 2 horas, serão sincronizadas ~120 partidas/dia automaticamente
+            </p>
           </CardContent>
         </Card>
 
