@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -21,16 +22,28 @@ import {
   Database,
   Zap,
   ListFilter,
-  Calendar
+  Calendar,
+  Trophy
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TeamBadge } from "@/components/ui/TeamBadge";
+
+// Competitions available for top scorers sync (free tier)
+const TOP_SCORERS_COMPETITIONS = [
+  { code: 'PL', name: 'Premier League', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+  { code: 'PD', name: 'La Liga', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+  { code: 'SA', name: 'Serie A', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+  { code: 'BL1', name: 'Bundesliga', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+  { code: 'FL1', name: 'Ligue 1', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+  { code: 'BSA', name: 'Brasileirão Série A', seasons: [2023, 2024, 2025] },
+  { code: 'CL', name: 'Champions League', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+];
 
 interface SyncStats {
   total: number;
@@ -61,6 +74,12 @@ export default function HubSyncDetails() {
   const [totalToSync, setTotalToSync] = useState(0);
   const [currentMatch, setCurrentMatch] = useState<string | null>(null);
   const abortRef = useRef(false);
+
+  // Top scorers sync state
+  const [selectedScorersCompetition, setSelectedScorersCompetition] = useState<string>("");
+  const [selectedScorersSeasons, setSelectedScorersSeasons] = useState<number[]>([]);
+  const [isSyncingScorers, setIsSyncingScorers] = useState(false);
+  const [scorersSyncResult, setScorersSyncResult] = useState<any>(null);
 
   // Fetch sync statistics
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
@@ -213,6 +232,51 @@ export default function HubSyncDetails() {
 
   const stopSync = () => {
     abortRef.current = true;
+  };
+
+  // Top Scorers sync function
+  const syncTopScorers = async () => {
+    if (!selectedScorersCompetition || selectedScorersSeasons.length === 0) {
+      toast.error('Selecione uma competição e pelo menos uma temporada');
+      return;
+    }
+
+    setIsSyncingScorers(true);
+    setScorersSyncResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-top-scorers', {
+        body: { 
+          competition: selectedScorersCompetition, 
+          seasons: selectedScorersSeasons 
+        }
+      });
+
+      if (error) throw error;
+
+      setScorersSyncResult(data);
+      toast.success(`Sincronização concluída: ${data.totalGoals} gols adicionados`);
+    } catch (error) {
+      console.error('Top scorers sync error:', error);
+      toast.error('Erro na sincronização de artilheiros');
+    } finally {
+      setIsSyncingScorers(false);
+    }
+  };
+
+  const toggleSeason = (season: number) => {
+    setSelectedScorersSeasons(prev => 
+      prev.includes(season) 
+        ? prev.filter(s => s !== season)
+        : [...prev, season].sort((a, b) => a - b)
+    );
+  };
+
+  const selectAllSeasons = () => {
+    const comp = TOP_SCORERS_COMPETITIONS.find(c => c.code === selectedScorersCompetition);
+    if (comp) {
+      setSelectedScorersSeasons(comp.seasons);
+    }
   };
 
   const progressPercent = stats ? 
@@ -418,6 +482,157 @@ export default function HubSyncDetails() {
                 <p className="text-xs text-muted-foreground">
                   Tempo restante estimado: ~{Math.ceil((totalToSync - syncedCount) * 6 / 60)} minutos
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Scorers Sync */}
+        <Card className="glass-card mb-8 border-accent/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-accent" />
+              Sincronização de Artilheiros
+            </CardTitle>
+            <CardDescription>
+              Importe os principais artilheiros de cada temporada diretamente da API Football-Data.org
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Competition Select */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Competição</label>
+                <Select 
+                  value={selectedScorersCompetition} 
+                  onValueChange={(val) => {
+                    setSelectedScorersCompetition(val);
+                    setSelectedScorersSeasons([]);
+                  }} 
+                  disabled={isSyncingScorers}
+                >
+                  <SelectTrigger className="w-full bg-muted/50 border-border">
+                    <SelectValue placeholder="Selecione uma competição" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TOP_SCORERS_COMPETITIONS.map((comp) => (
+                      <SelectItem key={comp.code} value={comp.code}>
+                        {comp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Seasons */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Temporadas</label>
+                  {selectedScorersCompetition && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={selectAllSeasons}
+                      disabled={isSyncingScorers}
+                    >
+                      Selecionar todas
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedScorersCompetition ? (
+                    TOP_SCORERS_COMPETITIONS.find(c => c.code === selectedScorersCompetition)?.seasons.map((season) => (
+                      <label 
+                        key={season} 
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
+                          selectedScorersSeasons.includes(season) 
+                            ? 'bg-accent/20 text-accent border border-accent/50' 
+                            : 'bg-muted/50 text-muted-foreground border border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={selectedScorersSeasons.includes(season)}
+                          onCheckedChange={() => toggleSeason(season)}
+                          disabled={isSyncingScorers}
+                          className="sr-only"
+                        />
+                        <span className="text-sm">{season}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Selecione uma competição primeiro</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Sync Button */}
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={syncTopScorers} 
+                disabled={isSyncingScorers || !selectedScorersCompetition || selectedScorersSeasons.length === 0}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                {isSyncingScorers ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Sincronizando...
+                  </>
+                ) : (
+                  <>
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Sincronizar Artilheiros
+                  </>
+                )}
+              </Button>
+              {selectedScorersSeasons.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedScorersSeasons.length} temporada(s) selecionada(s)
+                  {selectedScorersSeasons.length > 1 && (
+                    <span> • Tempo estimado: ~{selectedScorersSeasons.length * 6}s</span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            {/* Sync Results */}
+            {scorersSyncResult && (
+              <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
+                <h4 className="font-medium text-accent mb-2">Resultado da Sincronização</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Competição</p>
+                    <p className="font-medium">{scorersSyncResult.competition}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Artilheiros</p>
+                    <p className="font-medium">{scorersSyncResult.totalScorers}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Gols Adicionados</p>
+                    <p className="font-medium">{scorersSyncResult.totalGoals}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Temporadas</p>
+                    <p className="font-medium">{scorersSyncResult.results?.length || 0}</p>
+                  </div>
+                </div>
+                {scorersSyncResult.results && scorersSyncResult.results.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-accent/20">
+                    <p className="text-sm text-muted-foreground mb-2">Detalhes por temporada:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {scorersSyncResult.results.map((r: any) => (
+                        <Badge 
+                          key={r.season} 
+                          variant={r.error ? "destructive" : "outline"}
+                          className="text-xs"
+                        >
+                          {r.season}: {r.error || `${r.scorers} artilheiros, ${r.goals} gols`}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
