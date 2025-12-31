@@ -145,12 +145,12 @@ export default function Artilheiros() {
 
         {/* Filters */}
         <div className="mb-6 flex flex-col sm:flex-row gap-3">
-          <Select value={selectedType} onValueChange={setSelectedType}>
+          <Select value={selectedType || "all"} onValueChange={(val) => setSelectedType(val === "all" ? "" : val)}>
             <SelectTrigger className="w-full sm:w-[200px] bg-card border-border">
               <SelectValue placeholder="Tipo de competição" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os tipos</SelectItem>
+              <SelectItem value="all">Todos os tipos</SelectItem>
               {competitionTypes.map(type => (
                 <SelectItem key={type} value={type}>
                   {type}
@@ -159,12 +159,12 @@ export default function Artilheiros() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <Select value={selectedYear || "all"} onValueChange={(val) => setSelectedYear(val === "all" ? "" : val)}>
             <SelectTrigger className="w-full sm:w-[140px] bg-card border-border">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os anos</SelectItem>
+              <SelectItem value="all">Todos os anos</SelectItem>
               {years.map(year => (
                 <SelectItem key={year} value={year}>
                   {year}
@@ -173,12 +173,12 @@ export default function Artilheiros() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
+          <Select value={selectedCompetition || "all"} onValueChange={(val) => setSelectedCompetition(val === "all" ? "" : val)}>
             <SelectTrigger className="w-full sm:w-[280px] bg-card border-border">
               <SelectValue placeholder="Competição específica" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas as competições</SelectItem>
+              <SelectItem value="all">Todas as competições</SelectItem>
               {allCompetitions.map(comp => (
                 <SelectItem key={comp.competitionId} value={comp.competitionId}>
                   {comp.competitionName}
