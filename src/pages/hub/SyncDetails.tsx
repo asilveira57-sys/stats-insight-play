@@ -330,15 +330,15 @@ export default function HubSyncDetails() {
               <div className="flex-1">
                 <p className="font-medium">Agendamento Ativo</p>
                 <p className="text-sm text-muted-foreground">
-                  Executa a cada 2 horas, sincronizando 10 partidas por execução
+                  Executa a cada 30 minutos, sincronizando 10 partidas por execução
                 </p>
               </div>
               <Badge className="bg-secondary/20 text-secondary">
-                0 */2 * * *
+                */30 * * * *
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Com 10 partidas a cada 2 horas, serão sincronizadas ~120 partidas/dia automaticamente
+              Com 10 partidas a cada 30 minutos, serão sincronizadas ~480 partidas/dia automaticamente
             </p>
           </CardContent>
         </Card>
