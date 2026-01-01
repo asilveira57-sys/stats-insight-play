@@ -9,6 +9,7 @@ const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io';
 
 // Leagues to sync from API-Football
 const API_FOOTBALL_LEAGUES = {
+  71: { code: 'BSB', name: 'Campeonato Brasileiro Série B', country: 'Brazil' },
   73: { code: 'CDB', name: 'Copa do Brasil', country: 'Brazil' },
   13: { code: 'CLI', name: 'Copa Libertadores', country: 'South America' },
   11: { code: 'CSA', name: 'Copa Sudamericana', country: 'South America' },
