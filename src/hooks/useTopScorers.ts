@@ -18,36 +18,39 @@ interface CompetitionScorers {
   totalMatches: number;
 }
 
-const INTERNATIONAL_KEYWORDS = [
-  'world cup', 'copa do mundo', 'copa america', 'copa américa',
-  'euro', 'eurocopa', 'nations league', 'liga das nações'
-];
+interface UseTopScorersOptions {
+  selectedCompetition?: string;
+  selectedYear?: string;
+}
 
-export function useTopScorers(selectedCompetition?: string) {
+export function useTopScorers(options: UseTopScorersOptions = {}) {
+  const { selectedCompetition, selectedYear } = options;
+
   return useQuery({
-    queryKey: ['top-scorers', selectedCompetition],
+    queryKey: ['top-scorers', selectedCompetition, selectedYear],
     queryFn: async (): Promise<CompetitionScorers[]> => {
-      // Fetch all international leagues
+      // Fetch all leagues
       const { data: leagues, error: leaguesError } = await supabase
         .from('ligas')
         .select('id, nome, logo_url');
 
       if (leaguesError) throw leaguesError;
-
-      const internationalLeagues = leagues?.filter(league => 
-        INTERNATIONAL_KEYWORDS.some(keyword => 
-          league.nome.toLowerCase().includes(keyword)
-        )
-      ) || [];
-
-      if (internationalLeagues.length === 0) return [];
+      if (!leagues || leagues.length === 0) return [];
 
       const leagueIds = selectedCompetition 
         ? [selectedCompetition]
-        : internationalLeagues.map(l => l.id);
+        : leagues.map(l => l.id);
 
-      // Fetch goals from gols_partida table
-      const { data: goals, error: goalsError } = await supabase
+      // Build date filter for year
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+      if (selectedYear) {
+        startDate = `${selectedYear}-01-01`;
+        endDate = `${selectedYear}-12-31`;
+      }
+
+      // Fetch goals from gols_partida table with year filter
+      let goalsQuery = supabase
         .from('gols_partida')
         .select(`
           id,
@@ -58,18 +61,32 @@ export function useTopScorers(selectedCompetition?: string) {
           partidas (
             id,
             liga_id,
+            data,
             ligas (id, nome)
           ),
           times (id, nome, escudo_url)
         `)
         .not('jogador_nome', 'is', null);
 
+      const { data: goals, error: goalsError } = await goalsQuery;
+
       if (goalsError) throw goalsError;
 
-      // Filter goals by international leagues
+      // Filter goals by leagues and year
       const filteredGoals = goals?.filter(goal => {
-        const ligaId = (goal.partidas as any)?.liga_id;
-        return leagueIds.includes(ligaId);
+        const partida = goal.partidas as any;
+        const ligaId = partida?.liga_id;
+        
+        // Filter by league
+        if (!leagueIds.includes(ligaId)) return false;
+        
+        // Filter by year if specified
+        if (selectedYear && partida?.data) {
+          const matchYear = new Date(partida.data).getFullYear().toString();
+          if (matchYear !== selectedYear) return false;
+        }
+        
+        return true;
       }) || [];
 
       // Group by competition
@@ -92,7 +109,6 @@ export function useTopScorers(selectedCompetition?: string) {
       const competitionScorers: CompetitionScorers[] = [];
 
       competitionMap.forEach((data, competitionId) => {
-        // Group goals by player
         const playerGoalsMap = new Map<string, {
           teamId: string;
           teamName: string;
@@ -131,7 +147,6 @@ export function useTopScorers(selectedCompetition?: string) {
           }))
           .sort((a, b) => b.goals - a.goals);
 
-        // Get unique match count for this competition
         const uniqueMatches = new Set(data.goals.map(g => g.partida_id)).size;
 
         competitionScorers.push({
@@ -143,12 +158,13 @@ export function useTopScorers(selectedCompetition?: string) {
         });
       });
 
-      // Also get team-level stats for competitions without individual goals
-      const { data: matches } = await supabase
+      // Fallback: get team-level stats for competitions without individual goals
+      let matchesQuery = supabase
         .from('partidas')
         .select(`
           id,
           liga_id,
+          data,
           time_casa_id,
           time_fora_id,
           gols_casa,
@@ -162,7 +178,12 @@ export function useTopScorers(selectedCompetition?: string) {
         .not('gols_casa', 'is', null)
         .not('gols_fora', 'is', null);
 
-      // Add competitions that have matches but no individual goals
+      if (startDate && endDate) {
+        matchesQuery = matchesQuery.gte('data', startDate).lte('data', endDate);
+      }
+
+      const { data: matches } = await matchesQuery;
+
       if (matches) {
         const existingCompetitionIds = new Set(competitionScorers.map(c => c.competitionId));
         
@@ -179,7 +200,6 @@ export function useTopScorers(selectedCompetition?: string) {
           if (!existingCompetitionIds.has(ligaId)) {
             const ligaNome = (leagueMatches[0]?.ligas as any)?.nome || 'Unknown';
             
-            // Calculate team goals as fallback
             const teamGoals = new Map<string, { name: string; logo: string | null; goals: number; matches: number }>();
             
             leagueMatches.forEach(match => {
@@ -205,7 +225,7 @@ export function useTopScorers(selectedCompetition?: string) {
 
             const teamScorers: PlayerScorer[] = Array.from(teamGoals.entries())
               .map(([teamId, stats]) => ({
-                playerName: `${stats.name} (Seleção)`,
+                playerName: `${stats.name} (Time)`,
                 teamId,
                 teamName: stats.name,
                 teamLogo: stats.logo,

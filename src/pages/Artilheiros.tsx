@@ -35,7 +35,10 @@ export default function Artilheiros() {
   const [selectedCompetition, setSelectedCompetition] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const { data: competitionStats, isLoading } = useTopScorers(selectedCompetition || undefined);
+  const { data: competitionStats, isLoading } = useTopScorers({ 
+    selectedCompetition: selectedCompetition || undefined,
+    selectedYear: selectedYear || undefined
+  });
 
   const allCompetitions = competitionStats || [];
 
