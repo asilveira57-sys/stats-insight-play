@@ -44,23 +44,42 @@ export default function HubLogs() {
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ['sync-logs', statusFilter, sourceFilter],
     queryFn: async () => {
-      let query = supabase
-        .from('sync_logs')
-        .select('*, data_sources(name)')
-        .order('started_at', { ascending: false })
-        .limit(100);
+      // Fetch ALL logs without the 1000-row limit using pagination
+      const allLogs: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as any);
+      while (hasMore) {
+        let query = supabase
+          .from('sync_logs')
+          .select('*, data_sources(name)')
+          .order('started_at', { ascending: false })
+          .range(offset, offset + batchSize - 1);
+
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter as any);
+        }
+
+        if (sourceFilter !== 'all') {
+          query = query.eq('source_id', sourceFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allLogs.push(...data);
+          offset += batchSize;
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
       }
 
-      if (sourceFilter !== 'all') {
-        query = query.eq('source_id', sourceFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      return allLogs;
     }
   });
 
