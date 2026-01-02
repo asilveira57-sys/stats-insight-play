@@ -36,7 +36,7 @@ export default function HubDashboard() {
     }
   });
 
-  // Fetch recent sync logs
+  // Fetch recent sync logs (last 50 for dashboard display, but count ALL for stats)
   const { data: syncLogs } = useQuery({
     queryKey: ['sync-logs-recent'],
     queryFn: async () => {
@@ -44,9 +44,46 @@ export default function HubDashboard() {
         .from('sync_logs')
         .select('*, data_sources(name)')
         .order('started_at', { ascending: false })
-        .limit(10);
+        .limit(50); // Dashboard shows recent, not all
       if (error) throw error;
       return data;
+    }
+  });
+
+  // Fetch ALL sync logs count for 24h error stats
+  const { data: allSyncLogs } = useQuery({
+    queryKey: ['sync-logs-all-24h'],
+    queryFn: async () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Fetch ALL logs from last 24h without limit
+      const allLogs: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('sync_logs')
+          .select('id, status')
+          .gte('started_at', yesterday.toISOString())
+          .range(offset, offset + batchSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allLogs.push(...data);
+          offset += batchSize;
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return allLogs;
     }
   });
 
@@ -86,8 +123,8 @@ export default function HubDashboard() {
   // Get active sources count
   const activeSources = sources?.filter(s => s.status === 'active').length || 0;
   
-  // Get error count from last 24h
-  const recentErrors = syncLogs?.filter(log => log.status === 'failed').length || 0;
+  // Get error count from last 24h (using all logs, not just recent)
+  const recentErrors = allSyncLogs?.filter(log => log.status === 'failed').length || 0;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
