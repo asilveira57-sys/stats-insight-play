@@ -81,22 +81,41 @@ export default function HubSyncDetails() {
   const [isSyncingScorers, setIsSyncingScorers] = useState(false);
   const [scorersSyncResult, setScorersSyncResult] = useState<any>(null);
 
-  // Fetch sync statistics
+  // Fetch sync statistics using pagination to avoid 1000-row limit
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ['sync-details-stats'],
     queryFn: async (): Promise<SyncStats> => {
-      const { data, error } = await supabase
-        .from('partidas')
-        .select('status, detalhes_sincronizados', { count: 'exact' });
+      // Fetch ALL partidas using pagination
+      const allPartidas: { status: string | null; detalhes_sincronizados: boolean | null }[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('partidas')
+          .select('status, detalhes_sincronizados')
+          .range(offset, offset + batchSize - 1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allPartidas.push(...data);
+          offset += batchSize;
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
       
-      if (error) throw error;
-      
-      const total = data?.length || 0;
-      const sincronizadas = data?.filter(p => p.detalhes_sincronizados === true).length || 0;
+      const total = allPartidas.length;
+      const sincronizadas = allPartidas.filter(p => p.detalhes_sincronizados === true).length;
       const pendentes = total - sincronizadas;
-      const finalizadasPendentes = data?.filter(
+      const finalizadasPendentes = allPartidas.filter(
         p => p.status === 'finished' && !p.detalhes_sincronizados
-      ).length || 0;
+      ).length;
       
       return { total, sincronizadas, pendentes, finalizadasPendentes };
     }

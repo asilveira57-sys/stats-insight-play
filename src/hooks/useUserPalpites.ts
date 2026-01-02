@@ -226,16 +226,33 @@ export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: ['system-accuracy-stats', startDate, endDate],
     queryFn: async () => {
-      // Fetch all records without the default 1000 limit
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select('*, partida:partidas(data)')
-        .limit(10000);
+      // Fetch ALL records without the default 1000 limit using pagination
+      const allRecords: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('comparativo_resultados')
+          .select('*, partida:partidas(data)')
+          .range(offset, offset + batchSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allRecords.push(...data);
+          offset += batchSize;
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
 
       // Filter by date range if provided
-      let results = data || [];
+      let results = allRecords;
       if (startDate || endDate) {
         results = results.filter((r: any) => {
           const matchDate = r.partida?.data;

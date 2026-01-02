@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 interface PlayerScorer {
   playerName: string;
@@ -49,28 +50,27 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
         endDate = `${selectedYear}-12-31`;
       }
 
-      // Fetch goals from gols_partida table with year filter
-      let goalsQuery = supabase
-        .from('gols_partida')
-        .select(`
-          id,
-          jogador_nome,
-          minuto,
-          partida_id,
-          time_id,
-          partidas (
-            id,
-            liga_id,
-            data,
-            ligas (id, nome)
-          ),
-          times (id, nome, escudo_url)
-        `)
-        .not('jogador_nome', 'is', null);
-
-      const { data: goals, error: goalsError } = await goalsQuery;
-
-      if (goalsError) throw goalsError;
+      // Fetch ALL goals from gols_partida table without limit using pagination
+      const goals = await fetchAllRecords<{
+        id: string;
+        jogador_nome: string;
+        minuto: number;
+        partida_id: string;
+        time_id: string | null;
+        partidas: {
+          id: string;
+          liga_id: string | null;
+          data: string;
+          ligas: { id: string; nome: string } | null;
+        } | null;
+        times: { id: string; nome: string; escudo_url: string | null } | null;
+      }>(
+        'gols_partida',
+        `id, jogador_nome, minuto, partida_id, time_id,
+          partidas (id, liga_id, data, ligas (id, nome)),
+          times (id, nome, escudo_url)`,
+        (query) => query.not('jogador_nome', 'is', null)
+      );
 
       // Filter goals by leagues and year
       const filteredGoals = goals?.filter(goal => {
