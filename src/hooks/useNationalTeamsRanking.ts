@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 export interface TeamRankingData {
   id: string;
@@ -40,30 +41,31 @@ export const useNationalTeamsRanking = (competitionFilter?: string) => {
         return [];
       }
 
-      // Build query for matches
-      let matchQuery = supabase
-        .from('partidas')
-        .select(`
-          id,
-          gols_casa,
-          gols_fora,
-          time_casa_id,
-          time_fora_id,
-          liga_id,
-          ligas!inner(nome)
-        `)
-        .eq('status', 'finished')
-        .not('gols_casa', 'is', null)
-        .not('gols_fora', 'is', null)
-        .in('liga_id', ligaIds);
-
-      if (competitionFilter && competitionFilter !== 'all') {
-        matchQuery = matchQuery.eq('liga_id', competitionFilter);
-      }
-
-      const { data: matches, error: matchesError } = await matchQuery;
-
-      if (matchesError) throw matchesError;
+      // Fetch ALL matches without limit using pagination
+      const matches = await fetchAllRecords<{
+        id: string;
+        gols_casa: number | null;
+        gols_fora: number | null;
+        time_casa_id: string | null;
+        time_fora_id: string | null;
+        liga_id: string | null;
+        ligas: { nome: string } | null;
+      }>(
+        'partidas',
+        `id, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, ligas!inner(nome)`,
+        (query) => {
+          let q = query
+            .eq('status', 'finished')
+            .not('gols_casa', 'is', null)
+            .not('gols_fora', 'is', null)
+            .in('liga_id', ligaIds);
+          
+          if (competitionFilter && competitionFilter !== 'all') {
+            q = q.eq('liga_id', competitionFilter);
+          }
+          return q;
+        }
+      );
 
       // Get all unique team IDs
       const teamIds = new Set<string>();
