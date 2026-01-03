@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.sync-top-scorers]
 verify_jwt = false
+
+[functions.sync-scorers-auto]
+verify_jwt = false
