@@ -18,14 +18,33 @@ const parseCompetitionInfo = (name: string) => {
   
   // Determine competition type
   let type = "Outros";
+  
+  // International competitions
   if (lowerName.includes("world cup") || lowerName.includes("copa do mundo")) {
-    type = "Copa do Mundo";
-  } else if (lowerName.includes("euro") || lowerName.includes("eurocopa")) {
-    type = "Eurocopa";
+    type = "Internacional";
+  } else if (lowerName.includes("euro") || lowerName.includes("eurocopa") || lowerName.includes("european championship")) {
+    type = "Internacional";
   } else if (lowerName.includes("copa america") || lowerName.includes("copa américa")) {
-    type = "Copa América";
+    type = "Internacional";
   } else if (lowerName.includes("nations league") || lowerName.includes("liga das nações")) {
-    type = "Liga das Nações";
+    type = "Internacional";
+  } else if (lowerName.includes("champions league") || lowerName.includes("uefa champions")) {
+    type = "Copas";
+  // National leagues
+  } else if (lowerName.includes("brasileiro") || lowerName.includes("série a") || lowerName.includes("brasileirão")) {
+    type = "Ligas";
+  } else if (lowerName.includes("premier league")) {
+    type = "Ligas";
+  } else if (lowerName.includes("la liga") || lowerName.includes("laliga") || lowerName.includes("primera")) {
+    type = "Ligas";
+  } else if (lowerName.includes("serie a") && !lowerName.includes("brasil")) {
+    type = "Ligas";
+  } else if (lowerName.includes("bundesliga")) {
+    type = "Ligas";
+  } else if (lowerName.includes("ligue 1")) {
+    type = "Ligas";
+  } else if (lowerName.includes("copa do brasil") || lowerName.includes("libertadores") || lowerName.includes("sudamericana")) {
+    type = "Copas";
   }
   
   return { type, year };
@@ -50,7 +69,9 @@ export default function Artilheiros() {
     allCompetitions.forEach(comp => {
       const { type, year } = parseCompetitionInfo(comp.competitionName);
       types.add(type);
-      if (year) yearsSet.add(year);
+      // Use competitionYear from data if available, otherwise extract from name
+      const effectiveYear = comp.competitionYear || year;
+      if (effectiveYear) yearsSet.add(effectiveYear);
     });
     
     return {
@@ -67,12 +88,14 @@ export default function Artilheiros() {
       }
       
       const { type, year } = parseCompetitionInfo(comp.competitionName);
+      // Use competitionYear from data if available, otherwise extract from name
+      const effectiveYear = comp.competitionYear || year;
       
       if (selectedType && type !== selectedType) {
         return false;
       }
       
-      if (selectedYear && year !== selectedYear) {
+      if (selectedYear && effectiveYear !== selectedYear) {
         return false;
       }
       

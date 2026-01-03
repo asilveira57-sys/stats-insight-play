@@ -14,6 +14,7 @@ interface PlayerScorer {
 interface CompetitionScorers {
   competitionId: string;
   competitionName: string;
+  competitionYear?: string;
   scorers: PlayerScorer[];
   totalGoals: number;
   totalMatches: number;
@@ -89,20 +90,25 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
         return true;
       }) || [];
 
-      // Group by competition
+      // Group by competition and year
       const competitionMap = new Map<string, {
         name: string;
+        years: Set<string>;
         goals: typeof filteredGoals;
       }>();
 
       filteredGoals.forEach(goal => {
         const ligaId = (goal.partidas as any)?.liga_id;
         const ligaNome = (goal.partidas as any)?.ligas?.nome || 'Unknown';
+        const matchDate = (goal.partidas as any)?.data;
+        const year = matchDate ? new Date(matchDate).getFullYear().toString() : '';
         
         if (!competitionMap.has(ligaId)) {
-          competitionMap.set(ligaId, { name: ligaNome, goals: [] });
+          competitionMap.set(ligaId, { name: ligaNome, years: new Set(), goals: [] });
         }
-        competitionMap.get(ligaId)!.goals.push(goal);
+        const entry = competitionMap.get(ligaId)!;
+        entry.goals.push(goal);
+        if (year) entry.years.add(year);
       });
 
       // Calculate scorers per competition
@@ -149,9 +155,14 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
 
         const uniqueMatches = new Set(data.goals.map(g => g.partida_id)).size;
 
+        // Get years sorted descending
+        const yearsArray = Array.from(data.years).sort((a, b) => Number(b) - Number(a));
+        const competitionYear = yearsArray.length > 0 ? yearsArray[0] : undefined;
+
         competitionScorers.push({
           competitionId,
           competitionName: data.name,
+          competitionYear,
           scorers,
           totalGoals: data.goals.length,
           totalMatches: uniqueMatches
