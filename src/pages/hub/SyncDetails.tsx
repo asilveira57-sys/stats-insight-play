@@ -33,6 +33,79 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TeamBadge } from "@/components/ui/TeamBadge";
+import { formatDistanceToNow } from "date-fns";
+
+// CronJobStatus Component
+const CronJobStatus = () => {
+  const { data: lastSync, isLoading } = useQuery({
+    queryKey: ['last-cron-sync'],
+    queryFn: async () => {
+      // Check for the most recently synced match
+      const { data, error } = await supabase
+        .from('partidas')
+        .select('updated_at')
+        .eq('detalhes_sincronizados', true)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      return data?.[0]?.updated_at || null;
+    },
+    refetchInterval: 60000 // Refetch every minute
+  });
+
+  return (
+    <Card className="glass-card mb-8 border-secondary/30">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-secondary" />
+          Sincronização Automática
+        </CardTitle>
+        <CardDescription>
+          Cron job configurado para sincronizar detalhes automaticamente
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/10">
+          <CheckCircle className="w-6 h-6 text-secondary" />
+          <div className="flex-1">
+            <p className="font-medium">Agendamento Ativo</p>
+            <p className="text-sm text-muted-foreground">
+              Executa a cada 10 minutos, sincronizando 20 partidas por execução
+            </p>
+          </div>
+          <Badge className="bg-secondary/20 text-secondary">
+            */10 * * * *
+          </Badge>
+        </div>
+        
+        {/* Last execution indicator */}
+        <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
+          <Clock className="w-4 h-4 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Última Sincronização</p>
+            {isLoading ? (
+              <p className="text-xs text-muted-foreground">Carregando...</p>
+            ) : lastSync ? (
+              <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(lastSync), { addSuffix: true, locale: ptBR })}
+                <span className="text-muted-foreground/60 ml-2">
+                  ({format(new Date(lastSync), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })})
+                </span>
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Nenhuma execução registrada</p>
+            )}
+          </div>
+        </div>
+        
+        <p className="text-xs text-muted-foreground mt-3">
+          Com 20 partidas a cada 10 minutos, serão sincronizadas ~2.880 partidas/dia automaticamente
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
 
 // Competitions available for top scorers sync (free tier)
 const TOP_SCORERS_COMPETITIONS = [
@@ -397,34 +470,7 @@ export default function HubSyncDetails() {
         </Card>
 
         {/* Cron Job Status */}
-        <Card className="glass-card mb-8 border-secondary/30">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-secondary" />
-              Sincronização Automática
-            </CardTitle>
-            <CardDescription>
-              Cron job configurado para sincronizar detalhes automaticamente
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/10">
-              <CheckCircle className="w-6 h-6 text-secondary" />
-              <div className="flex-1">
-                <p className="font-medium">Agendamento Ativo</p>
-                <p className="text-sm text-muted-foreground">
-                  Executa a cada 10 minutos, sincronizando 20 partidas por execução
-                </p>
-              </div>
-              <Badge className="bg-secondary/20 text-secondary">
-                */10 * * * *
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Com 20 partidas a cada 10 minutos, serão sincronizadas ~2.880 partidas/dia automaticamente
-            </p>
-          </CardContent>
-        </Card>
+        <CronJobStatus />
 
         {/* Batch Sync Controls */}
         <Card className="glass-card mb-8">
