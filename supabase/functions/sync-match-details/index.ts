@@ -8,6 +8,9 @@ const corsHeaders = {
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 
+// Competitions covered by Football-Data.org FREE tier
+const FREE_TIER_COMPETITIONS = ['BSA', 'PL', 'PD', 'SA', 'BL1', 'FL1', 'CL', 'EC', 'WC'];
+
 interface MatchDetails {
   id: number;
   homeTeam: { id: number; name: string; coach?: { id: number; name: string; nationality?: string } };
@@ -67,7 +70,8 @@ async function fetchMatchDetails(matchApiId: number, apiKey: string): Promise<Ma
     });
 
     if (!response.ok) {
-      console.error(`Failed to fetch match ${matchApiId}: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Failed to fetch match ${matchApiId}: ${response.status} - ${errorText}`);
       return null;
     }
 
@@ -312,21 +316,34 @@ serve(async (req) => {
       // No body, use defaults
     }
 
+    // Get list of leagues in free tier
+    const { data: validLeagues } = await supabase
+      .from('ligas')
+      .select('id')
+      .in('codigo_api', FREE_TIER_COMPETITIONS);
+    
+    const validLeagueIds = validLeagues?.map(l => l.id) || [];
+    console.log(`Found ${validLeagueIds.length} valid leagues for free tier`);
+
     let query = supabase
       .from('partidas')
-      .select('id, api_id, time_casa_id, time_fora_id, data')
+      .select('id, api_id, time_casa_id, time_fora_id, data, liga_id')
       .eq('status', 'finished')
-      .eq('detalhes_sincronizados', false)
+      .or('detalhes_sincronizados.is.null,detalhes_sincronizados.eq.false')
       .not('api_id', 'is', null)
       .order('data', { ascending: false });
     
     if (specificMatchId) {
       query = supabase
         .from('partidas')
-        .select('id, api_id, time_casa_id, time_fora_id, data')
+        .select('id, api_id, time_casa_id, time_fora_id, data, liga_id')
         .eq('id', specificMatchId)
         .not('api_id', 'is', null);
     } else {
+      // Filter to only valid leagues (free tier)
+      if (validLeagueIds.length > 0) {
+        query = query.in('liga_id', validLeagueIds);
+      }
       query = query.limit(limit);
     }
 
@@ -334,6 +351,22 @@ serve(async (req) => {
 
     if (partidasError) {
       throw new Error(`Error fetching matches: ${partidasError.message}`);
+    }
+
+    // Also mark non-free-tier matches as synced (to skip them in future)
+    if (!specificMatchId && validLeagueIds.length > 0) {
+      const { error: skipError } = await supabase
+        .from('partidas')
+        .update({ detalhes_sincronizados: true })
+        .eq('status', 'finished')
+        .or('detalhes_sincronizados.is.null,detalhes_sincronizados.eq.false')
+        .not('liga_id', 'in', `(${validLeagueIds.join(',')})`);
+      
+      if (skipError) {
+        console.log('Note: Could not mark non-free-tier matches as synced:', skipError.message);
+      } else {
+        console.log('Marked non-free-tier matches as synced (skipped)');
+      }
     }
 
     if (!partidas || partidas.length === 0) {
@@ -350,6 +383,7 @@ serve(async (req) => {
     console.log(`Found ${partidas.length} matches to sync details`);
 
     let syncedCount = 0;
+    let skippedCount = 0;
     const errors: string[] = [];
 
     // Process matches with rate limiting (6 seconds between requests)
@@ -365,7 +399,14 @@ serve(async (req) => {
         syncedCount++;
         console.log(`Successfully synced match ${partida.id}`);
       } else {
-        errors.push(`Failed to fetch details for match ${partida.api_id}`);
+        // Mark as synced to avoid retrying forever (API doesn't have data)
+        await supabase
+          .from('partidas')
+          .update({ detalhes_sincronizados: true })
+          .eq('id', partida.id);
+        skippedCount++;
+        console.log(`Marked match ${partida.id} as synced (no data available)`);
+        errors.push(`No data for match ${partida.api_id}`);
       }
 
       // Rate limiting: wait 6 seconds between requests (10 req/min limit)
@@ -378,8 +419,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Synced ${syncedCount} of ${partidas.length} matches`,
+        message: `Synced ${syncedCount} of ${partidas.length} matches (${skippedCount} skipped)`,
         synced: syncedCount,
+        skipped: skippedCount,
         total: partidas.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
