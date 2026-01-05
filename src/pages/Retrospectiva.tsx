@@ -35,6 +35,7 @@ import {
   TrophyIcon,
   AlertTriangle
 } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -595,11 +596,7 @@ export default function Retrospectiva() {
                           'bg-muted text-muted-foreground'}`}>
                         {index + 1}
                       </span>
-                      {team.escudo_url ? (
-                        <img src={team.escudo_url} alt="" className="h-6 w-6 object-contain" />
-                      ) : (
-                        <div className="h-6 w-6 bg-muted rounded-full" />
-                      )}
+                      <TeamBadge name={team.nome} size="sm" />
                       <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
@@ -631,11 +628,7 @@ export default function Retrospectiva() {
                       <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-muted text-muted-foreground">
                         {teamRankingData.top.length + teamRankingData.bottom.length - index}
                       </span>
-                      {team.escudo_url ? (
-                        <img src={team.escudo_url} alt="" className="h-6 w-6 object-contain" />
-                      ) : (
-                        <div className="h-6 w-6 bg-muted rounded-full" />
-                      )}
+                      <TeamBadge name={team.nome} size="sm" />
                       <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
@@ -691,24 +684,12 @@ export default function Retrospectiva() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {match.partidas?.time_casa?.escudo_url && (
-                              <img 
-                                src={match.partidas.time_casa.escudo_url} 
-                                alt="" 
-                                className="h-5 w-5 object-contain"
-                              />
-                            )}
+                            <TeamBadge name={match.partidas?.time_casa?.nome || 'Casa'} size="sm" />
                             <span className="text-sm">
                               {match.partidas?.time_casa?.nome || 'Casa'}
                             </span>
                             <span className="text-muted-foreground mx-1">x</span>
-                            {match.partidas?.time_fora?.escudo_url && (
-                              <img 
-                                src={match.partidas.time_fora.escudo_url} 
-                                alt="" 
-                                className="h-5 w-5 object-contain"
-                              />
-                            )}
+                            <TeamBadge name={match.partidas?.time_fora?.nome || 'Fora'} size="sm" />
                             <span className="text-sm">
                               {match.partidas?.time_fora?.nome || 'Fora'}
                             </span>

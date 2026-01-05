@@ -7,6 +7,7 @@ import { useUserPlan } from '@/hooks/useUserPlan';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Check, Crown, Edit3, Loader2, Lock, Sparkles, Target, Zap } from 'lucide-react';
+import { TeamBadge } from '@/components/ui/TeamBadge';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { Prediction } from '@/hooks/usePalpitesDB';
@@ -164,16 +165,12 @@ export function UserPalpiteModal({ open, onOpenChange, prediction }: UserPalpite
             {/* Match Info */}
             <div className="flex items-center justify-center gap-4 py-4 bg-muted/50 rounded-xl">
               <div className="flex flex-col items-center gap-2">
-                {prediction.homeTeam.logo && (
-                  <img src={prediction.homeTeam.logo} alt="" className="w-12 h-12 object-contain" />
-                )}
+                <TeamBadge name={prediction.homeTeam.name} size="lg" />
                 <span className="text-sm font-medium text-center">{prediction.homeTeam.name}</span>
               </div>
               <span className="text-2xl font-bold text-muted-foreground">VS</span>
               <div className="flex flex-col items-center gap-2">
-                {prediction.awayTeam.logo && (
-                  <img src={prediction.awayTeam.logo} alt="" className="w-12 h-12 object-contain" />
-                )}
+                <TeamBadge name={prediction.awayTeam.name} size="lg" />
                 <span className="text-sm font-medium text-center">{prediction.awayTeam.name}</span>
               </div>
             </div>
