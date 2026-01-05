@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Trophy, Target, TrendingUp, Medal, Filter, ChevronUp, ChevronDown } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Link } from "react-router-dom";
 import { useNationalTeamsRanking, useInternationalCompetitions, TeamRankingData } from "@/hooks/useNationalTeamsRanking";
 import { Layout } from "@/components/layout/Layout";
@@ -125,13 +126,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  {topScorer?.escudo_url ? (
-                    <img src={topScorer.escudo_url} alt={topScorer.nome} className="h-10 w-10 object-contain" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
-                      {topScorer?.nome.charAt(0)}
-                    </div>
-                  )}
+                  <TeamBadge name={topScorer?.nome || ''} size="lg" />
                   <div>
                     <p className="font-bold">{topScorer?.nome}</p>
                     <p className="text-2xl font-bold text-yellow-500">{topScorer?.gols_marcados} gols</p>
@@ -149,13 +144,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  {topWinner?.escudo_url ? (
-                    <img src={topWinner.escudo_url} alt={topWinner.nome} className="h-10 w-10 object-contain" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
-                      {topWinner?.nome.charAt(0)}
-                    </div>
-                  )}
+                  <TeamBadge name={topWinner?.nome || ''} size="lg" />
                   <div>
                     <p className="font-bold">{topWinner?.nome}</p>
                     <p className="text-2xl font-bold text-green-500">{topWinner?.vitorias} vitórias</p>
@@ -173,13 +162,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  {topEfficiency?.escudo_url ? (
-                    <img src={topEfficiency.escudo_url} alt={topEfficiency.nome} className="h-10 w-10 object-contain" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold">
-                      {topEfficiency?.nome.charAt(0)}
-                    </div>
-                  )}
+                  <TeamBadge name={topEfficiency?.nome || ''} size="lg" />
                   <div>
                     <p className="font-bold">{topEfficiency?.nome}</p>
                     <p className="text-2xl font-bold text-blue-500">{topEfficiency?.aproveitamento}%</p>
@@ -229,17 +212,7 @@ const RankingSelecoes = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            {team.escudo_url ? (
-                              <img 
-                                src={team.escudo_url} 
-                                alt={team.nome} 
-                                className="h-8 w-8 object-contain"
-                              />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
-                                {team.nome.charAt(0)}
-                              </div>
-                            )}
+                            <TeamBadge name={team.nome} size="md" />
                             <span className="font-medium">{team.nome}</span>
                           </div>
                         </TableCell>

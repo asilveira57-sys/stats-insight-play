@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Swords, Trophy, Target, Calendar, ArrowRightLeft, TrendingUp, Flame, Award, BarChart3 } from "lucide-react";
+import { Swords, Trophy, Target, Calendar, ArrowRightLeft, TrendingUp, Flame, Award, BarChart3 } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -62,11 +63,7 @@ export default function ConfrontosDiretos() {
                       teams?.filter(t => t.id !== team2Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
-                            {team.escudo_url ? (
-                              <img src={team.escudo_url} alt={team.nome} className="w-5 h-5 object-contain" />
-                            ) : (
-                              <Shield className="w-5 h-5 text-muted-foreground" />
-                            )}
+                            <TeamBadge name={team.nome} size="sm" />
                             {team.nome}
                           </div>
                         </SelectItem>
@@ -97,11 +94,7 @@ export default function ConfrontosDiretos() {
                       teams?.filter(t => t.id !== team1Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
-                            {team.escudo_url ? (
-                              <img src={team.escudo_url} alt={team.nome} className="w-5 h-5 object-contain" />
-                            ) : (
-                              <Shield className="w-5 h-5 text-muted-foreground" />
-                            )}
+                            <TeamBadge name={team.nome} size="sm" />
                             {team.nome}
                           </div>
                         </SelectItem>
@@ -132,13 +125,7 @@ export default function ConfrontosDiretos() {
               <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
                 <CardContent className="pt-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    {team1.escudo_url ? (
-                      <img src={team1.escudo_url} alt={team1.nome} className="w-12 h-12 md:w-16 md:h-16 object-contain" />
-                    ) : (
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted flex items-center justify-center">
-                        <Shield className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
-                      </div>
-                    )}
+                    <TeamBadge name={team1.nome} size="lg" />
                     <p className="font-semibold text-sm md:text-base truncate max-w-full">{team1.nome}</p>
                     <p className="text-2xl md:text-4xl font-bold text-primary">{h2h.vitoriasTime1}</p>
                     <p className="text-xs text-muted-foreground">vitórias</p>
@@ -162,13 +149,7 @@ export default function ConfrontosDiretos() {
               <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/30">
                 <CardContent className="pt-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    {team2.escudo_url ? (
-                      <img src={team2.escudo_url} alt={team2.nome} className="w-12 h-12 md:w-16 md:h-16 object-contain" />
-                    ) : (
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted flex items-center justify-center">
-                        <Shield className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
-                      </div>
-                    )}
+                    <TeamBadge name={team2.nome} size="lg" />
                     <p className="font-semibold text-sm md:text-base truncate max-w-full">{team2.nome}</p>
                     <p className="text-2xl md:text-4xl font-bold text-secondary">{h2h.vitoriasTime2}</p>
                     <p className="text-xs text-muted-foreground">vitórias</p>
@@ -254,9 +235,7 @@ export default function ConfrontosDiretos() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
                         <div className="flex items-center gap-2">
-                          {team1.escudo_url && (
-                            <img src={team1.escudo_url} alt={team1.nome} className="w-5 h-5 object-contain" />
-                          )}
+                          <TeamBadge name={team1.nome} size="sm" />
                           <span className="text-sm font-medium truncate max-w-[100px]">{team1.nome}</span>
                         </div>
                         <div className="text-right">
@@ -266,9 +245,7 @@ export default function ConfrontosDiretos() {
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/10">
                         <div className="flex items-center gap-2">
-                          {team2.escudo_url && (
-                            <img src={team2.escudo_url} alt={team2.nome} className="w-5 h-5 object-contain" />
-                          )}
+                          <TeamBadge name={team2.nome} size="sm" />
                           <span className="text-sm font-medium truncate max-w-[100px]">{team2.nome}</span>
                         </div>
                         <div className="text-right">
@@ -299,9 +276,7 @@ export default function ConfrontosDiretos() {
                       {h2h.maiorVitoriaTime1 && (
                         <div className="p-3 rounded-lg bg-primary/10">
                           <div className="flex items-center gap-2 mb-1">
-                            {team1.escudo_url && (
-                              <img src={team1.escudo_url} alt={team1.nome} className="w-4 h-4 object-contain" />
-                            )}
+                            <TeamBadge name={team1.nome} size="sm" />
                             <span className="text-sm font-medium">{team1.nome}</span>
                           </div>
                           <p className="text-lg font-bold text-primary">{h2h.maiorVitoriaTime1.placar}</p>
@@ -313,9 +288,7 @@ export default function ConfrontosDiretos() {
                       {h2h.maiorVitoriaTime2 && (
                         <div className="p-3 rounded-lg bg-secondary/10">
                           <div className="flex items-center gap-2 mb-1">
-                            {team2.escudo_url && (
-                              <img src={team2.escudo_url} alt={team2.nome} className="w-4 h-4 object-contain" />
-                            )}
+                            <TeamBadge name={team2.nome} size="sm" />
                             <span className="text-sm font-medium">{team2.nome}</span>
                           </div>
                           <p className="text-lg font-bold text-secondary">{h2h.maiorVitoriaTime2.placar}</p>
@@ -342,9 +315,7 @@ export default function ConfrontosDiretos() {
                       {h2h.sequenciaInvictoTime1 > 2 && (
                         <Badge variant="outline" className="px-3 py-1.5 text-sm">
                           <div className="flex items-center gap-2">
-                            {team1.escudo_url && (
-                              <img src={team1.escudo_url} alt={team1.nome} className="w-4 h-4 object-contain" />
-                            )}
+                            <TeamBadge name={team1.nome} size="sm" />
                             {team1.nome}: {h2h.sequenciaInvictoTime1} jogos
                           </div>
                         </Badge>
@@ -352,9 +323,7 @@ export default function ConfrontosDiretos() {
                       {h2h.sequenciaInvictoTime2 > 2 && (
                         <Badge variant="outline" className="px-3 py-1.5 text-sm">
                           <div className="flex items-center gap-2">
-                            {team2.escudo_url && (
-                              <img src={team2.escudo_url} alt={team2.nome} className="w-4 h-4 object-contain" />
-                            )}
+                            <TeamBadge name={team2.nome} size="sm" />
                             {team2.nome}: {h2h.sequenciaInvictoTime2} jogos
                           </div>
                         </Badge>
@@ -397,11 +366,7 @@ export default function ConfrontosDiretos() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-2">
-                                {team1.escudo_url ? (
-                                  <img src={team1.escudo_url} alt={team1.nome} className="w-6 h-6 object-contain" />
-                                ) : (
-                                  <Shield className="w-6 h-6 text-muted-foreground" />
-                                )}
+                                <TeamBadge name={team1.nome} size="sm" />
                                 <span className="font-medium text-sm md:text-base">{team1.nome}</span>
                               </div>
                               
@@ -412,11 +377,7 @@ export default function ConfrontosDiretos() {
                               </div>
                               
                               <div className="flex items-center gap-2">
-                                {team2.escudo_url ? (
-                                  <img src={team2.escudo_url} alt={team2.nome} className="w-6 h-6 object-contain" />
-                                ) : (
-                                  <Shield className="w-6 h-6 text-muted-foreground" />
-                                )}
+                                <TeamBadge name={team2.nome} size="sm" />
                                 <span className="font-medium text-sm md:text-base hidden sm:inline">{team2.nome}</span>
                               </div>
                             </div>

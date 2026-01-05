@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Target, Trophy, TrendingUp, Goal, Shield, User, X } from "lucide-react";
+import { Target, Trophy, TrendingUp, Goal, User, X } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 // Extract competition type and year from competition name
 const parseCompetitionInfo = (name: string) => {
@@ -320,13 +321,7 @@ export default function Artilheiros() {
                           {index + 1}
                         </div>
                         
-                        {player.teamLogo ? (
-                          <img src={player.teamLogo} alt={player.teamName} className="w-8 h-8 object-contain" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <Shield className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
+                        <TeamBadge name={player.teamName} size="md" />
                         
                         <div className="flex-1">
                           <p className="font-semibold">{player.name}</p>
@@ -371,13 +366,7 @@ export default function Artilheiros() {
                             {index + 1}
                           </span>
                           
-                          {scorer.teamLogo ? (
-                            <img src={scorer.teamLogo} alt={scorer.teamName} className="w-6 h-6 object-contain" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-                              <Shield className="w-3 h-3" />
-                            </div>
-                          )}
+                          <TeamBadge name={scorer.teamName} size="sm" />
                           
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{scorer.playerName}</p>

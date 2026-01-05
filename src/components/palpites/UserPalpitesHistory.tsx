@@ -20,6 +20,7 @@ import {
   Calendar,
   Filter
 } from 'lucide-react';
+import { TeamBadge } from '@/components/ui/TeamBadge';
 import { cn } from '@/lib/utils';
 import { format, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -379,20 +380,16 @@ export function UserPalpitesHistory() {
                     status === 'pending' && 'bg-muted/50 border-border'
                   )}
                 >
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        {match.time_casa?.escudo_url && (
-                          <img src={match.time_casa.escudo_url} alt="" className="w-6 h-6 object-contain" />
-                        )}
+                        <TeamBadge name={match.time_casa?.nome || 'Casa'} size="sm" />
                         <span className="font-medium text-sm">{match.time_casa?.nome || 'Casa'}</span>
                       </div>
                       <span className="text-muted-foreground">vs</span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{match.time_fora?.nome || 'Fora'}</span>
-                        {match.time_fora?.escudo_url && (
-                          <img src={match.time_fora.escudo_url} alt="" className="w-6 h-6 object-contain" />
-                        )}
+                        <TeamBadge name={match.time_fora?.nome || 'Fora'} size="sm" />
                       </div>
                     </div>
 

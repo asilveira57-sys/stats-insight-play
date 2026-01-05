@@ -22,6 +22,7 @@ import {
   Crown,
   Flame
 } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Index() {
@@ -215,16 +216,7 @@ export default function Index() {
               
               {/* Home Team */}
               <div className="flex-1 flex flex-col items-center gap-4">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
-                  <img
-                    src={featuredMatch.homeTeam.logo}
-                    alt={featuredMatch.homeTeam.name}
-                    className="w-20 h-20 md:w-28 md:h-28 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/placeholder.svg";
-                    }}
-                  />
-                </div>
+                <TeamBadge name={featuredMatch.homeTeam.name} size="xl" />
                 <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.homeTeam.name}</h3>
                 {featuredMatch.prediction && (
                   <div className="flex items-center gap-2">
@@ -252,16 +244,7 @@ export default function Index() {
 
               {/* Away Team */}
               <div className="flex-1 flex flex-col items-center gap-4">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center">
-                  <img
-                    src={featuredMatch.awayTeam.logo}
-                    alt={featuredMatch.awayTeam.name}
-                    className="w-20 h-20 md:w-28 md:h-28 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/placeholder.svg";
-                    }}
-                  />
-                </div>
+                <TeamBadge name={featuredMatch.awayTeam.name} size="xl" />
                 <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.awayTeam.name}</h3>
                 {featuredMatch.prediction && (
                   <div className="flex items-center gap-2">
