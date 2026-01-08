@@ -154,6 +154,10 @@ export default function HubSyncDetails() {
   const [isSyncingScorers, setIsSyncingScorers] = useState(false);
   const [scorersSyncResult, setScorersSyncResult] = useState<any>(null);
 
+  // API-Football European sync state
+  const [isSyncingApiFootball, setIsSyncingApiFootball] = useState(false);
+  const [apiFootballResult, setApiFootballResult] = useState<any>(null);
+
   // Fetch sync statistics using pagination to avoid 1000-row limit
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ['sync-details-stats'],
@@ -356,6 +360,30 @@ export default function HubSyncDetails() {
     }
   };
 
+  // API-Football European sync function
+  const syncApiFootballDetails = async (limit: number) => {
+    setIsSyncingApiFootball(true);
+    setApiFootballResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-match-details-apifootball', {
+        body: { limit }
+      });
+
+      if (error) throw error;
+
+      setApiFootballResult(data);
+      toast.success(`Sincronizado via API-Football: ${data.synced} partidas`);
+      refetchStats();
+      refetchMatches();
+    } catch (error) {
+      console.error('API-Football sync error:', error);
+      toast.error('Erro na sincronização via API-Football');
+    } finally {
+      setIsSyncingApiFootball(false);
+    }
+  };
+
   const toggleSeason = (season: number) => {
     setSelectedScorersSeasons(prev => 
       prev.includes(season) 
@@ -547,6 +575,100 @@ export default function HubSyncDetails() {
                 <p className="text-xs text-muted-foreground">
                   Tempo restante estimado: ~{Math.ceil((totalToSync - syncedCount) * 6 / 60)} minutos
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* API-Football European Leagues Sync */}
+        <Card className="glass-card mb-8 border-blue-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="w-5 h-5 text-blue-500" />
+              Sincronização via API-Football (Escalações e Cartões)
+            </CardTitle>
+            <CardDescription>
+              Busca escalações completas, cartões e substituições para as Top 5 ligas europeias + Champions League.
+              <span className="block mt-1 text-xs text-yellow-500">
+                ⚠️ Limite: 100 requests/dia no plano gratuito. Cada partida usa ~3 requests.
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <p className="text-sm font-medium text-blue-400 mb-2">Ligas Suportadas:</p>
+              <div className="flex flex-wrap gap-2">
+                {['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Champions League'].map((league) => (
+                  <Badge key={league} variant="outline" className="border-blue-500/50 text-blue-400">
+                    {league}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                onClick={() => syncApiFootballDetails(3)} 
+                disabled={isSyncingApiFootball}
+                variant="outline"
+                className="border-blue-500/50 hover:bg-blue-500/10"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Sincronizar 3 partidas (~9 req)
+              </Button>
+              <Button 
+                onClick={() => syncApiFootballDetails(10)} 
+                disabled={isSyncingApiFootball}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Sincronizar 10 partidas (~30 req)
+              </Button>
+              <Button 
+                onClick={() => syncApiFootballDetails(30)} 
+                disabled={isSyncingApiFootball}
+                variant="outline"
+                className="border-blue-500/50 hover:bg-blue-500/10"
+              >
+                <Database className="w-4 h-4 mr-2" />
+                Sincronizar 30 partidas (~90 req)
+              </Button>
+            </div>
+
+            {isSyncingApiFootball && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10 animate-pulse">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+                <span className="text-sm">Sincronizando via API-Football...</span>
+              </div>
+            )}
+
+            {apiFootballResult && (
+              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                <p className="text-sm font-medium">Resultado da Sincronização:</p>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-secondary">{apiFootballResult.synced || 0}</p>
+                    <p className="text-xs text-muted-foreground">Sincronizadas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-500">{apiFootballResult.skipped || 0}</p>
+                    <p className="text-xs text-muted-foreground">Ignoradas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-500">{apiFootballResult.apiRequestsUsed || 0}</p>
+                    <p className="text-xs text-muted-foreground">Requests Usados</p>
+                  </div>
+                </div>
+                {apiFootballResult.errors?.length > 0 && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <p className="font-medium">Erros ({apiFootballResult.errors.length}):</p>
+                    <ul className="list-disc list-inside max-h-24 overflow-y-auto">
+                      {apiFootballResult.errors.slice(0, 5).map((err: string, i: number) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
