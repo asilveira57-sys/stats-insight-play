@@ -1,449 +1,517 @@
-import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import { MatchCard } from "@/components/cards/MatchCard";
-import { LeagueCard } from "@/components/cards/LeagueCard";
-import { PredictionCard } from "@/components/cards/PredictionCard";
-import { NewsCard } from "@/components/cards/NewsCard";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { predictions } from "@/data/mockData";
-import { useTodayMatchesFromDB, useLeagues, useMatchCountByLeague } from "@/hooks/useMatchesDB";
-import { useFeaturedMatch } from "@/hooks/useFeaturedMatch";
-import { useLatestNoticias } from "@/hooks/useNoticias";
-import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
-  Zap, 
+  BarChart3, 
+  Users, 
   TrendingUp, 
-  Trophy, 
-  ChevronRight, 
-  Play, 
-  BarChart3,
+  Calendar,
   Target,
-  Crown,
-  Flame
+  Zap,
+  Trophy,
+  Clock,
+  CheckCircle,
+  ArrowRight,
+  Star,
+  Shield
 } from "lucide-react";
-import { TeamBadge } from "@/components/ui/TeamBadge";
-import { Link, useNavigate } from "react-router-dom";
 
 export default function Index() {
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-
-  // Redirect logged-in users to /palpites
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate('/palpites', { replace: true });
-    }
-  }, [user, authLoading, navigate]);
-  const { data: matches, isLoading: matchesLoading } = useTodayMatchesFromDB();
-  const { data: leagues, isLoading: leaguesLoading } = useLeagues();
-  const { data: matchCounts } = useMatchCountByLeague();
-  const { data: featuredMatch, isLoading: featuredLoading } = useFeaturedMatch();
-  const { data: noticias, isLoading: noticiasLoading } = useLatestNoticias(3);
-
-  // Map leagues to league cards
-  const leagueCards = leagues?.map((league) => ({
-    id: league.codigo_api || league.id,
-    name: league.nome,
-    country: league.pais || '',
-    logo: league.logo_url || '/placeholder.svg',
-    matchCount: matchCounts?.[league.codigo_api || ''] || 0,
-  })) || [];
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-hero-pattern opacity-30" />
+      {/* HERO SECTION - Sem anúncios */}
+      <section className="relative py-20 md:py-32 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[120px]" />
         
-        <div className="container mx-auto px-4 py-16 md:py-24 relative">
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-6">
-              <Zap className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Palpites Matemáticos</span>
-            </div>
-            
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 leading-tight">
-              <span className="gradient-text">Estatísticas</span> e{" "}
-              <span className="text-foreground">Análises</span>{" "}
-              <span className="text-foreground">Inteligentes</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display mb-6 bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
+              Statball — Inteligência em Estatísticas de Futebol
             </h1>
-            
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Resultados em tempo real, estatísticas detalhadas e previsões baseadas em análise matemática. 
-              Tome decisões informadas com dados precisos.
+            <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
+              Plataforma que organiza dados, estatísticas e análises de futebol em um único lugar, 
+              com foco em leitura de jogo e contexto histórico.
             </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/palpites">
-                <Button variant="premium" size="xl">
-                  <TrendingUp className="w-5 h-5" />
-                  Ver Palpites
-                </Button>
-              </Link>
-              <Link to="/resultados">
-                <Button variant="outline" size="xl">
-                  <BarChart3 className="w-5 h-5" />
-                  Resultados
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Video Showcase / Featured Classic */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="glass-card p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 neon-border">
-          <div className="w-full md:w-2/5 aspect-video rounded-xl bg-muted overflow-hidden relative group">
-            <img 
-              src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800"
-              alt="Football highlight"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform hover:shadow-[0_0_30px_hsl(var(--primary)/0.5)]">
-                <Play className="w-6 h-6 text-primary-foreground ml-1" />
-              </div>
-            </div>
-          </div>
-          <div className="flex-1">
-            <span className="text-primary text-sm font-medium mb-2 block">Em Destaque</span>
-            {featuredLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-              </div>
-            ) : featuredMatch?.classicName ? (
-              <>
-                <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-                  {featuredMatch.classicName}
-                </h2>
-                <p className="text-muted-foreground mb-4">
-                  {featuredMatch.homeTeam.name} x {featuredMatch.awayTeam.name} - {featuredMatch.league}.{" "}
-                  Confira nossa análise estatística completa do confronto.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-                  Análise Estatística
-                </h2>
-                <p className="text-muted-foreground mb-4">
-                  Confira nossas análises matemáticas das principais partidas. 
-                  Dados históricos, tendências e probabilidades calculadas.
-                </p>
-              </>
-            )}
-            <Link to="/palpites">
-              <Button variant="neon">
-                Ver Análises
-                <ChevronRight className="w-4 h-4" />
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="xl" className="text-lg">
+                <Link to="/resultados">
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Explorar Estatísticas
+                </Link>
               </Button>
-            </Link>
+              <Button asChild variant="outline" size="xl" className="text-lg">
+                <a href="#como-funciona">
+                  Como funciona
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Featured Match */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-display font-bold">Próximo Grande Jogo</h2>
-              {featuredMatch && (
-                <p className="text-sm text-muted-foreground">
-                  {featuredMatch.league}
-                  {featuredMatch.matchday && ` - Rodada ${featuredMatch.matchday}`}
-                </p>
-              )}
-            </div>
-          </div>
-          <Link to="/resultados">
-            <Button variant="ghost" size="sm">
-              Ver todos
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        <div className="glass-card p-8 neon-border">
-          {featuredLoading ? (
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-              <div className="flex-1 flex flex-col items-center gap-4">
-                <Skeleton className="w-24 h-24 md:w-32 md:h-32 rounded-full" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-              <div className="flex flex-col items-center gap-4">
-                <Skeleton className="h-12 w-24" />
-                <Skeleton className="h-6 w-20" />
-              </div>
-              <div className="flex-1 flex flex-col items-center gap-4">
-                <Skeleton className="w-24 h-24 md:w-32 md:h-32 rounded-full" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-            </div>
-          ) : featuredMatch ? (
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-              {/* Classic Name Badge */}
-              {featuredMatch.classicName && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-medium flex items-center gap-2">
-                  <Flame className="w-4 h-4" />
-                  {featuredMatch.classicName}
-                </div>
-              )}
-              
-              {/* Home Team */}
-              <div className="flex-1 flex flex-col items-center gap-4">
-                <TeamBadge name={featuredMatch.homeTeam.name} size="xl" />
-                <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.homeTeam.name}</h3>
-                {featuredMatch.prediction && (
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-secondary/20 text-secondary text-sm font-medium">
-                      {Math.round(featuredMatch.prediction.probHome)}% Prob.
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* VS */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="text-5xl md:text-6xl font-display font-bold text-muted-foreground">VS</div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{featuredMatch.time}</p>
-                  <p className="text-sm text-muted-foreground">{featuredMatch.date}</p>
-                </div>
-                <Link to={`/palpites`}>
-                  <Button variant="premium">
-                    <Target className="w-4 h-4" />
-                    Ver Palpite
-                  </Button>
-                </Link>
-              </div>
-
-              {/* Away Team */}
-              <div className="flex-1 flex flex-col items-center gap-4">
-                <TeamBadge name={featuredMatch.awayTeam.name} size="xl" />
-                <h3 className="text-xl md:text-2xl font-bold text-center">{featuredMatch.awayTeam.name}</h3>
-                {featuredMatch.prediction && (
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
-                      {Math.round(featuredMatch.prediction.probAway)}% Prob.
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum jogo programado para os próximos dias
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Live & Recent Matches */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
-            </div>
-            <h2 className="text-xl font-display font-bold">Ao Vivo & Recentes</h2>
-          </div>
-          <Link to="/resultados">
-            <Button variant="ghost" size="sm">
-              Ver todos
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {matchesLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="glass-card p-4 space-y-4">
-                <Skeleton className="h-4 w-24" />
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                </div>
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ))
-          ) : matches && matches.length > 0 ? (
-            matches.slice(0, 4).map((match) => (
-              <MatchCard key={match.id} {...match} />
-            ))
-          ) : (
-            <p className="col-span-4 text-center text-muted-foreground py-8">
-              Nenhuma partida encontrada para hoje
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* Predictions */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-secondary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-display font-bold">Palpites em Destaque</h2>
-              <p className="text-sm text-muted-foreground">Análises matemáticas para os próximos jogos</p>
-            </div>
-          </div>
-          <Link to="/palpites">
-            <Button variant="ghost" size="sm">
-              Ver todos
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {predictions.map((prediction) => (
-            <PredictionCard key={prediction.id} {...prediction} />
-          ))}
-        </div>
-      </section>
-
-      {/* Leagues */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-accent" />
-            </div>
-            <h2 className="text-xl font-display font-bold">Ligas Disponíveis</h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {leaguesLoading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="glass-card p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-12 w-12 rounded-lg" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            leagueCards.map((league) => (
-              <LeagueCard key={league.id} {...league} />
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* News */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-display font-bold">Últimas Notícias</h2>
-          </div>
-          <Link to="/noticias">
-            <Button variant="ghost" size="sm">
-              Ver todas
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        {noticiasLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <Skeleton className="h-64 rounded-xl" />
-            </div>
-            <div className="flex flex-col gap-4">
-              <Skeleton className="h-28 rounded-xl" />
-              <Skeleton className="h-28 rounded-xl" />
-            </div>
-          </div>
-        ) : noticias && noticias.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <Link to={`/noticias/${noticias[0].slug}`}>
-                <NewsCard {...noticias[0]} featured />
-              </Link>
-            </div>
-            <div className="flex flex-col gap-4">
-              {noticias.slice(1).map((item) => (
-                <Link key={item.id} to={`/noticias/${item.slug}`}>
-                  <NewsCard {...item} />
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="glass-card p-8 text-center text-muted-foreground">
-            Nenhuma notícia publicada ainda
-          </div>
-        )}
-      </section>
-
-      {/* CTA Premium */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="glass-card p-8 md:p-12 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10" />
-          <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary/20 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-secondary/20 rounded-full blur-[100px]" />
-          
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 mb-6">
-              <Crown className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Plano Premium</span>
-            </div>
-            
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Desbloqueie Todo o Potencial
+      {/* O QUE O STATBALL FAZ */}
+      <section className="py-16 md:py-24 bg-card/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              O que o Statball faz
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Acesse estatísticas avançadas, simulador de campeonatos, alertas personalizados 
-              e muito mais com o plano Premium.
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Transformamos dados brutos em informações úteis para quem quer entender futebol além do placar.
             </p>
-            
-            <Link to="/precos">
-              <Button variant="premium" size="xl">
-                <Crown className="w-5 h-5" />
-                Conhecer Planos
-              </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="glass-card border-border/50 hover:border-primary/50 transition-all duration-300 group">
+              <CardContent className="p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Target className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Centraliza dados de futebol</h3>
+                <p className="text-muted-foreground text-sm">
+                  Reúne informações de múltiplas competições em uma única plataforma organizada.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50 hover:border-primary/50 transition-all duration-300 group">
+              <CardContent className="p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <BarChart3 className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Organiza estatísticas por contexto</h3>
+                <p className="text-muted-foreground text-sm">
+                  Apresenta números com significado, não apenas dados soltos sem interpretação.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50 hover:border-primary/50 transition-all duration-300 group">
+              <CardContent className="p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Users className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Facilita comparação de desempenho</h3>
+                <p className="text-muted-foreground text-sm">
+                  Compare times, jogadores e confrontos históricos de forma simples e visual.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50 hover:border-primary/50 transition-all duration-300 group">
+              <CardContent className="p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <TrendingUp className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Mostra tendências e históricos</h3>
+                <p className="text-muted-foreground text-sm">
+                  Identifique padrões e evolução de desempenho ao longo do tempo.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* COMO USAR NA PRÁTICA */}
+      <section id="como-funciona" className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Como usar o Statball na prática
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Aproveite a plataforma em diferentes momentos da sua experiência com futebol.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="relative">
+              <div className="absolute -left-4 top-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                1
+              </div>
+              <Card className="glass-card h-full ml-4">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Clock className="h-6 w-6 text-primary" />
+                    <h3 className="font-semibold text-lg">Antes do jogo</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Consulte o histórico de confrontos, forma recente dos times e estatísticas 
+                    relevantes para ter contexto antes da partida começar.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-4 top-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                2
+              </div>
+              <Card className="glass-card h-full ml-4">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Zap className="h-6 w-6 text-primary" />
+                    <h3 className="font-semibold text-lg">Durante o jogo</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Acompanhe estatísticas em tempo real e compare o desempenho das equipes 
+                    enquanto a partida acontece.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-4 top-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                3
+              </div>
+              <Card className="glass-card h-full ml-4">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CheckCircle className="h-6 w-6 text-primary" />
+                    <h3 className="font-semibold text-lg">Depois do jogo</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Analise os resultados, veja como as previsões se comportaram e 
+                    acompanhe a evolução nas tabelas e rankings.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ADSENSE PLACEHOLDER - Após seção de conteúdo */}
+      <section className="py-8">
+        <div className="container mx-auto px-4">
+          {/* 
+            ÁREA RESERVADA PARA GOOGLE ADSENSE
+            - Banner display responsivo
+            - Visualmente integrado ao layout
+            - ID: adsense-home-mid
+            - Inserir código do AdSense aqui após aprovação
+          */}
+          <div 
+            id="adsense-home-mid"
+            className="w-full max-w-4xl mx-auto h-24 bg-muted/30 rounded-lg border border-border/30 flex items-center justify-center"
+            aria-label="Espaço publicitário"
+          >
+            <span className="text-muted-foreground/50 text-sm">Publicidade</span>
+          </div>
+        </div>
+      </section>
+
+      {/* O QUE VOCÊ ENCONTRA */}
+      <section className="py-16 md:py-24 bg-card/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              O que você encontra na plataforma
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Recursos pensados para quem quer ir além do básico.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <Link to="/resultados" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <Calendar className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Jogos do dia</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Acompanhe partidas de hoje com horários, placares e estatísticas.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/estatisticas" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <BarChart3 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Estatísticas</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Dados detalhados de times, jogadores e competições.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/confrontos" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Confrontos</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Histórico de duelos entre seleções e times.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/ranking-selecoes" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <Trophy className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Rankings</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Classificações por desempenho, aproveitamento e performance.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/palpites" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <Target className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Palpites baseados em dados</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Análises matemáticas e probabilísticas para cada partida.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/artilheiros" className="group">
+              <Card className="glass-card h-full border-border/50 hover:border-primary/50 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <Star className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">Artilheiros</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Maiores goleadores por competição e período.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
       </section>
 
+      {/* PARA QUEM É */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Para quem é o Statball
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Uma plataforma para quem quer entender futebol de forma mais profunda.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Card className="glass-card border-border/50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Trophy className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Entusiastas de futebol</h3>
+                    <p className="text-muted-foreground">
+                      Para quem acompanha o esporte com paixão e quer mais contexto além do placar final.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <BarChart3 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Pessoas que gostam de análise estatística</h3>
+                    <p className="text-muted-foreground">
+                      Para quem prefere dados e números ao invés de palpites baseados em achismo.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Criadores de conteúdo esportivo</h3>
+                    <p className="text-muted-foreground">
+                      Para quem produz análises, podcasts ou vídeos e precisa de dados confiáveis.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-border/50">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Analistas e estudiosos do esporte</h3>
+                    <p className="text-muted-foreground">
+                      Para profissionais e pesquisadores que buscam informações organizadas.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* PREMIUM PREVIEW */}
+      <section className="py-16 md:py-24 bg-card/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+                Gratuito e Premium
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Comece gratuitamente e evolua quando precisar de mais.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card className="glass-card border-border/50">
+                <CardContent className="p-8">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold mb-2">Gratuito</h3>
+                    <p className="text-muted-foreground text-sm">Com anúncios discretos</p>
+                  </div>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                      <span>Acesso a estatísticas básicas</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                      <span>Resultados e placares</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                      <span>Rankings e classificações</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                      <span>Confrontos históricos</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card border-primary/50 relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-bl-lg font-medium">
+                  Em breve
+                </div>
+                <CardContent className="p-8">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold mb-2">Premium</h3>
+                    <p className="text-muted-foreground text-sm">Sem anúncios, mais recursos</p>
+                  </div>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-sm">
+                      <Shield className="h-5 w-5 text-primary shrink-0" />
+                      <span>Navegação sem anúncios</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <Shield className="h-5 w-5 text-primary shrink-0" />
+                      <span>Recursos avançados de análise</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <Shield className="h-5 w-5 text-primary shrink-0" />
+                      <span>Histórico completo de dados</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <Shield className="h-5 w-5 text-primary shrink-0" />
+                      <span>Simulador de campeonatos</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA FINAL */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6">
+              Analise futebol com dados, não com achismo.
+            </h2>
+            <p className="text-muted-foreground text-lg mb-10">
+              Comece a explorar estatísticas de forma inteligente e organizada.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="xl" className="text-lg">
+                <Link to="/auth">
+                  Criar conta
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="xl" className="text-lg">
+                <Link to="/resultados">
+                  Explorar agora
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
     </Layout>
   );
 }
