@@ -98,12 +98,17 @@ async function fetchMatchDetails(matchApiId: number, apiKey: string): Promise<Ma
   }
 }
 
+// Returns: { success: boolean, hasData: boolean }
 async function processMatchDetails(
   supabase: any,
   partida: any,
   details: MatchDetails
-) {
+): Promise<{ success: boolean; hasData: boolean; goalsCount: number; lineupsCount: number; cardsCount: number }> {
   const { id: partidaId, time_casa_id, time_fora_id } = partida;
+  
+  let goalsCount = 0;
+  let lineupsCount = 0;
+  let cardsCount = 0;
   
   // Get team IDs mapping by api_id
   const { data: times } = await supabase
@@ -147,7 +152,10 @@ async function processMatchDetails(
     if (goalsToInsert.length > 0) {
       const { error: goalsError } = await supabase.from('gols_partida').insert(goalsToInsert);
       if (goalsError) console.error('Error inserting goals:', goalsError);
-      else console.log(`Inserted ${goalsToInsert.length} goals for match ${partidaId}`);
+      else {
+        goalsCount = goalsToInsert.length;
+        console.log(`Inserted ${goalsCount} goals for match ${partidaId}`);
+      }
     }
   }
 
@@ -168,7 +176,10 @@ async function processMatchDetails(
     if (cardsToInsert.length > 0) {
       const { error: cardsError } = await supabase.from('cartoes_partida').insert(cardsToInsert);
       if (cardsError) console.error('Error inserting cards:', cardsError);
-      else console.log(`Inserted ${cardsToInsert.length} cards for match ${partidaId}`);
+      else {
+        cardsCount = cardsToInsert.length;
+        console.log(`Inserted ${cardsCount} cards for match ${partidaId}`);
+      }
     }
   }
 
@@ -245,7 +256,10 @@ async function processMatchDetails(
     
     const { error: lineupsError } = await supabase.from('escalacoes').insert(lineupsToInsert);
     if (lineupsError) console.error('Error inserting lineups:', lineupsError);
-    else console.log(`Inserted ${lineupsToInsert.length} lineup entries for match ${partidaId}`);
+    else {
+      lineupsCount = lineupsToInsert.length;
+      console.log(`Inserted ${lineupsCount} lineup entries for match ${partidaId}`);
+    }
   }
 
   // Process coaches
@@ -282,11 +296,21 @@ async function processMatchDetails(
     }
   }
 
-  // Mark match as synced
-  await supabase
-    .from('partidas')
-    .update({ detalhes_sincronizados: true })
-    .eq('id', partidaId);
+  // Check if we actually got any meaningful data
+  const hasData = goalsCount > 0 || lineupsCount > 0 || cardsCount > 0;
+  
+  // Only mark as synced if we got data OR if it's a 0-0 match with no cards (valid empty state)
+  const isZeroZeroMatch = details.score?.fullTime?.home === 0 && details.score?.fullTime?.away === 0;
+  const shouldMarkSynced = hasData || (isZeroZeroMatch && lineupsCount > 0);
+  
+  if (shouldMarkSynced) {
+    await supabase
+      .from('partidas')
+      .update({ detalhes_sincronizados: true })
+      .eq('id', partidaId);
+  }
+  
+  return { success: true, hasData: hasData || shouldMarkSynced, goalsCount, lineupsCount, cardsCount };
 }
 
 serve(async (req) => {
@@ -395,18 +419,26 @@ serve(async (req) => {
       const details = await fetchMatchDetails(partida.api_id, apiKey);
       
       if (details) {
-        await processMatchDetails(supabase, partida, details);
-        syncedCount++;
-        console.log(`Successfully synced match ${partida.id}`);
+        const result = await processMatchDetails(supabase, partida, details);
+        
+        if (result.hasData) {
+          syncedCount++;
+          console.log(`Successfully synced match ${partida.id}: ${result.goalsCount} goals, ${result.lineupsCount} lineups, ${result.cardsCount} cards`);
+        } else {
+          // API returned data but no events - don't mark as synced, keep in queue
+          skippedCount++;
+          console.log(`Match ${partida.id} has no events data yet, keeping in queue`);
+          errors.push(`Match ${partida.api_id}: API response has no events`);
+        }
       } else {
-        // Mark as synced to avoid retrying forever (API doesn't have data)
+        // API returned error (403, 404, etc) - mark as synced to skip
         await supabase
           .from('partidas')
           .update({ detalhes_sincronizados: true })
           .eq('id', partida.id);
         skippedCount++;
-        console.log(`Marked match ${partida.id} as synced (no data available)`);
-        errors.push(`No data for match ${partida.api_id}`);
+        console.log(`Marked match ${partida.id} as synced (API error/no access)`);
+        errors.push(`No API access for match ${partida.api_id}`);
       }
 
       // Rate limiting: wait 6 seconds between requests (10 req/min limit)
