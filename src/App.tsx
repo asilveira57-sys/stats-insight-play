@@ -37,7 +37,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<HubDashboard />} />
+            <Route path="/" element={<Index />} />
             <Route path="/hub" element={<HubDashboard />} />
             <Route path="/hub/sources" element={<HubSources />} />
             <Route path="/hub/matches" element={<HubMatches />} />
