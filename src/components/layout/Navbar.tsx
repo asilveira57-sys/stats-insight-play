@@ -16,16 +16,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 
-// Estrutura de menu semântica orientada ao usuário
+// Estrutura de menu semântica
 const menuStructure = {
   jogos: {
     label: "Jogos",
@@ -38,7 +30,6 @@ const menuStructure = {
   campeonatos: {
     label: "Campeonatos",
     icon: Trophy,
-    href: "/campeonatos",
     items: [
       { href: "/campeonatos/brasileirao-serie-a", label: "Brasileirão Série A", description: "Principal liga do Brasil" },
       { href: "/campeonatos/brasileirao-serie-b", label: "Brasileirão Série B", description: "Segunda divisão" },
@@ -48,7 +39,6 @@ const menuStructure = {
   times: {
     label: "Times",
     icon: Shield,
-    href: "/times",
     items: [
       { href: "/ranking-selecoes", label: "Seleções", description: "Ranking de seleções nacionais" },
       { href: "/confrontos", label: "Confrontos Diretos", description: "Histórico entre equipes" },
@@ -82,7 +72,7 @@ const menuStructure = {
   },
 };
 
-// Links simples para mobile
+// Links para mobile
 const mobileLinks = [
   { href: "/", label: "Início", icon: Zap },
   { href: "/resultados", label: "Jogos", icon: Calendar },
@@ -96,6 +86,54 @@ const mobileLinks = [
   { href: "/artilheiros", label: "Artilheiros", icon: Award },
   { href: "/confrontos", label: "Confrontos", icon: Users },
 ];
+
+// Componente de Menu Dropdown
+function NavDropdown({ 
+  menuKey, 
+  menu, 
+  isActiveSection 
+}: { 
+  menuKey: string; 
+  menu: typeof menuStructure.jogos; 
+  isActiveSection: boolean;
+}) {
+  const Icon = menu.icon;
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={cn(
+            "nav-link flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-md transition-colors",
+            "hover:bg-muted/50 focus:outline-none",
+            isActiveSection && "nav-link-active bg-primary/10 text-primary"
+          )}
+        >
+          <Icon className="w-4 h-4" />
+          {menu.label}
+          <ChevronDown className="w-3 h-3 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent 
+        align="start" 
+        sideOffset={8}
+        className="w-64 bg-card border border-border shadow-xl z-50"
+      >
+        {menu.items.map((item) => (
+          <DropdownMenuItem key={item.href} asChild className="cursor-pointer p-0">
+            <Link 
+              to={item.href} 
+              className="flex flex-col gap-0.5 px-3 py-2.5 w-full hover:bg-muted rounded-sm"
+            >
+              <span className="text-sm font-medium text-foreground">{item.label}</span>
+              <span className="text-xs text-muted-foreground">{item.description}</span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -111,11 +149,11 @@ export function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
             <div className="relative">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                 <Zap className="w-6 h-6 text-primary-foreground" />
@@ -127,192 +165,55 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation com Dropdowns */}
-          <div className="hidden lg:flex items-center">
-            <NavigationMenu>
-              <NavigationMenuList className="gap-1">
-                {/* Início */}
-                <NavigationMenuItem>
-                  <Link to="/">
-                    <NavigationMenuLink 
-                      className={cn(
-                        "nav-link flex items-center gap-2 text-sm font-medium px-3 py-2",
-                        location.pathname === "/" && "nav-link-active"
-                      )}
-                    >
-                      <Zap className="w-4 h-4" />
-                      Início
-                    </NavigationMenuLink>
-                  </Link>
-                </NavigationMenuItem>
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-1">
+            {/* Início */}
+            <Link
+              to="/"
+              className={cn(
+                "nav-link flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-md transition-colors",
+                location.pathname === "/" && "nav-link-active bg-primary/10 text-primary"
+              )}
+            >
+              <Zap className="w-4 h-4" />
+              Início
+            </Link>
 
-                {/* Jogos */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.jogos.items) && "nav-link-active"
-                    )}
-                  >
-                    <Calendar className="w-4 h-4 mr-1" />
-                    Jogos
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.jogos.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                {/* Campeonatos */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.campeonatos.items) && "nav-link-active"
-                    )}
-                  >
-                    <Trophy className="w-4 h-4 mr-1" />
-                    Campeonatos
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.campeonatos.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                {/* Times */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.times.items) && "nav-link-active"
-                    )}
-                  >
-                    <Shield className="w-4 h-4 mr-1" />
-                    Times
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.times.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                {/* Análises */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.analises.items) && "nav-link-active"
-                    )}
-                  >
-                    <FileText className="w-4 h-4 mr-1" />
-                    Análises
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.analises.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                {/* Validação */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.validacao.items) && "nav-link-active"
-                    )}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Validação
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.validacao.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                {/* Performance */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger 
-                    className={cn(
-                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
-                      isActiveSection(menuStructure.performance.items) && "nav-link-active"
-                    )}
-                  >
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    Performance
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
-                      {menuStructure.performance.items.map((item) => (
-                        <li key={item.href}>
-                          <Link to={item.href}>
-                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
-                              <div className="text-sm font-medium text-foreground">{item.label}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                            </NavigationMenuLink>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
+            {/* Dropdowns */}
+            <NavDropdown 
+              menuKey="jogos" 
+              menu={menuStructure.jogos} 
+              isActiveSection={isActiveSection(menuStructure.jogos.items)} 
+            />
+            <NavDropdown 
+              menuKey="campeonatos" 
+              menu={menuStructure.campeonatos} 
+              isActiveSection={isActiveSection(menuStructure.campeonatos.items)} 
+            />
+            <NavDropdown 
+              menuKey="times" 
+              menu={menuStructure.times} 
+              isActiveSection={isActiveSection(menuStructure.times.items)} 
+            />
+            <NavDropdown 
+              menuKey="analises" 
+              menu={menuStructure.analises} 
+              isActiveSection={isActiveSection(menuStructure.analises.items)} 
+            />
+            <NavDropdown 
+              menuKey="validacao" 
+              menu={menuStructure.validacao} 
+              isActiveSection={isActiveSection(menuStructure.validacao.items)} 
+            />
+            <NavDropdown 
+              menuKey="performance" 
+              menu={menuStructure.performance} 
+              isActiveSection={isActiveSection(menuStructure.performance.items)} 
+            />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="ghost" size="icon" className="hidden sm:flex">
               <Search className="w-5 h-5" />
             </Button>
@@ -323,7 +224,7 @@ export function Navbar() {
               </Button>
             </Link>
             
-            {/* Auth Button */}
+            {/* Auth */}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -332,7 +233,7 @@ export function Navbar() {
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-secondary rounded-full" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-card border-border">
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     {user.email}
                   </DropdownMenuLabel>
