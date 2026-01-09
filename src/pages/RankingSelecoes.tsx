@@ -126,7 +126,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <TeamBadge name={topScorer?.nome || ''} size="lg" />
+                  <TeamBadge name={topScorer?.nome || ''} primaryColor={topScorer?.cores?.primary} secondaryColor={topScorer?.cores?.secondary} size="lg" />
                   <div>
                     <p className="font-bold">{topScorer?.nome}</p>
                     <p className="text-2xl font-bold text-yellow-500">{topScorer?.gols_marcados} gols</p>
@@ -144,7 +144,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <TeamBadge name={topWinner?.nome || ''} size="lg" />
+                  <TeamBadge name={topWinner?.nome || ''} primaryColor={topWinner?.cores?.primary} secondaryColor={topWinner?.cores?.secondary} size="lg" />
                   <div>
                     <p className="font-bold">{topWinner?.nome}</p>
                     <p className="text-2xl font-bold text-green-500">{topWinner?.vitorias} vitórias</p>
@@ -162,7 +162,7 @@ const RankingSelecoes = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <TeamBadge name={topEfficiency?.nome || ''} size="lg" />
+                  <TeamBadge name={topEfficiency?.nome || ''} primaryColor={topEfficiency?.cores?.primary} secondaryColor={topEfficiency?.cores?.secondary} size="lg" />
                   <div>
                     <p className="font-bold">{topEfficiency?.nome}</p>
                     <p className="text-2xl font-bold text-blue-500">{topEfficiency?.aproveitamento}%</p>
@@ -212,7 +212,7 @@ const RankingSelecoes = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <TeamBadge name={team.nome} size="md" />
+                            <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="md" />
                             <span className="font-medium">{team.nome}</span>
                           </div>
                         </TableCell>

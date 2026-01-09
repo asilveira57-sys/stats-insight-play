@@ -858,6 +858,7 @@ export default function HubSyncDetails() {
                       <TeamBadge
                         name={match.time_casa?.nome || '?'}
                         primaryColor={match.time_casa?.cores?.primary}
+                        secondaryColor={match.time_casa?.cores?.secondary}
                         size="sm"
                       />
                       <span className="text-sm truncate max-w-[120px]">
@@ -872,6 +873,7 @@ export default function HubSyncDetails() {
                       <TeamBadge
                         name={match.time_fora?.nome || '?'}
                         primaryColor={match.time_fora?.cores?.primary}
+                        secondaryColor={match.time_fora?.cores?.secondary}
                         size="sm"
                       />
                     </div>

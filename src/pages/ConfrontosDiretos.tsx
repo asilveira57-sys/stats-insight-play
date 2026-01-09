@@ -63,7 +63,7 @@ export default function ConfrontosDiretos() {
                       teams?.filter(t => t.id !== team2Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
-                            <TeamBadge name={team.nome} size="sm" />
+                            <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
                             {team.nome}
                           </div>
                         </SelectItem>
@@ -94,7 +94,7 @@ export default function ConfrontosDiretos() {
                       teams?.filter(t => t.id !== team1Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
-                            <TeamBadge name={team.nome} size="sm" />
+                            <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
                             {team.nome}
                           </div>
                         </SelectItem>
@@ -125,7 +125,7 @@ export default function ConfrontosDiretos() {
               <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
                 <CardContent className="pt-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <TeamBadge name={team1.nome} size="lg" />
+                    <TeamBadge name={team1.nome} primaryColor={team1.cores?.primary} secondaryColor={team1.cores?.secondary} size="lg" />
                     <p className="font-semibold text-sm md:text-base truncate max-w-full">{team1.nome}</p>
                     <p className="text-2xl md:text-4xl font-bold text-primary">{h2h.vitoriasTime1}</p>
                     <p className="text-xs text-muted-foreground">vitórias</p>
@@ -149,7 +149,7 @@ export default function ConfrontosDiretos() {
               <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/30">
                 <CardContent className="pt-6 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <TeamBadge name={team2.nome} size="lg" />
+                    <TeamBadge name={team2.nome} primaryColor={team2.cores?.primary} secondaryColor={team2.cores?.secondary} size="lg" />
                     <p className="font-semibold text-sm md:text-base truncate max-w-full">{team2.nome}</p>
                     <p className="text-2xl md:text-4xl font-bold text-secondary">{h2h.vitoriasTime2}</p>
                     <p className="text-xs text-muted-foreground">vitórias</p>
@@ -235,7 +235,7 @@ export default function ConfrontosDiretos() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
                         <div className="flex items-center gap-2">
-                          <TeamBadge name={team1.nome} size="sm" />
+                          <TeamBadge name={team1.nome} primaryColor={team1.cores?.primary} secondaryColor={team1.cores?.secondary} size="sm" />
                           <span className="text-sm font-medium truncate max-w-[100px]">{team1.nome}</span>
                         </div>
                         <div className="text-right">
@@ -245,7 +245,7 @@ export default function ConfrontosDiretos() {
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/10">
                         <div className="flex items-center gap-2">
-                          <TeamBadge name={team2.nome} size="sm" />
+                          <TeamBadge name={team2.nome} primaryColor={team2.cores?.primary} secondaryColor={team2.cores?.secondary} size="sm" />
                           <span className="text-sm font-medium truncate max-w-[100px]">{team2.nome}</span>
                         </div>
                         <div className="text-right">
@@ -276,7 +276,7 @@ export default function ConfrontosDiretos() {
                       {h2h.maiorVitoriaTime1 && (
                         <div className="p-3 rounded-lg bg-primary/10">
                           <div className="flex items-center gap-2 mb-1">
-                            <TeamBadge name={team1.nome} size="sm" />
+                            <TeamBadge name={team1.nome} primaryColor={team1.cores?.primary} secondaryColor={team1.cores?.secondary} size="sm" />
                             <span className="text-sm font-medium">{team1.nome}</span>
                           </div>
                           <p className="text-lg font-bold text-primary">{h2h.maiorVitoriaTime1.placar}</p>
@@ -288,7 +288,7 @@ export default function ConfrontosDiretos() {
                       {h2h.maiorVitoriaTime2 && (
                         <div className="p-3 rounded-lg bg-secondary/10">
                           <div className="flex items-center gap-2 mb-1">
-                            <TeamBadge name={team2.nome} size="sm" />
+                            <TeamBadge name={team2.nome} primaryColor={team2.cores?.primary} secondaryColor={team2.cores?.secondary} size="sm" />
                             <span className="text-sm font-medium">{team2.nome}</span>
                           </div>
                           <p className="text-lg font-bold text-secondary">{h2h.maiorVitoriaTime2.placar}</p>
@@ -315,7 +315,7 @@ export default function ConfrontosDiretos() {
                       {h2h.sequenciaInvictoTime1 > 2 && (
                         <Badge variant="outline" className="px-3 py-1.5 text-sm">
                           <div className="flex items-center gap-2">
-                            <TeamBadge name={team1.nome} size="sm" />
+                            <TeamBadge name={team1.nome} primaryColor={team1.cores?.primary} secondaryColor={team1.cores?.secondary} size="sm" />
                             {team1.nome}: {h2h.sequenciaInvictoTime1} jogos
                           </div>
                         </Badge>
@@ -323,7 +323,7 @@ export default function ConfrontosDiretos() {
                       {h2h.sequenciaInvictoTime2 > 2 && (
                         <Badge variant="outline" className="px-3 py-1.5 text-sm">
                           <div className="flex items-center gap-2">
-                            <TeamBadge name={team2.nome} size="sm" />
+                            <TeamBadge name={team2.nome} primaryColor={team2.cores?.primary} secondaryColor={team2.cores?.secondary} size="sm" />
                             {team2.nome}: {h2h.sequenciaInvictoTime2} jogos
                           </div>
                         </Badge>
@@ -366,7 +366,7 @@ export default function ConfrontosDiretos() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-2">
-                                <TeamBadge name={team1.nome} size="sm" />
+                                <TeamBadge name={team1.nome} primaryColor={team1.cores?.primary} secondaryColor={team1.cores?.secondary} size="sm" />
                                 <span className="font-medium text-sm md:text-base">{team1.nome}</span>
                               </div>
                               
@@ -377,7 +377,7 @@ export default function ConfrontosDiretos() {
                               </div>
                               
                               <div className="flex items-center gap-2">
-                                <TeamBadge name={team2.nome} size="sm" />
+                                <TeamBadge name={team2.nome} primaryColor={team2.cores?.primary} secondaryColor={team2.cores?.secondary} size="sm" />
                                 <span className="font-medium text-sm md:text-base hidden sm:inline">{team2.nome}</span>
                               </div>
                             </div>

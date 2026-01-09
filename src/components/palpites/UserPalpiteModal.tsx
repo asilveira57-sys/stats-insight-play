@@ -165,12 +165,12 @@ export function UserPalpiteModal({ open, onOpenChange, prediction }: UserPalpite
             {/* Match Info */}
             <div className="flex items-center justify-center gap-4 py-4 bg-muted/50 rounded-xl">
               <div className="flex flex-col items-center gap-2">
-                <TeamBadge name={prediction.homeTeam.name} size="lg" />
+                <TeamBadge name={prediction.homeTeam.name} primaryColor={prediction.homeTeam.primaryColor} secondaryColor={prediction.homeTeam.secondaryColor} size="lg" />
                 <span className="text-sm font-medium text-center">{prediction.homeTeam.name}</span>
               </div>
               <span className="text-2xl font-bold text-muted-foreground">VS</span>
               <div className="flex flex-col items-center gap-2">
-                <TeamBadge name={prediction.awayTeam.name} size="lg" />
+                <TeamBadge name={prediction.awayTeam.name} primaryColor={prediction.awayTeam.primaryColor} secondaryColor={prediction.awayTeam.secondaryColor} size="lg" />
                 <span className="text-sm font-medium text-center">{prediction.awayTeam.name}</span>
               </div>
             </div>
