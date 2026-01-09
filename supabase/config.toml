@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.calculate-priority-scores]
 verify_jwt = false
+
+[functions.generate-weekly-validation]
+verify_jwt = false

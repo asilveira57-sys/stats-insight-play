@@ -18,6 +18,7 @@ import Artilheiros from "./pages/Artilheiros";
 import ConfrontosDiretos from "./pages/ConfrontosDiretos";
 import RankingIAvsHumanos from "./pages/RankingIAvsHumanos";
 import PerformancePrevisoes from "./pages/PerformancePrevisoes";
+import ValidacaoSemanal from "./pages/ValidacaoSemanal";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/confrontos" element={<ConfrontosDiretos />} />
             <Route path="/ranking/ia-vs-humanos" element={<RankingIAvsHumanos />} />
             <Route path="/performance/previsoes" element={<PerformancePrevisoes />} />
+            <Route path="/validacao/semanal" element={<ValidacaoSemanal />} />
             <Route path="/times/:slug" element={<TimePilar />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
