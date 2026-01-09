@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { Layout } from "@/components/layout/Layout";
 import { useNoticiaBySlug } from "@/hooks/useNoticias";
-import { Loader2, ArrowLeft, Share2, Calendar, ChevronRight, Home, Newspaper } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Calendar, ChevronRight, Home, Newspaper, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -13,6 +13,34 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ArticleSEO } from "@/components/news/ArticleSEO";
+import { PremiumCTA } from "@/components/news/PremiumCTA";
+import { RelatedArticles } from "@/components/news/RelatedArticles";
+
+// Estimate reading time based on word count
+function calculateReadingTime(text: string): number {
+  const plainText = text.replace(/<[^>]*>/g, " ");
+  const words = plainText.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
+// Process HTML to replace custom CTA placeholders with React components
+function processContent(html: string): { beforeCta: string; afterCta: string; hasCta: boolean } {
+  const ctaRegex = /<div class="premium-cta">[\s\S]*?<\/div>/;
+  const ctaFinalRegex = /<div class="premium-cta-final">[\s\S]*?<\/div>/;
+  
+  // Remove the CTAs from content, we'll render them as React components
+  let processed = html.replace(ctaRegex, "<!-- CTA_PLACEHOLDER -->");
+  processed = processed.replace(ctaFinalRegex, "");
+  
+  const parts = processed.split("<!-- CTA_PLACEHOLDER -->");
+  
+  return {
+    beforeCta: parts[0] || html,
+    afterCta: parts[1] || "",
+    hasCta: parts.length > 1,
+  };
+}
 
 export default function NoticiaDetalhes() {
   const { slug } = useParams<{ slug: string }>();
@@ -75,10 +103,22 @@ export default function NoticiaDetalhes() {
     );
   }
 
+  const readingTime = calculateReadingTime(noticia.texto);
+  const { beforeCta, afterCta, hasCta } = processContent(noticia.texto);
+  const articleUrl = `${window.location.origin}/noticias/${slug}`;
+
   return (
     <Layout>
-      {/* SEO Meta Tags - would need react-helmet for full implementation */}
-      <article className="min-h-screen">
+      {/* SEO Meta Tags */}
+      <ArticleSEO
+        title={noticia.titulo}
+        description={noticia.resumo || noticia.texto.slice(0, 160)}
+        image={noticia.imagem_url || undefined}
+        url={articleUrl}
+        publishedTime={noticia.data_publicacao || noticia.created_at}
+      />
+
+      <article className="min-h-screen" itemScope itemType="https://schema.org/Article">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-4">
           <Breadcrumb>
@@ -96,7 +136,7 @@ export default function NoticiaDetalhes() {
               </BreadcrumbSeparator>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/noticias">Notícias</Link>
+                  <Link to="/noticias">Análises</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator>
@@ -118,6 +158,7 @@ export default function NoticiaDetalhes() {
               src={noticia.imagem_url}
               alt={noticia.titulo}
               className="w-full h-full object-cover"
+              itemProp="image"
               onError={(e) => {
                 (e.target as HTMLImageElement).src =
                   "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200";
@@ -130,50 +171,111 @@ export default function NoticiaDetalhes() {
         {/* Content */}
         <div className="container mx-auto px-4 -mt-32 relative z-10">
           <div className="max-w-3xl mx-auto">
-            {/* Date */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <Calendar className="w-4 h-4" />
-              <time dateTime={noticia.data_publicacao || noticia.created_at}>
-                {formatDate(noticia.data_publicacao || noticia.created_at)}
-              </time>
+            {/* Meta info */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <time 
+                  dateTime={noticia.data_publicacao || noticia.created_at}
+                  itemProp="datePublished"
+                >
+                  {formatDate(noticia.data_publicacao || noticia.created_at)}
+                </time>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>{readingTime} min de leitura</span>
+              </div>
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-6 leading-tight">
+            <h1 
+              className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-6 leading-tight"
+              itemProp="headline"
+            >
               {noticia.titulo}
             </h1>
 
             {/* Summary */}
             {noticia.resumo && (
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed border-l-4 border-primary pl-4">
+              <p 
+                className="text-lg text-muted-foreground mb-8 leading-relaxed border-l-4 border-primary pl-4"
+                itemProp="description"
+              >
                 {noticia.resumo}
               </p>
             )}
 
-            {/* Article Content */}
+            {/* Article Content - Part 1 */}
             <div
-              className="prose prose-lg prose-invert max-w-none 
-                [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4
-                [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-6 [&>h3]:mb-3
+              className="prose prose-lg prose-invert max-w-none article-content
+                [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-foreground
+                [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3 [&>h3]:text-foreground
+                [&>h4]:text-lg [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
                 [&>p]:text-foreground/90 [&>p]:mb-4 [&>p]:leading-relaxed
-                [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2
-                [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2
-                [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(noticia.texto) }}
+                [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-foreground/85
+                [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2 [&>ol>li]:text-foreground/85
+                [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-muted-foreground
+                [&_figure.internal-image]:my-8 [&_figure.internal-image]:rounded-xl [&_figure.internal-image]:overflow-hidden
+                [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
+                [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
+                [&_strong]:text-foreground [&_strong]:font-semibold
+                [&_em]:text-foreground/90"
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(beforeCta) }}
+              itemProp="articleBody"
             />
+
+            {/* Premium CTA - Inline */}
+            {hasCta && <PremiumCTA variant="inline" />}
+
+            {/* Article Content - Part 2 */}
+            {afterCta && (
+              <div
+                className="prose prose-lg prose-invert max-w-none article-content
+                  [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-foreground
+                  [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3 [&>h3]:text-foreground
+                  [&>h4]:text-lg [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
+                  [&>p]:text-foreground/90 [&>p]:mb-4 [&>p]:leading-relaxed
+                  [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-foreground/85
+                  [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2 [&>ol>li]:text-foreground/85
+                  [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-muted-foreground
+                  [&_figure.internal-image]:my-8 [&_figure.internal-image]:rounded-xl [&_figure.internal-image]:overflow-hidden
+                  [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
+                  [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
+                  [&_strong]:text-foreground [&_strong]:font-semibold
+                  [&_em]:text-foreground/90"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(afterCta) }}
+              />
+            )}
+
+            {/* Premium CTA - Footer */}
+            <PremiumCTA variant="footer" />
+
+            {/* Related Articles */}
+            <RelatedArticles currentArticleId={noticia.id} />
 
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-4 mt-12 pt-8 border-t border-border">
               <Button variant="outline" asChild>
                 <Link to="/noticias">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Voltar às Notícias
+                  Todas as Análises
                 </Link>
               </Button>
               <Button variant="secondary" onClick={handleShare}>
                 <Share2 className="w-4 h-4 mr-2" />
                 Compartilhar
               </Button>
+            </div>
+
+            {/* Legal disclaimer */}
+            <div className="mt-8 p-4 rounded-lg bg-muted/30 text-sm text-muted-foreground">
+              <p>
+                <strong>Aviso:</strong> O Statball é uma plataforma de análise estatística de futebol. 
+                Este conteúdo tem caráter informativo e não constitui recomendação de apostas. 
+                Consulte nossos <Link to="/termos" className="text-primary hover:underline">Termos de Uso</Link> e{" "}
+                <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>.
+              </p>
             </div>
           </div>
         </div>

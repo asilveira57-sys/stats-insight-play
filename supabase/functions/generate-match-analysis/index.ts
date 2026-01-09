@@ -35,41 +35,132 @@ interface MatchData {
   } | null;
 }
 
-async function generateTextContent(matchData: MatchData, LOVABLE_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
+function generateSlug(timeCasa: string, timeFora: string, liga: string): string {
+  const text = `${timeCasa} x ${timeFora} analise estatistica ${liga}`;
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 100);
+}
+
+async function generateLongFormContent(matchData: MatchData, LOVABLE_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
   const palpite = matchData.palpite;
+  const matchDate = new Date(matchData.data).toLocaleDateString('pt-BR', { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
   
-  const prompt = `Você é um analista esportivo brasileiro especializado em análise estatística de futebol.
+  const prompt = `Você é um analista esportivo brasileiro experiente, especializado em análise estatística e tática de futebol. Escreva como um profissional de redação esportiva de alto nível.
 
-DADOS DA PARTIDA:
+DADOS COMPLETOS DA PARTIDA:
 - Competição: ${matchData.liga.nome}
-- Data: ${new Date(matchData.data).toLocaleDateString('pt-BR')} às ${matchData.hora?.substring(0, 5) || '00:00'}
-- Mandante: ${matchData.time_casa.nome} (Força: ${palpite?.forca_time_casa?.toFixed(0) || 50}/100)
-- Visitante: ${matchData.time_fora.nome} (Força: ${palpite?.forca_time_fora?.toFixed(0) || 50}/100)
+- Data: ${matchDate} às ${matchData.hora?.substring(0, 5) || '00:00'}
+- Mandante: ${matchData.time_casa.nome}
+- Visitante: ${matchData.time_fora.nome}
 
-PREVISÃO DO SISTEMA:
-- Vitória ${matchData.time_casa.nome}: ${palpite?.prob_casa?.toFixed(1) || 33}%
-- Empate: ${palpite?.prob_empate?.toFixed(1) || 33}%
-- Vitória ${matchData.time_fora.nome}: ${palpite?.prob_fora?.toFixed(1) || 33}%
-- Placar previsto: ${palpite?.placar_casa_estimado || 0} x ${palpite?.placar_fora_estimado || 0}
-- Confiança: ${palpite?.confianca?.toFixed(0) || 50}%
+MÉTRICAS DO SISTEMA DE ANÁLISE:
+- Força do ${matchData.time_casa.nome}: ${palpite?.forca_time_casa?.toFixed(0) || 50}/100
+- Força do ${matchData.time_fora.nome}: ${palpite?.forca_time_fora?.toFixed(0) || 50}/100
+- Probabilidade vitória ${matchData.time_casa.nome}: ${palpite?.prob_casa?.toFixed(1) || 33}%
+- Probabilidade empate: ${palpite?.prob_empate?.toFixed(1) || 33}%
+- Probabilidade vitória ${matchData.time_fora.nome}: ${palpite?.prob_fora?.toFixed(1) || 33}%
+- Placar mais provável: ${palpite?.placar_casa_estimado || 0} x ${palpite?.placar_fora_estimado || 0}
+- Nível de confiança da análise: ${palpite?.confianca?.toFixed(0) || 50}%
 
-TAREFA:
-Gere um artigo de análise pré-jogo com:
-1. Título SEO (máx 70 chars) - inclua nomes dos times e competição
-2. Resumo (máx 160 chars) - meta description otimizada
-3. Texto (300-500 palavras) em HTML básico explicando:
-   - Contexto do confronto
-   - Análise estatística dos times
-   - Justificativa matemática para a previsão
-   - Fatores que influenciam o placar previsto
+INSTRUÇÕES DETALHADAS:
 
-IMPORTANTE: Este é um portal de ANÁLISE ESTATÍSTICA, não de apostas.
-Foque na matemática e nos dados, sem recomendações de apostas.
+Gere um artigo completo e aprofundado de análise pré-jogo seguindo EXATAMENTE esta estrutura:
+
+1. TÍTULO SEO (máximo 65 caracteres):
+- Inclua os nomes dos times
+- Mencione "Análise Estatística"
+- Inclua a competição
+- Exemplo: "${matchData.time_casa.nome} x ${matchData.time_fora.nome}: Análise Estatística da ${matchData.liga.nome}"
+
+2. RESUMO/META DESCRIPTION (máximo 155 caracteres):
+- Texto persuasivo para resultados de busca
+- Mencione a análise e a competição
+- Convide à leitura
+
+3. TEXTO PRINCIPAL (mínimo 1500 palavras):
+O artigo DEVE conter as seguintes seções em HTML, usando tags h2, h3, p, ul, li, strong, em:
+
+<h2>Introdução: Contexto do Confronto</h2>
+- Apresente o jogo e sua importância no campeonato
+- Contextualize o momento de cada equipe
+- Explique por que este confronto é relevante
+- Mínimo 200 palavras
+
+<h2>Análise Pré-Jogo: Forma Recente das Equipes</h2>
+- Desempenho recente de cada time
+- Resultados em casa (mandante) e fora (visitante)
+- Sequências positivas ou negativas
+- Jogadores-chave e desfalques importantes
+- Mínimo 250 palavras
+
+<h2>Leitura Estatística do Confronto</h2>
+- Explique as métricas de força de cada time
+- Analise as probabilidades calculadas
+- Compare os números de forma objetiva
+- Discuta tendências estatísticas
+- Mínimo 300 palavras
+
+<h2>Cenários Táticos Prováveis</h2>
+- Como cada time deve se comportar taticamente
+- Possíveis formações e estratégias
+- Pontos de pressão e vulnerabilidades
+- Onde o jogo pode ser decidido
+- Mínimo 250 palavras
+
+<!-- INSERIR CTA PREMIUM AQUI -->
+<div class="premium-cta">
+<p><strong>Quer análises ainda mais detalhadas?</strong> Usuários do Clube Statball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto.</p>
+</div>
+
+<h2>Análise do Placar Previsto: ${palpite?.placar_casa_estimado || 0} x ${palpite?.placar_fora_estimado || 0}</h2>
+- Justifique matematicamente o placar previsto
+- Explique os fatores que levaram a essa projeção
+- Discuta cenários alternativos prováveis
+- Mínimo 200 palavras
+
+<h2>Fatores Decisivos para o Resultado</h2>
+- Mando de campo e torcida
+- Calendário e desgaste físico
+- Histórico recente do confronto direto
+- Importância do jogo para cada equipe
+- Mínimo 200 palavras
+
+<h2>Conclusão: O Que os Números Indicam</h2>
+- Síntese da análise completa
+- Reforce o valor da análise baseada em dados
+- Conclusão equilibrada e profissional
+- Mínimo 150 palavras
+
+<!-- INSERIR CTA FINAL -->
+<div class="premium-cta-final">
+<p>Esta análise foi gerada pelo sistema de inteligência estatística do Statball. Para acompanhar análises detalhadas de todos os confrontos e acessar dados avançados, conheça o <strong>Clube Statball Premium</strong>.</p>
+</div>
+
+REGRAS IMPORTANTES:
+- Este é um portal de ANÁLISE ESTATÍSTICA, não de apostas
+- Nunca faça recomendações de apostas
+- Use linguagem profissional de jornalismo esportivo
+- Evite frases genéricas ou repetitivas
+- Cada seção deve ter conteúdo único e aprofundado
+- O texto total deve ter pelo menos 1500 palavras
+- Use dados concretos sempre que possível
+- Inclua as tags HTML corretamente formatadas
 
 Responda APENAS em formato JSON válido:
 {
-  "titulo": "título aqui",
-  "resumo": "resumo aqui",
+  "titulo": "título SEO aqui",
+  "resumo": "meta description aqui",
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
@@ -82,7 +173,10 @@ Responda APENAS em formato JSON válido:
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: "Você é um analista esportivo brasileiro. Responda sempre em JSON válido." },
+        { 
+          role: "system", 
+          content: "Você é um analista esportivo brasileiro especializado em análise estatística de futebol. Gere conteúdo longo, detalhado e profissional. Responda sempre em JSON válido. O texto deve ser extenso e aprofundado, com pelo menos 1500 palavras." 
+        },
         { role: "user", content: prompt }
       ],
     }),
@@ -172,17 +266,55 @@ async function generateThumbnail(matchData: MatchData, LOVABLE_API_KEY: string):
   }
 }
 
-async function uploadThumbnail(
+async function generateInternalImage(matchData: MatchData, LOVABLE_API_KEY: string): Promise<string | null> {
+  const prompt = `Create a professional sports analytics infographic image:
+- Modern dark background with subtle gradient
+- Football field tactical view with abstract data visualization elements
+- Team colors subtly incorporated: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
+- Statistical charts and graphs overlay (abstract, decorative)
+- Clean, professional, data-driven aesthetic
+- No text, pure visual design
+- 16:9 aspect ratio for blog content
+- Modern sports analytics visual style
+- Ultra high resolution`;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          { role: "user", content: prompt }
+        ],
+        modalities: ["image", "text"]
+      }),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+  } catch (error) {
+    console.error("Error generating internal image:", error);
+    return null;
+  }
+}
+
+async function uploadImage(
   supabaseAdmin: any,
   imageBase64: string,
-  matchId: string
+  fileName: string
 ): Promise<string | null> {
   try {
     // Extract base64 data from data URL
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
     const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    
-    const fileName = `${matchId}.png`;
     
     const { data, error } = await supabaseAdmin.storage
       .from('news-thumbnails')
@@ -203,7 +335,7 @@ async function uploadThumbnail(
 
     return urlData?.publicUrl || null;
   } catch (error) {
-    console.error("Error uploading thumbnail:", error);
+    console.error("Error uploading image:", error);
     return null;
   }
 }
@@ -242,7 +374,7 @@ serve(async (req) => {
         hora,
         time_casa:times!partidas_time_casa_id_fkey(id, nome, cores),
         time_fora:times!partidas_time_fora_id_fkey(id, nome, cores),
-        liga:ligas(nome),
+        liga:ligas(id, nome),
         palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca)
       `)
       .eq('status', 'scheduled')
@@ -324,22 +456,47 @@ serve(async (req) => {
       try {
         console.log(`Processing match: ${matchData.time_casa.nome} vs ${matchData.time_fora.nome}`);
 
-        // Generate text content
-        const textContent = await generateTextContent(matchData, LOVABLE_API_KEY);
-        console.log(`Text generated: ${textContent.titulo}`);
+        // Generate long-form text content
+        const textContent = await generateLongFormContent(matchData, LOVABLE_API_KEY);
+        console.log(`Text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
         // Generate and upload thumbnail
         let imageUrl: string | null = null;
         const thumbnailBase64 = await generateThumbnail(matchData, LOVABLE_API_KEY);
         
         if (thumbnailBase64) {
-          imageUrl = await uploadThumbnail(supabaseAdmin, thumbnailBase64, match.id);
+          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `${match.id}.png`);
           console.log(`Thumbnail uploaded: ${imageUrl}`);
         } else {
-          // Use default stadium image if thumbnail generation fails
           imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1280&h=720&fit=crop";
           console.log("Using default thumbnail");
         }
+
+        // Generate and upload internal image
+        let internalImageUrl: string | null = null;
+        const internalImageBase64 = await generateInternalImage(matchData, LOVABLE_API_KEY);
+        
+        if (internalImageBase64) {
+          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `${match.id}-internal.png`);
+          console.log(`Internal image uploaded: ${internalImageUrl}`);
+        }
+
+        // Inject internal image into text if available
+        let finalText = textContent.texto;
+        if (internalImageUrl) {
+          // Find the middle CTA and add image before it
+          const ctaIndex = finalText.indexOf('<div class="premium-cta">');
+          if (ctaIndex > 0) {
+            const imageHtml = `<figure class="internal-image">
+              <img src="${internalImageUrl}" alt="Análise estatística do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome} pela ${matchData.liga.nome}" loading="lazy" />
+              <figcaption>Visualização analítica do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome}</figcaption>
+            </figure>`;
+            finalText = finalText.slice(0, ctaIndex) + imageHtml + finalText.slice(ctaIndex);
+          }
+        }
+
+        // Generate slug
+        const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.liga.nome);
 
         // Insert news article
         const { error: insertError } = await supabaseAdmin
@@ -347,18 +504,19 @@ serve(async (req) => {
           .insert({
             titulo: textContent.titulo,
             resumo: textContent.resumo,
-            texto: textContent.texto,
+            texto: finalText,
             imagem_url: imageUrl,
             partida_id: match.id,
             publicada: true,
-            data_publicacao: new Date().toISOString()
+            data_publicacao: new Date().toISOString(),
+            slug: slug
           });
 
         if (insertError) {
           console.error(`Error inserting news for match ${match.id}:`, insertError);
           results.errors.push(`Match ${match.id}: ${insertError.message}`);
         } else {
-          console.log(`News created for match ${match.id}`);
+          console.log(`News created for match ${match.id} with slug: ${slug}`);
           results.created++;
         }
 
@@ -368,7 +526,7 @@ serve(async (req) => {
       }
 
       // Small delay to avoid rate limits
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     console.log("Processing complete:", results);
