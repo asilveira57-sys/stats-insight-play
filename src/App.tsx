@@ -16,6 +16,7 @@ import Retrospectiva from "./pages/Retrospectiva";
 import RankingSelecoes from "./pages/RankingSelecoes";
 import Artilheiros from "./pages/Artilheiros";
 import ConfrontosDiretos from "./pages/ConfrontosDiretos";
+import RankingIAvsHumanos from "./pages/RankingIAvsHumanos";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/ranking-selecoes" element={<RankingSelecoes />} />
             <Route path="/artilheiros" element={<Artilheiros />} />
             <Route path="/confrontos" element={<ConfrontosDiretos />} />
+            <Route path="/ranking/ia-vs-humanos" element={<RankingIAvsHumanos />} />
             <Route path="/times/:slug" element={<TimePilar />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
