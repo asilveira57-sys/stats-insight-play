@@ -126,6 +126,8 @@ export default function Artilheiros() {
   const aggregatedPlayers = new Map<string, {
     teamName: string;
     teamLogo: string | null;
+    teamPrimaryColor: string | null;
+    teamSecondaryColor: string | null;
     totalGoals: number;
     totalMatches: number;
     competitions: string[];
@@ -136,6 +138,8 @@ export default function Artilheiros() {
       aggregatedPlayers.set(scorer.playerName, {
         teamName: scorer.teamName,
         teamLogo: scorer.teamLogo,
+        teamPrimaryColor: scorer.teamPrimaryColor,
+        teamSecondaryColor: scorer.teamSecondaryColor,
         totalGoals: 0,
         totalMatches: 0,
         competitions: []
@@ -321,7 +325,7 @@ export default function Artilheiros() {
                           {index + 1}
                         </div>
                         
-                        <TeamBadge name={player.teamName} size="md" />
+                        <TeamBadge name={player.teamName} primaryColor={player.teamPrimaryColor || undefined} secondaryColor={player.teamSecondaryColor || undefined} size="md" />
                         
                         <div className="flex-1">
                           <p className="font-semibold">{player.name}</p>
@@ -366,7 +370,7 @@ export default function Artilheiros() {
                             {index + 1}
                           </span>
                           
-                          <TeamBadge name={scorer.teamName} size="sm" />
+                          <TeamBadge name={scorer.teamName} primaryColor={scorer.teamPrimaryColor || undefined} secondaryColor={scorer.teamSecondaryColor || undefined} size="sm" />
                           
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{scorer.playerName}</p>
