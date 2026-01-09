@@ -40,6 +40,7 @@ const menuStructure = {
     label: "Times",
     icon: Shield,
     items: [
+      { href: "/times", label: "Todos os Times", description: "Explorar clubes e seleções" },
       { href: "/ranking-selecoes", label: "Seleções", description: "Ranking de seleções nacionais" },
       { href: "/confrontos", label: "Confrontos Diretos", description: "Histórico entre equipes" },
     ]

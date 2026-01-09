@@ -1,0 +1,351 @@
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { TeamBadge } from "@/components/ui/TeamBadge";
+import { 
+  Shield, ChevronRight, Search, Globe, MapPin, 
+  Star, TrendingUp, Users, Flag, Trophy
+} from "lucide-react";
+import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
+
+interface Time {
+  id: string;
+  nome: string;
+  slug: string | null;
+  pais: string | null;
+  escudo_url: string | null;
+  priority_score: number | null;
+}
+
+// Mapeamento de países para regiões
+const regionMap: Record<string, string> = {
+  'Brasil': 'América do Sul',
+  'Argentina': 'América do Sul',
+  'Colômbia': 'América do Sul',
+  'Chile': 'América do Sul',
+  'Uruguai': 'América do Sul',
+  'Paraguai': 'América do Sul',
+  'Peru': 'América do Sul',
+  'Equador': 'América do Sul',
+  'Bolívia': 'América do Sul',
+  'Venezuela': 'América do Sul',
+  'México': 'América do Norte',
+  'Estados Unidos': 'América do Norte',
+  'Canadá': 'América do Norte',
+  'Inglaterra': 'Europa',
+  'England': 'Europa',
+  'Espanha': 'Europa',
+  'Spain': 'Europa',
+  'Alemanha': 'Europa',
+  'Germany': 'Europa',
+  'Itália': 'Europa',
+  'Italy': 'Europa',
+  'França': 'Europa',
+  'France': 'Europa',
+  'Portugal': 'Europa',
+  'Holanda': 'Europa',
+  'Netherlands': 'Europa',
+  'Países Baixos': 'Europa',
+  'Bélgica': 'Europa',
+  'Belgium': 'Europa',
+  'Rússia': 'Europa',
+  'Turquia': 'Europa',
+  'Escócia': 'Europa',
+  'Scotland': 'Europa',
+  'Grécia': 'Europa',
+  'Suíça': 'Europa',
+  'Áustria': 'Europa',
+  'Ucrânia': 'Europa',
+  'Polônia': 'Europa',
+};
+
+const regionOrder = ['América do Sul', 'Europa', 'América do Norte', 'Outros'];
+
+const regionIcons: Record<string, any> = {
+  'América do Sul': Flag,
+  'Europa': Globe,
+  'América do Norte': MapPin,
+  'Outros': Star,
+};
+
+export default function Times() {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data: times, isLoading } = useQuery({
+    queryKey: ['times-hub'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('times')
+        .select('id, nome, slug, pais, escudo_url, priority_score')
+        .order('priority_score', { ascending: false, nullsFirst: false });
+
+      if (error) throw error;
+      return data as Time[];
+    },
+  });
+
+  // Agrupar por região
+  const groupedByRegion = useMemo(() => {
+    if (!times) return {};
+
+    const filtered = times.filter(time => 
+      time.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (time.pais?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const groups: Record<string, Time[]> = {};
+
+    filtered.forEach(time => {
+      const region = time.pais ? (regionMap[time.pais] || 'Outros') : 'Outros';
+      if (!groups[region]) {
+        groups[region] = [];
+      }
+      groups[region].push(time);
+    });
+
+    // Ordenar por regionOrder
+    const orderedGroups: Record<string, Time[]> = {};
+    regionOrder.forEach(region => {
+      if (groups[region]) {
+        orderedGroups[region] = groups[region];
+      }
+    });
+
+    return orderedGroups;
+  }, [times, searchTerm]);
+
+  const totalTimes = times?.length || 0;
+
+  return (
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <Link to="/" className="hover:text-foreground transition-colors">Início</Link>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-foreground">Times</span>
+        </nav>
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Shield className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-display font-bold">Times</h1>
+              <p className="text-muted-foreground">
+                Explore estatísticas, análises e histórico de {totalTimes} clubes e seleções
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Intro Card */}
+        <Card className="mb-8 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <h2 className="font-semibold text-lg mb-2">Central de Times</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Acesse páginas dedicadas para cada time com estatísticas completas, 
+                  resultados recentes, próximos jogos, histórico de confrontos e análises 
+                  detalhadas. Cada página pilar é atualizada automaticamente com os dados mais recentes.
+                </p>
+              </div>
+              <div className="flex gap-4 text-center">
+                <div className="px-4">
+                  <p className="text-2xl font-bold text-primary">{totalTimes}</p>
+                  <p className="text-xs text-muted-foreground">Times</p>
+                </div>
+                <div className="px-4 border-l border-border">
+                  <p className="text-2xl font-bold text-secondary">{Object.keys(groupedByRegion).length}</p>
+                  <p className="text-xs text-muted-foreground">Regiões</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Search */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar time ou país..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-card border-border"
+            />
+          </div>
+        </div>
+
+        <AdSlot position="article-intro" />
+
+        {/* Lista de Times por Região */}
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-muted rounded-lg" />
+                    <div className="flex-1">
+                      <div className="h-5 bg-muted rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : Object.keys(groupedByRegion).length > 0 ? (
+          <div className="space-y-8">
+            {Object.entries(groupedByRegion).map(([region, timesRegion]) => {
+              const RegionIcon = regionIcons[region] || Globe;
+              
+              return (
+                <section key={region}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <RegionIcon className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-semibold">{region}</h2>
+                    <Badge variant="outline" className="ml-2">
+                      {timesRegion.length} {timesRegion.length === 1 ? 'time' : 'times'}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {timesRegion.map((time) => (
+                      <Link 
+                        key={time.id} 
+                        to={`/times/${time.slug || time.id}`}
+                        className="group"
+                      >
+                        <Card className="h-full transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <TeamBadge 
+                                name={time.nome} 
+                                size="md"
+                                className="flex-shrink-0"
+                              />
+                              
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                  {time.nome}
+                                </h3>
+                                {time.pais && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-3 h-3" />
+                                    {time.pais}
+                                  </p>
+                                )}
+                              </div>
+
+                              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Nenhum time encontrado</h3>
+              <p className="text-muted-foreground text-sm">
+                {searchTerm 
+                  ? `Não encontramos resultados para "${searchTerm}"`
+                  : "Nenhum time disponível no momento"
+                }
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <AdSlot position="article-end" />
+
+        {/* Links Rápidos */}
+        <Card className="mt-8">
+          <CardContent className="p-6">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Star className="w-5 h-5 text-primary" />
+              Explore mais
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <Link 
+                to="/ranking-selecoes" 
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+              >
+                <Flag className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">Ranking Seleções</p>
+                  <p className="text-xs text-muted-foreground">Performance nacional</p>
+                </div>
+              </Link>
+              
+              <Link 
+                to="/confrontos" 
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+              >
+                <Users className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">Confrontos Diretos</p>
+                  <p className="text-xs text-muted-foreground">Histórico entre times</p>
+                </div>
+              </Link>
+              
+              <Link 
+                to="/campeonatos" 
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+              >
+                <Trophy className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">Campeonatos</p>
+                  <p className="text-xs text-muted-foreground">Competições disponíveis</p>
+                </div>
+              </Link>
+              
+              <Link 
+                to="/resultados" 
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 transition-colors"
+              >
+                <TrendingUp className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">Jogos do Dia</p>
+                  <p className="text-xs text-muted-foreground">Resultados e próximos</p>
+                </div>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SEO Footer */}
+        <div className="mt-12 pt-8 border-t border-border">
+          <h2 className="text-xl font-semibold mb-4">Sobre os Times</h2>
+          <div className="prose prose-invert max-w-none">
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              O Statball oferece cobertura completa dos principais clubes e seleções do mundo. 
+              Cada página de time é uma central de informações com estatísticas atualizadas, 
+              resultados recentes, próximos jogos, histórico de desempenho e análises matemáticas 
+              exclusivas. Nossa cobertura prioriza o futebol brasileiro (clubes da Série A e B) 
+              e as principais equipes europeias, além das seleções nacionais que disputam 
+              competições internacionais como Copa do Mundo, Copa América e Eurocopa.
+            </p>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}

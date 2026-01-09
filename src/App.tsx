@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import TimePilar from "./pages/TimePilar";
+import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
 import HubDashboard from "./pages/hub/Dashboard";
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/performance/evolucao-semanal" element={<EvolucaoSemanal />} />
             <Route path="/evolucao" element={<Evolucao />} />
             <Route path="/validacao/semanal" element={<ValidacaoSemanal />} />
+            <Route path="/times" element={<Times />} />
             <Route path="/times/:slug" element={<TimePilar />} />
             <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
