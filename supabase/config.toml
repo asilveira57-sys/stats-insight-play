@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.generate-team-pillar]
 verify_jwt = false
+
+[functions.generate-league-pillar]
+verify_jwt = false
