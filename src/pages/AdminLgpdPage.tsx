@@ -26,6 +26,7 @@ import {
   Eye
 } from "lucide-react";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   useLgpdConfig, 
   useUpdateLgpdConfig, 
@@ -39,6 +40,7 @@ import { ptBR } from "date-fns/locale";
 
 export default function AdminLgpdPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdminAccess();
   const { data: config, isLoading: configLoading } = useLgpdConfig();
   const { data: analyticsConfig } = useAnalyticsConfig();
@@ -102,6 +104,7 @@ export default function AdminLgpdPage() {
       policy_version: policyVersion,
       policy_updated_at: policyVersion !== config?.policy_version ? new Date().toISOString() : config?.policy_updated_at,
       logChanges: changes,
+      userId: user?.id,
     });
   };
 
