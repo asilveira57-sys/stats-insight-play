@@ -18,8 +18,9 @@ import {
   Loader2, RefreshCw, Play, Pause, AlertTriangle, CheckCircle, XCircle,
   Database, Zap, FileText, Users, Settings, BarChart3, Search, 
   Clock, TrendingUp, Shield, Crown, Eye, Copy, RotateCcw, 
-  Activity, Server, Calendar, Newspaper, Trophy, Target
+  Activity, Server, Calendar, Newspaper, Trophy, Target, ExternalLink
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 // Health Status Card Component
 function HealthCard({ 
@@ -302,6 +303,12 @@ export default function AdminControlCenter() {
               <p className="text-muted-foreground text-sm">Controle centralizado do sistema</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/admin/integracoes/analytics">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
