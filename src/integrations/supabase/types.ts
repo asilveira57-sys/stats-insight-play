@@ -783,6 +783,114 @@ export type Database = {
           },
         ]
       }
+      lgpd_config: {
+        Row: {
+          banner_enabled: boolean | null
+          banner_text: string | null
+          banner_title: string | null
+          category_analytics_description: string | null
+          category_essential_description: string | null
+          category_marketing_description: string | null
+          id: string
+          policy_updated_at: string | null
+          policy_version: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          banner_enabled?: boolean | null
+          banner_text?: string | null
+          banner_title?: string | null
+          category_analytics_description?: string | null
+          category_essential_description?: string | null
+          category_marketing_description?: string | null
+          id?: string
+          policy_updated_at?: string | null
+          policy_version?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          banner_enabled?: boolean | null
+          banner_text?: string | null
+          banner_title?: string | null
+          category_analytics_description?: string | null
+          category_essential_description?: string | null
+          category_marketing_description?: string | null
+          id?: string
+          policy_updated_at?: string | null
+          policy_version?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      lgpd_config_logs: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
+      lgpd_consent_records: {
+        Row: {
+          action: string
+          analytics_accepted: boolean | null
+          created_at: string | null
+          essential_accepted: boolean | null
+          id: string
+          ip_anonymized: string | null
+          marketing_accepted: boolean | null
+          policy_version: string
+          user_agent_hash: string | null
+          visitor_hash: string
+        }
+        Insert: {
+          action: string
+          analytics_accepted?: boolean | null
+          created_at?: string | null
+          essential_accepted?: boolean | null
+          id?: string
+          ip_anonymized?: string | null
+          marketing_accepted?: boolean | null
+          policy_version: string
+          user_agent_hash?: string | null
+          visitor_hash: string
+        }
+        Update: {
+          action?: string
+          analytics_accepted?: boolean | null
+          created_at?: string | null
+          essential_accepted?: boolean | null
+          id?: string
+          ip_anonymized?: string | null
+          marketing_accepted?: boolean | null
+          policy_version?: string
+          user_agent_hash?: string | null
+          visitor_hash?: string
+        }
+        Relationships: []
+      }
       ligas: {
         Row: {
           api_id: number | null

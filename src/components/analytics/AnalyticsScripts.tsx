@@ -1,29 +1,40 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePublicAnalyticsConfig } from "@/hooks/useAnalyticsConfig";
+import { hasAnalyticsConsent, hasMarketingConsent, hasConsentBeenGiven } from "@/hooks/useLgpdConsent";
 
 export function AnalyticsScripts() {
   const { data: config } = usePublicAnalyticsConfig();
   const ga4Loaded = useRef(false);
   const pixelLoaded = useRef(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+
+  // Check consent on mount and when consent changes
+  useEffect(() => {
+    setConsentChecked(true);
+  }, []);
 
   // Determine which IDs to use based on environment
   const isDev = import.meta.env.DEV;
   
-  const ga4Id = config?.ga4_enabled 
+  // LGPD: Only load GA4 if consent has been given for analytics
+  const hasAnalytics = hasConsentBeenGiven() && hasAnalyticsConsent();
+  const ga4Id = config?.ga4_enabled && hasAnalytics
     ? (isDev && config.ga4_use_test_in_dev && config.ga4_test_measurement_id 
         ? config.ga4_test_measurement_id 
         : config.ga4_measurement_id)
     : null;
 
-  const pixelId = config?.pixel_enabled 
+  // LGPD: Only load Pixel if consent has been given for marketing
+  const hasMarketing = hasConsentBeenGiven() && hasMarketingConsent();
+  const pixelId = config?.pixel_enabled && hasMarketing
     ? (isDev && config.pixel_use_test_in_dev && config.pixel_test_id 
         ? config.pixel_test_id 
         : config.pixel_id)
     : null;
 
-  // Google Analytics 4
+  // Google Analytics 4 - Only load with consent
   useEffect(() => {
-    if (!ga4Id || ga4Loaded.current) return;
+    if (!consentChecked || !ga4Id || ga4Loaded.current) return;
     
     // Check if script already exists
     if (document.querySelector(`script[src*="googletagmanager.com/gtag"]`)) {
@@ -48,15 +59,11 @@ export function AnalyticsScripts() {
     document.head.appendChild(inlineScript);
 
     ga4Loaded.current = true;
+  }, [ga4Id, consentChecked]);
 
-    return () => {
-      // Cleanup on unmount (though typically this component stays mounted)
-    };
-  }, [ga4Id]);
-
-  // Meta Pixel
+  // Meta Pixel - Only load with consent
   useEffect(() => {
-    if (!pixelId || pixelLoaded.current) return;
+    if (!consentChecked || !pixelId || pixelLoaded.current) return;
     
     // Check if script already exists
     if (document.querySelector(`script[src*="connect.facebook.net"]`) || (window as any).fbq) {
@@ -91,7 +98,7 @@ export function AnalyticsScripts() {
     document.body.appendChild(noscript);
 
     pixelLoaded.current = true;
-  }, [pixelId]);
+  }, [pixelId, consentChecked]);
 
   // Track page views on route changes for Meta Pixel
   useEffect(() => {
@@ -101,7 +108,6 @@ export function AnalyticsScripts() {
       (window as any).fbq('track', 'PageView');
     };
 
-    // Listen for popstate (browser navigation)
     window.addEventListener('popstate', handleRouteChange);
 
     return () => {
@@ -109,18 +115,18 @@ export function AnalyticsScripts() {
     };
   }, [pixelId]);
 
-  return null; // This component only injects scripts
+  return null;
 }
 
-// Helper functions for tracking custom events
+// Helper functions for tracking custom events (only fire if consent given)
 export function trackGA4Event(eventName: string, params?: Record<string, any>) {
-  if ((window as any).gtag) {
+  if (hasAnalyticsConsent() && (window as any).gtag) {
     (window as any).gtag('event', eventName, params);
   }
 }
 
 export function trackPixelEvent(eventName: string, params?: Record<string, any>) {
-  if ((window as any).fbq) {
+  if (hasMarketingConsent() && (window as any).fbq) {
     (window as any).fbq('track', eventName, params);
   }
 }

@@ -304,6 +304,12 @@ export default function AdminControlCenter() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
+                <Link to="/admin/privacidade/lgpd">
+                  <Shield className="w-4 h-4 mr-2" />
+                  LGPD
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link to="/admin/integracoes/analytics">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Analytics
