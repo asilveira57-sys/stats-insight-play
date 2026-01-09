@@ -1,4 +1,4 @@
-import { Calendar } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 
 interface NewsCardProps {
   id: string;
@@ -10,45 +10,62 @@ interface NewsCardProps {
   featured?: boolean;
 }
 
+// Estimate reading time from excerpt (full article is ~5x longer)
+function estimateReadingTime(excerpt: string): number {
+  const words = excerpt.split(/\s+/).length;
+  // Excerpt is typically ~150 chars, full article ~1500+ words
+  return Math.max(5, Math.ceil((words * 10) / 200));
+}
+
 export function NewsCard({ title, excerpt, image, date, featured }: NewsCardProps) {
+  const readingTime = estimateReadingTime(excerpt);
+
   if (featured) {
     return (
-      <div className="glass-card overflow-hidden group hover-glow block cursor-pointer">
+      <article className="glass-card overflow-hidden group hover-glow block cursor-pointer">
         <div className="relative h-64 overflow-hidden">
           <img
             src={image}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            loading="lazy"
             onError={(e) => {
               (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <span className="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium mb-3">
-              Destaque
+              Análise em Destaque
             </span>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+            <h2 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
               {title}
-            </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{excerpt}</p>
-            <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3" />
-              {date}
+            </h2>
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{excerpt}</p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3 h-3" />
+                {date}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3" />
+                {readingTime} min
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </article>
     );
   }
 
   return (
-    <div className="glass-card overflow-hidden group hover-glow flex gap-4 p-4 cursor-pointer">
+    <article className="glass-card overflow-hidden group hover-glow flex gap-4 p-4 cursor-pointer">
       <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
         <img
           src={image}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
           }}
@@ -58,12 +75,18 @@ export function NewsCard({ title, excerpt, image, date, featured }: NewsCardProp
         <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors line-clamp-2">
           {title}
         </h3>
-        <p className="text-xs text-muted-foreground line-clamp-2">{excerpt}</p>
-        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-          <Calendar className="w-3 h-3" />
-          {date}
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{excerpt}</p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {date}
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {readingTime} min
+          </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
