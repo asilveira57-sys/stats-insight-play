@@ -28,6 +28,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import TimePilar from "./pages/TimePilar";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
+import Campeonatos from "./pages/Campeonatos";
 import HubDashboard from "./pages/hub/Dashboard";
 import HubSources from "./pages/hub/Sources";
 import HubMatches from "./pages/hub/Matches";
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/evolucao" element={<Evolucao />} />
             <Route path="/validacao/semanal" element={<ValidacaoSemanal />} />
             <Route path="/times/:slug" element={<TimePilar />} />
+            <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
