@@ -22,6 +22,7 @@ interface Time {
   pais: string | null;
   escudo_url: string | null;
   priority_score: number | null;
+  cores: { primary?: string; secondary?: string } | null;
 }
 
 interface MatchCount {
@@ -89,7 +90,7 @@ export default function Times() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('times')
-        .select('id, nome, slug, pais, escudo_url, priority_score')
+        .select('id, nome, slug, pais, escudo_url, priority_score, cores')
         .order('priority_score', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
@@ -302,6 +303,8 @@ export default function Times() {
                             <div className="flex items-center gap-3">
                               <TeamBadge 
                                 name={time.nome} 
+                                primaryColor={time.cores?.primary}
+                                secondaryColor={time.cores?.secondary}
                                 size="md"
                                 className="flex-shrink-0"
                               />
