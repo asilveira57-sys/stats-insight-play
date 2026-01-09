@@ -16,6 +16,7 @@ import {
 import { ArticleSEO } from "@/components/news/ArticleSEO";
 import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { RelatedArticles } from "@/components/news/RelatedArticles";
+import { AdBanner } from "@/components/ads/AdBanner";
 
 // Estimate reading time based on word count
 function calculateReadingTime(text: string): number {
@@ -225,6 +226,9 @@ export default function NoticiaDetalhes() {
               itemProp="articleBody"
             />
 
+            {/* AdSense Banner - Middle (Free users only) */}
+            <AdBanner slot="article-mid" format="horizontal" className="my-8" />
+
             {/* Premium CTA - Inline */}
             {hasCta && <PremiumCTA variant="inline" />}
 
@@ -250,6 +254,9 @@ export default function NoticiaDetalhes() {
 
             {/* Premium CTA - Footer */}
             <PremiumCTA variant="footer" />
+
+            {/* AdSense Banner - End of Article (Free users only) */}
+            <AdBanner slot="article-end" format="rectangle" className="my-8" />
 
             {/* Related Articles */}
             <RelatedArticles currentArticleId={noticia.id} />
