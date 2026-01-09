@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { 
   Trophy, ChevronRight, Search, Globe, MapPin, 
-  Star, TrendingUp, Calendar, Flag
+  Star, TrendingUp, Calendar, Flag, Shield, Users
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,63 @@ export default function Campeonatos() {
       if (error) throw error;
       return data as Liga[];
     },
+  });
+
+  // Buscar contagem de partidas por liga
+  const { data: matchCounts } = useQuery({
+    queryKey: ['campeonatos-match-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partidas')
+        .select('liga_id');
+
+      if (error) throw error;
+
+      const counts = new Map<string, number>();
+      data?.forEach(match => {
+        if (match.liga_id) {
+          counts.set(match.liga_id, (counts.get(match.liga_id) || 0) + 1);
+        }
+      });
+
+      return counts;
+    },
+  });
+
+  // Buscar contagem de times por liga (via partidas)
+  const { data: teamCounts } = useQuery({
+    queryKey: ['campeonatos-team-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partidas')
+        .select('liga_id, time_casa_id, time_fora_id');
+
+      if (error) throw error;
+
+      const teamsByLiga = new Map<string, Set<string>>();
+      data?.forEach(match => {
+        if (match.liga_id) {
+          if (!teamsByLiga.has(match.liga_id)) {
+            teamsByLiga.set(match.liga_id, new Set());
+          }
+          const teams = teamsByLiga.get(match.liga_id)!;
+          if (match.time_casa_id) teams.add(match.time_casa_id);
+          if (match.time_fora_id) teams.add(match.time_fora_id);
+        }
+      });
+
+      const counts = new Map<string, number>();
+      teamsByLiga.forEach((teams, ligaId) => {
+        counts.set(ligaId, teams.size);
+      });
+
+      return counts;
+    },
+  });
+
+  const getStats = (ligaId: string) => ({
+    matches: matchCounts?.get(ligaId) || 0,
+    teams: teamCounts?.get(ligaId) || 0,
   });
 
   // Agrupar por região
@@ -250,14 +307,37 @@ export default function Campeonatos() {
                               <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                             </div>
 
-                            {liga.priority_score && liga.priority_score > 50 && (
-                              <div className="mt-3 pt-3 border-t border-border">
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <TrendingUp className="w-3 h-3 text-secondary" />
-                                  <span>Alta relevância</span>
+                            {/* Stats */}
+                            {(() => {
+                              const stats = getStats(liga.id);
+                              const hasStats = stats.matches > 0 || stats.teams > 0;
+                              const isHighPriority = liga.priority_score && liga.priority_score > 50;
+                              
+                              if (!hasStats && !isHighPriority) return null;
+                              
+                              return (
+                                <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
+                                  {stats.teams > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <Shield className="w-3 h-3" />
+                                      <span>{stats.teams} times</span>
+                                    </div>
+                                  )}
+                                  {stats.matches > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{stats.matches} partidas</span>
+                                    </div>
+                                  )}
+                                  {isHighPriority && (
+                                    <div className="flex items-center gap-1 ml-auto text-secondary">
+                                      <TrendingUp className="w-3 h-3" />
+                                      <span>Destaque</span>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </CardContent>
                         </Card>
                       </Link>
