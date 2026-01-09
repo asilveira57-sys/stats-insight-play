@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
+import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
 
 interface ScheduledMatch {
   id: string;
@@ -733,8 +734,160 @@ export default function Admin() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Priority Scores Section */}
+          <PriorityScoresSection />
         </div>
       </div>
     </Layout>
+  );
+}
+
+// Priority Scores Section Component
+function PriorityScoresSection() {
+  const { toast } = useToast();
+  const { data: leagues, isLoading: leaguesLoading } = useLeaguesByPriority(10);
+  const { data: teams, isLoading: teamsLoading } = useTeamsByPriority(15);
+  const recalculateMutation = useRecalculatePriorityScores();
+
+  const handleRecalculate = async () => {
+    try {
+      const result = await recalculateMutation.mutateAsync('all');
+      toast({
+        title: "Scores recalculados!",
+        description: `${result.leagues_updated} ligas e ${result.teams_updated} times atualizados.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao recalcular",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getPriorityBadge = (score: number | null) => {
+    const level = getPriorityLevel(score || 50);
+    const variants = {
+      high: 'default',
+      medium: 'secondary',
+      low: 'outline',
+    } as const;
+    const labels = {
+      high: 'Alta',
+      medium: 'Média',
+      low: 'Baixa',
+    };
+    return <Badge variant={variants[level]}>{labels[level]}</Badge>;
+  };
+
+  return (
+    <Card className="md:col-span-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          Sistema de Priorização
+        </CardTitle>
+        <CardDescription>
+          Scores dinâmicos para priorização de conteúdo no calendário automático
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex justify-end">
+          <Button 
+            onClick={handleRecalculate}
+            disabled={recalculateMutation.isPending}
+            variant="outline"
+          >
+            {recalculateMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Recalculando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recalcular Todos os Scores
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Top Leagues */}
+          <div className="space-y-3">
+            <h4 className="font-medium flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Campeonatos Prioritários
+            </h4>
+            {leaguesLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {leagues?.map((league, index) => (
+                  <div key={league.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-4">{index + 1}.</span>
+                      <span className="font-medium text-sm">{league.nome}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {Math.round(league.priority_score || 0)}
+                      </span>
+                      {getPriorityBadge(league.priority_score)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Top Teams */}
+          <div className="space-y-3">
+            <h4 className="font-medium flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Times Prioritários
+            </h4>
+            {teamsLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {teams?.map((team, index) => (
+                  <div key={team.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-4">{index + 1}.</span>
+                      {team.escudo_url && (
+                        <img src={team.escudo_url} alt="" className="w-4 h-4 object-contain" />
+                      )}
+                      <span className="font-medium text-sm truncate max-w-[150px]">{team.nome}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {Math.round(team.priority_score || 0)}
+                      </span>
+                      {getPriorityBadge(team.priority_score)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <h5 className="font-medium text-sm mb-2">Como funciona:</h5>
+          <ul className="text-xs text-muted-foreground space-y-1">
+            <li>• <strong>Campeonatos:</strong> Relevância estrutural (35%) + Potencial SEO (30%) + Volume de jogos (20%) + Engajamento (15%)</li>
+            <li>• <strong>Times:</strong> Popularidade (30%) + Frequência (25%) + Desempenho recente (25%) + Engajamento (20%)</li>
+            <li>• Scores combinados determinam prioridade no calendário automático de publicações</li>
+            <li>• Campeonatos brasileiros recebem prioridade estrutural máxima</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

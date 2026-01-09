@@ -715,6 +715,9 @@ export type Database = {
           pais: string | null
           pillar_content: Json | null
           pillar_updated_at: string | null
+          priority_score: number | null
+          score_factors: Json | null
+          score_updated_at: string | null
           slug: string | null
           updated_at: string | null
         }
@@ -730,6 +733,9 @@ export type Database = {
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
+          priority_score?: number | null
+          score_factors?: Json | null
+          score_updated_at?: string | null
           slug?: string | null
           updated_at?: string | null
         }
@@ -745,6 +751,9 @@ export type Database = {
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
+          priority_score?: number | null
+          score_factors?: Json | null
+          score_updated_at?: string | null
           slug?: string | null
           updated_at?: string | null
         }
@@ -1523,6 +1532,9 @@ export type Database = {
           pais: string | null
           pillar_content: Json | null
           pillar_updated_at: string | null
+          priority_score: number | null
+          score_factors: Json | null
+          score_updated_at: string | null
           slug: string | null
           updated_at: string | null
         }
@@ -1536,6 +1548,9 @@ export type Database = {
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
+          priority_score?: number | null
+          score_factors?: Json | null
+          score_updated_at?: string | null
           slug?: string | null
           updated_at?: string | null
         }
@@ -1549,6 +1564,9 @@ export type Database = {
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
+          priority_score?: number | null
+          score_factors?: Json | null
+          score_updated_at?: string | null
           slug?: string | null
           updated_at?: string | null
         }
