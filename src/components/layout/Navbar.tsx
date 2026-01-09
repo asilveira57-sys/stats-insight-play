@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Zap, Trophy, BarChart3, Target, Newspaper, Crown, Search, LogIn, LogOut, User, Flag, Goal, Swords, TrendingUp } from "lucide-react";
+import { 
+  Menu, X, Zap, Trophy, BarChart3, Target, Newspaper, Crown, Search, 
+  LogIn, LogOut, User, ChevronDown, Calendar, Shield, TrendingUp, 
+  Award, FileText, CheckCircle, LineChart, Users, Settings, Star
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,18 +14,87 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
 
-const navLinks = [
-  { href: "/", label: "Início", icon: Trophy },
-  { href: "/resultados", label: "Resultados", icon: BarChart3 },
-  { href: "/estatisticas", label: "Estatísticas", icon: Target },
-  { href: "/palpites", label: "Palpites", icon: Zap },
-  { href: "/performance/evolucao-semanal", label: "Evolução", icon: TrendingUp },
-  { href: "/ranking-selecoes", label: "Seleções", icon: Flag },
-  { href: "/artilheiros", label: "Artilheiros", icon: Goal },
-  { href: "/confrontos", label: "Confrontos", icon: Swords },
-  { href: "/noticias", label: "Notícias", icon: Newspaper },
+// Estrutura de menu semântica orientada ao usuário
+const menuStructure = {
+  jogos: {
+    label: "Jogos",
+    icon: Calendar,
+    items: [
+      { href: "/resultados", label: "Jogos do Dia", description: "Resultados e próximos jogos" },
+      { href: "/estatisticas", label: "Estatísticas", description: "Dados detalhados por partida" },
+    ]
+  },
+  campeonatos: {
+    label: "Campeonatos",
+    icon: Trophy,
+    href: "/campeonatos",
+    items: [
+      { href: "/campeonatos/brasileirao-serie-a", label: "Brasileirão Série A", description: "Principal liga do Brasil" },
+      { href: "/campeonatos/brasileirao-serie-b", label: "Brasileirão Série B", description: "Segunda divisão" },
+      { href: "/artilheiros", label: "Artilheiros", description: "Ranking de goleadores" },
+    ]
+  },
+  times: {
+    label: "Times",
+    icon: Shield,
+    href: "/times",
+    items: [
+      { href: "/ranking-selecoes", label: "Seleções", description: "Ranking de seleções nacionais" },
+      { href: "/confrontos", label: "Confrontos Diretos", description: "Histórico entre equipes" },
+    ]
+  },
+  analises: {
+    label: "Análises",
+    icon: FileText,
+    items: [
+      { href: "/noticias", label: "Análises e Notícias", description: "Conteúdo analítico e séries" },
+      { href: "/palpites", label: "Pré-Jogo", description: "Análise matemática antes do jogo" },
+    ]
+  },
+  validacao: {
+    label: "Validação",
+    icon: CheckCircle,
+    items: [
+      { href: "/validacao/semanal", label: "Série Semanal", description: "Validação semanal de palpites" },
+      { href: "/ranking/ia-vs-humanos", label: "IA vs Humanos", description: "Comparativo de acertos" },
+      { href: "/retrospectiva/brasileirao-2024", label: "Retrospectiva", description: "Análise histórica completa" },
+    ]
+  },
+  performance: {
+    label: "Performance",
+    icon: TrendingUp,
+    items: [
+      { href: "/performance/previsoes", label: "Visão Geral", description: "Dashboard de performance" },
+      { href: "/evolucao", label: "Evolução", description: "Evolução semanal IA x Humanos" },
+      { href: "/performance/evolucao-semanal", label: "Histórico Semanal", description: "Detalhes por semana" },
+    ]
+  },
+};
+
+// Links simples para mobile
+const mobileLinks = [
+  { href: "/", label: "Início", icon: Zap },
+  { href: "/resultados", label: "Jogos", icon: Calendar },
+  { href: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
+  { href: "/noticias", label: "Análises", icon: FileText },
+  { href: "/palpites", label: "Palpites", icon: Target },
+  { href: "/validacao/semanal", label: "Validação", icon: CheckCircle },
+  { href: "/evolucao", label: "Evolução", icon: TrendingUp },
+  { href: "/performance/previsoes", label: "Performance", icon: LineChart },
+  { href: "/ranking-selecoes", label: "Seleções", icon: Shield },
+  { href: "/artilheiros", label: "Artilheiros", icon: Award },
+  { href: "/confrontos", label: "Confrontos", icon: Users },
 ];
 
 export function Navbar() {
@@ -31,6 +104,10 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const isActiveSection = (items: { href: string }[]) => {
+    return items.some(item => location.pathname === item.href);
   };
 
   return (
@@ -50,25 +127,188 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = location.pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className={cn(
-                    "nav-link flex items-center gap-2 text-sm font-medium",
-                    isActive && "nav-link-active"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
+          {/* Desktop Navigation com Dropdowns */}
+          <div className="hidden lg:flex items-center">
+            <NavigationMenu>
+              <NavigationMenuList className="gap-1">
+                {/* Início */}
+                <NavigationMenuItem>
+                  <Link to="/">
+                    <NavigationMenuLink 
+                      className={cn(
+                        "nav-link flex items-center gap-2 text-sm font-medium px-3 py-2",
+                        location.pathname === "/" && "nav-link-active"
+                      )}
+                    >
+                      <Zap className="w-4 h-4" />
+                      Início
+                    </NavigationMenuLink>
+                  </Link>
+                </NavigationMenuItem>
+
+                {/* Jogos */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.jogos.items) && "nav-link-active"
+                    )}
+                  >
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Jogos
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.jogos.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Campeonatos */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.campeonatos.items) && "nav-link-active"
+                    )}
+                  >
+                    <Trophy className="w-4 h-4 mr-1" />
+                    Campeonatos
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.campeonatos.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Times */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.times.items) && "nav-link-active"
+                    )}
+                  >
+                    <Shield className="w-4 h-4 mr-1" />
+                    Times
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.times.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Análises */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.analises.items) && "nav-link-active"
+                    )}
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Análises
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.analises.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Validação */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.validacao.items) && "nav-link-active"
+                    )}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Validação
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.validacao.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Performance */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger 
+                    className={cn(
+                      "nav-link text-sm font-medium bg-transparent data-[state=open]:bg-muted/50",
+                      isActiveSection(menuStructure.performance.items) && "nav-link-active"
+                    )}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Performance
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[280px] gap-1 p-2 bg-card border border-border rounded-lg shadow-xl">
+                      {menuStructure.performance.items.map((item) => (
+                        <li key={item.href}>
+                          <Link to={item.href}>
+                            <NavigationMenuLink className="block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-muted focus:bg-muted">
+                              <div className="text-sm font-medium text-foreground">{item.label}</div>
+                              <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            </NavigationMenuLink>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
 
           {/* Actions */}
@@ -92,9 +332,22 @@ export function Navbar() {
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-secondary rounded-full" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-card border-border">
-                  <DropdownMenuItem className="text-muted-foreground text-sm" disabled>
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border">
+                  <DropdownMenuLabel className="text-muted-foreground text-xs">
                     {user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border" />
+                  <DropdownMenuItem asChild>
+                    <Link to="/precos" className="flex items-center cursor-pointer">
+                      <Star className="w-4 h-4 mr-2" />
+                      Meu Plano
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/palpites" className="flex items-center cursor-pointer">
+                      <Target className="w-4 h-4 mr-2" />
+                      Meus Palpites
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
@@ -125,9 +378,9 @@ export function Navbar() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="lg:hidden py-4 border-t border-border/50 animate-slide-up">
-            <div className="flex flex-col gap-2">
-              {navLinks.map((link) => {
+          <div className="lg:hidden py-4 border-t border-border/50 animate-slide-up max-h-[70vh] overflow-y-auto">
+            <div className="flex flex-col gap-1">
+              {mobileLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = location.pathname === link.href;
                 return (
@@ -147,34 +400,39 @@ export function Navbar() {
                   </Link>
                 );
               })}
-              <Link to="/precos" onClick={() => setIsOpen(false)}>
-                <Button variant="premium" className="w-full mt-2">
-                  <Crown className="w-4 h-4" />
-                  Assinar Premium
-                </Button>
-              </Link>
               
-              {/* Mobile Auth */}
-              {user ? (
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-2 border-destructive/50 text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    handleSignOut();
-                    setIsOpen(false);
-                  }}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sair
-                </Button>
-              ) : (
-                <Link to="/auth" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full mt-2 border-primary/50 text-primary hover:bg-primary/10">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Entrar / Cadastrar
+              <div className="border-t border-border/50 mt-2 pt-2">
+                <Link to="/precos" onClick={() => setIsOpen(false)}>
+                  <Button variant="premium" className="w-full">
+                    <Crown className="w-4 h-4" />
+                    Clube Statball
                   </Button>
                 </Link>
-              )}
+              </div>
+              
+              {/* Mobile Auth */}
+              <div className="mt-2">
+                {user ? (
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      handleSignOut();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </Button>
+                ) : (
+                  <Link to="/auth" onClick={() => setIsOpen(false)}>
+                    <Button variant="outline" className="w-full border-primary/50 text-primary hover:bg-primary/10">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Entrar / Cadastrar
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         )}
