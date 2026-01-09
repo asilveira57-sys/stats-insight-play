@@ -6,6 +6,7 @@ export interface TeamRankingData {
   id: string;
   nome: string;
   escudo_url: string | null;
+  cores: { primary?: string; secondary?: string } | null;
   jogos: number;
   vitorias: number;
   empates: number;
@@ -77,7 +78,7 @@ export const useNationalTeamsRanking = (competitionFilter?: string) => {
       // Fetch team details
       const { data: teams, error: teamsError } = await supabase
         .from('times')
-        .select('id, nome, escudo_url')
+        .select('id, nome, escudo_url, cores')
         .in('id', Array.from(teamIds));
 
       if (teamsError) throw teamsError;
@@ -87,6 +88,7 @@ export const useNationalTeamsRanking = (competitionFilter?: string) => {
         id: string;
         nome: string;
         escudo_url: string | null;
+        cores: { primary?: string; secondary?: string } | null;
         jogos: number;
         vitorias: number;
         empates: number;
@@ -102,6 +104,7 @@ export const useNationalTeamsRanking = (competitionFilter?: string) => {
           id: team.id,
           nome: team.nome,
           escudo_url: team.escudo_url,
+          cores: team.cores as { primary?: string; secondary?: string } | null,
           jogos: 0,
           vitorias: 0,
           empates: 0,

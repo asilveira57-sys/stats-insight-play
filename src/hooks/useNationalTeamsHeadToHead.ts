@@ -5,6 +5,7 @@ export interface NationalTeam {
   id: string;
   nome: string;
   escudo_url: string | null;
+  cores: { primary?: string; secondary?: string } | null;
 }
 
 export interface HeadToHeadMatch {
@@ -79,13 +80,16 @@ export function useNationalTeamsList() {
       // Fetch team details
       const { data: teams, error: teamsError } = await supabase
         .from('times')
-        .select('id, nome, escudo_url')
+        .select('id, nome, escudo_url, cores')
         .in('id', Array.from(teamIds))
         .order('nome');
 
       if (teamsError) throw teamsError;
 
-      return teams || [];
+      return (teams || []).map(team => ({
+        ...team,
+        cores: team.cores as { primary?: string; secondary?: string } | null
+      }));
     },
     staleTime: 1000 * 60 * 10,
   });

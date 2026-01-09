@@ -31,6 +31,7 @@ import {
   Download
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -486,25 +487,23 @@ export default function Palpites() {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  {prediction.homeTeam.logo ? (
-                                    <img src={prediction.homeTeam.logo} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
-                                  ) : (
-                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                                      {prediction.homeTeam.name.substring(0, 2).toUpperCase()}
-                                    </div>
-                                  )}
+                                  <TeamBadge 
+                                    name={prediction.homeTeam.name} 
+                                    primaryColor={prediction.homeTeam.primaryColor} 
+                                    secondaryColor={prediction.homeTeam.secondaryColor} 
+                                    size="sm" 
+                                  />
                                   <span className="truncate text-sm">{prediction.homeTeam.name}</span>
                                 </div>
                                 <span className="text-muted-foreground text-xs">vs</span>
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <span className="truncate text-sm">{prediction.awayTeam.name}</span>
-                                  {prediction.awayTeam.logo ? (
-                                    <img src={prediction.awayTeam.logo} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
-                                  ) : (
-                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                                      {prediction.awayTeam.name.substring(0, 2).toUpperCase()}
-                                    </div>
-                                  )}
+                                  <TeamBadge 
+                                    name={prediction.awayTeam.name} 
+                                    primaryColor={prediction.awayTeam.primaryColor} 
+                                    secondaryColor={prediction.awayTeam.secondaryColor} 
+                                    size="sm" 
+                                  />
                                 </div>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">{prediction.league}</div>
