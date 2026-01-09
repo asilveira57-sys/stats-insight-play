@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export interface CookieConsent {
@@ -115,11 +114,10 @@ export function useLgpdConfig() {
 // Hook to update LGPD config (admin only)
 export function useUpdateLgpdConfig() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (updates: Partial<LgpdConfig> & { logChanges?: Array<{ field: string; oldValue: string; newValue: string }> }) => {
-      const { logChanges, ...configUpdates } = updates;
+    mutationFn: async (updates: Partial<LgpdConfig> & { logChanges?: Array<{ field: string; oldValue: string; newValue: string }>; userId?: string }) => {
+      const { logChanges, userId, ...configUpdates } = updates;
 
       // Get current config ID
       const { data: currentConfig, error: fetchError } = await supabase
@@ -136,7 +134,7 @@ export function useUpdateLgpdConfig() {
         .update({
           ...configUpdates,
           updated_at: new Date().toISOString(),
-          updated_by: user?.id,
+          updated_by: userId || null,
         })
         .eq('id', currentConfig.id)
         .select()
@@ -151,7 +149,7 @@ export function useUpdateLgpdConfig() {
             field_changed: change.field,
             old_value: change.oldValue,
             new_value: change.newValue,
-            changed_by: user?.id,
+            changed_by: userId || null,
           });
         }
       }
