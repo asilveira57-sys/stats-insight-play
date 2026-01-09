@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2 } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
@@ -46,8 +46,10 @@ export default function Admin() {
   const [syncingFootballData, setSyncingFootballData] = useState(false);
   const [syncingApiFootball, setSyncingApiFootball] = useState(false);
   const [generatingValidation, setGeneratingValidation] = useState(false);
+  const [generatingWeeklyValidation, setGeneratingWeeklyValidation] = useState(false);
   const [finishedStats, setFinishedStats] = useState<FinishedMatchStats>({ total: 0, withPalpite: 0, withoutPalpite: 0 });
   const [validationStats, setValidationStats] = useState({ withComparativo: 0, withValidationArticle: 0 });
+  const [weeklyValidationStats, setWeeklyValidationStats] = useState({ total: 0 });
 
   // Check if user is admin
   useEffect(() => {
@@ -182,6 +184,16 @@ export default function Admin() {
       setValidationStats({
         withComparativo: withComparativo || 0,
         withValidationArticle: withValidationArticle || 0
+      });
+
+      // Count weekly validation articles
+      const { count: weeklyArticles } = await supabase
+        .from("noticias")
+        .select("id", { count: "exact", head: true })
+        .like("slug", "validacao-semana-%");
+
+      setWeeklyValidationStats({
+        total: weeklyArticles || 0
       });
     }
 
@@ -433,6 +445,38 @@ export default function Admin() {
       });
     } finally {
       setGeneratingValidation(false);
+    }
+  };
+
+  const generateWeeklyValidation = async () => {
+    setGeneratingWeeklyValidation(true);
+    
+    try {
+      const response = await supabase.functions.invoke("generate-weekly-validation", {
+        body: {}
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Validação semanal gerada!",
+        description: `Semana ${result.week}/${result.year}: ${result.results?.created || 0} artigos criados, ${result.results?.skipped || 0} ignorados.`,
+      });
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error generating weekly validation:", error);
+      toast({
+        title: "Erro ao gerar validação semanal",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingWeeklyValidation(false);
     }
   };
 
@@ -751,6 +795,40 @@ export default function Admin() {
                 {generatingValidation ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando...</> : <><CheckCircle2 className="mr-2 h-4 w-4" />Gerar Artigos de Validação</>}
               </Button>
               <p className="text-xs text-muted-foreground">Gera artigos comparando previsões da IA com resultados reais.</p>
+            </CardContent>
+          </Card>
+
+          {/* Weekly Validation */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Série Semanal de Validação
+              </CardTitle>
+              <CardDescription>
+                Gerar boletins semanais resumindo validações por campeonato
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Estatísticas Semanais</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Validações semanais publicadas</p>
+                    <p className="text-2xl font-bold">{weeklyValidationStats.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Ver todas</p>
+                    <a href="/validacao/semanal" className="text-primary hover:underline text-sm">
+                      Acessar página →
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <Button onClick={generateWeeklyValidation} disabled={generatingWeeklyValidation} className="w-full">
+                {generatingWeeklyValidation ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando...</> : <><CalendarDays className="mr-2 h-4 w-4" />Gerar Validação Semanal</>}
+              </Button>
+              <p className="text-xs text-muted-foreground">Gera boletins semanais para a semana anterior de cada campeonato ativo.</p>
             </CardContent>
           </Card>
 
