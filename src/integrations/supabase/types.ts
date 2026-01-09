@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_config: {
+        Row: {
+          ga4_enabled: boolean | null
+          ga4_measurement_id: string | null
+          ga4_property_name: string | null
+          ga4_test_measurement_id: string | null
+          ga4_use_test_in_dev: boolean | null
+          id: string
+          pixel_account_name: string | null
+          pixel_enabled: boolean | null
+          pixel_id: string | null
+          pixel_test_id: string | null
+          pixel_use_test_in_dev: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          ga4_property_name?: string | null
+          ga4_test_measurement_id?: string | null
+          ga4_use_test_in_dev?: boolean | null
+          id?: string
+          pixel_account_name?: string | null
+          pixel_enabled?: boolean | null
+          pixel_id?: string | null
+          pixel_test_id?: string | null
+          pixel_use_test_in_dev?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          ga4_property_name?: string | null
+          ga4_test_measurement_id?: string | null
+          ga4_use_test_in_dev?: boolean | null
+          id?: string
+          pixel_account_name?: string | null
+          pixel_enabled?: boolean | null
+          pixel_id?: string | null
+          pixel_test_id?: string | null
+          pixel_use_test_in_dev?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      analytics_config_logs: {
+        Row: {
+          action: string
+          changed_at: string | null
+          changed_by: string | null
+          environment: string | null
+          field_changed: string | null
+          id: string
+          new_value_masked: string | null
+          old_value_masked: string | null
+        }
+        Insert: {
+          action: string
+          changed_at?: string | null
+          changed_by?: string | null
+          environment?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value_masked?: string | null
+          old_value_masked?: string | null
+        }
+        Update: {
+          action?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          environment?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value_masked?: string | null
+          old_value_masked?: string | null
+        }
+        Relationships: []
+      }
       api_request_cache: {
         Row: {
           created_at: string | null
