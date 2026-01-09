@@ -31,8 +31,8 @@ const menuStructure = {
     label: "Campeonatos",
     icon: Trophy,
     items: [
+      { href: "/campeonatos", label: "Todos os Campeonatos", description: "Explorar todas as competições" },
       { href: "/campeonatos/brasileirao-serie-a", label: "Brasileirão Série A", description: "Principal liga do Brasil" },
-      { href: "/campeonatos/brasileirao-serie-b", label: "Brasileirão Série B", description: "Segunda divisão" },
       { href: "/artilheiros", label: "Artilheiros", description: "Ranking de goleadores" },
     ]
   },
