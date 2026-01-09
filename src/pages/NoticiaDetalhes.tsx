@@ -16,7 +16,7 @@ import {
 import { ArticleSEO } from "@/components/news/ArticleSEO";
 import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { RelatedArticles } from "@/components/news/RelatedArticles";
-import { AdBanner } from "@/components/ads/AdBanner";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 // Estimate reading time based on word count
 function calculateReadingTime(text: string): number {
@@ -25,22 +25,59 @@ function calculateReadingTime(text: string): number {
   return Math.max(1, Math.ceil(words / 200));
 }
 
-// Process HTML to replace custom CTA placeholders with React components
-function processContent(html: string): { beforeCta: string; afterCta: string; hasCta: boolean } {
+// Process HTML to split content at CTA placeholders and H2 sections
+function processContent(html: string): { 
+  intro: string; 
+  sections: string[]; 
+  hasCta: boolean;
+  isLongPost: boolean;
+} {
   const ctaRegex = /<div class="premium-cta">[\s\S]*?<\/div>/;
   const ctaFinalRegex = /<div class="premium-cta-final">[\s\S]*?<\/div>/;
   
-  // Remove the CTAs from content, we'll render them as React components
+  // Remove the CTAs from content
   let processed = html.replace(ctaRegex, "<!-- CTA_PLACEHOLDER -->");
   processed = processed.replace(ctaFinalRegex, "");
   
-  const parts = processed.split("<!-- CTA_PLACEHOLDER -->");
+  const hasCta = processed.includes("<!-- CTA_PLACEHOLDER -->");
   
-  return {
-    beforeCta: parts[0] || html,
-    afterCta: parts[1] || "",
-    hasCta: parts.length > 1,
-  };
+  // Split at H2 headings to get sections
+  const h2Regex = /(<h2[^>]*>)/gi;
+  const parts = processed.split(h2Regex).filter(Boolean);
+  
+  // First part is intro (before first H2)
+  let intro = "";
+  const sections: string[] = [];
+  let currentSection = "";
+  
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part.match(/<h2[^>]*>/i)) {
+      // This is an H2 tag, start new section
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      currentSection = part;
+    } else if (i === 0 && !part.match(/<h2[^>]*>/i)) {
+      // First part before any H2 is intro
+      intro = part;
+    } else {
+      // Continue current section
+      currentSection += part;
+    }
+  }
+  
+  // Push last section
+  if (currentSection) {
+    sections.push(currentSection);
+  }
+  
+  // Check if post is long (more than 800 words)
+  const plainText = html.replace(/<[^>]*>/g, " ");
+  const wordCount = plainText.split(/\s+/).filter(Boolean).length;
+  const isLongPost = wordCount > 800;
+  
+  return { intro, sections, hasCta, isLongPost };
 }
 
 export default function NoticiaDetalhes() {
@@ -105,8 +142,25 @@ export default function NoticiaDetalhes() {
   }
 
   const readingTime = calculateReadingTime(noticia.texto);
-  const { beforeCta, afterCta, hasCta } = processContent(noticia.texto);
+  const { intro, sections, hasCta, isLongPost } = processContent(noticia.texto);
   const articleUrl = `${window.location.origin}/noticias/${slug}`;
+  
+  // Determine where to insert mid-article ad (after ~40% of sections)
+  const midAdIndex = Math.max(1, Math.floor(sections.length * 0.4));
+
+  const proseClasses = `prose prose-lg prose-invert max-w-none article-content
+    [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-foreground
+    [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3 [&>h3]:text-foreground
+    [&>h4]:text-lg [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
+    [&>p]:text-foreground/90 [&>p]:mb-4 [&>p]:leading-relaxed
+    [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-foreground/85
+    [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2 [&>ol>li]:text-foreground/85
+    [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-muted-foreground
+    [&_figure.internal-image]:my-8 [&_figure.internal-image]:rounded-xl [&_figure.internal-image]:overflow-hidden
+    [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
+    [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
+    [&_strong]:text-foreground [&_strong]:font-semibold
+    [&_em]:text-foreground/90`;
 
   return (
     <Layout>
@@ -207,56 +261,46 @@ export default function NoticiaDetalhes() {
               </p>
             )}
 
-            {/* Article Content - Part 1 */}
-            <div
-              className="prose prose-lg prose-invert max-w-none article-content
-                [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-foreground
-                [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3 [&>h3]:text-foreground
-                [&>h4]:text-lg [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
-                [&>p]:text-foreground/90 [&>p]:mb-4 [&>p]:leading-relaxed
-                [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-foreground/85
-                [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2 [&>ol>li]:text-foreground/85
-                [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-muted-foreground
-                [&_figure.internal-image]:my-8 [&_figure.internal-image]:rounded-xl [&_figure.internal-image]:overflow-hidden
-                [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
-                [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
-                [&_strong]:text-foreground [&_strong]:font-semibold
-                [&_em]:text-foreground/90"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(beforeCta) }}
-              itemProp="articleBody"
-            />
-
-            {/* AdSense Banner - Middle (Free users only) */}
-            <AdBanner slot="article-mid" format="horizontal" className="my-8" />
-
-            {/* Premium CTA - Inline */}
-            {hasCta && <PremiumCTA variant="inline" />}
-
-            {/* Article Content - Part 2 */}
-            {afterCta && (
+            {/* Introduction */}
+            {intro && (
               <div
-                className="prose prose-lg prose-invert max-w-none article-content
-                  [&>h2]:text-2xl [&>h2]:font-display [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-foreground
-                  [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:mt-8 [&>h3]:mb-3 [&>h3]:text-foreground
-                  [&>h4]:text-lg [&>h4]:font-medium [&>h4]:mt-6 [&>h4]:mb-2
-                  [&>p]:text-foreground/90 [&>p]:mb-4 [&>p]:leading-relaxed
-                  [&>ul]:my-4 [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-foreground/85
-                  [&>ol]:my-4 [&>ol]:pl-6 [&>ol>li]:mb-2 [&>ol>li]:text-foreground/85
-                  [&>blockquote]:border-l-4 [&>blockquote]:border-primary [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-6 [&>blockquote]:text-muted-foreground
-                  [&_figure.internal-image]:my-8 [&_figure.internal-image]:rounded-xl [&_figure.internal-image]:overflow-hidden
-                  [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
-                  [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
-                  [&_strong]:text-foreground [&_strong]:font-semibold
-                  [&_em]:text-foreground/90"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(afterCta) }}
+                className={proseClasses}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(intro) }}
+                itemProp="articleBody"
               />
             )}
+
+            {/* Ad Slot 1 - After Intro (In-Article) */}
+            <AdSlot position="article-intro" className="my-8" />
+
+            {/* Article Sections with Mid-Article Ad */}
+            {sections.map((section, index) => (
+              <div key={index}>
+                <div
+                  className={proseClasses}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section) }}
+                />
+                
+                {/* Insert mid-article ad after calculated section */}
+                {index === midAdIndex - 1 && (
+                  <>
+                    {/* Ad Slot 2 - Mid Article (In-Content) */}
+                    <AdSlot position="article-mid" className="my-8" />
+                    
+                    {/* Premium CTA - Inline */}
+                    {hasCta && <PremiumCTA variant="inline" />}
+                  </>
+                )}
+              </div>
+            ))}
 
             {/* Premium CTA - Footer */}
             <PremiumCTA variant="footer" />
 
-            {/* AdSense Banner - End of Article (Free users only) */}
-            <AdBanner slot="article-end" format="rectangle" className="my-8" />
+            {/* Ad Slot 3 - End of Article (only for long posts) */}
+            {isLongPost && (
+              <AdSlot position="article-end" className="my-8" />
+            )}
 
             {/* Related Articles */}
             <RelatedArticles currentArticleId={noticia.id} />
