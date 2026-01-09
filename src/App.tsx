@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import TimePilar from "./pages/TimePilar";
+import CampeonatoPilar from "./pages/CampeonatoPilar";
 import HubDashboard from "./pages/hub/Dashboard";
 import HubSources from "./pages/hub/Sources";
 import HubMatches from "./pages/hub/Matches";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/artilheiros" element={<Artilheiros />} />
             <Route path="/confrontos" element={<ConfrontosDiretos />} />
             <Route path="/times/:slug" element={<TimePilar />} />
+            <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
