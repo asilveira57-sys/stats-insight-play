@@ -7,6 +7,8 @@ interface PlayerScorer {
   teamId: string;
   teamName: string;
   teamLogo: string | null;
+  teamPrimaryColor: string | null;
+  teamSecondaryColor: string | null;
   goals: number;
   matches: number;
 }
@@ -64,12 +66,12 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           data: string;
           ligas: { id: string; nome: string } | null;
         } | null;
-        times: { id: string; nome: string; escudo_url: string | null } | null;
+        times: { id: string; nome: string; escudo_url: string | null; cores: any } | null;
       }>(
         'gols_partida',
         `id, jogador_nome, minuto, partida_id, time_id,
           partidas (id, liga_id, data, ligas (id, nome)),
-          times (id, nome, escudo_url)`,
+          times (id, nome, escudo_url, cores)`,
         (query) => query.not('jogador_nome', 'is', null)
       );
 
@@ -119,6 +121,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           teamId: string;
           teamName: string;
           teamLogo: string | null;
+          teamPrimaryColor: string | null;
+          teamSecondaryColor: string | null;
           goals: number;
           matchIds: Set<string>;
         }>();
@@ -126,12 +130,15 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
         data.goals.forEach(goal => {
           const playerName = goal.jogador_nome;
           const team = goal.times as any;
+          const cores = team?.cores || {};
           
           if (!playerGoalsMap.has(playerName)) {
             playerGoalsMap.set(playerName, {
               teamId: team?.id || '',
               teamName: team?.nome || 'Unknown',
               teamLogo: team?.escudo_url || null,
+              teamPrimaryColor: cores.primary || null,
+              teamSecondaryColor: cores.secondary || null,
               goals: 0,
               matchIds: new Set()
             });
@@ -148,6 +155,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
             teamId: stats.teamId,
             teamName: stats.teamName,
             teamLogo: stats.teamLogo,
+            teamPrimaryColor: stats.teamPrimaryColor,
+            teamSecondaryColor: stats.teamSecondaryColor,
             goals: stats.goals,
             matches: stats.matchIds.size
           }))
@@ -181,8 +190,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           gols_casa,
           gols_fora,
           ligas (id, nome),
-          time_casa:times!partidas_time_casa_id_fkey (id, nome, escudo_url),
-          time_fora:times!partidas_time_fora_id_fkey (id, nome, escudo_url)
+          time_casa:times!partidas_time_casa_id_fkey (id, nome, escudo_url, cores),
+          time_fora:times!partidas_time_fora_id_fkey (id, nome, escudo_url, cores)
         `)
         .in('liga_id', leagueIds)
         .eq('status', 'finished')
@@ -211,7 +220,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           if (!existingCompetitionIds.has(ligaId)) {
             const ligaNome = (leagueMatches[0]?.ligas as any)?.nome || 'Unknown';
             
-            const teamGoals = new Map<string, { name: string; logo: string | null; goals: number; matches: number }>();
+            const teamGoals = new Map<string, { name: string; logo: string | null; primaryColor: string | null; secondaryColor: string | null; goals: number; matches: number }>();
             
             leagueMatches.forEach(match => {
               const homeTeam = match.time_casa as any;
@@ -219,7 +228,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               
               if (homeTeam?.id) {
                 if (!teamGoals.has(homeTeam.id)) {
-                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, logo: homeTeam.escudo_url, goals: 0, matches: 0 });
+                  const cores = homeTeam.cores || {};
+                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, logo: homeTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(homeTeam.id)!.goals += match.gols_casa || 0;
                 teamGoals.get(homeTeam.id)!.matches += 1;
@@ -227,7 +237,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               
               if (awayTeam?.id) {
                 if (!teamGoals.has(awayTeam.id)) {
-                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, logo: awayTeam.escudo_url, goals: 0, matches: 0 });
+                  const cores = awayTeam.cores || {};
+                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, logo: awayTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(awayTeam.id)!.goals += match.gols_fora || 0;
                 teamGoals.get(awayTeam.id)!.matches += 1;
@@ -240,6 +251,8 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
                 teamId,
                 teamName: stats.name,
                 teamLogo: stats.logo,
+                teamPrimaryColor: stats.primaryColor,
+                teamSecondaryColor: stats.secondaryColor,
                 goals: stats.goals,
                 matches: stats.matches
               }))
