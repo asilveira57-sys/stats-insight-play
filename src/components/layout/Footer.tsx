@@ -47,9 +47,16 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Premium</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link to="/precos" className="hover:text-primary transition-colors">Planos</Link></li>
-              <li><Link to="/simulador" className="hover:text-primary transition-colors">Simulador</Link></li>
               <li><a href="#" className="hover:text-primary transition-colors">Suporte</a></li>
               <li><a href="#" className="hover:text-primary transition-colors">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><Link to="/privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
+              <li><Link to="/termos" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
             </ul>
           </div>
 
