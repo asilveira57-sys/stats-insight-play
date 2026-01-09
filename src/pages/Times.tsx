@@ -9,10 +9,11 @@ import { AdSlot } from "@/components/ads/AdSlot";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { 
   Shield, ChevronRight, Search, Globe, MapPin, 
-  Star, TrendingUp, Users, Flag, Trophy
+  Star, TrendingUp, Users, Flag, Trophy, Calendar, Clock
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { format, subDays } from "date-fns";
 
 interface Time {
   id: string;
@@ -21,6 +22,12 @@ interface Time {
   pais: string | null;
   escudo_url: string | null;
   priority_score: number | null;
+}
+
+interface MatchCount {
+  time_id: string;
+  recent: number;
+  upcoming: number;
 }
 
 // Mapeamento de países para regiões
@@ -89,6 +96,69 @@ export default function Times() {
       return data as Time[];
     },
   });
+
+  // Buscar contagem de partidas por time
+  const { data: matchCounts } = useQuery({
+    queryKey: ['times-match-counts'],
+    queryFn: async () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      
+      // Buscar partidas recentes (últimos 30 dias, finalizadas)
+      const { data: recentMatches, error: recentError } = await supabase
+        .from('partidas')
+        .select('time_casa_id, time_fora_id')
+        .eq('status', 'finished')
+        .gte('data', thirtyDaysAgo)
+        .lte('data', today);
+
+      if (recentError) throw recentError;
+
+      // Buscar próximas partidas
+      const { data: upcomingMatches, error: upcomingError } = await supabase
+        .from('partidas')
+        .select('time_casa_id, time_fora_id')
+        .eq('status', 'scheduled')
+        .gte('data', today);
+
+      if (upcomingError) throw upcomingError;
+
+      // Contar por time
+      const counts = new Map<string, { recent: number; upcoming: number }>();
+
+      recentMatches?.forEach(match => {
+        if (match.time_casa_id) {
+          const existing = counts.get(match.time_casa_id) || { recent: 0, upcoming: 0 };
+          existing.recent++;
+          counts.set(match.time_casa_id, existing);
+        }
+        if (match.time_fora_id) {
+          const existing = counts.get(match.time_fora_id) || { recent: 0, upcoming: 0 };
+          existing.recent++;
+          counts.set(match.time_fora_id, existing);
+        }
+      });
+
+      upcomingMatches?.forEach(match => {
+        if (match.time_casa_id) {
+          const existing = counts.get(match.time_casa_id) || { recent: 0, upcoming: 0 };
+          existing.upcoming++;
+          counts.set(match.time_casa_id, existing);
+        }
+        if (match.time_fora_id) {
+          const existing = counts.get(match.time_fora_id) || { recent: 0, upcoming: 0 };
+          existing.upcoming++;
+          counts.set(match.time_fora_id, existing);
+        }
+      });
+
+      return counts;
+    },
+  });
+
+  const getMatchCount = (timeId: string) => {
+    return matchCounts?.get(timeId) || { recent: 0, upcoming: 0 };
+  };
 
   // Agrupar por região
   const groupedByRegion = useMemo(() => {
@@ -250,6 +320,29 @@ export default function Times() {
 
                               <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                             </div>
+
+                            {/* Match counts */}
+                            {(() => {
+                              const counts = getMatchCount(time.id);
+                              if (counts.recent === 0 && counts.upcoming === 0) return null;
+                              
+                              return (
+                                <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted-foreground">
+                                  {counts.recent > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      <span>{counts.recent} recente{counts.recent !== 1 ? 's' : ''}</span>
+                                    </div>
+                                  )}
+                                  {counts.upcoming > 0 && (
+                                    <div className="flex items-center gap-1 text-primary">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{counts.upcoming} próximo{counts.upcoming !== 1 ? 's' : ''}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </CardContent>
                         </Card>
                       </Link>
