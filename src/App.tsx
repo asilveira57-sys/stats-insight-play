@@ -20,6 +20,7 @@ import RankingIAvsHumanos from "./pages/RankingIAvsHumanos";
 import PerformancePrevisoes from "./pages/PerformancePrevisoes";
 import EvolucaoSemanal from "./pages/EvolucaoSemanal";
 import ValidacaoSemanal from "./pages/ValidacaoSemanal";
+import EditorialDashboard from "./pages/EditorialDashboard";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
