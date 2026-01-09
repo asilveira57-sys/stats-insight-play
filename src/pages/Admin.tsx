@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
@@ -45,7 +45,9 @@ export default function Admin() {
   const [generatingRetroactive, setGeneratingRetroactive] = useState(false);
   const [syncingFootballData, setSyncingFootballData] = useState(false);
   const [syncingApiFootball, setSyncingApiFootball] = useState(false);
+  const [generatingValidation, setGeneratingValidation] = useState(false);
   const [finishedStats, setFinishedStats] = useState<FinishedMatchStats>({ total: 0, withPalpite: 0, withoutPalpite: 0 });
+  const [validationStats, setValidationStats] = useState({ withComparativo: 0, withValidationArticle: 0 });
 
   // Check if user is admin
   useEffect(() => {
@@ -165,9 +167,28 @@ export default function Admin() {
       });
     }
 
+    async function fetchValidationStats() {
+      // Count matches with comparativo_resultados
+      const { count: withComparativo } = await supabase
+        .from("comparativo_resultados")
+        .select("partida_id", { count: "exact", head: true });
+
+      // Count validation articles (slug contains "validacao-palpites")
+      const { count: withValidationArticle } = await supabase
+        .from("noticias")
+        .select("id", { count: "exact", head: true })
+        .like("slug", "%validacao-palpites%");
+
+      setValidationStats({
+        withComparativo: withComparativo || 0,
+        withValidationArticle: withValidationArticle || 0
+      });
+    }
+
     if (isAdmin) {
       fetchMatches();
       fetchFinishedStats();
+      fetchValidationStats();
     }
   }, [isAdmin]);
 
@@ -380,6 +401,38 @@ export default function Admin() {
       });
     } finally {
       setSyncingApiFootball(false);
+    }
+  };
+
+  const generateValidationArticles = async () => {
+    setGeneratingValidation(true);
+    
+    try {
+      const response = await supabase.functions.invoke("generate-validation-article", {
+        body: {}
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: "Artigos de validação gerados!",
+        description: `${result.results?.created || 0} artigos criados, ${result.results?.skipped || 0} ignorados.`,
+      });
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error generating validation articles:", error);
+      toast({
+        title: "Erro ao gerar artigos de validação",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingValidation(false);
     }
   };
 
@@ -662,6 +715,42 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">
                 Processa até 500 partidas por vez. Execute múltiplas vezes para popular todos os dados históricos.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Validation Articles */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5" />
+                Artigos de Validação Pós-Jogo
+              </CardTitle>
+              <CardDescription>
+                Gerar artigos comparando palpite da IA x resultado real
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Estatísticas de Validação</h4>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Com comparativo</p>
+                    <p className="text-2xl font-bold">{validationStats.withComparativo}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Com artigo</p>
+                    <p className="text-2xl font-bold text-green-500">{validationStats.withValidationArticle}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Pendentes</p>
+                    <p className="text-2xl font-bold text-yellow-500">{Math.max(0, validationStats.withComparativo - validationStats.withValidationArticle)}</p>
+                  </div>
+                </div>
+              </div>
+              <Button onClick={generateValidationArticles} disabled={generatingValidation} className="w-full">
+                {generatingValidation ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando...</> : <><CheckCircle2 className="mr-2 h-4 w-4" />Gerar Artigos de Validação</>}
+              </Button>
+              <p className="text-xs text-muted-foreground">Gera artigos comparando previsões da IA com resultados reais.</p>
             </CardContent>
           </Card>
 
