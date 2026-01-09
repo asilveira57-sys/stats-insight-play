@@ -23,6 +23,7 @@ import Evolucao from "./pages/Evolucao";
 import ValidacaoSemanal from "./pages/ValidacaoSemanal";
 import EditorialDashboard from "./pages/EditorialDashboard";
 import Admin from "./pages/Admin";
+import AdminControlCenter from "./pages/AdminControlCenter";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
