@@ -35,8 +35,12 @@ interface MatchData {
   } | null;
 }
 
-function generateSlug(timeCasa: string, timeFora: string, liga: string): string {
-  const text = `${timeCasa} x ${timeFora} analise estatistica ${liga}`;
+function generateSlug(timeCasa: string, timeFora: string, dataJogo: string, liga: string): string {
+  // Format date as YYYY-MM-DD
+  const date = new Date(dataJogo);
+  const dateStr = date.toISOString().split('T')[0];
+  
+  const text = `${timeCasa} x ${timeFora} ${dateStr} analise estatistica ${liga}`;
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -44,7 +48,7 @@ function generateSlug(timeCasa: string, timeFora: string, liga: string): string 
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 100);
+    .slice(0, 120);
 }
 
 async function generateLongFormContent(matchData: MatchData, LOVABLE_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
@@ -496,7 +500,7 @@ serve(async (req) => {
         }
 
         // Generate slug
-        const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.liga.nome);
+        const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.data, matchData.liga.nome);
 
         // Insert news article
         const { error: insertError } = await supabaseAdmin
