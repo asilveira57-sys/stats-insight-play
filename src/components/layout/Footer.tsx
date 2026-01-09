@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Zap, Twitter, Instagram, Youtube, Mail } from "lucide-react";
+import { CookiePreferencesButton } from "@/components/privacy/CookieConsentBanner";
 
 export function Footer() {
   return (
@@ -57,6 +58,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link to="/privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
               <li><Link to="/termos" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
+              <li><CookiePreferencesButton /></li>
             </ul>
           </div>
 

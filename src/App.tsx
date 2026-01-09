@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnalyticsScripts } from "@/components/analytics/AnalyticsScripts";
+import { CookieConsentBanner } from "@/components/privacy/CookieConsentBanner";
 import Index from "./pages/Index";
 import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
@@ -26,6 +27,7 @@ import EditorialDashboard from "./pages/EditorialDashboard";
 import Admin from "./pages/Admin";
 import AdminControlCenter from "./pages/AdminControlCenter";
 import AdminAnalyticsIntegrations from "./pages/AdminAnalyticsIntegrations";
+import AdminLgpdPage from "./pages/AdminLgpdPage";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
@@ -52,6 +54,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AnalyticsScripts />
+          <CookieConsentBanner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/hub" element={<HubDashboard />} />
@@ -87,6 +90,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/integracoes/analytics" element={<AdminAnalyticsIntegrations />} />
+            <Route path="/admin/privacidade/lgpd" element={<AdminLgpdPage />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
