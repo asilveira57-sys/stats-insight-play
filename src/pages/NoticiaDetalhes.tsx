@@ -160,7 +160,12 @@ export default function NoticiaDetalhes() {
     [&_figure.internal-image_img]:w-full [&_figure.internal-image_img]:h-auto
     [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
     [&_strong]:text-foreground [&_strong]:font-semibold
-    [&_em]:text-foreground/90`;
+    [&_em]:text-foreground/90
+    [&_.internal-links]:my-10 [&_.internal-links]:p-6 [&_.internal-links]:rounded-xl [&_.internal-links]:bg-muted/30 [&_.internal-links]:border [&_.internal-links]:border-border/50
+    [&_.internal-links_h3]:text-lg [&_.internal-links_h3]:font-semibold [&_.internal-links_h3]:mb-4 [&_.internal-links_h3]:text-foreground
+    [&_.internal-links_ul]:space-y-2 [&_.internal-links_ul]:list-none [&_.internal-links_ul]:pl-0
+    [&_.internal-links_a]:text-primary [&_.internal-links_a]:hover:underline [&_.internal-links_a]:transition-colors
+    [&_.ad-slot]:my-8`;
 
   return (
     <Layout>

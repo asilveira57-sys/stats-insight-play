@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.generate-league-pillar]
 verify_jwt = false
+
+[functions.generate-validation-article]
+verify_jwt = false
+
+[functions.calculate-priority-scores]
+verify_jwt = false
