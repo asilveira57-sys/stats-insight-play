@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { format, subDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Time {
   id: string;
@@ -126,41 +127,42 @@ export default function Times() {
   const { data: times, isLoading } = useQuery({
     queryKey: ['times-hub'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('times')
-        .select('id, nome, slug, pais, escudo_url, priority_score, cores')
-        .order('priority_score', { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
-      return data as Time[];
+      // Buscar TODOS os times sem limite usando paginação
+      const data = await fetchAllRecords<Time>(
+        'times',
+        'id, nome, slug, pais, escudo_url, priority_score, cores',
+        undefined,
+        { column: 'priority_score', ascending: false }
+      );
+      return data;
     },
   });
 
-  // Buscar contagem de partidas por time
+  // Buscar contagem de partidas por time (TODOS os registros)
   const { data: matchCounts } = useQuery({
     queryKey: ['times-match-counts'],
     queryFn: async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
       
-      // Buscar partidas recentes (últimos 30 dias, finalizadas)
-      const { data: recentMatches, error: recentError } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id')
-        .eq('status', 'finished')
-        .gte('data', thirtyDaysAgo)
-        .lte('data', today);
+      // Buscar TODAS as partidas recentes (últimos 30 dias, finalizadas)
+      const recentMatches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'time_casa_id, time_fora_id',
+        (query) => query
+          .eq('status', 'finished')
+          .gte('data', thirtyDaysAgo)
+          .lte('data', today)
+      );
 
-      if (recentError) throw recentError;
-
-      // Buscar próximas partidas
-      const { data: upcomingMatches, error: upcomingError } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id')
-        .eq('status', 'scheduled')
-        .gte('data', today);
-
-      if (upcomingError) throw upcomingError;
+      // Buscar TODAS as próximas partidas
+      const upcomingMatches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'time_casa_id, time_fora_id',
+        (query) => query
+          .eq('status', 'scheduled')
+          .gte('data', today)
+      );
 
       // Contar por time
       const counts = new Map<string, { recent: number; upcoming: number }>();

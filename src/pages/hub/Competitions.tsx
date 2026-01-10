@@ -15,41 +15,57 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+
+interface Liga {
+  id: string;
+  nome: string;
+  pais: string | null;
+  logo_url: string | null;
+  ativa: boolean | null;
+  codigo_api: string | null;
+  api_source: string | null;
+}
 
 export default function HubCompetitions() {
   const [search, setSearch] = useState("");
 
-  const { data: competitions, isLoading } = useQuery({
-    queryKey: ['hub-competitions', search],
+  // Buscar TODAS as ligas sem limite
+  const { data: allCompetitions, isLoading } = useQuery({
+    queryKey: ['hub-competitions-all'],
     queryFn: async () => {
-      let query = supabase
-        .from('ligas')
-        .select('*')
-        .order('nome');
-      
-      if (search) {
-        query = query.ilike('nome', `%${search}%`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = await fetchAllRecords<Liga>(
+        'ligas',
+        'id, nome, pais, logo_url, ativa, codigo_api, api_source',
+        undefined,
+        { column: 'nome', ascending: true }
+      );
       return data;
     }
   });
 
-  // Fetch match counts per league
+  // Filtrar localmente baseado na busca
+  const competitions = useMemo(() => {
+    if (!allCompetitions) return [];
+    if (!search) return allCompetitions;
+    return allCompetitions.filter(c => 
+      c.nome.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [allCompetitions, search]);
+
+  // Fetch ALL match counts per league
   const { data: matchCounts } = useQuery({
-    queryKey: ['competition-match-counts'],
+    queryKey: ['competition-match-counts-all'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partidas')
-        .select('liga_id');
-      if (error) throw error;
+      const data = await fetchAllRecords<{ liga_id: string | null }>(
+        'partidas',
+        'liga_id'
+      );
       
       const counts: Record<string, number> = {};
-      data?.forEach(match => {
+      data.forEach(match => {
         if (match.liga_id) {
           counts[match.liga_id] = (counts[match.liga_id] || 0) + 1;
         }
@@ -58,17 +74,17 @@ export default function HubCompetitions() {
     }
   });
 
-  // Fetch team counts per league
+  // Fetch ALL team counts per league
   const { data: teamCounts } = useQuery({
-    queryKey: ['competition-team-counts'],
+    queryKey: ['competition-team-counts-all'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partidas')
-        .select('liga_id, time_casa_id, time_fora_id');
-      if (error) throw error;
+      const data = await fetchAllRecords<{ liga_id: string | null; time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'liga_id, time_casa_id, time_fora_id'
+      );
       
       const teamsByLeague: Record<string, Set<string>> = {};
-      data?.forEach(match => {
+      data.forEach(match => {
         if (match.liga_id) {
           if (!teamsByLeague[match.liga_id]) {
             teamsByLeague[match.liga_id] = new Set();
