@@ -136,9 +136,17 @@ export default function HubCompetitions() {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   {/* Icon/Logo */}
-                  <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-2xl shrink-0">
-                    {getCountryFlag(league.pais)}
-                  </div>
+                  {league.logo_url ? (
+                    <img 
+                      src={league.logo_url} 
+                      alt={league.nome}
+                      className="w-14 h-14 object-contain shrink-0"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-2xl shrink-0">
+                      {getCountryFlag(league.pais)}
+                    </div>
+                  )}
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
