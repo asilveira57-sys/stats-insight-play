@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -98,34 +99,84 @@ export default function Retrospectiva() {
   const { data: matches, isLoading } = useQuery({
     queryKey: ['brasileirao-retrospective-details'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          partida_id,
-          placar_oficial_casa,
-          placar_oficial_fora,
-          resultado_oficial,
-          sistema_placar_casa,
-          sistema_placar_fora,
-          sistema_resultado_previsto,
-          sistema_acertou_resultado,
-          sistema_acertou_placar,
-          sistema_prob_resultado,
-          partidas!inner(
-            data,
-            rodada,
-            liga_id,
-            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url),
-            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url),
-            ligas!inner(codigo_api)
-          )
-        `)
-        .eq('partidas.ligas.codigo_api', 'BSA')
-        .order('partidas(data)', { ascending: false });
+      // Primeiro buscar as ligas para obter o ID da liga BSA
+      const { data: ligaData } = await supabase
+        .from('ligas')
+        .select('id')
+        .eq('codigo_api', 'BSA')
+        .single();
 
-      if (error) throw error;
-      return data as unknown as MatchComparison[];
+      if (!ligaData) return [];
+
+      // Buscar todas as partidas da liga BSA
+      const partidas = await fetchAllRecords<{
+        id: string;
+        data: string;
+        rodada: number | null;
+        liga_id: string;
+        time_casa: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
+        time_fora: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
+      }>(
+        'partidas',
+        `id, data, rodada, liga_id,
+         time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
+         time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores)`,
+        (query) => query.eq('liga_id', ligaData.id),
+        { column: 'data', ascending: false }
+      );
+
+      const partidaIds = partidas.map(p => p.id);
+
+      // Buscar comparativos em lotes para evitar limite
+      const allComparativos: MatchComparison[] = [];
+      const batchSize = 500;
+      
+      for (let i = 0; i < partidaIds.length; i += batchSize) {
+        const batchIds = partidaIds.slice(i, i + batchSize);
+        const { data: comparativos, error } = await supabase
+          .from('comparativo_resultados')
+          .select(`
+            id,
+            partida_id,
+            placar_oficial_casa,
+            placar_oficial_fora,
+            resultado_oficial,
+            sistema_placar_casa,
+            sistema_placar_fora,
+            sistema_resultado_previsto,
+            sistema_acertou_resultado,
+            sistema_acertou_placar,
+            sistema_prob_resultado
+          `)
+          .in('partida_id', batchIds);
+
+        if (error) throw error;
+        
+        if (comparativos) {
+          // Merge com dados de partidas
+          comparativos.forEach(comp => {
+            const partida = partidas.find(p => p.id === comp.partida_id);
+            if (partida) {
+              allComparativos.push({
+                ...comp,
+                partidas: {
+                  data: partida.data,
+                  rodada: partida.rodada,
+                  time_casa: partida.time_casa,
+                  time_fora: partida.time_fora
+                }
+              } as MatchComparison);
+            }
+          });
+        }
+      }
+
+      // Ordenar por data decrescente
+      return allComparativos.sort((a, b) => {
+        const dateA = a.partidas?.data || '';
+        const dateB = b.partidas?.data || '';
+        return dateB.localeCompare(dateA);
+      });
     }
   });
 

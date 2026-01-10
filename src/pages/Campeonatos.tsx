@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,29 +120,29 @@ export default function Campeonatos() {
   const { data: ligas, isLoading } = useQuery({
     queryKey: ['campeonatos-hub'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ligas')
-        .select('id, nome, slug, pais, logo_url, ativa, priority_score')
-        .eq('ativa', true)
-        .order('priority_score', { ascending: false, nullsFirst: false });
-
-      if (error) throw error;
-      return data as Liga[];
+      // Buscar TODAS as ligas ativas sem limite
+      const data = await fetchAllRecords<Liga>(
+        'ligas',
+        'id, nome, slug, pais, logo_url, ativa, priority_score',
+        (query) => query.eq('ativa', true),
+        { column: 'priority_score', ascending: false }
+      );
+      return data;
     },
   });
 
-  // Buscar contagem de partidas por liga
+  // Buscar contagem de partidas por liga (TODOS os registros)
   const { data: matchCounts } = useQuery({
     queryKey: ['campeonatos-match-counts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partidas')
-        .select('liga_id');
-
-      if (error) throw error;
+      // Buscar TODAS as partidas sem limite
+      const data = await fetchAllRecords<{ liga_id: string | null }>(
+        'partidas',
+        'liga_id'
+      );
 
       const counts = new Map<string, number>();
-      data?.forEach(match => {
+      data.forEach(match => {
         if (match.liga_id) {
           counts.set(match.liga_id, (counts.get(match.liga_id) || 0) + 1);
         }
@@ -151,18 +152,18 @@ export default function Campeonatos() {
     },
   });
 
-  // Buscar contagem de times por liga (via partidas)
+  // Buscar contagem de times por liga (via TODAS as partidas)
   const { data: teamCounts } = useQuery({
     queryKey: ['campeonatos-team-counts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partidas')
-        .select('liga_id, time_casa_id, time_fora_id');
-
-      if (error) throw error;
+      // Buscar TODAS as partidas sem limite
+      const data = await fetchAllRecords<{ liga_id: string | null; time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'liga_id, time_casa_id, time_fora_id'
+      );
 
       const teamsByLiga = new Map<string, Set<string>>();
-      data?.forEach(match => {
+      data.forEach(match => {
         if (match.liga_id) {
           if (!teamsByLiga.has(match.liga_id)) {
             teamsByLiga.set(match.liga_id, new Set());
