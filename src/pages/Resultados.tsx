@@ -5,6 +5,54 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Filter, ChevronLeft, ChevronRight, Trophy, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeagues, useMatchesFromDB, useLatestMatchDateByLeague } from "@/hooks/useMatchesDB";
+
+// Mapeamento de países para bandeiras emoji
+const countryFlags: Record<string, string> = {
+  'Brasil': '🇧🇷',
+  'Brazil': '🇧🇷',
+  'Argentina': '🇦🇷',
+  'Colômbia': '🇨🇴',
+  'Colombia': '🇨🇴',
+  'Chile': '🇨🇱',
+  'Uruguai': '🇺🇾',
+  'Uruguay': '🇺🇾',
+  'Paraguai': '🇵🇾',
+  'Paraguay': '🇵🇾',
+  'Peru': '🇵🇪',
+  'Equador': '🇪🇨',
+  'Ecuador': '🇪🇨',
+  'México': '🇲🇽',
+  'Mexico': '🇲🇽',
+  'Estados Unidos': '🇺🇸',
+  'United States': '🇺🇸',
+  'USA': '🇺🇸',
+  'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Espanha': '🇪🇸',
+  'Spain': '🇪🇸',
+  'Alemanha': '🇩🇪',
+  'Germany': '🇩🇪',
+  'Itália': '🇮🇹',
+  'Italy': '🇮🇹',
+  'França': '🇫🇷',
+  'France': '🇫🇷',
+  'Portugal': '🇵🇹',
+  'Holanda': '🇳🇱',
+  'Netherlands': '🇳🇱',
+  'Países Baixos': '🇳🇱',
+  'Bélgica': '🇧🇪',
+  'Belgium': '🇧🇪',
+  'Internacional': '🌍',
+  'International': '🌍',
+  'Europe': '🇪🇺',
+  'South America': '🌎',
+  'World': '🌍',
+};
+
+const getCountryFlag = (country: string | null): string => {
+  if (!country) return '🏆';
+  return countryFlags[country] || '🏆';
+};
 import { useRealtimeMatches } from "@/hooks/useRealtimeMatches";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -183,12 +231,14 @@ export default function Resultados() {
                             : "bg-muted hover:bg-muted/80 text-muted-foreground"
                         )}
                       >
-                        {league.logo_url && (
+                        {league.logo_url ? (
                           <img
                             src={league.logo_url}
                             alt={league.nome}
                             className="w-5 h-5 object-contain"
                           />
+                        ) : (
+                          <span className="text-base">{getCountryFlag(league.pais)}</span>
                         )}
                         <span className="hidden sm:inline">{league.nome}</span>
                       </button>
