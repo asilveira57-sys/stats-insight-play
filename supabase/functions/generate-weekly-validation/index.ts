@@ -244,7 +244,8 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, LOVABLE_API_KEY: 
 - Professional broadcast quality
 - Analytics dashboard aesthetic
 - 16:9 aspect ratio
-- Ultra high resolution`;
+- Ultra high resolution
+- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

@@ -266,11 +266,12 @@ async function generateValidationThumbnail(matchData: MatchData, LOVABLE_API_KEY
 - Main focus: RESULT comparison concept
 - Large scoreboard showing "${placarReal}"
 - Subtle check/cross marks suggesting validation
-- Team colors: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
+- Team colors as abstract accents: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
 - Text: "VALIDAÇÃO" or "ANÁLISE PÓS-JOGO" style
 - Professional broadcast quality
 - 16:9 aspect ratio
-- Ultra high resolution`;
+- Ultra high resolution
+- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

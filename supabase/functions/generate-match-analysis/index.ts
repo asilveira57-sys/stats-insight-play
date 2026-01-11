@@ -231,7 +231,8 @@ async function generateThumbnail(matchData: MatchData, LOVABLE_API_KEY: string):
 - Use subtle accent colors: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
 - Professional broadcast quality design
 - 16:9 aspect ratio
-- Ultra high resolution`;
+- Ultra high resolution
+- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -280,7 +281,8 @@ async function generateInternalImage(matchData: MatchData, LOVABLE_API_KEY: stri
 - No text, pure visual design
 - 16:9 aspect ratio for blog content
 - Modern sports analytics visual style
-- Ultra high resolution`;
+- Ultra high resolution
+- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
