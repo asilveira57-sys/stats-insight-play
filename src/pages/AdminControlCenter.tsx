@@ -21,6 +21,7 @@ import {
   Activity, Server, Calendar, Newspaper, Trophy, Target, ExternalLink
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 // Health Status Card Component
 function HealthCard({ 
@@ -567,6 +568,12 @@ export default function AdminControlCenter() {
                         <div key={team.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground text-sm">#{i + 1}</span>
+                            <TeamBadge 
+                              name={team.nome}
+                              primaryColor={team.cores?.primary}
+                              secondaryColor={team.cores?.secondary}
+                              size="sm"
+                            />
                             <span className="font-medium">{team.nome}</span>
                           </div>
                           <Badge variant="outline">{Math.round(team.priority_score)}</Badge>
