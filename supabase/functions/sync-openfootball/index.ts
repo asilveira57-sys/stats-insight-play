@@ -40,7 +40,35 @@ Deno.serve(async (req) => {
   )
 
   try {
-    const { league, season } = await req.json()
+    // Parse request body with error handling
+    let body: { league?: string; season?: string } = {}
+    try {
+      const text = await req.text()
+      if (text) {
+        body = JSON.parse(text)
+      }
+    } catch (parseError) {
+      console.error('[OpenFootball] Invalid JSON in request body:', parseError)
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid JSON in request body. Please provide { "league": "...", "season": "..." }'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const { league, season } = body
+
+    if (!league || !season) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required parameters: league and season'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     
     console.log(`[OpenFootball] Starting sync for ${league} ${season}`)
 
