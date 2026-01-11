@@ -330,7 +330,7 @@ export function usePriorityStats() {
 
       const { data: topTeams } = await supabase
         .from('times')
-        .select('id, nome, priority_score, score_updated_at')
+        .select('id, nome, priority_score, score_updated_at, cores')
         .not('priority_score', 'is', null)
         .order('priority_score', { ascending: false })
         .limit(10);

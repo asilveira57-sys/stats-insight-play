@@ -1027,9 +1027,12 @@ function PriorityScoresSection() {
                   <div key={team.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground w-4">{index + 1}.</span>
-                      {team.escudo_url && (
-                        <img src={team.escudo_url} alt="" className="w-4 h-4 object-contain" />
-                      )}
+                      <TeamBadge 
+                        name={team.nome}
+                        primaryColor={(team.score_factors as any)?.cores?.primary}
+                        secondaryColor={(team.score_factors as any)?.cores?.secondary}
+                        size="sm"
+                      />
                       <span className="font-medium text-sm truncate max-w-[150px]">{team.nome}</span>
                     </div>
                     <div className="flex items-center gap-2">
