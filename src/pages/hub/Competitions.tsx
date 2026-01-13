@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
 import { 
   ChevronLeft, 
   Search,
@@ -102,19 +103,6 @@ export default function HubCompetitions() {
     }
   });
 
-  const getCountryFlag = (country: string | null) => {
-    const flags: Record<string, string> = {
-      'Brazil': '🇧🇷',
-      'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      'Spain': '🇪🇸',
-      'Germany': '🇩🇪',
-      'Italy': '🇮🇹',
-      'France': '🇫🇷',
-      'Europe': '🇪🇺',
-      'South America': '🌎',
-    };
-    return flags[country || ''] || '🌍';
-  };
 
   return (
     <Layout>
@@ -152,17 +140,14 @@ export default function HubCompetitions() {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   {/* Icon/Logo */}
-                  {league.logo_url ? (
-                    <img 
-                      src={league.logo_url} 
-                      alt={league.nome}
-                      className="w-14 h-14 object-contain shrink-0"
+                  <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <LeagueLogo
+                      logoUrl={league.logo_url}
+                      name={league.nome}
+                      country={league.pais}
+                      size="lg"
                     />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-2xl shrink-0">
-                      {getCountryFlag(league.pais)}
-                    </div>
-                  )}
+                  </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">

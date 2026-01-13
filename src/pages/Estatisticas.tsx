@@ -4,6 +4,7 @@ import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TeamBadge } from "@/components/ui/TeamBadge";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
 import { useTeams, useTeamStats, useTeamSearch, useLeagues, useTeamsByLeague, useHeadToHead, TeamStats, Time } from "@/hooks/useTeamsDB";
 import { 
   Select,
@@ -29,54 +30,6 @@ import {
   Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Mapeamento de países para bandeiras emoji
-const countryFlags: Record<string, string> = {
-  'Brasil': '🇧🇷',
-  'Brazil': '🇧🇷',
-  'Argentina': '🇦🇷',
-  'Colômbia': '🇨🇴',
-  'Colombia': '🇨🇴',
-  'Chile': '🇨🇱',
-  'Uruguai': '🇺🇾',
-  'Uruguay': '🇺🇾',
-  'Paraguai': '🇵🇾',
-  'Paraguay': '🇵🇾',
-  'Peru': '🇵🇪',
-  'Equador': '🇪🇨',
-  'Ecuador': '🇪🇨',
-  'México': '🇲🇽',
-  'Mexico': '🇲🇽',
-  'Estados Unidos': '🇺🇸',
-  'United States': '🇺🇸',
-  'USA': '🇺🇸',
-  'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'Espanha': '🇪🇸',
-  'Spain': '🇪🇸',
-  'Alemanha': '🇩🇪',
-  'Germany': '🇩🇪',
-  'Itália': '🇮🇹',
-  'Italy': '🇮🇹',
-  'França': '🇫🇷',
-  'France': '🇫🇷',
-  'Portugal': '🇵🇹',
-  'Holanda': '🇳🇱',
-  'Netherlands': '🇳🇱',
-  'Países Baixos': '🇳🇱',
-  'Bélgica': '🇧🇪',
-  'Belgium': '🇧🇪',
-  'Internacional': '🌍',
-  'International': '🌍',
-  'Europe': '🇪🇺',
-  'South America': '🌎',
-  'World': '🌍',
-};
-
-const getCountryFlag = (country: string | null): string => {
-  if (!country) return '🏆';
-  return countryFlags[country] || '🏆';
-};
 
 export default function Estatisticas() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -220,11 +173,12 @@ export default function Estatisticas() {
                 {leagues?.map((league) => (
                   <SelectItem key={league.id} value={league.id}>
                     <div className="flex items-center gap-2">
-                      {league.logo_url ? (
-                        <img src={league.logo_url} alt={league.nome} className="w-4 h-4 object-contain" />
-                      ) : (
-                        <span className="text-sm">{getCountryFlag(league.pais)}</span>
-                      )}
+                      <LeagueLogo
+                        logoUrl={league.logo_url}
+                        name={league.nome}
+                        country={league.pais}
+                        size="sm"
+                      />
                       {league.nome}
                     </div>
                   </SelectItem>
