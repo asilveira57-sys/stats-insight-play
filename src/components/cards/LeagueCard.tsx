@@ -1,5 +1,6 @@
 import { ChevronRight, Calendar, CalendarOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
 
 interface LeagueCardProps {
   id: string;
@@ -20,13 +21,12 @@ export function LeagueCard({ id, name, country, logo, matchCount }: LeagueCardPr
       }`}
     >
       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
-        <img
-          src={logo}
-          alt={name}
-          className="w-10 h-10 object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
-          }}
+        <LeagueLogo
+          logoUrl={logo}
+          name={name}
+          country={country}
+          size="lg"
+          className="w-10 h-10"
         />
       </div>
       <div className="flex-1 min-w-0">
