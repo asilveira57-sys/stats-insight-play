@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TeamBadge } from "@/components/ui/TeamBadge";
+import { Button } from "@/components/ui/button";
 import { 
   Goal, 
   Users, 
@@ -11,10 +12,14 @@ import {
   Clock, 
   User,
   ShieldCheck,
-  Loader2
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { useMatchFullDetails, Gol, Escalacao, Cartao } from "@/hooks/useMatchDetails";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Team {
   id: string;
@@ -44,7 +49,10 @@ export function MatchDetailsModal({
   date,
   league,
 }: MatchDetailsModalProps) {
+  const [isSyncing, setIsSyncing] = useState(false);
   const { data: details, isLoading } = useMatchFullDetails(matchId);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const homeGoals = details?.gols.filter(g => g.time_id === homeTeam.id) || [];
   const awayGoals = details?.gols.filter(g => g.time_id === awayTeam.id) || [];
@@ -64,6 +72,36 @@ export function MatchDetailsModal({
     details.escalacoes.length > 0 || 
     details.cartoes.length > 0
   );
+
+  const handleSyncDetails = async () => {
+    if (!matchId) return;
+    
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-match-details', {
+        body: { matchId }
+      });
+      
+      if (error) throw error;
+      
+      // Invalidate and refetch the match details
+      await queryClient.invalidateQueries({ queryKey: ['match-full-details', matchId] });
+      
+      toast({
+        title: "Sincronização concluída",
+        description: data?.message || "Detalhes da partida atualizados",
+      });
+    } catch (error) {
+      console.error('Error syncing match details:', error);
+      toast({
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar os detalhes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,7 +165,25 @@ export function MatchDetailsModal({
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <AlertTriangle className="w-10 h-10 mb-3 opacity-50" />
             <p className="text-sm">Detalhes não disponíveis para esta partida</p>
-            <p className="text-xs mt-1">Os dados serão sincronizados em breve</p>
+            <p className="text-xs mt-1 mb-4">Os dados serão sincronizados em breve</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleSyncDetails}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Sincronizar Detalhes
+                </>
+              )}
+            </Button>
           </div>
         ) : (
           <Tabs defaultValue="goals" className="flex-1 overflow-hidden flex flex-col">
