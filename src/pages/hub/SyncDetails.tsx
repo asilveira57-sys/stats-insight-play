@@ -23,8 +23,19 @@ import {
   Zap,
   ListFilter,
   Calendar,
-  Trophy
+  Trophy,
+  Info,
+  RotateCcw,
+  ExternalLink
 } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -107,6 +118,42 @@ const CronJobStatus = () => {
   );
 };
 
+// Free tier availability by source
+const FREE_TIER_AVAILABILITY = {
+  'football-data': {
+    name: 'Football-Data.org',
+    leagues: [
+      { code: 'PL', name: 'Premier League', seasons: '2023-2025' },
+      { code: 'PD', name: 'La Liga', seasons: '2023-2025' },
+      { code: 'SA', name: 'Serie A', seasons: '2023-2025' },
+      { code: 'BL1', name: 'Bundesliga', seasons: '2023-2025' },
+      { code: 'FL1', name: 'Ligue 1', seasons: '2023-2025' },
+      { code: 'CL', name: 'Champions League', seasons: '2023-2025' },
+      { code: 'BSA', name: 'Brasileirão Série A', seasons: '2023-2025' },
+      { code: 'EC', name: 'Eurocopa', seasons: '2024' },
+      { code: 'WC', name: 'Copa do Mundo', seasons: '2022, 2026' },
+    ],
+    limit: '10 req/min',
+  },
+  'api-football': {
+    name: 'API-Football',
+    leagues: [
+      { code: 'PL', name: 'Premier League', seasons: '2020-2025' },
+      { code: 'PD', name: 'La Liga', seasons: '2020-2025' },
+      { code: 'SA', name: 'Serie A', seasons: '2020-2025' },
+      { code: 'BL1', name: 'Bundesliga', seasons: '2020-2025' },
+      { code: 'FL1', name: 'Ligue 1', seasons: '2020-2025' },
+      { code: 'CL', name: 'Champions League', seasons: '2020-2025' },
+      { code: 'BSA', name: 'Brasileirão Série A', seasons: '2020-2025' },
+      { code: 'BSB', name: 'Brasileirão Série B', seasons: '2022-2024' },
+      { code: 'CDB', name: 'Copa do Brasil', seasons: '2020-2025' },
+      { code: 'CLI', name: 'Copa Libertadores', seasons: '2020-2025' },
+      { code: 'CSA', name: 'Copa Sudamericana', seasons: '2020-2025' },
+    ],
+    limit: '100 req/dia',
+  },
+};
+
 // Competitions available for top scorers sync (free tier)
 const TOP_SCORERS_COMPETITIONS = [
   { code: 'PL', name: 'Premier League', seasons: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025] },
@@ -154,9 +201,89 @@ export default function HubSyncDetails() {
   const [isSyncingScorers, setIsSyncingScorers] = useState(false);
   const [scorersSyncResult, setScorersSyncResult] = useState<any>(null);
 
-  // API-Football European sync state
+  // API-Football sync state
   const [isSyncingApiFootball, setIsSyncingApiFootball] = useState(false);
   const [apiFootballResult, setApiFootballResult] = useState<any>(null);
+
+  // Reset state
+  const [isResetting, setIsResetting] = useState(false);
+  const [orphanedCount, setOrphanedCount] = useState<number | null>(null);
+
+  // Fetch count of "orphaned" matches (marked as synced but have no data)
+  const { data: orphanedData, refetch: refetchOrphaned } = useQuery({
+    queryKey: ['orphaned-sync-count'],
+    queryFn: async () => {
+      // Get partidas marcadas como sincronizadas
+      const { data: syncedPartidas, error } = await supabase
+        .from('partidas')
+        .select('id')
+        .eq('status', 'finished')
+        .eq('detalhes_sincronizados', true)
+        .limit(500);
+      
+      if (error) throw error;
+      if (!syncedPartidas || syncedPartidas.length === 0) return { count: 0, ids: [] };
+
+      // Para cada uma, verificar se tem gols ou escalações
+      const partidaIds = syncedPartidas.map(p => p.id);
+      
+      // Buscar quais têm gols
+      const { data: withGoals } = await supabase
+        .from('gols_partida')
+        .select('partida_id')
+        .in('partida_id', partidaIds);
+      
+      // Buscar quais têm escalações
+      const { data: withLineups } = await supabase
+        .from('escalacoes')
+        .select('partida_id')
+        .in('partida_id', partidaIds);
+      
+      const hasData = new Set([
+        ...(withGoals?.map(g => g.partida_id) || []),
+        ...(withLineups?.map(l => l.partida_id) || [])
+      ]);
+      
+      // Partidas que estão marcadas como sincronizadas mas não têm dados
+      const orphanedIds = partidaIds.filter(id => !hasData.has(id));
+      
+      return { count: orphanedIds.length, ids: orphanedIds };
+    },
+    refetchOnWindowFocus: false
+  });
+
+  // Reset orphaned matches function
+  const resetOrphanedMatches = async () => {
+    if (!orphanedData?.ids || orphanedData.ids.length === 0) return;
+    
+    setIsResetting(true);
+    try {
+      // Reset em batches de 50
+      const batchSize = 50;
+      let totalReset = 0;
+      
+      for (let i = 0; i < orphanedData.ids.length; i += batchSize) {
+        const batch = orphanedData.ids.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from('partidas')
+          .update({ detalhes_sincronizados: false })
+          .in('id', batch);
+        
+        if (error) throw error;
+        totalReset += batch.length;
+      }
+      
+      toast.success(`${totalReset} partidas resetadas para re-sincronização`);
+      refetchStats();
+      refetchMatches();
+      refetchOrphaned();
+    } catch (error) {
+      console.error('Error resetting orphaned matches:', error);
+      toast.error('Erro ao resetar partidas');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Fetch sync statistics using pagination to avoid 1000-row limit
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
@@ -500,6 +627,137 @@ export default function HubSyncDetails() {
         {/* Cron Job Status */}
         <CronJobStatus />
 
+        {/* Free Tier Availability */}
+        <Card className="glass-card mb-8 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Info className="w-5 h-5 text-green-500" />
+              Disponibilidade Gratuita por Fonte
+            </CardTitle>
+            <CardDescription>
+              Quais ligas e temporadas estão disponíveis em cada fonte de dados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Football-Data.org */}
+            <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-green-400 flex items-center gap-2">
+                  <Database className="w-4 h-4" />
+                  {FREE_TIER_AVAILABILITY['football-data'].name}
+                </h4>
+                <Badge variant="outline" className="border-green-500/50 text-green-400">
+                  {FREE_TIER_AVAILABILITY['football-data'].limit}
+                </Badge>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs">Código</TableHead>
+                    <TableHead className="text-xs">Competição</TableHead>
+                    <TableHead className="text-xs text-right">Temporadas</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {FREE_TIER_AVAILABILITY['football-data'].leagues.map(league => (
+                    <TableRow key={league.code} className="hover:bg-green-500/5">
+                      <TableCell className="py-2">
+                        <Badge variant="outline" className="text-xs">{league.code}</Badge>
+                      </TableCell>
+                      <TableCell className="py-2 text-sm">{league.name}</TableCell>
+                      <TableCell className="py-2 text-sm text-right text-muted-foreground">{league.seasons}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* API-Football */}
+            <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-blue-400 flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  {FREE_TIER_AVAILABILITY['api-football'].name}
+                </h4>
+                <Badge variant="outline" className="border-blue-500/50 text-blue-400">
+                  {FREE_TIER_AVAILABILITY['api-football'].limit}
+                </Badge>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs">Código</TableHead>
+                    <TableHead className="text-xs">Competição</TableHead>
+                    <TableHead className="text-xs text-right">Temporadas</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {FREE_TIER_AVAILABILITY['api-football'].leagues.map(league => (
+                    <TableRow key={league.code} className="hover:bg-blue-500/5">
+                      <TableCell className="py-2">
+                        <Badge variant="outline" className="text-xs">{league.code}</Badge>
+                      </TableCell>
+                      <TableCell className="py-2 text-sm">{league.name}</TableCell>
+                      <TableCell className="py-2 text-sm text-right text-muted-foreground">{league.seasons}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Reset Orphaned Matches */}
+        <Card className="glass-card mb-8 border-orange-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-orange-500" />
+              Resetar Partidas sem Dados
+            </CardTitle>
+            <CardDescription>
+              Partidas que estão marcadas como "sincronizadas" mas não possuem gols nem escalações salvas.
+              Essas partidas foram puladas pela API sem dados reais.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <div className="flex items-center gap-4">
+                <AlertCircle className="w-8 h-8 text-orange-500" />
+                <div>
+                  <p className="font-medium">Partidas órfãs detectadas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {orphanedData?.count !== undefined 
+                      ? `${orphanedData.count} partidas marcadas como sincronizadas mas sem dados reais`
+                      : 'Calculando...'
+                    }
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={resetOrphanedMatches}
+                disabled={isResetting || !orphanedData?.count}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {isResetting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Resetando...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Resetar {orphanedData?.count || 0} partidas
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Após resetar, essas partidas aparecerão novamente na fila de sincronização.
+              Use a sincronização via API-Football para buscar detalhes de ligas brasileiras e europeias.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Batch Sync Controls */}
         <Card className="glass-card mb-8">
           <CardHeader>
@@ -580,15 +838,15 @@ export default function HubSyncDetails() {
           </CardContent>
         </Card>
 
-        {/* API-Football European Leagues Sync */}
+        {/* API-Football Sync */}
         <Card className="glass-card mb-8 border-blue-500/30">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Zap className="w-5 h-5 text-blue-500" />
-              Sincronização via API-Football (Escalações e Cartões)
+              Sincronização via API-Football (Escalações, Gols e Cartões)
             </CardTitle>
             <CardDescription>
-              Busca escalações completas, cartões e substituições para as Top 5 ligas europeias + Champions League.
+              Busca escalações completas, gols e cartões para ligas europeias e brasileiras.
               <span className="block mt-1 text-xs text-yellow-500">
                 ⚠️ Limite: 100 requests/dia no plano gratuito. Cada partida usa ~3 requests.
               </span>
@@ -598,9 +856,9 @@ export default function HubSyncDetails() {
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
               <p className="text-sm font-medium text-blue-400 mb-2">Ligas Suportadas:</p>
               <div className="flex flex-wrap gap-2">
-                {['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Champions League'].map((league) => (
-                  <Badge key={league} variant="outline" className="border-blue-500/50 text-blue-400">
-                    {league}
+                {FREE_TIER_AVAILABILITY['api-football'].leagues.map((league) => (
+                  <Badge key={league.code} variant="outline" className="border-blue-500/50 text-blue-400">
+                    {league.name}
                   </Badge>
                 ))}
               </div>

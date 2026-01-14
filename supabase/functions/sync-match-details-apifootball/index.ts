@@ -7,14 +7,19 @@ const corsHeaders = {
 
 const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io';
 
-// Top 5 European leagues + Champions League (API-Football IDs)
-const EUROPEAN_LEAGUES_API_FOOTBALL = {
+// Top 5 European leagues + Champions League + Brazilian leagues (API-Football IDs)
+const SUPPORTED_LEAGUES_API_FOOTBALL = {
   39: { code: 'PL', name: 'Premier League' },
   140: { code: 'PD', name: 'La Liga' },
   135: { code: 'SA', name: 'Serie A' },
   78: { code: 'BL1', name: 'Bundesliga' },
   61: { code: 'FL1', name: 'Ligue 1' },
   2: { code: 'CL', name: 'Champions League' },
+  71: { code: 'BSA', name: 'Brasileirão Série A' },
+  72: { code: 'BSB', name: 'Brasileirão Série B' },
+  73: { code: 'CDB', name: 'Copa do Brasil' },
+  13: { code: 'CLI', name: 'Copa Libertadores' },
+  11: { code: 'CSA', name: 'Copa Sudamericana' },
 };
 
 // Football-Data.org to API-Football league ID mapping
@@ -25,6 +30,11 @@ const FOOTBALL_DATA_TO_API_FOOTBALL: Record<string, number> = {
   'BL1': 78,
   'FL1': 61,
   'CL': 2,
+  'BSA': 71,
+  'BSB': 72,
+  'CDB': 73,
+  'CLI': 13,
+  'CSA': 11,
 };
 
 interface LineupPlayer {
@@ -391,14 +401,14 @@ Deno.serve(async (req) => {
       apiRequestsUsed: 0,
     };
 
-    // Get valid European leagues from database
+    // Get all leagues supported by API-Football from database
     const { data: validLeagues } = await supabase
       .from('ligas')
       .select('id, codigo_api')
       .in('codigo_api', Object.keys(FOOTBALL_DATA_TO_API_FOOTBALL));
 
     const validLeagueIds = validLeagues?.map(l => l.id) || [];
-    console.log(`Found ${validLeagueIds.length} valid European leagues`);
+    console.log(`Found ${validLeagueIds.length} valid leagues for API-Football sync`);
 
     // Build query for matches to sync
     let query = supabase
