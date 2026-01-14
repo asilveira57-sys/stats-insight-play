@@ -78,19 +78,43 @@ export function MatchDetailsModal({
     
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-match-details', {
+      // First try the primary source (Football-Data.org)
+      const { data: result1, error: error1 } = await supabase.functions.invoke('sync-match-details', {
         body: { matchId }
       });
       
-      if (error) throw error;
+      // Check if we got data from primary source
+      if (result1?.synced > 0) {
+        await queryClient.invalidateQueries({ queryKey: ['match-full-details', matchId] });
+        toast({
+          title: "Sincronização concluída",
+          description: `${result1.synced} partida(s) sincronizada(s)`,
+        });
+        return;
+      }
       
-      // Invalidate and refetch the match details
+      // If primary source didn't have data, try API-Football as fallback
+      console.log('Primary source had no data, trying API-Football...');
+      const { data: result2, error: error2 } = await supabase.functions.invoke('sync-match-details-apifootball', {
+        body: { matchId }
+      });
+      
       await queryClient.invalidateQueries({ queryKey: ['match-full-details', matchId] });
       
-      toast({
-        title: "Sincronização concluída",
-        description: data?.message || "Detalhes da partida atualizados",
-      });
+      if (result2?.synced > 0) {
+        toast({
+          title: "Sincronização concluída",
+          description: `${result2.synced} partida(s) sincronizada(s) via fonte alternativa`,
+        });
+      } else {
+        // Both sources failed to return data
+        const errorMsg = result1?.errors?.[0] || result2?.errors?.[0] || 'Dados não disponíveis nas fontes';
+        toast({
+          title: "Dados não disponíveis",
+          description: "Os detalhes desta partida ainda não estão disponíveis nas APIs externas",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error syncing match details:', error);
       toast({
