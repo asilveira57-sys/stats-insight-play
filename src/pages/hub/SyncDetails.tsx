@@ -206,6 +206,10 @@ export default function HubSyncDetails() {
   const [isSyncingApiFootball, setIsSyncingApiFootball] = useState(false);
   const [apiFootballResult, setApiFootballResult] = useState<any>(null);
 
+  // Football-Data.org batch sync state
+  const [isSyncingFootballData, setIsSyncingFootballData] = useState(false);
+  const [footballDataResult, setFootballDataResult] = useState<any>(null);
+
   // Reset state
   const [isResetting, setIsResetting] = useState(false);
   const [orphanedCount, setOrphanedCount] = useState<number | null>(null);
@@ -509,6 +513,30 @@ export default function HubSyncDetails() {
       toast.error('Erro na sincronização via API-Football');
     } finally {
       setIsSyncingApiFootball(false);
+    }
+  };
+
+  // Football-Data.org batch sync function
+  const syncFootballDataDetails = async (limit: number) => {
+    setIsSyncingFootballData(true);
+    setFootballDataResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-match-details', {
+        body: { limit }
+      });
+
+      if (error) throw error;
+
+      setFootballDataResult(data);
+      toast.success(`Sincronizado via Football-Data.org: ${data.synced} partidas`);
+      refetchStats();
+      refetchMatches();
+    } catch (error) {
+      console.error('Football-Data sync error:', error);
+      toast.error('Erro na sincronização via Football-Data.org');
+    } finally {
+      setIsSyncingFootballData(false);
     }
   };
 
@@ -839,6 +867,99 @@ export default function HubSyncDetails() {
                 <p className="text-xs text-muted-foreground">
                   Tempo restante estimado: ~{Math.ceil((totalToSync - syncedCount) * 6 / 60)} minutos
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Football-Data.org Batch Sync */}
+        <Card className="glass-card mb-8 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Database className="w-5 h-5 text-green-500" />
+              Sincronização via Football-Data.org (Gols, Escalações, Cartões)
+            </CardTitle>
+            <CardDescription>
+              Busca detalhes completos para ligas europeias e Brasileirão A (temporadas 2023-2025).
+              <span className="block mt-1 text-xs text-green-400">
+                ✓ Processa em lote automaticamente com rate limiting interno (10 req/min)
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <p className="text-sm font-medium text-green-400 mb-2">Ligas Disponíveis (Free Tier):</p>
+              <div className="flex flex-wrap gap-2">
+                {FREE_TIER_AVAILABILITY['football-data'].leagues.map((league) => (
+                  <Badge key={league.code} variant="outline" className="border-green-500/50 text-green-400">
+                    {league.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                onClick={() => syncFootballDataDetails(5)} 
+                disabled={isSyncingFootballData}
+                variant="outline"
+                className="border-green-500/50 hover:bg-green-500/10"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                5 partidas (~30s)
+              </Button>
+              <Button 
+                onClick={() => syncFootballDataDetails(10)} 
+                disabled={isSyncingFootballData}
+                className="bg-green-600 text-white hover:bg-green-700"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                10 partidas (~1min)
+              </Button>
+              <Button 
+                onClick={() => syncFootballDataDetails(20)} 
+                disabled={isSyncingFootballData}
+                variant="outline"
+                className="border-green-500/50 hover:bg-green-500/10"
+              >
+                <Database className="w-4 h-4 mr-2" />
+                20 partidas (~2min)
+              </Button>
+            </div>
+
+            {isSyncingFootballData && (
+              <div className="p-4 rounded-lg bg-green-500/10">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-green-500" />
+                  <span className="text-sm">Sincronizando via Football-Data.org...</span>
+                </div>
+              </div>
+            )}
+
+            {footballDataResult && (
+              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                <p className="text-sm font-medium">Resultado da Sincronização:</p>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-green-500">{footballDataResult.synced || 0}</p>
+                    <p className="text-xs text-muted-foreground">Sincronizadas</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-yellow-500">{footballDataResult.skipped || 0}</p>
+                    <p className="text-xs text-muted-foreground">Ignoradas</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-muted-foreground">{footballDataResult.total || 0}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                </div>
+                {footballDataResult.errors && footballDataResult.errors.length > 0 && (
+                  <div className="mt-2 p-2 rounded bg-red-500/10 text-xs text-red-400 max-h-24 overflow-y-auto">
+                    {footballDataResult.errors.slice(0, 5).map((err: string, idx: number) => (
+                      <p key={idx}>{err}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
