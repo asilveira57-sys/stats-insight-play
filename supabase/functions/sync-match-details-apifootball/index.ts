@@ -410,6 +410,13 @@ Deno.serve(async (req) => {
     const validLeagueIds = validLeagues?.map(l => l.id) || [];
     console.log(`Found ${validLeagueIds.length} valid leagues for API-Football sync`);
 
+    // API-Football free tier only supports seasons 2022-2024
+    // We need to filter matches within these years
+    const minDate = '2022-01-01';
+    const maxDate = '2024-12-31';
+    
+    console.log(`API-Football free tier: filtering matches between ${minDate} and ${maxDate}`);
+
     // Build query for matches to sync
     let query = supabase
       .from('partidas')
@@ -418,7 +425,8 @@ Deno.serve(async (req) => {
       .eq('detalhes_sincronizados', false)
       .not('gols_casa', 'is', null)
       .in('liga_id', validLeagueIds)
-      .gte('data', '2024-01-01') // Only recent matches
+      .gte('data', minDate)
+      .lte('data', maxDate)
       .order('data', { ascending: false });
 
     if (matchId) {
@@ -449,11 +457,7 @@ Deno.serve(async (req) => {
         stats.apiRequestsUsed++;
 
         if (!fixtureId) {
-          // Mark as synced to avoid retrying
-          await supabase
-            .from('partidas')
-            .update({ detalhes_sincronizados: true })
-            .eq('id', partida.id);
+          // Do NOT mark as synced - leave for retry or manual handling
           stats.skipped++;
           stats.errors.push(`Match ${partida.id}: No API-Football fixture found`);
           continue;
