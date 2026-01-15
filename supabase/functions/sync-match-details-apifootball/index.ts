@@ -410,12 +410,18 @@ Deno.serve(async (req) => {
     const validLeagueIds = validLeagues?.map(l => l.id) || [];
     console.log(`Found ${validLeagueIds.length} valid leagues for API-Football sync`);
 
-    // API-Football free tier only supports seasons 2022-2024
-    // We need to filter matches within these years
-    const minDate = '2022-01-01';
-    const maxDate = '2024-12-31';
+    // API-Football FREE tier ONLY allows dates within ~3 days of today
+    // Historical data is NOT accessible on the free plan!
+    const today = new Date();
+    const minDate = new Date(today);
+    minDate.setDate(today.getDate() - 3);
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 1);
     
-    console.log(`API-Football free tier: filtering matches between ${minDate} and ${maxDate}`);
+    const minDateStr = minDate.toISOString().split('T')[0];
+    const maxDateStr = maxDate.toISOString().split('T')[0];
+    
+    console.log(`API-Football free tier: ONLY recent dates allowed (${minDateStr} to ${maxDateStr})`);
 
     // Build query for matches to sync
     let query = supabase
@@ -425,8 +431,8 @@ Deno.serve(async (req) => {
       .eq('detalhes_sincronizados', false)
       .not('gols_casa', 'is', null)
       .in('liga_id', validLeagueIds)
-      .gte('data', minDate)
-      .lte('data', maxDate)
+      .gte('data', minDateStr)
+      .lte('data', maxDateStr)
       .order('data', { ascending: false });
 
     if (matchId) {

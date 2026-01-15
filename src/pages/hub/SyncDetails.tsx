@@ -138,19 +138,20 @@ const FREE_TIER_AVAILABILITY = {
   'api-football': {
     name: 'API-Football',
     leagues: [
-      { code: 'PL', name: 'Premier League', seasons: '2020-2025' },
-      { code: 'PD', name: 'La Liga', seasons: '2020-2025' },
-      { code: 'SA', name: 'Serie A', seasons: '2020-2025' },
-      { code: 'BL1', name: 'Bundesliga', seasons: '2020-2025' },
-      { code: 'FL1', name: 'Ligue 1', seasons: '2020-2025' },
-      { code: 'CL', name: 'Champions League', seasons: '2020-2025' },
-      { code: 'BSA', name: 'Brasileirão Série A', seasons: '2020-2025' },
-      { code: 'BSB', name: 'Brasileirão Série B', seasons: '2022-2024' },
-      { code: 'CDB', name: 'Copa do Brasil', seasons: '2020-2025' },
-      { code: 'CLI', name: 'Copa Libertadores', seasons: '2020-2025' },
-      { code: 'CSA', name: 'Copa Sudamericana', seasons: '2020-2025' },
+      { code: 'PL', name: 'Premier League', seasons: 'Últimos 3 dias' },
+      { code: 'PD', name: 'La Liga', seasons: 'Últimos 3 dias' },
+      { code: 'SA', name: 'Serie A', seasons: 'Últimos 3 dias' },
+      { code: 'BL1', name: 'Bundesliga', seasons: 'Últimos 3 dias' },
+      { code: 'FL1', name: 'Ligue 1', seasons: 'Últimos 3 dias' },
+      { code: 'CL', name: 'Champions League', seasons: 'Últimos 3 dias' },
+      { code: 'BSA', name: 'Brasileirão Série A', seasons: 'Últimos 3 dias' },
+      { code: 'BSB', name: 'Brasileirão Série B', seasons: 'Últimos 3 dias' },
+      { code: 'CDB', name: 'Copa do Brasil', seasons: 'Últimos 3 dias' },
+      { code: 'CLI', name: 'Copa Libertadores', seasons: 'Últimos 3 dias' },
+      { code: 'CSA', name: 'Copa Sudamericana', seasons: 'Últimos 3 dias' },
     ],
     limit: '100 req/dia',
+    warning: '⚠️ IMPORTANTE: O plano gratuito só permite consultar partidas dos últimos 3 dias! Dados históricos NÃO são acessíveis.',
   },
 };
 
@@ -703,6 +704,11 @@ export default function HubSyncDetails() {
                   ))}
                 </TableBody>
               </Table>
+              {FREE_TIER_AVAILABILITY['api-football'].warning && (
+                <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-sm text-yellow-400">{FREE_TIER_AVAILABILITY['api-football'].warning}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
