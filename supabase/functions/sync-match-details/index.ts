@@ -349,12 +349,18 @@ serve(async (req) => {
     const validLeagueIds = validLeagues?.map(l => l.id) || [];
     console.log(`Found ${validLeagueIds.length} valid leagues for free tier`);
 
+    // Free tier only supports seasons 2023-2025 (matches from 2023-01-01 to 2025-12-31)
+    const minDate = '2023-01-01';
+    const maxDate = '2025-12-31';
+    
     let query = supabase
       .from('partidas')
       .select('id, api_id, time_casa_id, time_fora_id, data, liga_id')
       .eq('status', 'finished')
       .or('detalhes_sincronizados.is.null,detalhes_sincronizados.eq.false')
       .not('api_id', 'is', null)
+      .gte('data', minDate)
+      .lte('data', maxDate)
       .order('data', { ascending: false });
     
     if (specificMatchId) {
