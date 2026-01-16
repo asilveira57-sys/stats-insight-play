@@ -1787,6 +1787,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_unique_slug: {
+        Args: { base_slug: string; exclude_id?: string; table_name: string }
+        Returns: string
+      }
       gerar_palpite_sistema: { Args: { p_partida_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1795,10 +1799,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      normalize_name: { Args: { input_text: string }; Returns: string }
       processar_resultado_partida: {
         Args: { p_partida_id: string }
         Returns: undefined
       }
+      slugify: { Args: { input_text: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
