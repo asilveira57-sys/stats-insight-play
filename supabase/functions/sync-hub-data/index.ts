@@ -6,6 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Normalize a name: remove accents, trim, lowercase, collapse multiple spaces
+ */
+function normalizeName(str: string): string {
+  if (!str) return '';
+  const normalized = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return normalized.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Generate a URL-friendly slug from a string
+ */
+function slugify(str: string): string {
+  if (!str) return '';
+  let slug = normalizeName(str);
+  slug = slug.replace(/\s/g, '-');
+  slug = slug.replace(/[^a-z0-9-]/g, '');
+  slug = slug.replace(/-+/g, '-');
+  slug = slug.replace(/^-+|-+$/g, '');
+  return slug;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,7 +68,6 @@ serve(async (req) => {
     // Check rate limits
     const today = new Date().toISOString().split("T")[0];
     if (source.last_reset_date !== today) {
-      // Reset daily counter
       await supabase
         .from("data_sources")
         .update({ requests_today: 0, last_reset_date: today })
@@ -82,7 +105,6 @@ serve(async (req) => {
           result = await syncApiFootball(supabase, source, apiFootballKey, entityType);
           break;
         case "scorebat":
-          // Redirect to dedicated sync-highlights function
           const highlightsResponse = await supabase.functions.invoke("sync-highlights");
           result = highlightsResponse.data || { processed: 0, created: 0, updated: 0, failed: 0, requestsMade: 1 };
           break;
@@ -90,7 +112,6 @@ serve(async (req) => {
           console.log(`No sync handler for source: ${source.name}`);
       }
 
-      // Update sync log
       if (syncLog) {
         await supabase
           .from("sync_logs")
@@ -106,7 +127,6 @@ serve(async (req) => {
           .eq("id", syncLog.id);
       }
 
-      // Update source request count
       await supabase
         .from("data_sources")
         .update({
@@ -147,6 +167,94 @@ serve(async (req) => {
   }
 });
 
+/**
+ * Resolve team using canonical SQL function resolve_or_create_team
+ * Priority: external_id_map → slug → normalized name → create
+ */
+async function resolveTeam(
+  supabase: any, 
+  sourceId: string, 
+  teamData: { id?: number; name: string; crest?: string; logo?: string }
+): Promise<string | null> {
+  if (!teamData?.name) {
+    console.error("Cannot resolve team: missing name");
+    return null;
+  }
+
+  const externalId = teamData.id?.toString() || null;
+  const escudoUrl = teamData.crest || teamData.logo || null;
+
+  try {
+    // Use the canonical SQL function
+    const { data: teamId, error } = await supabase.rpc("resolve_or_create_team", {
+      p_nome: teamData.name,
+      p_api_id: teamData.id || null,
+      p_escudo_url: escudoUrl,
+      p_pais: null,
+      p_provider_id: sourceId,
+      p_external_id: externalId,
+    });
+
+    if (error) {
+      console.error("Error resolving team via RPC:", error);
+      return null;
+    }
+
+    console.log(`Resolved team "${teamData.name}" → ${teamId}`);
+    return teamId;
+  } catch (err) {
+    console.error("Exception resolving team:", err);
+    return null;
+  }
+}
+
+/**
+ * Resolve match using canonical SQL function resolve_or_create_match
+ * Priority: slug (home-vs-away-date) → create
+ */
+async function resolveMatch(
+  supabase: any,
+  params: {
+    homeTeamId: string;
+    awayTeamId: string;
+    date: string;
+    hora?: string;
+    ligaId?: string;
+    rodada?: number;
+    status?: string;
+    apiId?: number;
+  }
+): Promise<string | null> {
+  if (!params.homeTeamId || !params.awayTeamId || !params.date) {
+    console.error("Cannot resolve match: missing homeTeamId, awayTeamId, or date");
+    return null;
+  }
+
+  try {
+    const { data: matchId, error } = await supabase.rpc("resolve_or_create_match", {
+      p_time_casa_id: params.homeTeamId,
+      p_time_fora_id: params.awayTeamId,
+      p_data: params.date,
+      p_hora: params.hora || null,
+      p_liga_id: params.ligaId || null,
+      p_rodada: params.rodada || null,
+      p_status: params.status || "scheduled",
+      p_api_id: params.apiId || null,
+    });
+
+    if (error) {
+      console.error("Error resolving match via RPC:", error);
+      return null;
+    }
+
+    console.log(`Resolved match ${params.homeTeamId} vs ${params.awayTeamId} on ${params.date} → ${matchId}`);
+    return matchId;
+  } catch (err) {
+    console.error("Exception resolving match:", err);
+    return null;
+  }
+}
+
 async function syncFootballData(
   supabase: any,
   source: any,
@@ -165,7 +273,6 @@ async function syncFootballData(
   let updated = 0;
   let failed = 0;
 
-  // Sync active leagues
   const { data: leagues } = await supabase
     .from("ligas")
     .select("*")
@@ -181,7 +288,6 @@ async function syncFootballData(
     if (!league.codigo_api) continue;
 
     try {
-      // Fetch matches for this competition
       const matchesUrl = `${baseUrl}/competitions/${league.codigo_api}/matches`;
       console.log(`Fetching matches from: ${matchesUrl}`);
       
@@ -201,37 +307,56 @@ async function syncFootballData(
 
       for (const match of matches) {
         try {
-          // Find or create home team
-          let homeTeamId = await findOrCreateTeam(supabase, source.id, match.homeTeam);
-          let awayTeamId = await findOrCreateTeam(supabase, source.id, match.awayTeam);
+          // Validate team names before processing
+          if (!match.homeTeam?.name || !match.awayTeam?.name) {
+            console.warn(`Skipping match ${match.id}: missing team names`);
+            failed++;
+            continue;
+          }
 
-          // Upsert match
+          // Resolve teams using canonical system
+          const homeTeamId = await resolveTeam(supabase, source.id, match.homeTeam);
+          const awayTeamId = await resolveTeam(supabase, source.id, match.awayTeam);
+
+          if (!homeTeamId || !awayTeamId) {
+            console.error(`Failed to resolve teams for match ${match.id}`);
+            failed++;
+            continue;
+          }
+
+          // Resolve/create match using canonical system
           const matchDate = new Date(match.utcDate);
-          const { error: matchError } = await supabase
-            .from("partidas")
-            .upsert(
-              {
-                api_id: match.id,
-                liga_id: league.id,
-                time_casa_id: homeTeamId,
-                time_fora_id: awayTeamId,
-                data: matchDate.toISOString().split("T")[0],
-                hora: matchDate.toISOString().split("T")[1].substring(0, 5),
-                status: mapMatchStatus(match.status),
+          const matchId = await resolveMatch(supabase, {
+            homeTeamId,
+            awayTeamId,
+            date: matchDate.toISOString().split("T")[0],
+            hora: matchDate.toISOString().split("T")[1].substring(0, 5),
+            ligaId: league.id,
+            rodada: match.matchday,
+            status: mapMatchStatus(match.status),
+            apiId: match.id,
+          });
+
+          if (!matchId) {
+            console.error(`Failed to resolve match ${match.id}`);
+            failed++;
+            continue;
+          }
+
+          // Update match scores if available
+          if (match.score?.fullTime?.home !== null || match.score?.fullTime?.away !== null) {
+            await supabase
+              .from("partidas")
+              .update({
                 gols_casa: match.score?.fullTime?.home,
                 gols_fora: match.score?.fullTime?.away,
-                rodada: match.matchday,
-              },
-              { onConflict: "api_id" }
-            );
-
-          if (matchError) {
-            console.error("Error upserting match:", matchError);
-            failed++;
-          } else {
-            processed++;
-            created++;
+                status: mapMatchStatus(match.status),
+              })
+              .eq("id", matchId);
           }
+
+          processed++;
+          created++;
         } catch (err) {
           console.error("Error processing match:", err);
           failed++;
@@ -270,7 +395,6 @@ async function syncApiFootball(
   let updated = 0;
   let failed = 0;
 
-  // Sync leagues that use api-football
   const { data: leagues } = await supabase
     .from("ligas")
     .select("*")
@@ -286,11 +410,9 @@ async function syncApiFootball(
     if (!league.api_id) continue;
 
     try {
-      // Get current season
       const currentYear = new Date().getFullYear();
       const season = currentYear;
 
-      // Fetch fixtures
       const fixturesUrl = `${baseUrl}/fixtures?league=${league.api_id}&season=${season}`;
       console.log(`Fetching fixtures from: ${fixturesUrl}`);
 
@@ -310,44 +432,71 @@ async function syncApiFootball(
 
       for (const fixture of fixtures) {
         try {
-          // Find or create teams
-          let homeTeamId = await findOrCreateTeamApiFootball(supabase, source.id, fixture.teams.home);
-          let awayTeamId = await findOrCreateTeamApiFootball(supabase, source.id, fixture.teams.away);
+          // Validate team names before processing
+          if (!fixture.teams?.home?.name || !fixture.teams?.away?.name) {
+            console.warn(`Skipping fixture ${fixture.fixture.id}: missing team names`);
+            failed++;
+            continue;
+          }
 
-          // Upsert match
+          // Resolve teams using canonical system
+          const homeTeamId = await resolveTeam(supabase, source.id, {
+            id: fixture.teams.home.id,
+            name: fixture.teams.home.name,
+            logo: fixture.teams.home.logo,
+          });
+          const awayTeamId = await resolveTeam(supabase, source.id, {
+            id: fixture.teams.away.id,
+            name: fixture.teams.away.name,
+            logo: fixture.teams.away.logo,
+          });
+
+          if (!homeTeamId || !awayTeamId) {
+            console.error(`Failed to resolve teams for fixture ${fixture.fixture.id}`);
+            failed++;
+            continue;
+          }
+
+          // Resolve/create match using canonical system
           const matchDate = new Date(fixture.fixture.date);
-          const { error: matchError } = await supabase
-            .from("partidas")
-            .upsert(
-              {
-                api_id: fixture.fixture.id,
-                liga_id: league.id,
-                time_casa_id: homeTeamId,
-                time_fora_id: awayTeamId,
-                data: matchDate.toISOString().split("T")[0],
-                hora: matchDate.toISOString().split("T")[1].substring(0, 5),
-                status: mapApiFootballStatus(fixture.fixture.status.short),
+          const matchId = await resolveMatch(supabase, {
+            homeTeamId,
+            awayTeamId,
+            date: matchDate.toISOString().split("T")[0],
+            hora: matchDate.toISOString().split("T")[1].substring(0, 5),
+            ligaId: league.id,
+            rodada: fixture.league.round ? parseInt(fixture.league.round.match(/\d+/)?.[0] || "0") : undefined,
+            status: mapApiFootballStatus(fixture.fixture.status.short),
+            apiId: fixture.fixture.id,
+          });
+
+          if (!matchId) {
+            console.error(`Failed to resolve fixture ${fixture.fixture.id}`);
+            failed++;
+            continue;
+          }
+
+          // Update match scores if available
+          if (fixture.goals.home !== null || fixture.goals.away !== null) {
+            await supabase
+              .from("partidas")
+              .update({
                 gols_casa: fixture.goals.home,
                 gols_fora: fixture.goals.away,
-                rodada: fixture.league.round ? parseInt(fixture.league.round.match(/\d+/)?.[0] || "0") : null,
-              },
-              { onConflict: "api_id" }
-            );
-
-          if (matchError) {
-            console.error("Error upserting match:", matchError);
-            failed++;
-          } else {
-            processed++;
-            created++;
+                status: mapApiFootballStatus(fixture.fixture.status.short),
+              })
+              .eq("id", matchId);
           }
+
+          processed++;
+          created++;
         } catch (err) {
           console.error("Error processing fixture:", err);
           failed++;
         }
       }
 
-      // Rate limit delay (be conservative with free tier)
+      // Rate limit delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (err) {
       console.error(`Error syncing league ${league.nome}:`, err);
@@ -356,124 +505,6 @@ async function syncApiFootball(
   }
 
   return { processed, created, updated, failed, requestsMade };
-}
-
-async function findOrCreateTeam(supabase: any, sourceId: string, teamData: any) {
-  if (!teamData?.id) return null;
-
-  // Check external ID map first
-  const { data: mapping } = await supabase
-    .from("external_id_map")
-    .select("internal_id")
-    .eq("source_id", sourceId)
-    .eq("entity_type", "team")
-    .eq("external_id", teamData.id.toString())
-    .single();
-
-  if (mapping) return mapping.internal_id;
-
-  // Try to find by name
-  const { data: existingTeam } = await supabase
-    .from("times")
-    .select("id")
-    .ilike("nome", teamData.name)
-    .single();
-
-  if (existingTeam) {
-    // Create mapping
-    await supabase.from("external_id_map").insert({
-      source_id: sourceId,
-      entity_type: "team",
-      external_id: teamData.id.toString(),
-      internal_id: existingTeam.id,
-      confidence: "high",
-    });
-    return existingTeam.id;
-  }
-
-  // Create new team
-  const { data: newTeam } = await supabase
-    .from("times")
-    .insert({
-      nome: teamData.name,
-      escudo_url: teamData.crest,
-      api_id: teamData.id,
-    })
-    .select()
-    .single();
-
-  if (newTeam) {
-    // Create mapping
-    await supabase.from("external_id_map").insert({
-      source_id: sourceId,
-      entity_type: "team",
-      external_id: teamData.id.toString(),
-      internal_id: newTeam.id,
-      confidence: "exact",
-    });
-    return newTeam.id;
-  }
-
-  return null;
-}
-
-async function findOrCreateTeamApiFootball(supabase: any, sourceId: string, teamData: any) {
-  if (!teamData?.id) return null;
-
-  // Check external ID map first
-  const { data: mapping } = await supabase
-    .from("external_id_map")
-    .select("internal_id")
-    .eq("source_id", sourceId)
-    .eq("entity_type", "team")
-    .eq("external_id", teamData.id.toString())
-    .single();
-
-  if (mapping) return mapping.internal_id;
-
-  // Try to find by name
-  const { data: existingTeam } = await supabase
-    .from("times")
-    .select("id")
-    .ilike("nome", teamData.name)
-    .single();
-
-  if (existingTeam) {
-    // Create mapping
-    await supabase.from("external_id_map").insert({
-      source_id: sourceId,
-      entity_type: "team",
-      external_id: teamData.id.toString(),
-      internal_id: existingTeam.id,
-      confidence: "high",
-    });
-    return existingTeam.id;
-  }
-
-  // Create new team
-  const { data: newTeam } = await supabase
-    .from("times")
-    .insert({
-      nome: teamData.name,
-      escudo_url: teamData.logo,
-      api_id: teamData.id,
-    })
-    .select()
-    .single();
-
-  if (newTeam) {
-    // Create mapping
-    await supabase.from("external_id_map").insert({
-      source_id: sourceId,
-      entity_type: "team",
-      external_id: teamData.id.toString(),
-      internal_id: newTeam.id,
-      confidence: "exact",
-    });
-    return newTeam.id;
-  }
-
-  return null;
 }
 
 function mapMatchStatus(status: string): string {
