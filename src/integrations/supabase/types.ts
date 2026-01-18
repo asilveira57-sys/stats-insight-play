@@ -1207,6 +1207,7 @@ export type Database = {
           id: string
           liga_id: string | null
           rodada: number | null
+          slug: string | null
           status: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id: string | null
           time_fora_id: string | null
@@ -1223,6 +1224,7 @@ export type Database = {
           id?: string
           liga_id?: string | null
           rodada?: number | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id?: string | null
           time_fora_id?: string | null
@@ -1239,6 +1241,7 @@ export type Database = {
           id?: string
           liga_id?: string | null
           rodada?: number | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id?: string | null
           time_fora_id?: string | null
@@ -1787,6 +1790,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_match_by_canonical_key: {
+        Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
+        Returns: string
+      }
+      generate_match_slug: {
+        Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
+        Returns: string
+      }
       generate_unique_slug: {
         Args: { base_slug: string; exclude_id?: string; table_name: string }
         Returns: string
@@ -1803,6 +1814,42 @@ export type Database = {
       processar_resultado_partida: {
         Args: { p_partida_id: string }
         Returns: undefined
+      }
+      resolve_or_create_league: {
+        Args: {
+          p_api_id?: number
+          p_codigo_api?: string
+          p_external_id?: string
+          p_logo_url?: string
+          p_nome: string
+          p_pais?: string
+          p_provider_id?: string
+        }
+        Returns: string
+      }
+      resolve_or_create_match: {
+        Args: {
+          p_api_id?: number
+          p_data: string
+          p_hora?: string
+          p_liga_id?: string
+          p_rodada?: number
+          p_status?: string
+          p_time_casa_id: string
+          p_time_fora_id: string
+        }
+        Returns: string
+      }
+      resolve_or_create_team: {
+        Args: {
+          p_api_id?: number
+          p_escudo_url?: string
+          p_external_id?: string
+          p_nome: string
+          p_pais?: string
+          p_provider_id?: string
+        }
+        Returns: string
       }
       slugify: { Args: { input_text: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }

@@ -1,6 +1,13 @@
 /**
- * Canonical Key Utilities for Edge Functions (Backend)
- * These functions mirror the database functions for consistent behavior
+ * Canonical Key Utilities for Edge Functions
+ * Sistema de slugs canônicos para importação idempotente
+ * 
+ * Regras:
+ * 1. Slugs são imutáveis após criação
+ * 2. Mesmo nome sempre gera mesmo slug base
+ * 3. Conflitos resolvidos com sufixo incremental (-2, -3)
+ * 4. Importações são idempotentes (mesmo arquivo importado várias vezes não duplica)
+ * 5. Slug é chave canônica, não apenas ID interno
  */
 
 /**
@@ -46,10 +53,28 @@ export function slugify(str: string): string {
 }
 
 /**
+ * Generate match slug: time-casa-vs-time-fora-YYYY-MM-DD
+ */
+export function generateMatchSlug(homeSlug: string, awaySlug: string, date: string): string {
+  const home = homeSlug || 'time-casa';
+  const away = awaySlug || 'time-fora';
+  // Ensure date is in YYYY-MM-DD format
+  const dateStr = date.split('T')[0];
+  return `${home}-vs-${away}-${dateStr}`;
+}
+
+/**
  * Compare two names for canonical matching
  */
 export function namesMatch(name1: string, name2: string): boolean {
   return normalizeName(name1) === normalizeName(name2);
+}
+
+/**
+ * Compare two slugs for matching
+ */
+export function slugsMatch(slug1: string, slug2: string): boolean {
+  return slugify(slug1) === slugify(slug2);
 }
 
 /**
@@ -58,163 +83,106 @@ export function namesMatch(name1: string, name2: string): boolean {
 export type EntityType = 'match' | 'team' | 'league';
 
 /**
- * Interface for league resolution result
+ * Confidence levels for mappings
  */
-export interface LeagueResolutionResult {
-  success: boolean;
-  leagueId: string | null;
-  error?: string;
-  source?: 'external_id_map' | 'slug_match' | 'name_match';
+export type MatchConfidence = 'low' | 'medium' | 'high' | 'exact';
+
+/**
+ * Interface for external ID mapping
+ */
+export interface ExternalIdMapping {
+  id: string;
+  entity_type: EntityType;
+  internal_id: string;
+  external_id: string;
+  source_id: string | null;
+  confidence: MatchConfidence;
+  metadata?: Record<string, unknown>;
 }
 
 /**
- * Interface for team resolution result
+ * Result interface for resolution operations
  */
-export interface TeamResolutionResult {
+export interface ResolutionResult {
   success: boolean;
-  teamId: string | null;
-  error?: string;
+  id: string | null;
   source?: 'external_id_map' | 'slug_match' | 'name_match' | 'created';
-  created?: boolean;
+  error?: string;
+  isNew?: boolean;
 }
 
 /**
- * Resolve a canonical league ID from provider information
- * 
- * (a) If externalLeagueId exists: search in external_id_map (entity_type='league') → return internal_id
- * (b) Else: try to find in ligas by slug or normalized name
- * (c) If not found: create a pending entry in sync_logs and return error
+ * Validate that a name is not empty or null
  */
-export async function resolveLeagueId(
-  supabase: any,
-  params: {
-    provider: string;  // source_id from data_sources
-    externalLeagueId?: string | number;
-    leagueName: string;
-  }
-): Promise<LeagueResolutionResult> {
-  const { provider, externalLeagueId, leagueName } = params;
-
-  // (a) Try external_id_map first if we have an external ID
-  if (externalLeagueId) {
-    const { data: mapping, error: mappingError } = await supabase
-      .from('external_id_map')
-      .select('internal_id')
-      .eq('source_id', provider)
-      .eq('entity_type', 'league')
-      .eq('external_id', String(externalLeagueId))
-      .maybeSingle();
-
-    if (!mappingError && mapping?.internal_id) {
-      return {
-        success: true,
-        leagueId: mapping.internal_id,
-        source: 'external_id_map',
-      };
-    }
-  }
-
-  // (b) Try to find by slug
-  const slug = slugify(leagueName);
-  if (slug) {
-    const { data: leagueBySlug } = await supabase
-      .from('ligas')
-      .select('id')
-      .eq('slug', slug)
-      .maybeSingle();
-
-    if (leagueBySlug?.id) {
-      // Register the mapping if we have an external ID
-      if (externalLeagueId) {
-        await supabase.from('external_id_map').upsert({
-          source_id: provider,
-          entity_type: 'league',
-          external_id: String(externalLeagueId),
-          internal_id: leagueBySlug.id,
-          confidence: 'high',
-        }, { onConflict: 'source_id,entity_type,external_id' });
-      }
-      return {
-        success: true,
-        leagueId: leagueBySlug.id,
-        source: 'slug_match',
-      };
-    }
-  }
-
-  // Try to find by normalized name
-  const normalizedName = normalizeName(leagueName);
-  const { data: allLeagues } = await supabase
-    .from('ligas')
-    .select('id, nome');
-
-  if (allLeagues) {
-    const matchingLeague = allLeagues.find((l: any) => 
-      normalizeName(l.nome) === normalizedName
-    );
-
-    if (matchingLeague) {
-      // Register the mapping if we have an external ID
-      if (externalLeagueId) {
-        await supabase.from('external_id_map').upsert({
-          source_id: provider,
-          entity_type: 'league',
-          external_id: String(externalLeagueId),
-          internal_id: matchingLeague.id,
-          confidence: 'medium',
-        }, { onConflict: 'source_id,entity_type,external_id' });
-      }
-      return {
-        success: true,
-        leagueId: matchingLeague.id,
-        source: 'name_match',
-      };
-    }
-  }
-
-  // (c) Not found - create pending entry in sync_logs
-  await supabase.from('sync_logs').insert({
-    source_id: provider,
-    entity_type: 'league_mapping_missing',
-    status: 'pending',
-    details: {
-      external_id: externalLeagueId ? String(externalLeagueId) : null,
-      league_name: leagueName,
-      normalized_name: normalizedName,
-      slug: slug,
-    },
-    error_message: `Liga não encontrada: ${leagueName} (external_id: ${externalLeagueId || 'N/A'})`,
-  });
-
-  return {
-    success: false,
-    leagueId: null,
-    error: `Liga não encontrada: ${leagueName}. Pendência registrada para revisão manual.`,
-  };
+export function validateName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return name.trim().length > 0;
 }
 
 /**
- * Resolve a canonical team ID from provider information
+ * Log import validation error to sync_logs
+ */
+export async function logImportError(
+  supabase: any,
+  sourceId: string | null,
+  entityType: string,
+  errorMessage: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    await supabase.from('sync_logs').insert({
+      source_id: sourceId,
+      entity_type: `${entityType}_import_error`,
+      status: 'failed',
+      error_message: errorMessage,
+      details: details,
+    });
+  } catch (e) {
+    console.error('Failed to log import error:', e);
+  }
+}
+
+/**
+ * Resolve a team by canonical key (slug-first approach)
  * 
- * (a) If externalTeamId exists: search in external_id_map (entity_type='team') → return internal_id
- * (b) Else: try to find in times by slug or normalized name
- * (c) If not found: create new team with nome=teamName, generate slug, and create external_id_map entry
+ * Resolution order:
+ * 1. external_id_map (if externalId provided)
+ * 2. Slug match
+ * 3. Normalized name match
+ * 4. Create new if not found
  */
 export async function resolveTeamId(
   supabase: any,
   params: {
-    provider: string;  // source_id from data_sources
+    provider: string | null;
     externalTeamId?: string | number;
     teamName: string;
-    teamLogo?: string;
-    country?: string;
+    escudoUrl?: string;
+    pais?: string;
+    apiId?: number;
   }
-): Promise<TeamResolutionResult> {
-  const { provider, externalTeamId, teamName, teamLogo, country } = params;
+): Promise<ResolutionResult> {
+  const { provider, externalTeamId, teamName, escudoUrl, pais, apiId } = params;
 
-  // (a) Try external_id_map first if we have an external ID
-  if (externalTeamId) {
-    const { data: mapping, error: mappingError } = await supabase
+  // Validate name
+  if (!validateName(teamName)) {
+    await logImportError(supabase, provider, 'team', 'Nome do time não pode ser vazio', {
+      external_id: externalTeamId,
+      provider,
+    });
+    return {
+      success: false,
+      id: null,
+      error: 'Nome do time não pode ser vazio',
+    };
+  }
+
+  const slug = slugify(teamName);
+  const normalizedName = normalizeName(teamName);
+
+  // 1. Try external_id_map first
+  if (provider && externalTeamId) {
+    const { data: mapping } = await supabase
       .from('external_id_map')
       .select('internal_id')
       .eq('source_id', provider)
@@ -222,17 +190,17 @@ export async function resolveTeamId(
       .eq('external_id', String(externalTeamId))
       .maybeSingle();
 
-    if (!mappingError && mapping?.internal_id) {
+    if (mapping?.internal_id) {
       return {
         success: true,
-        teamId: mapping.internal_id,
+        id: mapping.internal_id,
         source: 'external_id_map',
+        isNew: false,
       };
     }
   }
 
-  // (b) Try to find by slug
-  const slug = slugify(teamName);
+  // 2. Try slug match
   if (slug) {
     const { data: teamBySlug } = await supabase
       .from('times')
@@ -241,8 +209,8 @@ export async function resolveTeamId(
       .maybeSingle();
 
     if (teamBySlug?.id) {
-      // Register the mapping if we have an external ID
-      if (externalTeamId) {
+      // Register mapping if we have external ID
+      if (provider && externalTeamId) {
         await supabase.from('external_id_map').upsert({
           source_id: provider,
           entity_type: 'team',
@@ -253,14 +221,14 @@ export async function resolveTeamId(
       }
       return {
         success: true,
-        teamId: teamBySlug.id,
+        id: teamBySlug.id,
         source: 'slug_match',
+        isNew: false,
       };
     }
   }
 
-  // Try to find by normalized name
-  const normalizedName = normalizeName(teamName);
+  // 3. Try normalized name match
   const { data: allTeams } = await supabase
     .from('times')
     .select('id, nome');
@@ -271,8 +239,8 @@ export async function resolveTeamId(
     );
 
     if (matchingTeam) {
-      // Register the mapping if we have an external ID
-      if (externalTeamId) {
+      // Register mapping if we have external ID
+      if (provider && externalTeamId) {
         await supabase.from('external_id_map').upsert({
           source_id: provider,
           entity_type: 'team',
@@ -283,61 +251,35 @@ export async function resolveTeamId(
       }
       return {
         success: true,
-        teamId: matchingTeam.id,
+        id: matchingTeam.id,
         source: 'name_match',
+        isNew: false,
       };
     }
   }
 
-  // Also check team_aliases
-  if (normalizedName.length > 0) {
-    const { data: alias } = await supabase
-      .from('team_aliases')
-      .select('team_id')
-      .eq('normalized_alias', normalizedName)
-      .maybeSingle();
-
-    if (alias?.team_id) {
-      // Register the mapping if we have an external ID
-      if (externalTeamId) {
-        await supabase.from('external_id_map').upsert({
-          source_id: provider,
-          entity_type: 'team',
-          external_id: String(externalTeamId),
-          internal_id: alias.team_id,
-          confidence: 'medium',
-        }, { onConflict: 'source_id,entity_type,external_id' });
-      }
-      return {
-        success: true,
-        teamId: alias.team_id,
-        source: 'name_match',
-      };
-    }
-  }
-
-  // (c) Create new team
+  // 4. Create new team (trigger will generate unique slug)
   const { data: newTeam, error: createError } = await supabase
     .from('times')
     .insert({
       nome: teamName,
-      escudo_url: teamLogo || null,
-      pais: country || null,
-      // slug will be auto-generated by trigger
+      escudo_url: escudoUrl,
+      pais: pais,
+      api_id: apiId,
     })
-    .select('id')
+    .select()
     .single();
 
   if (createError || !newTeam) {
     return {
       success: false,
-      teamId: null,
-      error: `Erro ao criar time: ${createError?.message || 'Desconhecido'}`,
+      id: null,
+      error: `Falha ao criar time: ${createError?.message || 'Unknown error'}`,
     };
   }
 
-  // Register the mapping if we have an external ID
-  if (externalTeamId) {
+  // Register mapping
+  if (provider && externalTeamId) {
     await supabase.from('external_id_map').upsert({
       source_id: provider,
       entity_type: 'team',
@@ -347,18 +289,391 @@ export async function resolveTeamId(
     }, { onConflict: 'source_id,entity_type,external_id' });
   }
 
-  // Create an alias for easier future matching
+  // Register alias
   await supabase.from('team_aliases').insert({
     team_id: newTeam.id,
     source_id: provider,
     alias: teamName,
     normalized_alias: normalizedName,
-  });
+  }).onConflict('normalized_alias').ignore();
 
   return {
     success: true,
-    teamId: newTeam.id,
+    id: newTeam.id,
     source: 'created',
-    created: true,
+    isNew: true,
+  };
+}
+
+/**
+ * Resolve a league by canonical key (slug-first approach)
+ */
+export async function resolveLeagueId(
+  supabase: any,
+  params: {
+    provider: string | null;
+    externalLeagueId?: string | number;
+    leagueName: string;
+    codigoApi?: string;
+    pais?: string;
+    logoUrl?: string;
+    apiId?: number;
+  }
+): Promise<ResolutionResult> {
+  const { provider, externalLeagueId, leagueName, codigoApi, pais, logoUrl, apiId } = params;
+
+  // Validate name
+  if (!validateName(leagueName)) {
+    await logImportError(supabase, provider, 'league', 'Nome da liga não pode ser vazio', {
+      external_id: externalLeagueId,
+      provider,
+    });
+    return {
+      success: false,
+      id: null,
+      error: 'Nome da liga não pode ser vazio',
+    };
+  }
+
+  const slug = slugify(leagueName);
+  const normalizedName = normalizeName(leagueName);
+
+  // 1. Try external_id_map first
+  if (provider && externalLeagueId) {
+    const { data: mapping } = await supabase
+      .from('external_id_map')
+      .select('internal_id')
+      .eq('source_id', provider)
+      .eq('entity_type', 'league')
+      .eq('external_id', String(externalLeagueId))
+      .maybeSingle();
+
+    if (mapping?.internal_id) {
+      return {
+        success: true,
+        id: mapping.internal_id,
+        source: 'external_id_map',
+        isNew: false,
+      };
+    }
+  }
+
+  // 2. Try slug match
+  if (slug) {
+    const { data: leagueBySlug } = await supabase
+      .from('ligas')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (leagueBySlug?.id) {
+      if (provider && externalLeagueId) {
+        await supabase.from('external_id_map').upsert({
+          source_id: provider,
+          entity_type: 'league',
+          external_id: String(externalLeagueId),
+          internal_id: leagueBySlug.id,
+          confidence: 'high',
+        }, { onConflict: 'source_id,entity_type,external_id' });
+      }
+      return {
+        success: true,
+        id: leagueBySlug.id,
+        source: 'slug_match',
+        isNew: false,
+      };
+    }
+  }
+
+  // 3. Try normalized name match
+  const { data: allLeagues } = await supabase
+    .from('ligas')
+    .select('id, nome');
+
+  if (allLeagues) {
+    const matchingLeague = allLeagues.find((l: any) => 
+      normalizeName(l.nome) === normalizedName
+    );
+
+    if (matchingLeague) {
+      if (provider && externalLeagueId) {
+        await supabase.from('external_id_map').upsert({
+          source_id: provider,
+          entity_type: 'league',
+          external_id: String(externalLeagueId),
+          internal_id: matchingLeague.id,
+          confidence: 'medium',
+        }, { onConflict: 'source_id,entity_type,external_id' });
+      }
+      return {
+        success: true,
+        id: matchingLeague.id,
+        source: 'name_match',
+        isNew: false,
+      };
+    }
+  }
+
+  // 4. Create new league (trigger will generate unique slug)
+  const { data: newLeague, error: createError } = await supabase
+    .from('ligas')
+    .insert({
+      nome: leagueName,
+      codigo_api: codigoApi,
+      pais: pais,
+      logo_url: logoUrl,
+      api_id: apiId,
+    })
+    .select()
+    .single();
+
+  if (createError || !newLeague) {
+    return {
+      success: false,
+      id: null,
+      error: `Falha ao criar liga: ${createError?.message || 'Unknown error'}`,
+    };
+  }
+
+  if (provider && externalLeagueId) {
+    await supabase.from('external_id_map').upsert({
+      source_id: provider,
+      entity_type: 'league',
+      external_id: String(externalLeagueId),
+      internal_id: newLeague.id,
+      confidence: 'exact',
+    }, { onConflict: 'source_id,entity_type,external_id' });
+  }
+
+  await supabase.from('competition_aliases').insert({
+    league_id: newLeague.id,
+    source_id: provider,
+    alias: leagueName,
+    normalized_alias: normalizedName,
+  }).onConflict('normalized_alias').ignore();
+
+  return {
+    success: true,
+    id: newLeague.id,
+    source: 'created',
+    isNew: true,
+  };
+}
+
+/**
+ * Resolve a match by canonical key (slug-first approach)
+ * Slug format: time-casa-vs-time-fora-YYYY-MM-DD
+ */
+export async function resolveMatchId(
+  supabase: any,
+  params: {
+    provider: string | null;
+    externalMatchId?: string | number;
+    homeTeamId: string;
+    awayTeamId: string;
+    matchDate: string;
+    hora?: string;
+    ligaId?: string;
+    apiId?: number;
+    status?: string;
+    rodada?: number;
+    golsCasa?: number;
+    golsFora?: number;
+  }
+): Promise<ResolutionResult> {
+  const { 
+    provider, externalMatchId, homeTeamId, awayTeamId, matchDate,
+    hora, ligaId, apiId, status, rodada, golsCasa, golsFora
+  } = params;
+
+  // Validate required fields
+  if (!homeTeamId || !awayTeamId || !matchDate) {
+    await logImportError(supabase, provider, 'match', 'time_casa_id, time_fora_id e data são obrigatórios', {
+      external_id: externalMatchId,
+      home_team_id: homeTeamId,
+      away_team_id: awayTeamId,
+      date: matchDate,
+    });
+    return {
+      success: false,
+      id: null,
+      error: 'time_casa_id, time_fora_id e data são obrigatórios',
+    };
+  }
+
+  const dateOnly = matchDate.split('T')[0];
+
+  // 1. Try external_id_map first
+  if (provider && externalMatchId) {
+    const { data: mapping } = await supabase
+      .from('external_id_map')
+      .select('internal_id')
+      .eq('source_id', provider)
+      .eq('entity_type', 'match')
+      .eq('external_id', String(externalMatchId))
+      .maybeSingle();
+
+    if (mapping?.internal_id) {
+      // Update match data
+      await supabase.from('partidas')
+        .update({
+          hora: hora || undefined,
+          liga_id: ligaId || undefined,
+          status: status || undefined,
+          rodada: rodada || undefined,
+          gols_casa: golsCasa,
+          gols_fora: golsFora,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', mapping.internal_id);
+      
+      return {
+        success: true,
+        id: mapping.internal_id,
+        source: 'external_id_map',
+        isNew: false,
+      };
+    }
+  }
+
+  // 2. Get team slugs for match slug generation
+  const { data: homeTeam } = await supabase
+    .from('times')
+    .select('slug')
+    .eq('id', homeTeamId)
+    .single();
+  
+  const { data: awayTeam } = await supabase
+    .from('times')
+    .select('slug')
+    .eq('id', awayTeamId)
+    .single();
+
+  const expectedSlug = generateMatchSlug(
+    homeTeam?.slug || 'time-casa',
+    awayTeam?.slug || 'time-fora',
+    dateOnly
+  );
+
+  // 3. Try slug match
+  const { data: matchBySlug } = await supabase
+    .from('partidas')
+    .select('id')
+    .eq('slug', expectedSlug)
+    .maybeSingle();
+
+  if (matchBySlug?.id) {
+    // Update and register mapping
+    await supabase.from('partidas')
+      .update({
+        hora: hora || undefined,
+        liga_id: ligaId || undefined,
+        status: status || undefined,
+        rodada: rodada || undefined,
+        gols_casa: golsCasa,
+        gols_fora: golsFora,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', matchBySlug.id);
+
+    if (provider && externalMatchId) {
+      await supabase.from('external_id_map').upsert({
+        source_id: provider,
+        entity_type: 'match',
+        external_id: String(externalMatchId),
+        internal_id: matchBySlug.id,
+        confidence: 'high',
+      }, { onConflict: 'source_id,entity_type,external_id' });
+    }
+    
+    return {
+      success: true,
+      id: matchBySlug.id,
+      source: 'slug_match',
+      isNew: false,
+    };
+  }
+
+  // 4. Try by teams + date (fallback)
+  const { data: matchByKey } = await supabase
+    .from('partidas')
+    .select('id')
+    .eq('time_casa_id', homeTeamId)
+    .eq('time_fora_id', awayTeamId)
+    .eq('data', dateOnly)
+    .maybeSingle();
+
+  if (matchByKey?.id) {
+    await supabase.from('partidas')
+      .update({
+        hora: hora || undefined,
+        liga_id: ligaId || undefined,
+        status: status || undefined,
+        rodada: rodada || undefined,
+        gols_casa: golsCasa,
+        gols_fora: golsFora,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', matchByKey.id);
+
+    if (provider && externalMatchId) {
+      await supabase.from('external_id_map').upsert({
+        source_id: provider,
+        entity_type: 'match',
+        external_id: String(externalMatchId),
+        internal_id: matchByKey.id,
+        confidence: 'high',
+      }, { onConflict: 'source_id,entity_type,external_id' });
+    }
+    
+    return {
+      success: true,
+      id: matchByKey.id,
+      source: 'name_match',
+      isNew: false,
+    };
+  }
+
+  // 5. Create new match (trigger will generate unique slug)
+  const { data: newMatch, error: createError } = await supabase
+    .from('partidas')
+    .insert({
+      time_casa_id: homeTeamId,
+      time_fora_id: awayTeamId,
+      data: dateOnly,
+      hora: hora,
+      liga_id: ligaId,
+      api_id: apiId,
+      status: status || 'scheduled',
+      rodada: rodada,
+      gols_casa: golsCasa,
+      gols_fora: golsFora,
+    })
+    .select()
+    .single();
+
+  if (createError || !newMatch) {
+    return {
+      success: false,
+      id: null,
+      error: `Falha ao criar partida: ${createError?.message || 'Unknown error'}`,
+    };
+  }
+
+  if (provider && externalMatchId) {
+    await supabase.from('external_id_map').upsert({
+      source_id: provider,
+      entity_type: 'match',
+      external_id: String(externalMatchId),
+      internal_id: newMatch.id,
+      confidence: 'exact',
+    }, { onConflict: 'source_id,entity_type,external_id' });
+  }
+
+  return {
+    success: true,
+    id: newMatch.id,
+    source: 'created',
+    isNew: true,
   };
 }

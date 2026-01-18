@@ -1,6 +1,13 @@
 /**
  * Canonical Key Utilities for Frontend
- * These functions mirror the database functions for consistent behavior
+ * Sistema de slugs canônicos para importação idempotente
+ * 
+ * Regras:
+ * 1. Slugs são imutáveis após criação
+ * 2. Mesmo nome sempre gera mesmo slug base
+ * 3. Conflitos resolvidos com sufixo incremental (-2, -3)
+ * 4. Importações são idempotentes
+ * 5. Slug é chave canônica, não apenas ID interno
  */
 
 /**
@@ -46,6 +53,17 @@ export function slugify(str: string): string {
 }
 
 /**
+ * Generate match slug: time-casa-vs-time-fora-YYYY-MM-DD
+ */
+export function generateMatchSlug(homeSlug: string, awaySlug: string, date: string): string {
+  const home = homeSlug || 'time-casa';
+  const away = awaySlug || 'time-fora';
+  // Ensure date is in YYYY-MM-DD format
+  const dateStr = date.split('T')[0];
+  return `${home}-vs-${away}-${dateStr}`;
+}
+
+/**
  * Compare two names for canonical matching
  */
 export function namesMatch(name1: string, name2: string): boolean {
@@ -60,9 +78,22 @@ export function slugsMatch(slug1: string, slug2: string): boolean {
 }
 
 /**
+ * Validate that a name is not empty or null
+ */
+export function validateName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return name.trim().length > 0;
+}
+
+/**
  * Entity types supported by external_id_map
  */
 export type EntityType = 'match' | 'team' | 'league';
+
+/**
+ * Confidence levels for mappings
+ */
+export type MatchConfidence = 'low' | 'medium' | 'high' | 'exact';
 
 /**
  * Interface for external ID mapping
@@ -73,6 +104,17 @@ export interface ExternalIdMapping {
   internal_id: string;
   external_id: string;
   source_id: string | null;
-  confidence: 'low' | 'medium' | 'high' | 'exact';
+  confidence: MatchConfidence;
   metadata?: Record<string, unknown>;
+}
+
+/**
+ * Result interface for resolution operations
+ */
+export interface ResolutionResult {
+  success: boolean;
+  id: string | null;
+  source?: 'external_id_map' | 'slug_match' | 'name_match' | 'created';
+  error?: string;
+  isNew?: boolean;
 }
