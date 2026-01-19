@@ -383,13 +383,13 @@ export function UserPalpitesHistory() {
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <TeamBadge name={match.time_casa?.nome || 'Casa'} size="sm" />
+                        <TeamBadge name={match.time_casa?.nome || 'Casa'} primaryColor={match.time_casa?.cores?.primary} secondaryColor={match.time_casa?.cores?.secondary} size="sm" />
                         <span className="font-medium text-sm">{match.time_casa?.nome || 'Casa'}</span>
                       </div>
                       <span className="text-muted-foreground">vs</span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{match.time_fora?.nome || 'Fora'}</span>
-                        <TeamBadge name={match.time_fora?.nome || 'Fora'} size="sm" />
+                        <TeamBadge name={match.time_fora?.nome || 'Fora'} primaryColor={match.time_fora?.cores?.primary} secondaryColor={match.time_fora?.cores?.secondary} size="sm" />
                       </div>
                     </div>
 

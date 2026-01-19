@@ -14,6 +14,12 @@ interface UserPalpite {
   updated_at: string;
 }
 
+interface TeamData {
+  nome: string;
+  escudo_url: string | null;
+  cores: { primary?: string; secondary?: string } | null;
+}
+
 interface UserPalpiteWithMatch extends UserPalpite {
   partida: {
     id: string;
@@ -22,8 +28,8 @@ interface UserPalpiteWithMatch extends UserPalpite {
     status: string;
     gols_casa: number | null;
     gols_fora: number | null;
-    time_casa: { nome: string; escudo_url: string | null } | null;
-    time_fora: { nome: string; escudo_url: string | null } | null;
+    time_casa: TeamData | null;
+    time_fora: TeamData | null;
     liga: { nome: string; logo_url: string | null } | null;
   };
   palpite_sistema: {
@@ -59,8 +65,8 @@ export function useUserPalpites() {
           *,
           partida:partidas(
             id, data, hora, status, gols_casa, gols_fora,
-            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url),
-            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url),
+            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
+            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
             liga:ligas(nome, logo_url)
           ),
           palpite_sistema:palpites(

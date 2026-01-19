@@ -55,6 +55,12 @@ import {
   Cell
 } from "recharts";
 
+interface TeamData {
+  nome: string;
+  escudo_url: string | null;
+  cores: { primary?: string; secondary?: string } | null;
+}
+
 interface MatchComparison {
   id: string;
   partida_id: string;
@@ -70,8 +76,8 @@ interface MatchComparison {
   partidas: {
     data: string;
     rodada: number | null;
-    time_casa: { nome: string; escudo_url: string | null } | null;
-    time_fora: { nome: string; escudo_url: string | null } | null;
+    time_casa: TeamData | null;
+    time_fora: TeamData | null;
   } | null;
 }
 
@@ -300,6 +306,7 @@ export default function Retrospectiva() {
     const teamStats: Record<string, { 
       nome: string; 
       escudo_url: string | null;
+      cores: { primary?: string; secondary?: string } | null;
       total: number; 
       acertos: number; 
       placares: number 
@@ -312,7 +319,8 @@ export default function Retrospectiva() {
         if (!teamStats[timeCasa.nome]) {
           teamStats[timeCasa.nome] = { 
             nome: timeCasa.nome, 
-            escudo_url: timeCasa.escudo_url, 
+            escudo_url: timeCasa.escudo_url,
+            cores: timeCasa.cores,
             total: 0, 
             acertos: 0, 
             placares: 0 
@@ -329,7 +337,8 @@ export default function Retrospectiva() {
         if (!teamStats[timeFora.nome]) {
           teamStats[timeFora.nome] = { 
             nome: timeFora.nome, 
-            escudo_url: timeFora.escudo_url, 
+            escudo_url: timeFora.escudo_url,
+            cores: timeFora.cores,
             total: 0, 
             acertos: 0, 
             placares: 0 
@@ -647,7 +656,7 @@ export default function Retrospectiva() {
                           'bg-muted text-muted-foreground'}`}>
                         {index + 1}
                       </span>
-                      <TeamBadge name={team.nome} size="sm" />
+                      <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
                       <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
@@ -679,7 +688,7 @@ export default function Retrospectiva() {
                       <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-muted text-muted-foreground">
                         {teamRankingData.top.length + teamRankingData.bottom.length - index}
                       </span>
-                      <TeamBadge name={team.nome} size="sm" />
+                      <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
                       <span className="flex-1 text-sm font-medium truncate">{team.nome}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
@@ -735,12 +744,12 @@ export default function Retrospectiva() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <TeamBadge name={match.partidas?.time_casa?.nome || 'Casa'} size="sm" />
+                            <TeamBadge name={match.partidas?.time_casa?.nome || 'Casa'} primaryColor={match.partidas?.time_casa?.cores?.primary} secondaryColor={match.partidas?.time_casa?.cores?.secondary} size="sm" />
                             <span className="text-sm">
                               {match.partidas?.time_casa?.nome || 'Casa'}
                             </span>
                             <span className="text-muted-foreground mx-1">x</span>
-                            <TeamBadge name={match.partidas?.time_fora?.nome || 'Fora'} size="sm" />
+                            <TeamBadge name={match.partidas?.time_fora?.nome || 'Fora'} primaryColor={match.partidas?.time_fora?.cores?.primary} secondaryColor={match.partidas?.time_fora?.cores?.secondary} size="sm" />
                             <span className="text-sm">
                               {match.partidas?.time_fora?.nome || 'Fora'}
                             </span>
