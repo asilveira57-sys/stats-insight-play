@@ -88,8 +88,8 @@ interface ComparisonData {
   partidas: {
     data: string;
     rodada: number | null;
-    time_casa: { nome: string; escudo_url: string | null } | null;
-    time_fora: { nome: string; escudo_url: string | null } | null;
+    time_casa: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
+    time_fora: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
     ligas: { nome: string; slug: string | null } | null;
   } | null;
 }
@@ -180,8 +180,8 @@ export default function RankingIAvsHumanos() {
           partidas!inner(
             data,
             rodada,
-            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url),
-            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url),
+            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
+            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
             ligas!inner(nome, slug)
           )
         `)
@@ -740,11 +740,11 @@ export default function RankingIAvsHumanos() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2 min-w-[200px]">
-                                <TeamBadge name={timeCasa?.nome || ''} size="sm" />
+                                <TeamBadge name={timeCasa?.nome || ''} primaryColor={timeCasa?.cores?.primary} secondaryColor={timeCasa?.cores?.secondary} size="sm" />
                                 <span className="text-sm truncate max-w-[80px]">{timeCasa?.nome || '-'}</span>
                                 <span className="text-muted-foreground">x</span>
                                 <span className="text-sm truncate max-w-[80px]">{timeFora?.nome || '-'}</span>
-                                <TeamBadge name={timeFora?.nome || ''} size="sm" />
+                                <TeamBadge name={timeFora?.nome || ''} primaryColor={timeFora?.cores?.primary} secondaryColor={timeFora?.cores?.secondary} size="sm" />
                               </div>
                             </TableCell>
                             <TableCell className="text-center font-medium">

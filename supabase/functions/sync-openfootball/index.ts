@@ -562,8 +562,7 @@ async function findOrCreateTeam(
     .from('times')
     .insert({
       nome: teamName,
-      pais: country,
-      cores: { primary: '#6B7280', secondary: '#FFFFFF' }
+      pais: country
     })
     .select('id, nome')
     .single()
