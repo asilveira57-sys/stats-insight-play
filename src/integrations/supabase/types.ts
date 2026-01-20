@@ -1208,6 +1208,7 @@ export type Database = {
           liga_id: string | null
           rodada: number | null
           slug: string | null
+          slug_locked: boolean
           status: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id: string | null
           time_fora_id: string | null
@@ -1225,6 +1226,7 @@ export type Database = {
           liga_id?: string | null
           rodada?: number | null
           slug?: string | null
+          slug_locked?: boolean
           status?: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id?: string | null
           time_fora_id?: string | null
@@ -1242,6 +1244,7 @@ export type Database = {
           liga_id?: string | null
           rodada?: number | null
           slug?: string | null
+          slug_locked?: boolean
           status?: Database["public"]["Enums"]["partida_status"] | null
           time_casa_id?: string | null
           time_fora_id?: string | null
@@ -1416,6 +1419,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      slug_audit_logs: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          entity_id: string
+          entity_type: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          entity_id: string
+          entity_type: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Relationships: []
       }
       standings: {
         Row: {
@@ -1720,6 +1759,7 @@ export type Database = {
           created_at: string | null
           escudo_url: string | null
           id: string
+          name_normalized: string | null
           nome: string
           pais: string | null
           pillar_content: Json | null
@@ -1728,6 +1768,7 @@ export type Database = {
           score_factors: Json | null
           score_updated_at: string | null
           slug: string | null
+          slug_locked: boolean
           updated_at: string | null
         }
         Insert: {
@@ -1736,6 +1777,7 @@ export type Database = {
           created_at?: string | null
           escudo_url?: string | null
           id?: string
+          name_normalized?: string | null
           nome: string
           pais?: string | null
           pillar_content?: Json | null
@@ -1744,6 +1786,7 @@ export type Database = {
           score_factors?: Json | null
           score_updated_at?: string | null
           slug?: string | null
+          slug_locked?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -1752,6 +1795,7 @@ export type Database = {
           created_at?: string | null
           escudo_url?: string | null
           id?: string
+          name_normalized?: string | null
           nome?: string
           pais?: string | null
           pillar_content?: Json | null
@@ -1760,6 +1804,7 @@ export type Database = {
           score_factors?: Json | null
           score_updated_at?: string | null
           slug?: string | null
+          slug_locked?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -1811,6 +1856,7 @@ export type Database = {
         Returns: boolean
       }
       normalize_name: { Args: { input_text: string }; Returns: string }
+      normalize_name_for_slug: { Args: { input_name: string }; Returns: string }
       processar_resultado_partida: {
         Args: { p_partida_id: string }
         Returns: undefined
