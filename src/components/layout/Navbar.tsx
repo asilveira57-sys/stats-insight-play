@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import statballLogo from "@/assets/statball-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,14 +155,16 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+          <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
             <div className="relative">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-secondary blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+              <img 
+                src={statballLogo} 
+                alt="StatBall Logo" 
+                className="w-10 h-10 rounded-lg object-cover"
+              />
+              <div className="absolute inset-0 rounded-lg bg-primary/20 blur-lg opacity-0 group-hover:opacity-50 transition-opacity" />
             </div>
-            <span className="font-display font-bold text-xl gradient-text hidden sm:block">
+            <span className="font-display font-bold text-xl text-primary hidden sm:block tracking-wide">
               STATBALL
             </span>
           </Link>
