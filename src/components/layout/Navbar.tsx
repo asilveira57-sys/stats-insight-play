@@ -156,17 +156,11 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
-            <div className="relative">
-              <img 
-                src={statballLogo} 
-                alt="StatBall Logo" 
-                className="w-10 h-10 rounded-lg object-cover"
-              />
-              <div className="absolute inset-0 rounded-lg bg-primary/20 blur-lg opacity-0 group-hover:opacity-50 transition-opacity" />
-            </div>
-            <span className="font-display font-bold text-xl text-primary hidden sm:block tracking-wide">
-              STATBALL
-            </span>
+            <img 
+              src={statballLogo} 
+              alt="StatBall Logo" 
+              className="h-10 object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
