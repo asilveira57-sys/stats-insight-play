@@ -1835,6 +1835,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consolidate_team_aliases: {
+        Args: never
+        Returns: {
+          alias_created: boolean
+          team_id: string
+          team_name: string
+        }[]
+      }
+      count_teams_with_aliases: {
+        Args: { p_search?: string; p_status?: string }
+        Returns: number
+      }
       find_match_by_canonical_key: {
         Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
         Returns: string
@@ -1848,12 +1860,48 @@ export type Database = {
         Returns: string
       }
       gerar_palpite_sistema: { Args: { p_partida_id: string }; Returns: string }
+      get_suggested_duplicates: {
+        Args: { p_limit?: number }
+        Returns: {
+          reason: string
+          similarity_score: number
+          team_a_id: string
+          team_a_name: string
+          team_a_slug: string
+          team_b_id: string
+          team_b_name: string
+          team_b_slug: string
+        }[]
+      }
+      get_teams_with_aliases: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          alias_count: number
+          escudo_url: string
+          id: string
+          match_count: number
+          nome: string
+          pais: string
+          slug: string
+          status: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      merge_teams: {
+        Args: { p_merged_by?: string; p_source_id: string; p_target_id: string }
+        Returns: Json
       }
       normalize_name: { Args: { input_text: string }; Returns: string }
       normalize_name_for_slug: { Args: { input_name: string }; Returns: string }

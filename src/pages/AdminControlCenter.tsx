@@ -316,6 +316,12 @@ export default function AdminControlCenter() {
                   Analytics
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/times">
+                  <Users className="w-4 h-4 mr-2" />
+                  Times
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
