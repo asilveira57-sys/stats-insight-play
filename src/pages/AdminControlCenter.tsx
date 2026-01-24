@@ -322,6 +322,12 @@ export default function AdminControlCenter() {
                   Times
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/qualidade-dados">
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Qualidade
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
