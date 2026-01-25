@@ -135,32 +135,44 @@ export type Database = {
       }
       assinaturas: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
           created_at: string | null
           data_fim: string | null
           data_inicio: string | null
           id: string
+          origem: string | null
           status: Database["public"]["Enums"]["assinatura_status"] | null
           tipo_plano: Database["public"]["Enums"]["plano_tipo"] | null
+          trial_ends_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string | null
           data_fim?: string | null
           data_inicio?: string | null
           id?: string
+          origem?: string | null
           status?: Database["public"]["Enums"]["assinatura_status"] | null
           tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string | null
           data_fim?: string | null
           data_inicio?: string | null
           id?: string
+          origem?: string | null
           status?: Database["public"]["Enums"]["assinatura_status"] | null
           tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1035,6 +1047,30 @@ export type Database = {
           },
         ]
       }
+      nickname_blocklist: {
+        Row: {
+          created_at: string | null
+          id: string
+          reason: string | null
+          word: string
+          word_normalized: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          word: string
+          word_normalized: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          word?: string
+          word_normalized?: string
+        }
+        Relationships: []
+      }
       noticias: {
         Row: {
           autor_id: string | null
@@ -1335,6 +1371,7 @@ export type Database = {
           id: string
           nome: string | null
           plano: Database["public"]["Enums"]["plano_tipo"] | null
+          status: string | null
           updated_at: string | null
           user_id: string
         }
@@ -1345,6 +1382,7 @@ export type Database = {
           id?: string
           nome?: string | null
           plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          status?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -1355,6 +1393,7 @@ export type Database = {
           id?: string
           nome?: string | null
           plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          status?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1809,6 +1848,174 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity_logs: {
+        Row: {
+          action_category: string
+          action_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_anonymized: string | null
+          session_id: string | null
+          user_agent_hash: string | null
+          user_id: string
+        }
+        Insert: {
+          action_category: string
+          action_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_anonymized?: string | null
+          session_id?: string | null
+          user_agent_hash?: string | null
+          user_id: string
+        }
+        Update: {
+          action_category?: string
+          action_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_anonymized?: string | null
+          session_id?: string | null
+          user_agent_hash?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_fiscal_data: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cpf: string | null
+          cpf_validated: boolean | null
+          created_at: string | null
+          estado: string | null
+          id: string
+          logradouro: string | null
+          nome_fiscal: string | null
+          numero: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          cpf_validated?: boolean | null
+          created_at?: string | null
+          estado?: string | null
+          id?: string
+          logradouro?: string | null
+          nome_fiscal?: string | null
+          numero?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          cpf_validated?: boolean | null
+          created_at?: string | null
+          estado?: string | null
+          id?: string
+          logradouro?: string | null
+          nome_fiscal?: string | null
+          numero?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_gamification_stats: {
+        Row: {
+          acertos_placar_exato: number | null
+          created_at: string | null
+          id: string
+          last_palpite_at: string | null
+          maior_sequencia: number | null
+          pontuacao_total: number | null
+          sequencia_atual: number | null
+          total_acertos: number | null
+          total_erros: number | null
+          total_palpites: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          acertos_placar_exato?: number | null
+          created_at?: string | null
+          id?: string
+          last_palpite_at?: string | null
+          maior_sequencia?: number | null
+          pontuacao_total?: number | null
+          sequencia_atual?: number | null
+          total_acertos?: number | null
+          total_erros?: number | null
+          total_palpites?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          acertos_placar_exato?: number | null
+          created_at?: string | null
+          id?: string
+          last_palpite_at?: string | null
+          maior_sequencia?: number | null
+          pontuacao_total?: number | null
+          sequencia_atual?: number | null
+          total_acertos?: number | null
+          total_erros?: number | null
+          total_palpites?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_public_profiles: {
+        Row: {
+          avatar_status: string | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          id: string
+          nickname: string | null
+          nickname_normalized: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_status?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          nickname?: string | null
+          nickname_normalized?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_status?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          nickname?: string | null
+          nickname_normalized?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1899,12 +2106,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_user_activity: {
+        Args: {
+          p_action_category: string
+          p_action_type: string
+          p_details?: Json
+          p_ip_anonymized?: string
+          p_session_id?: string
+          p_user_agent_hash?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       merge_teams: {
         Args: { p_merged_by?: string; p_source_id: string; p_target_id: string }
         Returns: Json
       }
       normalize_name: { Args: { input_text: string }; Returns: string }
       normalize_name_for_slug: { Args: { input_name: string }; Returns: string }
+      normalize_nickname: { Args: { input_text: string }; Returns: string }
       processar_resultado_partida: {
         Args: { p_partida_id: string }
         Returns: undefined
@@ -1947,6 +2167,13 @@ export type Database = {
       }
       slugify: { Args: { input_text: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      validate_nickname: {
+        Args: { p_nickname: string; p_user_id?: string }
+        Returns: {
+          error_message: string
+          is_valid: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
