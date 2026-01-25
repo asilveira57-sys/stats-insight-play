@@ -328,6 +328,12 @@ export default function AdminControlCenter() {
                   Qualidade
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/usuarios">
+                  <Users className="w-4 h-4 mr-2" />
+                  Usuários
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
