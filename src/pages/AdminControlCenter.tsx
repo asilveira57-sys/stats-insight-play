@@ -334,6 +334,18 @@ export default function AdminControlCenter() {
                   Usuários
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/planos">
+                  <Crown className="w-4 h-4 mr-2" />
+                  Planos
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/webhooks">
+                  <Zap className="w-4 h-4 mr-2" />
+                  Webhooks
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
