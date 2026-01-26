@@ -33,6 +33,12 @@ import AdminTeams from "./pages/AdminTeams";
 import AdminDataQuality from "./pages/AdminDataQuality";
 import AdminUserProfiles from "./pages/AdminUserProfiles";
 import AdminUserDetail from "./pages/AdminUserDetail";
+import AdminPlanos from "./pages/AdminPlanos";
+import AdminWebhooks from "./pages/AdminWebhooks";
+import MinhaAssinatura from "./pages/MinhaAssinatura";
+import PagamentoSucesso from "./pages/PagamentoSucesso";
+import PagamentoFalha from "./pages/PagamentoFalha";
+import PagamentoPendente from "./pages/PagamentoPendente";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
@@ -101,7 +107,14 @@ const App = () => (
             <Route path="/admin/qualidade-dados" element={<AdminDataQuality />} />
             <Route path="/admin/usuarios" element={<AdminUserProfiles />} />
             <Route path="/admin/usuarios/:userId" element={<AdminUserDetail />} />
+            <Route path="/admin/planos" element={<AdminPlanos />} />
+            <Route path="/admin/webhooks" element={<AdminWebhooks />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
+            <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
+            <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
+            <Route path="/pagamento/falha" element={<PagamentoFalha />} />
+            <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
+            <Route path="/assinatura/callback" element={<PagamentoSucesso />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

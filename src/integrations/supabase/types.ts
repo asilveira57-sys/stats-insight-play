@@ -138,12 +138,24 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
           data_fim: string | null
           data_inicio: string | null
+          grace_until: string | null
           id: string
+          last_payment_at: string | null
+          mp_payer_id: string | null
+          mp_preapproval_id: string | null
+          next_payment_due: string | null
           origem: string | null
+          plan_id: string | null
           status: Database["public"]["Enums"]["assinatura_status"] | null
+          subscription_status:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
           tipo_plano: Database["public"]["Enums"]["plano_tipo"] | null
+          total_days_credited: number | null
           trial_ends_at: string | null
           updated_at: string | null
           user_id: string
@@ -152,12 +164,24 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
           data_fim?: string | null
           data_inicio?: string | null
+          grace_until?: string | null
           id?: string
+          last_payment_at?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          next_payment_due?: string | null
           origem?: string | null
+          plan_id?: string | null
           status?: Database["public"]["Enums"]["assinatura_status"] | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
           tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          total_days_credited?: number | null
           trial_ends_at?: string | null
           updated_at?: string | null
           user_id: string
@@ -166,17 +190,37 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
           data_fim?: string | null
           data_inicio?: string | null
+          grace_until?: string | null
           id?: string
+          last_payment_at?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          next_payment_due?: string | null
           origem?: string | null
+          plan_id?: string | null
           status?: Database["public"]["Enums"]["assinatura_status"] | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
           tipo_plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          total_days_credited?: number | null
           trial_ends_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cartoes_partida: {
         Row: {
@@ -490,6 +534,42 @@ export type Database = {
           status?: Database["public"]["Enums"]["entity_status"]
           type?: Database["public"]["Enums"]["source_type"]
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      entitlement_ledger: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days_delta: number
+          description: string | null
+          id: string
+          origin: Database["public"]["Enums"]["ledger_origin"]
+          reference_id: string | null
+          reference_type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days_delta: number
+          description?: string | null
+          id?: string
+          origin: Database["public"]["Enums"]["ledger_origin"]
+          reference_id?: string | null
+          reference_type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days_delta?: number
+          description?: string | null
+          id?: string
+          origin?: Database["public"]["Enums"]["ledger_origin"]
+          reference_id?: string | null
+          reference_type?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1047,6 +1127,154 @@ export type Database = {
           },
         ]
       }
+      mp_payments: {
+        Row: {
+          amount_cents: number
+          approved_at: string | null
+          created_at: string
+          currency: string | null
+          days_granted: number | null
+          external_reference: string | null
+          id: string
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          payer_document: string | null
+          payer_email: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          plan_id: string | null
+          raw_data: Json | null
+          refundable_until: string | null
+          refunded_at: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          status_detail: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          approved_at?: string | null
+          created_at?: string
+          currency?: string | null
+          days_granted?: number | null
+          external_reference?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          plan_id?: string | null
+          raw_data?: Json | null
+          refundable_until?: string | null
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          status_detail?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          approved_at?: string | null
+          created_at?: string
+          currency?: string | null
+          days_granted?: number | null
+          external_reference?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          plan_id?: string | null
+          raw_data?: Json | null
+          refundable_until?: string | null
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          status_detail?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mp_subscriptions: {
+        Row: {
+          auto_recurring: Json | null
+          cancelled_at: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          last_payment_date: string | null
+          mp_preapproval_id: string | null
+          mp_preapproval_plan_id: string | null
+          next_payment_date: string | null
+          payer_email: string | null
+          payer_id: string | null
+          plan_id: string | null
+          raw_data: Json | null
+          reason: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_recurring?: Json | null
+          cancelled_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_payment_date?: string | null
+          mp_preapproval_id?: string | null
+          mp_preapproval_plan_id?: string | null
+          next_payment_date?: string | null
+          payer_email?: string | null
+          payer_id?: string | null
+          plan_id?: string | null
+          raw_data?: Json | null
+          reason?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_recurring?: Json | null
+          cancelled_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_payment_date?: string | null
+          mp_preapproval_id?: string | null
+          mp_preapproval_plan_id?: string | null
+          next_payment_date?: string | null
+          payer_email?: string | null
+          payer_id?: string | null
+          plan_id?: string | null
+          raw_data?: Json | null
+          reason?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nickname_blocklist: {
         Row: {
           created_at: string | null
@@ -1310,6 +1538,57 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          days: number | null
+          description: string | null
+          display_order: number
+          features: Json | null
+          highlight_label: string | null
+          id: string
+          mp_preapproval_plan_id: string | null
+          name: string
+          period_months: number | null
+          price_cents: number
+          type: Database["public"]["Enums"]["plan_type"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          days?: number | null
+          description?: string | null
+          display_order?: number
+          features?: Json | null
+          highlight_label?: string | null
+          id?: string
+          mp_preapproval_plan_id?: string | null
+          name: string
+          period_months?: number | null
+          price_cents: number
+          type: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          days?: number | null
+          description?: string | null
+          display_order?: number
+          features?: Json | null
+          highlight_label?: string | null
+          id?: string
+          mp_preapproval_plan_id?: string | null
+          name?: string
+          period_months?: number | null
+          price_cents?: number
+          type?: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       players: {
         Row: {
           created_at: string | null
@@ -1398,6 +1677,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount_cents: number
+          days_revoked: number | null
+          id: string
+          mp_refund_id: string | null
+          payment_id: string
+          processed_at: string | null
+          raw_data: Json | null
+          reason: string | null
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          days_revoked?: number | null
+          id?: string
+          mp_refund_id?: string | null
+          payment_id: string
+          processed_at?: string | null
+          raw_data?: Json | null
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          days_revoked?: number | null
+          id?: string
+          mp_refund_id?: string | null
+          payment_id?: string
+          processed_at?: string | null
+          raw_data?: Json | null
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "mp_payments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seasons: {
         Row: {
@@ -2037,6 +2366,48 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          action: string | null
+          error_message: string | null
+          event_id: string
+          id: string
+          payload: Json | null
+          processed_at: string | null
+          processing_status: Database["public"]["Enums"]["webhook_status"]
+          received_at: string
+          resource_id: string | null
+          retry_count: number | null
+          topic: string
+        }
+        Insert: {
+          action?: string | null
+          error_message?: string | null
+          event_id: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          processing_status?: Database["public"]["Enums"]["webhook_status"]
+          received_at?: string
+          resource_id?: string | null
+          retry_count?: number | null
+          topic: string
+        }
+        Update: {
+          action?: string | null
+          error_message?: string | null
+          event_id?: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          processing_status?: Database["public"]["Enums"]["webhook_status"]
+          received_at?: string
+          resource_id?: string | null
+          retry_count?: number | null
+          topic?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2099,6 +2470,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      grant_days_to_user: {
+        Args: {
+          p_days: number
+          p_description?: string
+          p_origin: Database["public"]["Enums"]["ledger_origin"]
+          p_reference_id?: string
+          p_reference_type?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2129,6 +2511,7 @@ export type Database = {
         Args: { p_partida_id: string }
         Returns: undefined
       }
+      recalculate_user_access: { Args: { p_user_id: string }; Returns: Json }
       resolve_or_create_league: {
         Args: {
           p_api_id?: number
@@ -2166,6 +2549,7 @@ export type Database = {
         Returns: string
       }
       slugify: { Args: { input_text: string }; Returns: string }
+      start_grace_period: { Args: { p_user_id: string }; Returns: Json }
       unaccent: { Args: { "": string }; Returns: string }
       validate_nickname: {
         Args: { p_nickname: string; p_user_id?: string }
@@ -2180,6 +2564,14 @@ export type Database = {
       assinatura_status: "active" | "cancelled" | "expired"
       competition_type: "league" | "cup" | "tournament" | "friendly"
       entity_status: "active" | "inactive" | "pending" | "error"
+      ledger_origin:
+        | "payment"
+        | "subscription"
+        | "admin"
+        | "refund"
+        | "chargeback"
+        | "trial"
+        | "bonus"
       match_confidence: "low" | "medium" | "high" | "exact"
       partida_status:
         | "scheduled"
@@ -2187,9 +2579,34 @@ export type Database = {
         | "finished"
         | "postponed"
         | "cancelled"
+      payment_method: "credit_card" | "debit_card" | "pix" | "boleto" | "other"
+      payment_status:
+        | "pending"
+        | "approved"
+        | "authorized"
+        | "in_process"
+        | "in_mediation"
+        | "rejected"
+        | "cancelled"
+        | "refunded"
+        | "charged_back"
+      plan_type: "one_time_days" | "subscription_monthly"
       plano_tipo: "free" | "premium"
       source_type: "api" | "github" | "manual"
+      subscription_status:
+        | "trial_active"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "blocked"
+        | "expired"
       sync_status: "pending" | "running" | "completed" | "failed"
+      webhook_status:
+        | "pending"
+        | "processing"
+        | "processed"
+        | "failed"
+        | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2321,6 +2738,15 @@ export const Constants = {
       assinatura_status: ["active", "cancelled", "expired"],
       competition_type: ["league", "cup", "tournament", "friendly"],
       entity_status: ["active", "inactive", "pending", "error"],
+      ledger_origin: [
+        "payment",
+        "subscription",
+        "admin",
+        "refund",
+        "chargeback",
+        "trial",
+        "bonus",
+      ],
       match_confidence: ["low", "medium", "high", "exact"],
       partida_status: [
         "scheduled",
@@ -2329,9 +2755,37 @@ export const Constants = {
         "postponed",
         "cancelled",
       ],
+      payment_method: ["credit_card", "debit_card", "pix", "boleto", "other"],
+      payment_status: [
+        "pending",
+        "approved",
+        "authorized",
+        "in_process",
+        "in_mediation",
+        "rejected",
+        "cancelled",
+        "refunded",
+        "charged_back",
+      ],
+      plan_type: ["one_time_days", "subscription_monthly"],
       plano_tipo: ["free", "premium"],
       source_type: ["api", "github", "manual"],
+      subscription_status: [
+        "trial_active",
+        "active",
+        "past_due",
+        "canceled",
+        "blocked",
+        "expired",
+      ],
       sync_status: ["pending", "running", "completed", "failed"],
+      webhook_status: [
+        "pending",
+        "processing",
+        "processed",
+        "failed",
+        "skipped",
+      ],
     },
   },
 } as const
