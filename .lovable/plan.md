@@ -1,134 +1,137 @@
 
+# Plano: Automação de Geração de Análises (Posts de Blog)
 
-# Plano: Completar Migração do Sistema Anti-Duplicidade
+## Situação Atual
 
-## Diagnóstico
+Após análise do sistema, identifiquei que:
 
-Identifiquei que a migração anterior criou as **funções SQL** necessárias, mas **não criou as estruturas de tabela** que essas funções referenciam. Resultado: as funções existem mas falham ao executar porque as colunas/tabelas não existem.
+| Métrica | Valor |
+|---------|-------|
+| Jogos próximos 7 dias | 62 |
+| Com palpite gerado | 52 |
+| Com análise/post | 3 |
+| **Pendentes (com palpite, sem análise)** | **49** |
 
-### Estado Atual
-| Item | Status |
-|------|--------|
-| Tabela `times` | Existe, mas **falta coluna `status`** |
-| Tabela `team_aliases` | Existe, mas **falta coluna `source`** (usa `source_id`) |
-| Tabela `team_merge_logs` | **Não existe** |
-| Função `consolidate_team_aliases` | Existe, mas falha ao executar |
-| Função `get_suggested_duplicates` | Existe, mas falha (referencia `status`) |
-| Função `merge_teams` | Existe, mas falha (referencia `status` e `team_merge_logs`) |
+### Problema Identificado
+A função `generate-match-analysis` já existe e funciona bem, mas **não está agendada automaticamente**. Ela só é executada manualmente pelo admin. Por isso, do dia 11/01 ao dia 30/01 há poucas análises publicadas.
 
-### Dados Existentes
-- 303 times cadastrados
-- 52 aliases cadastrados
-- Objetivo: criar alias 'internal' para todos os times que ainda não têm
+### Cron Jobs Existentes
+Atualmente o sistema tem estes agendamentos automáticos:
+- `sync-football-data-job`: a cada 6 horas
+- `generate-predictions-job`: a cada 6 horas  
+- `process-results-job`: a cada 6 horas
+- `sync-scorers-auto`: a cada 5 minutos
+- `sync-match-details-auto`: a cada 10 minutos
 
----
-
-## Solução
-
-### Etapa 1: Migração de Schema
-
-Criar migração SQL para adicionar as estruturas ausentes:
-
-```text
-+-------------------------+     +-------------------------+
-|        times            |     |     team_aliases        |
-+-------------------------+     +-------------------------+
-| id (pk)                 |     | id (pk)                 |
-| nome                    |     | team_id (fk)            |
-| slug                    |     | alias                   |
-| pais                    |     | normalized_alias        |
-| escudo_url              |     | source_id (existente)   |
-| + status (novo)         |     | + source (novo)         |
-| + (índice por status)   |     | + external_id (novo)    |
-| ...                     |     | + confidence (novo)     |
-+-------------------------+     +-------------------------+
-                                         |
-                                         v
-                              +-------------------------+
-                              |    team_merge_logs      |
-                              +-------------------------+
-                              | id (pk)                 |
-                              | team_target_id (fk)     |
-                              | team_source_id          |
-                              | source_canonical_name   |
-                              | source_canonical_slug   |
-                              | merged_by               |
-                              | summary (jsonb)         |
-                              | created_at              |
-                              +-------------------------+
-```
-
-**Alterações específicas:**
-
-1. **Tabela `times`**
-   - Adicionar coluna `status` com default `'active'`
-   - Criar índice para filtros por status
-
-2. **Tabela `team_aliases`**
-   - Adicionar coluna `source` com default `'unknown'`
-   - Adicionar coluna `external_id` nullable
-   - Adicionar coluna `confidence` com default `100`
-   - Criar índice único `(source, external_id)` quando `external_id` não for null
-
-3. **Criar tabela `team_merge_logs`**
-   - Estrutura completa para auditoria de fusões
-
-### Etapa 2: Atualizar Funções SQL
-
-Recriar as funções SQL para garantir compatibilidade:
-
-- `consolidate_team_aliases()` - Corrigida para usar a nova coluna `source`
-- `get_suggested_duplicates()` - Corrigida para usar a coluna `status`
-- `merge_teams()` - Corrigida para escrever em `team_merge_logs`
-- `get_teams_with_aliases()` - Corrigida para ler `status`
-- `count_teams_with_aliases()` - Corrigida para ler `status`
-
-### Etapa 3: Executar Consolidação
-
-Após a migração, o botão "Consolidar Aliases" na página Admin funcionará corretamente e:
-
-1. Identificará os ~251 times sem alias 'internal'
-2. Criará automaticamente um alias para cada um
-3. Retornará um resumo da operação
+**Não existe cron para gerar análises automaticamente.**
 
 ---
 
-## Resultado Esperado
+## Solução Proposta
 
-Após a execução:
+### 1. Criar Cron Job para Gerar Análises Automaticamente
 
-| Métrica | Antes | Depois |
-|---------|-------|--------|
-| Times com alias 'internal' | ~52 | 303 |
-| Sistema de fusão | Inoperante | Funcional |
-| Detecção de duplicados | Falha | Ativo |
-| Histórico de fusões | Falha | Registrando |
+Agendar a edge function `generate-match-analysis` para rodar **2x por dia** (às 08h e 20h UTC), garantindo que:
+- Jogos com palpite gerado recebam análise automaticamente
+- Análises sejam publicadas com pelo menos 1-2 dias de antecedência
+
+### 2. Expandir Janela de Busca na Edge Function
+
+Atualmente a função busca jogos dos próximos 3 dias. Expandir para **7 dias** para garantir cobertura de toda a rodada do fim de semana.
+
+### 3. Adicionar Limite de Processamento por Execução
+
+Para evitar timeouts e consumo excessivo de créditos de IA, processar no máximo **10-15 análises por execução**. Com 2 execuções diárias, isso gera até 30 análises/dia.
+
+### 4. Priorização por Data
+
+Ordenar os jogos por data (mais próximos primeiro) para garantir que análises sejam publicadas a tempo.
 
 ---
 
 ## Detalhes Técnicos
 
-### Migração SQL Completa
+### Modificações na Edge Function
 
-A migração incluirá:
+```text
+supabase/functions/generate-match-analysis/index.ts
+├── Alterar janela de busca: 3 dias → 7 dias
+├── Adicionar limite de processamento: max 15 por execução
+├── Ordenar por data ASC (jogos mais próximos primeiro)
+└── Log de estatísticas para monitoramento
+```
 
-1. **ALTER TABLE times**
-   - `ADD COLUMN status text DEFAULT 'active' CHECK (status IN ('active', 'merged', 'disabled'))`
+### SQL para Criar o Cron Job
 
-2. **ALTER TABLE team_aliases**
-   - `ADD COLUMN source text DEFAULT 'unknown'`
-   - `ADD COLUMN external_id text`
-   - `ADD COLUMN confidence integer DEFAULT 100`
-   - `CREATE UNIQUE INDEX ON team_aliases (source, external_id) WHERE external_id IS NOT NULL`
+```sql
+SELECT cron.schedule(
+  'generate-analysis-job',
+  '0 8,20 * * *',  -- Às 08:00 e 20:00 UTC
+  $$
+  SELECT net.http_post(
+    url:='https://wlvwcbxegrmobefloikr.supabase.co/functions/v1/generate-match-analysis',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
+    body:='{"limit": 15}'::jsonb
+  ) as request_id;
+  $$
+);
+```
 
-3. **CREATE TABLE team_merge_logs**
-   - Todas as colunas necessárias para auditoria
-   - RLS policies para admin access
+### Parâmetros do Novo Sistema
 
-4. **Recriar todas as funções** com referências corrigidas
+| Configuração | Valor |
+|--------------|-------|
+| Frequência | 2x/dia (08h e 20h UTC) |
+| Janela de busca | 7 dias à frente |
+| Limite por execução | 15 análises |
+| Capacidade diária | até 30 análises |
 
-### Backfill de Dados Existentes
+---
 
-- Aliases existentes terão `source` atualizado de `NULL` para `'legacy'`
-- Todos os times receberão `status = 'active'`
+## Fluxo Automático
 
+```text
+A cada 6 horas                    2x por dia (08h/20h)
+       ↓                                  ↓
+┌──────────────┐               ┌───────────────────┐
+│ sync-data &  │               │ generate-match-   │
+│ generate-    │──────────────→│ analysis          │
+│ predictions  │   palpites    │                   │
+└──────────────┘   prontos     └───────────────────┘
+                                        ↓
+                               ┌───────────────────┐
+                               │ Análise publicada │
+                               │ automaticamente   │
+                               └───────────────────┘
+```
+
+---
+
+## Benefícios
+
+1. **Zero intervenção manual**: Análises geradas automaticamente
+2. **Cobertura completa**: Todos os jogos com palpite terão análise
+3. **SEO contínuo**: Novos posts diários para indexação
+4. **Antecedência garantida**: Análises publicadas 1-7 dias antes do jogo
+
+---
+
+## Arquivos a Modificar
+
+1. **`supabase/functions/generate-match-analysis/index.ts`**
+   - Expandir janela para 7 dias
+   - Adicionar parâmetro `limit`
+   - Ordenar por data ascendente
+
+2. **Banco de dados (via SQL)**
+   - Criar cron job `generate-analysis-job`
+
+---
+
+## Observação sobre Créditos de IA
+
+Com até 30 análises/dia, cada uma gerando:
+- 1 texto longo (~1500+ palavras) via Gemini
+- 1-2 imagens (thumbnail + infográfico)
+
+Pode haver consumo significativo de créditos. Se necessário, ajustar o limite para 10 por execução.
