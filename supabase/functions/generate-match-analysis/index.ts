@@ -362,16 +362,22 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Get optional match_id from request body
+    // Get optional parameters from request body
     let targetMatchId: string | null = null;
+    let processLimit: number = 15; // Default limit per execution
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
+      processLimit = body?.limit || 15;
     } catch {
-      // No body, process all scheduled matches
+      // No body, process all scheduled matches with default limit
     }
 
     // Fetch scheduled matches that don't have news yet
+    // Expanded to 7 days for better weekend coverage
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
     let matchQuery = supabaseAdmin
       .from('partidas')
       .select(`
@@ -384,15 +390,23 @@ serve(async (req) => {
         palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca)
       `)
       .eq('status', 'scheduled')
-      .gte('data', new Date().toISOString().split('T')[0]);
+      .gte('data', new Date().toISOString().split('T')[0])
+      .lte('data', sevenDaysLater.toISOString().split('T')[0])
+      .order('data', { ascending: true }); // Prioritize matches closer to today
 
     if (targetMatchId) {
-      matchQuery = matchQuery.eq('id', targetMatchId);
-    } else {
-      // Get matches for next 3 days
-      const threeDaysLater = new Date();
-      threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-      matchQuery = matchQuery.lte('data', threeDaysLater.toISOString().split('T')[0]);
+      matchQuery = supabaseAdmin
+        .from('partidas')
+        .select(`
+          id,
+          data,
+          hora,
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, cores),
+          liga:ligas(id, nome),
+          palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca)
+        `)
+        .eq('id', targetMatchId);
     }
 
     const { data: matches, error: matchError } = await matchQuery;
@@ -413,22 +427,28 @@ serve(async (req) => {
 
     const existingMatchIds = new Set(existingNews?.map(n => n.partida_id) || []);
 
+    // Filter matches that already have news
+    const matchesToProcess = (matches || []).filter(m => !existingMatchIds.has(m.id));
+    
+    // Apply processing limit to avoid timeouts
+    const limitedMatches = matchesToProcess.slice(0, processLimit);
+
+    console.log(`Stats: ${matches?.length || 0} total matches in window, ${matchesToProcess.length} without analysis, processing ${limitedMatches.length} (limit: ${processLimit})`);
+
     const results = {
       processed: 0,
       created: 0,
       skipped: 0,
-      errors: [] as string[]
+      errors: [] as string[],
+      stats: {
+        totalInWindow: matches?.length || 0,
+        withoutAnalysis: matchesToProcess.length,
+        processingLimit: processLimit
+      }
     };
 
-    for (const match of (matches || [])) {
+    for (const match of limitedMatches) {
       results.processed++;
-
-      // Skip if news already exists for this match
-      if (existingMatchIds.has(match.id)) {
-        console.log(`Skipping match ${match.id} - news already exists`);
-        results.skipped++;
-        continue;
-      }
 
       // Skip if no prediction data
       const palpite = Array.isArray(match.palpite) ? match.palpite[0] : match.palpite;
@@ -437,7 +457,6 @@ serve(async (req) => {
         results.skipped++;
         continue;
       }
-
       // Handle array returns from Supabase joins
       const timeCasa = Array.isArray(match.time_casa) ? match.time_casa[0] : match.time_casa;
       const timeFora = Array.isArray(match.time_fora) ? match.time_fora[0] : match.time_fora;
