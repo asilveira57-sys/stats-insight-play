@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import statballLogo from "@/assets/statball-logo.png";
 import {
   DropdownMenu,
@@ -212,6 +213,9 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Theme Toggle */}
+            <ThemeToggle className="hidden sm:flex" />
+            
             <Button variant="ghost" size="icon" className="hidden sm:flex">
               <Search className="w-5 h-5" />
             </Button>
@@ -299,6 +303,12 @@ export function Navbar() {
                   </Link>
                 );
               })}
+              
+              {/* Theme Toggle Mobile */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 mt-2">
+                <span className="text-sm text-muted-foreground">Tema</span>
+                <ThemeToggle variant="outline" />
+              </div>
               
               <div className="border-t border-border/50 mt-2 pt-2">
                 <Link to="/precos" onClick={() => setIsOpen(false)}>

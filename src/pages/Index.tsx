@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { HeroSection } from "@/components/home/HeroSection";
 import { 
   BookOpen, 
   BarChart3, 
@@ -22,36 +23,7 @@ export default function Index() {
   return (
     <Layout>
       {/* BLOCO 1 — HERO */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[120px]" />
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-display mb-6 bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent leading-tight">
-              Statball — a maior biblioteca de dados e análises do futebol mundial
-            </h1>
-            <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
-              Uma plataforma que organiza dados reais, valida análises e acompanha a evolução do futebol jogo após jogo.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="xl" className="text-lg">
-                <Link to="/campeonatos">
-                  <Library className="mr-2 h-5 w-5" />
-                  Explorar a biblioteca
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="xl" className="text-lg">
-                <Link to="/precos">
-                  Conhecer o Clube Statball
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* BLOCO 2 — O QUE É O STATBALL */}
       <section className="py-16 md:py-24 bg-card/50">
