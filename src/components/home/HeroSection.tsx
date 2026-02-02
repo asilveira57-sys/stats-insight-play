@@ -27,12 +27,12 @@ export function HeroSection() {
       {/* Layer 5: Content */}
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Hero Logo - 150-200% larger than navbar */}
-          <div className="mb-8 flex justify-center">
+          {/* Hero Logo - 200-250% larger than navbar for maximum impact */}
+          <div className="mb-10 flex justify-center">
             <img 
               src={statballLogo} 
               alt="StatBall" 
-              className="h-20 md:h-24 lg:h-28 object-contain drop-shadow-[0_0_30px_hsl(var(--primary)/0.3)]"
+              className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)]"
             />
           </div>
           
