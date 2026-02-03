@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Library, ArrowRight } from "lucide-react";
-import statballLogo from "@/assets/statball-logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
+import statballLogoDark from "@/assets/statball-logo.png";
+import statballLogoLight from "@/assets/statball-logo-light.png";
 import heroBackground from "@/assets/hero-background.jpg";
 
 export function HeroSection() {
+  const { theme } = useTheme();
+  const logoSrc = theme === "dark" ? statballLogoDark : statballLogoLight;
+
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Layer 1: Background Image */}
@@ -30,7 +35,7 @@ export function HeroSection() {
           {/* Hero Logo - 200-250% larger than navbar for maximum impact */}
           <div className="mb-10 flex justify-center">
             <img 
-              src={statballLogo} 
+              src={logoSrc} 
               alt="StatBall" 
               className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)]"
             />
