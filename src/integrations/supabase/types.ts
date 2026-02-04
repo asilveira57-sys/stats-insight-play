@@ -133,6 +133,60 @@ export type Database = {
           },
         ]
       }
+      artilharia_agregada: {
+        Row: {
+          atualizado_em: string
+          competicao_id: string | null
+          created_at: string | null
+          gols: number
+          id: string
+          jogador_nome: string
+          jogador_slug: string
+          partidas_com_gol: number | null
+          temporada: string | null
+          time_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          competicao_id?: string | null
+          created_at?: string | null
+          gols?: number
+          id?: string
+          jogador_nome: string
+          jogador_slug: string
+          partidas_com_gol?: number | null
+          temporada?: string | null
+          time_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          competicao_id?: string | null
+          created_at?: string | null
+          gols?: number
+          id?: string
+          jogador_nome?: string
+          jogador_slug?: string
+          partidas_com_gol?: number | null
+          temporada?: string | null
+          time_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artilharia_agregada_competicao_id_fkey"
+            columns: ["competicao_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artilharia_agregada_time_id_fkey"
+            columns: ["time_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assinaturas: {
         Row: {
           cancellation_reason: string | null
@@ -989,10 +1043,14 @@ export type Database = {
           api_source: string | null
           ativa: boolean | null
           codigo_api: string | null
+          continente: string | null
           created_at: string | null
+          estado: string | null
           id: string
           logo_url: string | null
           nome: string
+          ordem_exibicao: number | null
+          organizador: string | null
           pais: string | null
           pillar_content: Json | null
           pillar_updated_at: string | null
@@ -1000,6 +1058,7 @@ export type Database = {
           score_factors: Json | null
           score_updated_at: string | null
           slug: string | null
+          tipo_principal: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1007,10 +1066,14 @@ export type Database = {
           api_source?: string | null
           ativa?: boolean | null
           codigo_api?: string | null
+          continente?: string | null
           created_at?: string | null
+          estado?: string | null
           id?: string
           logo_url?: string | null
           nome: string
+          ordem_exibicao?: number | null
+          organizador?: string | null
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
@@ -1018,6 +1081,7 @@ export type Database = {
           score_factors?: Json | null
           score_updated_at?: string | null
           slug?: string | null
+          tipo_principal?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1025,10 +1089,14 @@ export type Database = {
           api_source?: string | null
           ativa?: boolean | null
           codigo_api?: string | null
+          continente?: string | null
           created_at?: string | null
+          estado?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
+          ordem_exibicao?: number | null
+          organizador?: string | null
           pais?: string | null
           pillar_content?: Json | null
           pillar_updated_at?: string | null
@@ -1036,6 +1104,7 @@ export type Database = {
           score_factors?: Json | null
           score_updated_at?: string | null
           slug?: string | null
+          tipo_principal?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1728,6 +1797,33 @@ export type Database = {
           },
         ]
       }
+      regional_config: {
+        Row: {
+          chave: string
+          created_at: string | null
+          descricao: string | null
+          id: string
+          updated_at: string | null
+          valor: string | null
+        }
+        Insert: {
+          chave: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          updated_at?: string | null
+          valor?: string | null
+        }
+        Update: {
+          chave?: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          updated_at?: string | null
+          valor?: string | null
+        }
+        Relationships: []
+      }
       seasons: {
         Row: {
           created_at: string | null
@@ -2126,6 +2222,7 @@ export type Database = {
           cores: Json | null
           created_at: string | null
           escudo_url: string | null
+          estado: string | null
           id: string
           name_normalized: string | null
           nome: string
@@ -2135,6 +2232,7 @@ export type Database = {
           priority_score: number | null
           score_factors: Json | null
           score_updated_at: string | null
+          short_code: string | null
           slug: string | null
           slug_locked: boolean
           updated_at: string | null
@@ -2144,6 +2242,7 @@ export type Database = {
           cores?: Json | null
           created_at?: string | null
           escudo_url?: string | null
+          estado?: string | null
           id?: string
           name_normalized?: string | null
           nome: string
@@ -2153,6 +2252,7 @@ export type Database = {
           priority_score?: number | null
           score_factors?: Json | null
           score_updated_at?: string | null
+          short_code?: string | null
           slug?: string | null
           slug_locked?: boolean
           updated_at?: string | null
@@ -2162,6 +2262,7 @@ export type Database = {
           cores?: Json | null
           created_at?: string | null
           escudo_url?: string | null
+          estado?: string | null
           id?: string
           name_normalized?: string | null
           nome?: string
@@ -2171,6 +2272,7 @@ export type Database = {
           priority_score?: number | null
           score_factors?: Json | null
           score_updated_at?: string | null
+          short_code?: string | null
           slug?: string | null
           slug_locked?: boolean
           updated_at?: string | null
@@ -2549,6 +2651,7 @@ export type Database = {
         Returns: string
       }
       slugify: { Args: { input_text: string }; Returns: string }
+      slugify_player_name: { Args: { name: string }; Returns: string }
       start_grace_period: { Args: { p_user_id: string }; Returns: Json }
       unaccent: { Args: { "": string }; Returns: string }
       validate_nickname: {
