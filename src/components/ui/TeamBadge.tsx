@@ -8,9 +8,14 @@ interface TeamBadgeProps {
   className?: string;
 }
 
-// Generate initials from team name
+// Generate initials from team name or use short_code
 function getInitials(name: string): string {
   if (!name) return '??';
+  
+  // If it looks like a short code already (2-4 uppercase), use it directly
+  if (/^[A-Z]{2,4}$/.test(name)) {
+    return name;
+  }
   
   // Common prefixes/suffixes to remove for cleaner initials
   const cleanName = name
