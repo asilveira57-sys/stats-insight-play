@@ -273,6 +273,24 @@ export default function AdminControlCenter() {
     }
   };
 
+  const handleRebuildArtilharia = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('rebuild-artilharia');
+      if (error) throw error;
+      toast({ 
+        title: "Artilharia reconstruída!", 
+        description: `${data.goals_processed} gols processados, ${data.aggregations_created} agregações criadas.` 
+      });
+      refetchLogs();
+    } catch (error) {
+      toast({ 
+        title: "Erro ao reconstruir artilharia", 
+        description: String(error), 
+        variant: "destructive" 
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -555,6 +573,9 @@ export default function AdminControlCenter() {
                     </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateContent('league-pillar')}>
                       <Trophy className="w-4 h-4 mr-2" /> Gerar Pilares de Ligas
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={handleRebuildArtilharia}>
+                      <Trophy className="w-4 h-4 mr-2" /> Reconstruir Artilharia
                     </Button>
                   </CardContent>
                 </Card>
