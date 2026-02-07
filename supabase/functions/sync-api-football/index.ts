@@ -213,34 +213,56 @@ Deno.serve(async (req) => {
 
         console.log(`Syncing ${leagueInfo.name} (ID: ${leagueId})...`);
 
-        // Get internal league ID
+        // Get internal league ID - first try by api_id, then by codigo_api
         let internalLeagueId = leagueIdMap.get(leagueId);
         
         if (!internalLeagueId) {
-          // Create league if it doesn't exist
-          const { data: newLeague, error: leagueError } = await supabase
+          // Try to find by codigo_api
+          const { data: existingByCode } = await supabase
             .from('ligas')
-            .upsert({
-              nome: leagueInfo.name,
-              codigo_api: leagueInfo.code,
-              pais: leagueInfo.country,
-              ativa: true,
-              api_source: 'api-football',
-              api_id: leagueId,
-              tipo_principal: leagueInfo.tipo || 'NACIONAL',
-              estado: leagueInfo.estado || null,
-            }, { onConflict: 'codigo_api' })
-            .select()
-            .single();
+            .select('id')
+            .eq('codigo_api', leagueInfo.code)
+            .maybeSingle();
+          
+          if (existingByCode) {
+            internalLeagueId = existingByCode.id;
+            // Update with api_id and other fields
+            await supabase
+              .from('ligas')
+              .update({
+                api_source: 'api-football',
+                api_id: leagueId,
+                tipo_principal: leagueInfo.tipo || 'NACIONAL',
+                estado: leagueInfo.estado || null,
+                ativa: true,
+              })
+              .eq('id', internalLeagueId);
+          } else {
+            // Create new league
+            const { data: newLeague, error: leagueError } = await supabase
+              .from('ligas')
+              .insert({
+                nome: leagueInfo.name,
+                codigo_api: leagueInfo.code,
+                pais: leagueInfo.country,
+                ativa: true,
+                api_source: 'api-football',
+                api_id: leagueId,
+                tipo_principal: leagueInfo.tipo || 'NACIONAL',
+                estado: leagueInfo.estado || null,
+              })
+              .select()
+              .single();
 
-          if (leagueError) {
-            console.error(`Error creating league ${leagueInfo.name}:`, leagueError);
-            stats.errors.push(`League ${leagueInfo.name}: ${leagueError.message}`);
-            continue;
+            if (leagueError) {
+              console.error(`Error creating league ${leagueInfo.name}:`, leagueError);
+              stats.errors.push(`League ${leagueInfo.name}: ${leagueError.message}`);
+              continue;
+            }
+            internalLeagueId = newLeague.id;
           }
-          internalLeagueId = newLeague.id;
         } else {
-          // Update existing league with tipo_principal and estado if not set
+          // Update existing league with tipo_principal and estado
           await supabase
             .from('ligas')
             .update({
