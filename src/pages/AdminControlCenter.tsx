@@ -296,7 +296,7 @@ export default function AdminControlCenter() {
     try {
       toast({ title: "Sincronizando estaduais...", description: "Isso pode levar alguns minutos." });
       const { data, error } = await supabase.functions.invoke('sync-api-football', {
-        body: { leagues: estaduais, season: 2025, syncGoals: true }
+        body: { leagues: estaduais, season: 2024, syncGoals: true }
       });
       if (error) throw error;
       toast({ 
