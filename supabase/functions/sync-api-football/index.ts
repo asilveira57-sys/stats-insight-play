@@ -8,11 +8,31 @@ const corsHeaders = {
 const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io';
 
 // Leagues to sync from API-Football
-const API_FOOTBALL_LEAGUES = {
+const API_FOOTBALL_LEAGUES: Record<number, { 
+  code: string; 
+  name: string; 
+  country: string;
+  tipo?: string;
+  estado?: string;
+}> = {
+  // Série B, Copa, Internacionais
   71: { code: 'BSB', name: 'Campeonato Brasileiro Série B', country: 'Brazil' },
   73: { code: 'CDB', name: 'Copa do Brasil', country: 'Brazil' },
   13: { code: 'CLI', name: 'Copa Libertadores', country: 'South America' },
   11: { code: 'CSA', name: 'Copa Sudamericana', country: 'South America' },
+  
+  // Estaduais Brasileiros
+  255: { code: 'SPA', name: 'Campeonato Paulista', country: 'Brazil', tipo: 'ESTADUAL', estado: 'São Paulo' },
+  423: { code: 'RJA', name: 'Campeonato Carioca', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio de Janeiro' },
+  425: { code: 'MGA', name: 'Campeonato Mineiro', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Minas Gerais' },
+  442: { code: 'RSA', name: 'Campeonato Gaúcho', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio Grande do Sul' },
+  444: { code: 'PRA', name: 'Campeonato Paranaense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Paraná' },
+  422: { code: 'PEA', name: 'Campeonato Pernambucano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Pernambuco' },
+  441: { code: 'CEA', name: 'Campeonato Cearense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Ceará' },
+  440: { code: 'BAA', name: 'Campeonato Baiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Bahia' },
+  519: { code: 'SCA', name: 'Campeonato Catarinense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Santa Catarina' },
+  428: { code: 'GOA', name: 'Campeonato Goiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Goiás' },
+  461: { code: 'CNE', name: 'Copa do Nordeste', country: 'Brazil', tipo: 'COPA' },
 };
 
 interface ApiFootballTeam {
@@ -43,6 +63,27 @@ interface ApiFootballFixture {
     home: number | null;
     away: number | null;
   };
+}
+
+interface ApiFootballEvent {
+  time: {
+    elapsed: number;
+    extra: number | null;
+  };
+  team: {
+    id: number;
+    name: string;
+  };
+  player: {
+    id: number;
+    name: string;
+  };
+  assist: {
+    id: number | null;
+    name: string | null;
+  };
+  type: string;
+  detail: string;
 }
 
 async function fetchFromApiFootball(endpoint: string, apiKey: string): Promise<any> {
@@ -122,6 +163,7 @@ Deno.serve(async (req) => {
     // Parse request body for optional parameters
     let leaguesToSync = Object.keys(API_FOOTBALL_LEAGUES).map(Number);
     let season = new Date().getFullYear();
+    let syncGoals = true; // Default to syncing goals for finished matches
     
     try {
       const body = await req.json();
@@ -131,16 +173,20 @@ Deno.serve(async (req) => {
       if (body.season) {
         season = body.season;
       }
+      if (body.syncGoals !== undefined) {
+        syncGoals = body.syncGoals;
+      }
     } catch {
       // No body provided, use defaults
     }
 
-    console.log(`Syncing leagues: ${leaguesToSync.join(', ')} for season ${season}`);
+    console.log(`Syncing leagues: ${leaguesToSync.join(', ')} for season ${season}, syncGoals: ${syncGoals}`);
 
     const stats = {
       leaguesSynced: 0,
       teamsUpserted: 0,
       matchesUpserted: 0,
+      goalsUpserted: 0,
       errors: [] as string[],
     };
 
@@ -159,7 +205,7 @@ Deno.serve(async (req) => {
 
     for (const leagueId of leaguesToSync) {
       try {
-        const leagueInfo = API_FOOTBALL_LEAGUES[leagueId as keyof typeof API_FOOTBALL_LEAGUES];
+        const leagueInfo = API_FOOTBALL_LEAGUES[leagueId];
         if (!leagueInfo) {
           console.log(`Unknown league ID: ${leagueId}`);
           continue;
@@ -181,6 +227,8 @@ Deno.serve(async (req) => {
               ativa: true,
               api_source: 'api-football',
               api_id: leagueId,
+              tipo_principal: leagueInfo.tipo || 'NACIONAL',
+              estado: leagueInfo.estado || null,
             }, { onConflict: 'codigo_api' })
             .select()
             .single();
@@ -191,6 +239,15 @@ Deno.serve(async (req) => {
             continue;
           }
           internalLeagueId = newLeague.id;
+        } else {
+          // Update existing league with tipo_principal and estado if not set
+          await supabase
+            .from('ligas')
+            .update({
+              tipo_principal: leagueInfo.tipo || 'NACIONAL',
+              estado: leagueInfo.estado || null,
+            })
+            .eq('id', internalLeagueId);
         }
 
         // Fetch fixtures for this league
@@ -246,8 +303,10 @@ Deno.serve(async (req) => {
             const dateStr = matchDate.toISOString().split('T')[0];
             const timeStr = matchDate.toISOString().split('T')[1].substring(0, 8);
 
+            const matchStatus = mapApiStatus(fixture.fixture.status.short);
+
             // Upsert match
-            const { error: matchError } = await supabase
+            const { data: matchData, error: matchError } = await supabase
               .from('partidas')
               .upsert({
                 api_id: fixture.fixture.id,
@@ -258,15 +317,64 @@ Deno.serve(async (req) => {
                 hora: timeStr,
                 gols_casa: fixture.goals.home,
                 gols_fora: fixture.goals.away,
-                status: mapApiStatus(fixture.fixture.status.short),
+                status: matchStatus,
                 rodada: extractRound(fixture.league.round),
               }, { onConflict: 'api_id' })
-              .select();
+              .select()
+              .single();
 
             if (matchError) {
               console.error(`Error upserting match:`, matchError);
             } else {
               stats.matchesUpserted++;
+              
+              // Sync goals for finished matches
+              if (syncGoals && matchStatus === 'finished' && matchData) {
+                try {
+                  const eventsData = await fetchFromApiFootball(
+                    `/fixtures/events?fixture=${fixture.fixture.id}`,
+                    apiKey
+                  );
+                  
+                  const events: ApiFootballEvent[] = eventsData.response || [];
+                  
+                  for (const event of events) {
+                    if (event.type === 'Goal') {
+                      // Determine which team scored
+                      const scoringTeamId = event.team.id === fixture.teams.home.id 
+                        ? homeTeam.id 
+                        : awayTeam.id;
+                      
+                      const { error: goalError } = await supabase
+                        .from('gols_partida')
+                        .upsert({
+                          partida_id: matchData.id,
+                          time_id: scoringTeamId,
+                          jogador_nome: event.player.name || 'Desconhecido',
+                          jogador_api_id: event.player.id,
+                          minuto: event.time.elapsed,
+                          acrescimo: event.time.extra,
+                          tipo: event.detail, // 'Normal Goal', 'Penalty', 'Own Goal'
+                          assistente_nome: event.assist.name,
+                          assistente_api_id: event.assist.id,
+                        }, { 
+                          onConflict: 'partida_id,jogador_nome,minuto',
+                          ignoreDuplicates: true 
+                        });
+                      
+                      if (!goalError) {
+                        stats.goalsUpserted++;
+                      }
+                    }
+                  }
+                  
+                  // Rate limit: small delay between event requests
+                  await new Promise(resolve => setTimeout(resolve, 200));
+                  
+                } catch (eventError) {
+                  console.error(`Error fetching events for fixture ${fixture.fixture.id}:`, eventError);
+                }
+              }
             }
           } catch (fixtureError) {
             console.error(`Error processing fixture ${fixture.fixture.id}:`, fixtureError);

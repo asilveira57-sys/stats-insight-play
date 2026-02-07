@@ -18,7 +18,7 @@ import {
   Loader2, RefreshCw, Play, Pause, AlertTriangle, CheckCircle, XCircle,
   Database, Zap, FileText, Users, Settings, BarChart3, Search, 
   Clock, TrendingUp, Shield, Crown, Eye, Copy, RotateCcw, 
-  Activity, Server, Calendar, Newspaper, Trophy, Target, ExternalLink
+  Activity, Server, Calendar, Newspaper, Trophy, Target, ExternalLink, MapPin
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TeamBadge } from "@/components/ui/TeamBadge";
@@ -285,6 +285,28 @@ export default function AdminControlCenter() {
     } catch (error) {
       toast({ 
         title: "Erro ao reconstruir artilharia", 
+        description: String(error), 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleSyncEstaduais = async () => {
+    const estaduais = [255, 423, 425, 442, 444, 422, 441, 440, 519, 428, 461];
+    try {
+      toast({ title: "Sincronizando estaduais...", description: "Isso pode levar alguns minutos." });
+      const { data, error } = await supabase.functions.invoke('sync-api-football', {
+        body: { leagues: estaduais, season: 2025, syncGoals: true }
+      });
+      if (error) throw error;
+      toast({ 
+        title: "Estaduais sincronizados!", 
+        description: `${data.leaguesSynced} ligas, ${data.matchesUpserted} partidas, ${data.goalsUpserted} gols.` 
+      });
+      refetchLogs();
+    } catch (error) {
+      toast({ 
+        title: "Erro ao sincronizar estaduais", 
         description: String(error), 
         variant: "destructive" 
       });
@@ -576,6 +598,9 @@ export default function AdminControlCenter() {
                     </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={handleRebuildArtilharia}>
                       <Trophy className="w-4 h-4 mr-2" /> Reconstruir Artilharia
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={handleSyncEstaduais}>
+                      <MapPin className="w-4 h-4 mr-2" /> Sincronizar Estaduais
                     </Button>
                   </CardContent>
                 </Card>
