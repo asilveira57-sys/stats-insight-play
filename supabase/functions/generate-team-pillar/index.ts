@@ -133,7 +133,15 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { team_id, team_slug, force_regenerate } = await req.json();
+    let team_id, team_slug, force_regenerate;
+    try {
+      const body = await req.json();
+      team_id = body.team_id;
+      team_slug = body.team_slug;
+      force_regenerate = body.force_regenerate;
+    } catch {
+      // No body provided, use defaults
+    }
 
     // Fetch team
     let teamQuery = supabaseAdmin.from('times').select('*');
