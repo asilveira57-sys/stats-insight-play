@@ -114,7 +114,15 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { league_id, league_slug, force_regenerate } = await req.json();
+    let league_id, league_slug, force_regenerate;
+    try {
+      const body = await req.json();
+      league_id = body.league_id;
+      league_slug = body.league_slug;
+      force_regenerate = body.force_regenerate;
+    } catch {
+      // No body provided, use defaults
+    }
 
     let leagueQuery = supabaseAdmin.from('ligas').select('*').eq('ativa', true);
     
