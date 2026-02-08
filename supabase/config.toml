@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.rebuild-artilharia]
 verify_jwt = false
+
+[functions.generate-retroactive-articles]
+verify_jwt = false

@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Layout } from "@/components/layout/Layout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSystemHealth, useSyncSources, useSyncLogs, useUserStats, useContentStats, usePriorityStats } from "@/hooks/useAdminStats";
+import { useRetroactiveArticles } from "@/hooks/useRetroactiveArticles";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
@@ -191,6 +193,18 @@ export default function AdminControlCenter() {
   const { data: userStats } = useUserStats();
   const { data: contentStats } = useContentStats();
   const { data: priorityStats } = usePriorityStats();
+  
+  // Retroactive articles generation
+  const {
+    progress: retroactiveProgress,
+    progressPercentage,
+    progressLoading: retroactiveLoading,
+    isGenerating,
+    lastResults,
+    startGeneration,
+    refetchProgress: refetchRetroactive,
+  } = useRetroactiveArticles();
+  const [batchSize, setBatchSize] = useState(10);
   
   const [logFilters, setLogFilters] = useState({ status: '', type: '', limit: 50 });
   const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useSyncLogs(logFilters);
@@ -544,6 +558,121 @@ export default function AdminControlCenter() {
             {/* Content Tab */}
             <TabsContent value="content">
               <div className="grid gap-4 md:grid-cols-2">
+                {/* Retroactive Articles Generation Card */}
+                <Card className="md:col-span-2 border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Newspaper className="w-5 h-5 text-primary" />
+                      Geração Retroativa de Análises SEO
+                    </CardTitle>
+                    <CardDescription>
+                      Gerar artigos de análise pré-jogo para partidas finalizadas sem notícia
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Progress */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Progresso geral</span>
+                        <span className="font-medium">
+                          {retroactiveLoading ? (
+                            <Skeleton className="w-20 h-4 inline-block" />
+                          ) : (
+                            `${retroactiveProgress?.processed || 0} de ${retroactiveProgress?.total || 0} (${progressPercentage}%)`
+                          )}
+                        </span>
+                      </div>
+                      <Progress value={progressPercentage} className="h-3" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Partidas sem análise: {retroactiveProgress?.remaining || 0}</span>
+                        <span>Meta: 100%</span>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Lote:</span>
+                        <Select
+                          value={String(batchSize)}
+                          onValueChange={(v) => setBatchSize(Number(v))}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="15">15</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        onClick={() => startGeneration(batchSize)}
+                        disabled={isGenerating}
+                        className="bg-primary"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Gerando...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Iniciar Lote
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => refetchRetroactive()}
+                        disabled={retroactiveLoading}
+                      >
+                        <RefreshCw className={`w-4 h-4 ${retroactiveLoading ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
+
+                    {/* Last Results */}
+                    {lastResults.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Últimos processados:</h4>
+                        <div className="max-h-40 overflow-auto space-y-1">
+                          {lastResults.map((result, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-center justify-between text-xs p-2 rounded ${
+                                result.success ? 'bg-green-500/10' : 'bg-red-500/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {result.success ? (
+                                  <CheckCircle className="w-3 h-3 text-green-500" />
+                                ) : (
+                                  <XCircle className="w-3 h-3 text-red-500" />
+                                )}
+                                <span>
+                                  {result.time_casa} x {result.time_fora}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  ({new Date(result.data).toLocaleDateString('pt-BR')})
+                                </span>
+                              </div>
+                              <span className="text-muted-foreground">
+                                {result.success ? `${result.word_count} palavras` : result.error?.slice(0, 30)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Estatísticas de Conteúdo</CardTitle>
