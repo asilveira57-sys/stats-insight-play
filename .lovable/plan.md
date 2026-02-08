@@ -1,178 +1,286 @@
 
-# Plano: Importação de Campeonatos Estaduais Brasileiros
+# Plano: Geração Retroativa de Análises para SEO
 
-## Problema Identificado
-A função `rebuild-artilharia` processa 5.484 gols corretamente, mas o **Campeonato Paulista não possui partidas** no banco de dados. A liga existe, mas está vazia porque:
-- A edge function `sync-api-football` está limitada a apenas 4 ligas: Série B, Copa do Brasil, Libertadores e Sudamericana
-- Os estaduais brasileiros não estão incluídos no sync automático
+## Contexto Atual
 
-## Solução
-Expandir a edge function `sync-api-football` para suportar todos os estaduais brasileiros disponíveis na API-Football.
-
----
-
-## IDs dos Estaduais na API-Football
-
-| Campeonato | ID API-Football |
-|------------|-----------------|
-| Paulista A1 | 255 |
-| Carioca | 423 |
-| Mineiro | 425 |
-| Gaúcho | 442 |
-| Paranaense | 444 |
-| Pernambucano A1 | 422 |
-| Cearense | 441 |
-| Baiano | 440 |
-| Catarinense | 519 |
-| Goiano | 428 |
-| Copa do Nordeste | 461 |
+| Métrica | Valor |
+|---------|-------|
+| Partidas finalizadas | 4.512 |
+| Partidas sem notícia | 4.407 |
+| Notícias existentes | 129 |
+| Período histórico | Jun/2018 a Fev/2026 |
+| Dados disponíveis | Palpites, times, ligas, resultados |
 
 ---
 
-## Alterações Necessárias
+## Requisitos do Cliente
 
-### 1. Atualizar `supabase/functions/sync-api-football/index.ts`
+1. **Análise retroativa autêntica**: Texto deve refletir o momento histórico, não usar dados atuais
+2. **Mínimo 800 palavras, ideal 1.200-1.800 palavras**: Conteúdo longo para SEO
+3. **Data de publicação = data do jogo - 2 dias**: Simular publicação prévia
+4. **Imagem thumbnail + imagem interna**: Com atributo alt descritivo
+5. **Links internos**: Para outros jogos do mesmo time
+6. **Não revelar resultado**: O texto deve ser análise pré-jogo
+7. **Slug, meta title, meta description**: Otimização SEO completa
 
-Adicionar os estaduais ao mapeamento de ligas:
+---
 
-```typescript
-const API_FOOTBALL_LEAGUES = {
-  // Série B, Copa, Internacionais (já existentes)
-  71: { code: 'BSB', name: 'Campeonato Brasileiro Série B', country: 'Brazil' },
-  73: { code: 'CDB', name: 'Copa do Brasil', country: 'Brazil' },
-  13: { code: 'CLI', name: 'Copa Libertadores', country: 'South America' },
-  11: { code: 'CSA', name: 'Copa Sudamericana', country: 'South America' },
-  
-  // NOVOS: Estaduais Brasileiros
-  255: { code: 'SPA', name: 'Campeonato Paulista', country: 'Brazil', tipo: 'ESTADUAL', estado: 'São Paulo' },
-  423: { code: 'RJA', name: 'Campeonato Carioca', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio de Janeiro' },
-  425: { code: 'MGA', name: 'Campeonato Mineiro', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Minas Gerais' },
-  442: { code: 'RSA', name: 'Campeonato Gaúcho', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio Grande do Sul' },
-  444: { code: 'PRA', name: 'Campeonato Paranaense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Paraná' },
-  422: { code: 'PEA', name: 'Campeonato Pernambucano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Pernambuco' },
-  441: { code: 'CEA', name: 'Campeonato Cearense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Ceará' },
-  440: { code: 'BAA', name: 'Campeonato Baiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Bahia' },
-  519: { code: 'SCA', name: 'Campeonato Catarinense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Santa Catarina' },
-  428: { code: 'GOA', name: 'Campeonato Goiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Goiás' },
-  461: { code: 'CNE', name: 'Copa do Nordeste', country: 'Brazil', tipo: 'COPA' },
-};
+## Arquitetura da Solução
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│              Admin Control Center                           │
+│  [Gerar Análises Retroativas] [Progresso: 129/4512]         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Edge Function: generate-retroactive-articles              │
+│  • Busca partidas finalizadas SEM notícia                   │
+│  • Ordena por data ASC (mais antigas primeiro)              │
+│  • Processa em lotes de 10-15 partidas                      │
+│  • Define data_publicacao = data_jogo - 2 dias              │
+│  • Gera links internos para jogos do mesmo time             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Lovable AI Gateway                             │
+│  • Gemini 2.5 Flash: Texto 1200+ palavras                   │
+│  • Prompt retroativo: "Analise como se fosse [DATA]"        │
+│  • Gemini Flash Image: Thumbnail estádio/contexto           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Storage + Banco de Dados                       │
+│  • Thumbnail: news-thumbnails/{partida_id}.png              │
+│  • Imagem interna: news-thumbnails/{partida_id}-interno.png │
+│  • Notícia: tabela noticias com partida_id                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Atualizar lógica de upsert da liga
+---
 
-Modificar para incluir `tipo_principal` e `estado` ao criar/atualizar ligas:
+## Prompt de Geração Retroativa (Diferencial Crítico)
 
-```typescript
-const { data: newLeague, error: leagueError } = await supabase
-  .from('ligas')
-  .upsert({
-    nome: leagueInfo.name,
-    codigo_api: leagueInfo.code,
-    pais: leagueInfo.country,
-    ativa: true,
-    api_source: 'api-football',
-    api_id: leagueId,
-    tipo_principal: leagueInfo.tipo || 'NACIONAL',  // NOVO
-    estado: leagueInfo.estado || null,               // NOVO
-  }, { onConflict: 'codigo_api' })
+O prompt deve instruir a IA a escrever **como se estivesse no passado**:
+
+```text
+Você é um analista esportivo em [DATA DO JOGO MENOS 2 DIAS].
+
+CONTEXTO TEMPORAL CRÍTICO:
+- Estamos em [DATA], antes do jogo acontecer
+- NÃO mencione nada que aconteceu após [DATA]
+- NÃO revele o resultado do jogo
+- Analise baseado apenas nos dados que existiam até [DATA]:
+  • Forma recente das equipes baseada nos últimos 5 jogos
+  • Posição na tabela naquele momento
+  • Histórico do confronto
+  • Fatores táticos conhecidos
+
+DADOS DO CONFRONTO:
+- [Time Casa] x [Time Fora]
+- Competição: [Liga]
+- Rodada: [N]
+- Força [Time Casa]: [X]/100
+- Força [Time Fora]: [Y]/100
+- Probabilidades: Casa [%] | Empate [%] | Fora [%]
+- Placar provável: [N] x [M]
+
+ESTRUTURA DO ARTIGO (mínimo 1200 palavras):
+
+<h2>O Grande Confronto: [Time Casa] x [Time Fora]</h2>
+- Contexto do jogo e importância (150+ palavras)
+
+<h2>Momento das Equipes na [Liga]</h2>
+- Análise baseada em forma recente (200+ palavras)
+
+<h2>Histórico do Confronto Direto</h2>
+- Retrospecto entre as equipes (150+ palavras)
+
+<h2>Análise Tática e Fatores Decisivos</h2>
+- Pontos fortes e fracos (200+ palavras)
+
+<!-- INSERIR IMAGEM INTERNA -->
+
+<h2>O Que os Números Indicam</h2>
+- Análise estatística detalhada (200+ palavras)
+
+<h2>Cenários Prováveis</h2>
+- Possibilidades de resultado (150+ palavras)
+
+<h2>Palpite Estatístico</h2>
+- Placar estimado com justificativa (150+ palavras)
+- NÃO revelar resultado real
+
+REGRAS ABSOLUTAS:
+- Mínimo 1200 palavras
+- Linguagem jornalística profissional
+- NÃO mencionar resultado do jogo
+- NÃO usar informações pós-[DATA]
+- NÃO fazer referência a apostas
 ```
 
-### 3. Adicionar extração de gols das partidas
+---
 
-A API-Football fornece eventos de gols. Adicionar busca de eventos para cada partida finalizada:
+## Geração de Links Internos
 
-```typescript
-// Para partidas finalizadas, buscar eventos (gols)
-if (status === 'finished') {
-  const eventsData = await fetchFromApiFootball(`/fixtures/events?fixture=${fixture.fixture.id}`, apiKey);
-  const events = eventsData.response || [];
-  
-  for (const event of events) {
-    if (event.type === 'Goal') {
-      await supabase.from('gols_partida').upsert({
-        partida_id: matchId,
-        time_id: event.team.id === fixture.teams.home.id ? homeTeam.id : awayTeam.id,
-        jogador_nome: event.player.name,
-        minuto: event.time.elapsed,
-        tipo: event.detail, // 'Normal Goal', 'Penalty', 'Own Goal'
-      }, { onConflict: 'partida_id,jogador_nome,minuto' });
-    }
-  }
-}
+Para cada artigo, buscar e linkar:
+
+```text
+1. Últimos 3 jogos do time mandante (que tenham notícia)
+2. Últimos 3 jogos do time visitante (que tenham notícia)
+3. Próximo jogo da competição (se houver)
+4. Link para página pilar do time (se existir slug)
+5. Link para página pilar da liga (se existir slug)
 ```
 
-### 4. Adicionar botão no Admin Control Center
+HTML de links internos:
 
-Criar botão para sincronizar estaduais sob demanda:
-
-```tsx
-<Button 
-  variant="outline" 
-  className="w-full justify-start" 
-  onClick={() => handleSyncEstaduais()}
->
-  <MapPin className="w-4 h-4 mr-2" /> 
-  Sincronizar Estaduais
-</Button>
+```html
+<div class="related-matches">
+  <h3>Outras Análises dos Times</h3>
+  <ul>
+    <li><a href="/noticias/{slug}">Time Casa x Adversário - dd/mm/yyyy</a></li>
+    <li><a href="/time/{time-slug}">Todas análises do Time Casa</a></li>
+    ...
+  </ul>
+</div>
 ```
 
-Com handler:
+---
 
-```typescript
-const handleSyncEstaduais = async () => {
-  const estaduais = [255, 423, 425, 442, 444, 422, 441, 440, 519, 428, 461];
-  const { data, error } = await supabase.functions.invoke('sync-api-football', {
-    body: { leagues: estaduais, season: 2025 }
-  });
-  // Toast com resultado
-};
+## Geração de Imagens
+
+**Thumbnail (obrigatória):**
+```text
+Create a professional sports thumbnail:
+- Stadium atmosphere with crowd silhouettes
+- Team colors incorporated: [cor_casa] and [cor_fora]
+- Modern sports broadcast typography
+- Text overlay: "[Time Casa] vs [Time Fora]"
+- Subtitle: "[Data] - [Liga]"
+- 16:9 aspect ratio
+- CRITICAL: Do NOT include any team logos, crests, badges, or shields
 ```
+
+**Imagem Interna (obrigatória):**
+```text
+Create a sports analytics infographic:
+- Football field tactical view
+- Abstract data visualization elements
+- Team colors: [cor_casa] and [cor_fora]
+- Professional sports analytics aesthetic
+- 16:9 aspect ratio
+- CRITICAL: No team logos or crests
+```
+
+**Atributo alt:**
+```text
+Análise pré-jogo: [Time Casa] x [Time Fora] pela [Liga] - [Data]
+```
+
+---
+
+## Campos SEO Completos
+
+| Campo | Formato |
+|-------|---------|
+| titulo | "[Time Casa] x [Time Fora]: Análise Pré-Jogo - [Liga]" (max 60 chars) |
+| resumo | Meta description até 155 caracteres |
+| slug | `time-casa-x-time-fora-yyyy-mm-dd-analise-pre-jogo` |
+| data_publicacao | data_jogo - 2 dias (ISO string) |
+| imagem_url | URL da thumbnail no storage |
+| partida_id | FK para a partida |
+| publicada | true |
+
+---
+
+## Tratamento de Erros
+
+| Erro | Ação |
+|------|------|
+| 402 Payment Required | Pausar e exibir toast pedindo créditos |
+| 429 Too Many Requests | Retry com backoff exponencial |
+| Timeout | Reduzir lote para 5 partidas |
+| Falha na imagem | Usar fallback (Unsplash estádio) |
+| Texto curto (<800 palavras) | Re-gerar com prompt reforçado |
+
+---
+
+## Arquivos a Criar/Modificar
+
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/generate-retroactive-articles/index.ts` | **Criar** - Nova edge function |
+| `supabase/config.toml` | **Modificar** - Adicionar config |
+| `src/pages/AdminControlCenter.tsx` | **Modificar** - Adicionar seção com progresso |
+| `src/hooks/useRetroactiveArticles.ts` | **Criar** - Hook para progresso e controle |
 
 ---
 
 ## Fluxo de Execução
 
 ```text
-1. Admin clica "Sincronizar Estaduais"
-       ↓
-2. sync-api-football busca partidas da API-Football
-       ↓
-3. Cria/atualiza ligas com tipo_principal = 'ESTADUAL'
-       ↓
-4. Upsert times e partidas
-       ↓
-5. Busca eventos de gols para partidas finalizadas
-       ↓
-6. Admin clica "Reconstruir Artilharia"
-       ↓
-7. rebuild-artilharia processa gols e cria agregações
-       ↓
-8. Dados aparecem na página /artilheiros com filtro por campeonato
+Dia 1:
+  └── Admin clica "Iniciar Lote Retroativo"
+       └── Função processa 10-15 partidas mais antigas
+            └── Gasta créditos de IA
+                 └── Se rate limit (402/429), pausa
+                      └── Admin adiciona créditos
+                           └── Retoma no próximo clique
+
+Dias subsequentes:
+  └── Repetir até zerar backlog de 4.407 partidas
+       └── Progresso visível no painel
+            └── Estatísticas: X de Y processados
 ```
 
 ---
 
-## Arquivos a Modificar
+## Interface no Admin Control Center
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `supabase/functions/sync-api-football/index.ts` | Adicionar estaduais ao mapeamento + extração de gols |
-| `src/pages/AdminControlCenter.tsx` | Adicionar botão "Sincronizar Estaduais" |
+```text
+┌────────────────────────────────────────────────────────────┐
+│  📰 Geração Retroativa de Análises                         │
+├────────────────────────────────────────────────────────────┤
+│  Progresso: ████████░░░░░░░░░░░░ 129 de 4.512 (2.8%)       │
+│  Partidas sem análise: 4.383                               │
+│  Última execução: 15 jan 2025 às 14:32                     │
+│                                                            │
+│  Configurações:                                            │
+│  • Partidas por lote: [15 ▼]                               │
+│  • Filtrar liga: [Todas ▼]                                 │
+│                                                            │
+│  [▶️ Iniciar Lote] [⏸️ Pausar] [📊 Ver Progresso]           │
+│                                                            │
+│  Últimos processados:                                      │
+│  ✓ Russia x Saudi Arabia (14/06/2018) - 1.245 palavras     │
+│  ✓ Egypt x Uruguay (15/06/2018) - 1.312 palavras           │
+│  ✓ Morocco x Iran (15/06/2018) - 1.189 palavras            │
+└────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Considerações Técnicas
+## Estimativa de Execução
 
-- **Rate Limiting**: API-Football tem limite de requisições. Adicionaremos delays entre chamadas (1s entre ligas, 200ms entre fixtures)
-- **Temporada**: Estaduais 2025 já estão em andamento. Usaremos `season: 2025` como padrão
-- **Gols**: A extração de eventos aumentará o número de requisições, mas é necessária para popular a artilharia
+- ~4.400 partidas restantes
+- 10-15 partidas por execução
+- ~300-440 execuções necessárias
+- Com créditos suficientes: ~7-10 dias de processamento contínuo
+- Cada execução: ~2-3 minutos (delay de 2s entre partidas)
 
 ---
 
 ## Resultado Esperado
 
-Após a implementação:
-- 11 estaduais brasileiros disponíveis para sync
-- Partidas do Paulista, Carioca, Mineiro etc. populadas automaticamente
-- Gols extraídos e salvos em `gols_partida`
-- Artilharia filtrada por campeonato funcionando corretamente
+Após conclusão:
+- 4.512+ artigos de análise pré-jogo
+- Todos com data de publicação retroativa (2 dias antes)
+- Conteúdo autêntico sem revelar resultado
+- Imagens únicas geradas por IA
+- Links internos entre jogos relacionados
+- Slugs e meta tags otimizados para SEO
+- Automação para jogos futuros via cron existente
