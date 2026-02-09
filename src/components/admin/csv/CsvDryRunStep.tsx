@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle, Download, Play, Users, Trophy, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Download, Play, Users, Trophy, Globe } from "lucide-react";
 import { mapRow, validateRow, normalizeDate, type DryRunResult } from "@/lib/csvImportUtils";
 import { normalizeName, slugify } from "@/lib/canonicalUtils";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,10 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
       existingTeams: [],
       duplicateMatches: 0,
       newMatches: 0,
+      newLeagues: [],
+      existingLeagues: [],
+      newSeasons: [],
+      existingSeasons: [],
       rowErrors: [],
       warnings: [],
     };
@@ -44,7 +48,16 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
     const existingTeamSlugs = new Set((existingTeamsData || []).map((t) => t.slug));
     const existingTeamNames = new Set((existingTeamsData || []).map((t) => normalizeName(t.nome)));
 
-    // Get existing matches for this league
+    // Get existing leagues
+    const { data: existingLeaguesData } = await supabase.from("ligas").select("id, nome, slug");
+    const existingLeagueSlugs = new Set((existingLeaguesData || []).map((l) => l.slug));
+    const existingLeagueNames = new Set((existingLeaguesData || []).map((l) => normalizeName(l.nome)));
+
+    // Get existing seasons
+    const { data: existingSeasonsData } = await supabase.from("seasons").select("id, league_id, year");
+    const existingSeasonKeys = new Set((existingSeasonsData || []).map((s) => `${s.league_id}|${s.year}`));
+
+    // Get existing matches for this league (if manual liga selected)
     let existingMatchKeys = new Set<string>();
     if (ligaId && fileType === "matches") {
       const { data: existingMatches } = await supabase
@@ -61,6 +74,8 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
     }
 
     const teamsSeen = new Set<string>();
+    const leaguesSeen = new Set<string>();
+    const seasonsSeen = new Set<string>();
 
     for (let i = 0; i < rows.length; i++) {
       if (i % 100 === 0) setProgress(Math.round((i / rows.length) * 100));
@@ -78,6 +93,34 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
       result.validRows++;
 
       if (fileType === "matches") {
+        // Track leagues from CSV
+        if (mapped.league_name && !leaguesSeen.has(normalizeName(mapped.league_name))) {
+          leaguesSeen.add(normalizeName(mapped.league_name));
+          const leagueSlug = slugify(mapped.league_name);
+          if (existingLeagueSlugs.has(leagueSlug) || existingLeagueNames.has(normalizeName(mapped.league_name))) {
+            result.existingLeagues.push(mapped.league_name);
+          } else {
+            result.newLeagues.push(mapped.league_name);
+          }
+        }
+
+        // Track seasons from CSV
+        if (mapped.league_name && mapped.season) {
+          const seasonKey = `${normalizeName(mapped.league_name)}|${mapped.season}`;
+          if (!seasonsSeen.has(seasonKey)) {
+            seasonsSeen.add(seasonKey);
+            // Check if this season exists (approximate - full check in executor)
+            const leagueMatch = (existingLeaguesData || []).find(
+              (l) => normalizeName(l.nome) === normalizeName(mapped.league_name) || l.slug === slugify(mapped.league_name)
+            );
+            if (leagueMatch && existingSeasonKeys.has(`${leagueMatch.id}|${parseInt(mapped.season)}`)) {
+              result.existingSeasons.push(`${mapped.league_name} ${mapped.season}`);
+            } else {
+              result.newSeasons.push(`${mapped.league_name} ${mapped.season}`);
+            }
+          }
+        }
+
         // Track teams
         for (const teamField of ["time_casa", "time_fora"]) {
           const teamName = mapped[teamField];
@@ -138,6 +181,9 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
 
   if (!dryRun) return null;
 
+  const hasLeagueData = dryRun.newLeagues.length > 0 || dryRun.existingLeagues.length > 0;
+  const hasSeasonData = dryRun.newSeasons.length > 0 || dryRun.existingSeasons.length > 0;
+
   return (
     <Card>
       <CardHeader>
@@ -169,7 +215,31 @@ export function CsvDryRunStep({ headers, rows, mapping, fileType, ligaId, onConf
         </div>
 
         {fileType === "matches" && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${hasLeagueData ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2"}`}>
+            {/* Leagues from CSV */}
+            {hasLeagueData && (
+              <div className="p-3 rounded-lg border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Globe className="w-4 h-4" />
+                  <span className="font-medium text-sm">Ligas (CSV)</span>
+                </div>
+                <p className="text-sm"><span className="text-green-500 font-medium">{dryRun.existingLeagues.length}</span> existentes</p>
+                <p className="text-sm"><span className="text-yellow-500 font-medium">{dryRun.newLeagues.length}</span> novas</p>
+                {dryRun.newLeagues.length > 0 && (
+                  <div className="mt-2 max-h-24 overflow-auto text-xs text-muted-foreground">
+                    {dryRun.newLeagues.map((l) => <Badge key={l} variant="outline" className="mr-1 mb-1 text-xs">{l}</Badge>)}
+                  </div>
+                )}
+                {hasSeasonData && (
+                  <div className="mt-2 border-t pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="text-green-500 font-medium">{dryRun.existingSeasons.length}</span> temp. existentes · <span className="text-yellow-500 font-medium">{dryRun.newSeasons.length}</span> novas
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="p-3 rounded-lg border">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4" />

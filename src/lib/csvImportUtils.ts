@@ -9,10 +9,14 @@ export const CANONICAL_FIELDS: Record<string, { key: string; label: string; requ
     { key: "time_fora", label: "Time Fora", required: true },
     { key: "gols_casa", label: "Gols Casa", required: false },
     { key: "gols_fora", label: "Gols Fora", required: false },
+    { key: "league_name", label: "Nome da Liga (CSV)", required: false },
+    { key: "country", label: "País (CSV)", required: false },
+    { key: "season", label: "Temporada/Ano (CSV)", required: false },
     { key: "rodada", label: "Rodada", required: false },
     { key: "hora", label: "Hora (HH:MM)", required: false },
     { key: "estadio", label: "Estádio", required: false },
     { key: "status", label: "Status", required: false },
+    { key: "source", label: "Fonte/Provider (CSV)", required: false },
     { key: "external_id", label: "ID Externo", required: false },
   ],
   teams: [
@@ -74,6 +78,10 @@ export function autoGuessMapping(headers: string[], fileType: string): Record<st
     hora: ["time", "hora", "kickoff", "horario"],
     estadio: ["stadium", "estadio", "venue", "ground"],
     status: ["status", "result", "resultado"],
+    league_name: ["league", "league_name", "liga", "competition", "competicao", "div", "division"],
+    country: ["country", "pais", "nation", "country_name"],
+    season: ["season", "temporada", "year", "ano", "season_year"],
+    source: ["source", "fonte", "provider", "origin"],
     external_id: ["id", "match_id", "external_id", "fixture_id"],
     nome: ["name", "nome", "team", "team_name", "club"],
     pais: ["country", "pais", "nation"],
@@ -181,6 +189,10 @@ export interface DryRunResult {
   existingTeams: string[];
   duplicateMatches: number;
   newMatches: number;
+  newLeagues: string[];
+  existingLeagues: string[];
+  newSeasons: string[];
+  existingSeasons: string[];
   rowErrors: { row: number; errors: string[]; data: Record<string, string> }[];
   warnings: string[];
 }
