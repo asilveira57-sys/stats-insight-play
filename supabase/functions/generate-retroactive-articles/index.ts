@@ -357,7 +357,7 @@ serve(async (req) => {
     const { count: totalMatches } = await supabase
       .from("partidas")
       .select("*", { count: "exact", head: true })
-      .eq("status", "FINALIZADO");
+      .eq("status", "finished");
 
     const { count: totalNews } = await supabase
       .from("noticias")
@@ -386,7 +386,7 @@ serve(async (req) => {
           confianca
         )
       `)
-      .eq("status", "FINALIZADO")
+      .eq("status", "finished")
       .order("data", { ascending: true })
       .limit(limit);
 
