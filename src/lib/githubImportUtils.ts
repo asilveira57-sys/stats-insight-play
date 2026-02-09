@@ -318,15 +318,17 @@ function parseIntSafe(val: any): number | null {
 
 function normalizeJsonDate(dateStr: string): string {
   if (!dateStr) return "";
+  // Remove time portion if present (e.g., "2012-05-19 18:30:00")
+  const dateOnly = dateStr.split(/[T ]/)[0];
   // Try ISO format
-  const d = new Date(dateStr);
+  const d = new Date(dateOnly + "T00:00:00Z");
   if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
   // Try DD/MM/YYYY
-  const parts = dateStr.split(/[\/\-\.]/);
+  const parts = dateOnly.split(/[\/\-\.]/);
   if (parts.length === 3) {
     const [a, b, c] = parts;
     if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
-    const d2 = new Date(`${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`);
+    const d2 = new Date(`${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}T00:00:00Z`);
     if (!isNaN(d2.getTime())) return d2.toISOString().split("T")[0];
   }
   return dateStr;
@@ -350,7 +352,7 @@ export function parseCsvMatches(
   const commas = (firstLine.match(/,/g) || []).length;
   const delimiter = semicolons > commas ? ";" : ",";
 
-  const headers = parseCsvLine(lines[0], delimiter).map((h) => h.trim().toLowerCase());
+  const headers = parseCsvLine(lines[0], delimiter).map((h) => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
   const matches: ParsedMatch[] = [];
 
   // Build column index mapping with broad aliases
@@ -367,11 +369,11 @@ export function parseCsvMatches(
     return -1;
   };
 
-  const dateIdx = colIdx(["date", "data", "match_date", "matchdate", "fecha"]);
+  const dateIdx = colIdx(["date", "data", "match_date", "matchdate", "fecha", "datetime", "match_datetime"]);
   const homeIdx = colIdx(["home", "hometeam", "home_team", "mandante", "time_casa", "hteam", "home_team_name"]);
   const awayIdx = colIdx(["away", "awayteam", "away_team", "visitante", "time_fora", "ateam", "away_team_name"]);
-  const hgIdx = colIdx(["fthg", "hg", "home_goals", "gols_casa", "score1", "home_score", "home_team_score"]);
-  const agIdx = colIdx(["ftag", "ag", "away_goals", "gols_fora", "score2", "away_score", "away_team_score"]);
+  const hgIdx = colIdx(["fthg", "hg", "home_goals", "home_goal", "gols_casa", "score1", "home_score", "home_team_score"]);
+  const agIdx = colIdx(["ftag", "ag", "away_goals", "away_goal", "gols_fora", "score2", "away_score", "away_team_score"]);
   const roundIdx = colIdx(["round", "rodada", "matchday", "jornada"]);
   const seasonIdx = colIdx(["season", "temporada", "year", "ano", "season_year"]);
   const leagueIdx = colIdx(["league", "competition", "liga", "campeonato", "comp"]);
@@ -382,33 +384,33 @@ export function parseCsvMatches(
     const cols = parseCsvLine(lines[i], delimiter);
     if (cols.length <= Math.max(dateIdx, homeIdx, awayIdx)) continue;
 
-    const homeGoals = hgIdx >= 0 ? parseIntSafe(cols[hgIdx]?.trim()) : null;
-    const awayGoals = agIdx >= 0 ? parseIntSafe(cols[agIdx]?.trim()) : null;
+    const homeGoals = hgIdx >= 0 ? parseIntSafe(cols[hgIdx]?.trim().replace(/^["']|["']$/g, '')) : null;
+    const awayGoals = agIdx >= 0 ? parseIntSafe(cols[agIdx]?.trim().replace(/^["']|["']$/g, '')) : null;
 
     // Extract season from data: from column, from date year, or from parameter
     let matchSeason = season;
-    if (seasonIdx >= 0 && cols[seasonIdx]?.trim()) {
-      matchSeason = cols[seasonIdx].trim();
+    if (seasonIdx >= 0 && cols[seasonIdx]?.trim().replace(/^["']|["']$/g, '')) {
+      matchSeason = cols[seasonIdx].trim().replace(/^["']|["']$/g, '');
     } else if (matchSeason === "all") {
       // Extract year from date
-      const dateStr = cols[dateIdx]?.trim() || "";
+      const dateStr = cols[dateIdx]?.trim().replace(/^["']|["']$/g, '') || "";
       const yearMatch = dateStr.match(/((?:19|20)\d{2})/);
       matchSeason = yearMatch ? yearMatch[1] : "";
     }
 
     // Extract league from column if available
     let matchLeague = leagueName;
-    if (leagueIdx >= 0 && cols[leagueIdx]?.trim()) {
-      matchLeague = cols[leagueIdx].trim();
+    if (leagueIdx >= 0 && cols[leagueIdx]?.trim().replace(/^["']|["']$/g, '')) {
+      matchLeague = cols[leagueIdx].trim().replace(/^["']|["']$/g, '');
     }
 
     matches.push({
-      date: normalizeJsonDate(cols[dateIdx]?.trim() || ""),
-      home_team: cols[homeIdx]?.trim() || "",
-      away_team: cols[awayIdx]?.trim() || "",
+      date: normalizeJsonDate(cols[dateIdx]?.trim().replace(/^["']|["']$/g, '') || ""),
+      home_team: cols[homeIdx]?.trim().replace(/^["']|["']$/g, '') || "",
+      away_team: cols[awayIdx]?.trim().replace(/^["']|["']$/g, '') || "",
       home_goals: homeGoals,
       away_goals: awayGoals,
-      round: roundIdx >= 0 ? cols[roundIdx]?.trim() || null : null,
+      round: roundIdx >= 0 ? cols[roundIdx]?.trim().replace(/^["']|["']$/g, '') || null : null,
       status: homeGoals !== null && awayGoals !== null ? "finished" : "scheduled",
       league_name: matchLeague,
       country,

@@ -134,6 +134,29 @@ serve(async (req) => {
       );
     }
 
+    if (action === "preview") {
+      // Download raw file content but return only first N characters
+      const maxChars = 2000;
+      const defaultBranch = branch || "main";
+      let rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${path}`;
+      let res = await fetch(rawUrl);
+      if (!res.ok) {
+        rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/master/${path}`;
+        res = await fetch(rawUrl);
+      }
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ error: `File not found: ${path}` }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const content = await res.text();
+      return new Response(
+        JSON.stringify({ content: content.substring(0, maxChars), path, totalLength: content.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "multi_files") {
       // Download multiple files at once
       const paths: string[] = path; // path is actually an array here
