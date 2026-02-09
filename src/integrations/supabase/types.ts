@@ -471,6 +471,116 @@ export type Database = {
         }
         Relationships: []
       }
+      csv_imports: {
+        Row: {
+          created_at: string
+          details: Json | null
+          error_report: Json | null
+          file_name: string
+          file_type: string
+          id: string
+          liga_id: string | null
+          mapping_template_id: string | null
+          provider: string | null
+          reverted_at: string | null
+          rows_failed: number | null
+          rows_inserted: number | null
+          rows_skipped: number | null
+          rows_updated: number | null
+          status: string
+          temporada: number | null
+          total_rows: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          error_report?: Json | null
+          file_name: string
+          file_type: string
+          id?: string
+          liga_id?: string | null
+          mapping_template_id?: string | null
+          provider?: string | null
+          reverted_at?: string | null
+          rows_failed?: number | null
+          rows_inserted?: number | null
+          rows_skipped?: number | null
+          rows_updated?: number | null
+          status?: string
+          temporada?: number | null
+          total_rows?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          error_report?: Json | null
+          file_name?: string
+          file_type?: string
+          id?: string
+          liga_id?: string | null
+          mapping_template_id?: string | null
+          provider?: string | null
+          reverted_at?: string | null
+          rows_failed?: number | null
+          rows_inserted?: number | null
+          rows_skipped?: number | null
+          rows_updated?: number | null
+          status?: string
+          temporada?: number | null
+          total_rows?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csv_imports_liga_id_fkey"
+            columns: ["liga_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      csv_mapping_templates: {
+        Row: {
+          column_mappings: Json
+          created_at: string
+          created_by: string | null
+          delimiter: string
+          file_type: string
+          id: string
+          name: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          column_mappings?: Json
+          created_at?: string
+          created_by?: string | null
+          delimiter?: string
+          file_type: string
+          id?: string
+          name: string
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          column_mappings?: Json
+          created_at?: string
+          created_by?: string | null
+          delimiter?: string
+          file_type?: string
+          id?: string
+          name?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_conflicts: {
         Row: {
           created_at: string | null
@@ -807,6 +917,7 @@ export type Database = {
           assistente_nome: string | null
           created_at: string | null
           id: string
+          import_batch_id: string | null
           jogador_api_id: number | null
           jogador_nome: string
           minuto: number
@@ -823,6 +934,7 @@ export type Database = {
           assistente_nome?: string | null
           created_at?: string | null
           id?: string
+          import_batch_id?: string | null
           jogador_api_id?: number | null
           jogador_nome: string
           minuto: number
@@ -839,6 +951,7 @@ export type Database = {
           assistente_nome?: string | null
           created_at?: string | null
           id?: string
+          import_batch_id?: string | null
           jogador_api_id?: number | null
           jogador_nome?: string
           minuto?: number
@@ -850,6 +963,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "gols_partida_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "csv_imports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "gols_partida_partida_id_fkey"
             columns: ["partida_id"]
@@ -1538,6 +1658,7 @@ export type Database = {
           gols_fora: number | null
           hora: string | null
           id: string
+          import_batch_id: string | null
           liga_id: string | null
           rodada: number | null
           slug: string | null
@@ -1556,6 +1677,7 @@ export type Database = {
           gols_fora?: number | null
           hora?: string | null
           id?: string
+          import_batch_id?: string | null
           liga_id?: string | null
           rodada?: number | null
           slug?: string | null
@@ -1574,6 +1696,7 @@ export type Database = {
           gols_fora?: number | null
           hora?: string | null
           id?: string
+          import_batch_id?: string | null
           liga_id?: string | null
           rodada?: number | null
           slug?: string | null
@@ -1584,6 +1707,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partidas_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "csv_imports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partidas_liga_id_fkey"
             columns: ["liga_id"]
@@ -2224,6 +2354,7 @@ export type Database = {
           escudo_url: string | null
           estado: string | null
           id: string
+          import_batch_id: string | null
           name_normalized: string | null
           nome: string
           pais: string | null
@@ -2244,6 +2375,7 @@ export type Database = {
           escudo_url?: string | null
           estado?: string | null
           id?: string
+          import_batch_id?: string | null
           name_normalized?: string | null
           nome: string
           pais?: string | null
@@ -2264,6 +2396,7 @@ export type Database = {
           escudo_url?: string | null
           estado?: string | null
           id?: string
+          import_batch_id?: string | null
           name_normalized?: string | null
           nome?: string
           pais?: string | null
@@ -2277,7 +2410,15 @@ export type Database = {
           slug_locked?: boolean
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "times_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "csv_imports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_activity_logs: {
         Row: {
