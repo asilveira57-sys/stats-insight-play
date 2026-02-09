@@ -3,9 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import {
   normalizeName,
   slugify,
-  resolveTeamId,
-  resolveLeagueId,
-  resolveMatchId,
 } from "../_shared/canonicalUtils.ts";
 
 const corsHeaders = {
@@ -307,8 +304,8 @@ serve(async (req) => {
     const teamCache = new Map<string, string>();
     const leagueCache = new Map<string, string>();
 
-    // Pre-load teams and leagues
-    const { data: allTeams } = await supabase.from("times").select("id, nome, slug");
+    // Pre-load teams into cache
+    const { data: allTeams } = await supabase.from("times").select("id, nome, slug").eq("status", "active");
     for (const t of allTeams || []) {
       teamCache.set(normalizeName(t.nome), t.id);
       if (t.slug) teamCache.set(t.slug, t.id);
@@ -317,6 +314,7 @@ serve(async (req) => {
     for (const a of allAliases || []) {
       if (a.team_id && a.normalized_alias) teamCache.set(a.normalized_alias, a.team_id);
     }
+    // Pre-load leagues into cache
     const { data: allLeagues } = await supabase.from("ligas").select("id, nome, slug");
     for (const l of allLeagues || []) {
       leagueCache.set(normalizeName(l.nome), l.id);
@@ -393,95 +391,93 @@ serve(async (req) => {
           continue;
         }
 
-        // Import matches
-        for (const match of matches) {
+        // Import matches in batches for speed
+        const MATCH_BATCH_SIZE = 10;
+        for (let mi = 0; mi < matches.length; mi += MATCH_BATCH_SIZE) {
           if (isTimeLimitClose()) break;
 
-          if (!match.date || !match.home_team || !match.away_team) { skipped++; continue; }
-          if (normalizeName(match.home_team) === normalizeName(match.away_team)) { skipped++; continue; }
+          const matchBatch = matches.slice(mi, mi + MATCH_BATCH_SIZE);
+          const promises = matchBatch.map(async (match) => {
+            if (!match.date || !match.home_team || !match.away_team) { skipped++; return; }
+            if (normalizeName(match.home_team) === normalizeName(match.away_team)) { skipped++; return; }
 
-          // Resolve league
-          const leagueNorm = normalizeName(match.league_name);
-          const leagueSlug = slugify(match.league_name);
-          let leagueId = leagueCache.get(leagueNorm) || leagueCache.get(leagueSlug);
+            // Resolve league (cache-first, then RPC)
+            const leagueNorm = normalizeName(match.league_name);
+            const leagueSlug = slugify(match.league_name);
+            let leagueId = leagueCache.get(leagueNorm) || leagueCache.get(leagueSlug);
 
-          if (!leagueId) {
-            const leagueResult = await resolveLeagueId(supabase, {
-              provider: null,
-              leagueName: match.league_name,
-              pais: match.country,
-            });
-            if (leagueResult.success && leagueResult.id) {
-              leagueId = leagueResult.id;
+            if (!leagueId) {
+              const { data: lid, error: lerr } = await supabase.rpc("resolve_or_create_league", {
+                p_nome: match.league_name,
+                p_pais: match.country || null,
+              });
+              if (lerr || !lid) { skipped++; return; }
+              leagueId = lid;
               leagueCache.set(leagueNorm, leagueId);
               leagueCache.set(leagueSlug, leagueId);
-            } else {
-              skipped++;
-              continue;
             }
-          }
 
-          // Resolve teams
-          const homeNorm = normalizeName(match.home_team);
-          const homeSlug = slugify(match.home_team);
-          let homeId = teamCache.get(homeNorm) || teamCache.get(homeSlug);
+            // Resolve home team (cache-first, then RPC)
+            const homeNorm = normalizeName(match.home_team);
+            const homeSlug = slugify(match.home_team);
+            let homeId = teamCache.get(homeNorm) || teamCache.get(homeSlug);
 
-          if (!homeId) {
-            const homeResult = await resolveTeamId(supabase, {
-              provider: null,
-              teamName: match.home_team,
-              pais: match.country,
-            });
-            if (homeResult.success && homeResult.id) {
-              homeId = homeResult.id;
+            if (!homeId) {
+              const { data: hid, error: herr } = await supabase.rpc("resolve_or_create_team", {
+                p_nome: match.home_team,
+                p_pais: match.country || null,
+              });
+              if (herr || !hid) { failed++; return; }
+              homeId = hid;
               teamCache.set(homeNorm, homeId);
               teamCache.set(homeSlug, homeId);
-            } else {
-              failed++;
-              continue;
             }
-          }
 
-          const awayNorm = normalizeName(match.away_team);
-          const awaySlug = slugify(match.away_team);
-          let awayId = teamCache.get(awayNorm) || teamCache.get(awaySlug);
+            // Resolve away team (cache-first, then RPC)
+            const awayNorm = normalizeName(match.away_team);
+            const awaySlug = slugify(match.away_team);
+            let awayId = teamCache.get(awayNorm) || teamCache.get(awaySlug);
 
-          if (!awayId) {
-            const awayResult = await resolveTeamId(supabase, {
-              provider: null,
-              teamName: match.away_team,
-              pais: match.country,
-            });
-            if (awayResult.success && awayResult.id) {
-              awayId = awayResult.id;
+            if (!awayId) {
+              const { data: aid, error: aerr } = await supabase.rpc("resolve_or_create_team", {
+                p_nome: match.away_team,
+                p_pais: match.country || null,
+              });
+              if (aerr || !aid) { failed++; return; }
+              awayId = aid;
               teamCache.set(awayNorm, awayId);
               teamCache.set(awaySlug, awayId);
-            } else {
-              failed++;
-              continue;
             }
-          }
 
-          // Resolve/create match using canonical system
-          const matchResult = await resolveMatchId(supabase, {
-            provider: null,
-            homeTeamId: homeId,
-            awayTeamId: awayId,
-            matchDate: match.date,
-            ligaId: leagueId,
-            status: match.status,
-            rodada: match.round ? parseInt(match.round) || undefined : undefined,
-            golsCasa: match.home_goals ?? undefined,
-            golsFora: match.away_goals ?? undefined,
+            // Resolve/create match via RPC (single DB call)
+            const { data: matchId, error: merr } = await supabase.rpc("resolve_or_create_match", {
+              p_time_casa_id: homeId,
+              p_time_fora_id: awayId,
+              p_data: match.date,
+              p_liga_id: leagueId,
+              p_status: match.status || "scheduled",
+              p_rodada: match.round ? parseInt(match.round) || null : null,
+            });
+
+            if (merr || !matchId) {
+              failed++;
+              errors.push(`${match.home_team} vs ${match.away_team} (${match.date}): ${merr?.message || "RPC error"}`);
+              return;
+            }
+
+            // Update goals if available
+            if (match.home_goals !== null && match.away_goals !== null) {
+              await supabase.from("partidas").update({
+                gols_casa: match.home_goals,
+                gols_fora: match.away_goals,
+                status: "finished",
+              }).eq("id", matchId);
+            }
+
+            updated++;
           });
 
-          if (matchResult.success) {
-            if (matchResult.isNew) inserted++;
-            else updated++;
-          } else {
-            failed++;
-            errors.push(`${match.home_team} vs ${match.away_team} (${match.date}): ${matchResult.error}`);
-          }
+          await Promise.all(promises);
         }
 
         processedFiles++;
