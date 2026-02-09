@@ -15,6 +15,7 @@ interface ProcessedArticle {
   time_fora: string;
   data: string;
   word_count: number;
+  slug: string;
   success: boolean;
   error?: string;
 }

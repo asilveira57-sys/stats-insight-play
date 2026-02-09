@@ -655,9 +655,20 @@ export default function AdminControlCenter() {
                                 ) : (
                                   <XCircle className="w-3 h-3 text-red-500" />
                                 )}
-                                <span>
-                                  {result.time_casa} x {result.time_fora}
-                                </span>
+                                {result.success && result.slug ? (
+                                  <a
+                                    href={`/noticias/${result.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary underline hover:text-primary/80"
+                                  >
+                                    {result.time_casa} x {result.time_fora}
+                                  </a>
+                                ) : (
+                                  <span>
+                                    {result.time_casa} x {result.time_fora}
+                                  </span>
+                                )}
                                 <span className="text-muted-foreground">
                                   ({new Date(result.data).toLocaleDateString('pt-BR')})
                                 </span>
