@@ -305,18 +305,21 @@ export default function AdminControlCenter() {
     }
   };
 
+  const [syncingEstaduais, setSyncingEstaduais] = useState(false);
+
   const handleSyncEstaduais = async () => {
-    const estaduais = [255, 423, 425, 442, 444, 422, 441, 440, 519, 428, 461];
+    setSyncingEstaduais(true);
     try {
-      toast({ title: "Sincronizando estaduais...", description: "Isso pode levar alguns minutos." });
-      const { data, error } = await supabase.functions.invoke('sync-api-football', {
-        body: { leagues: estaduais, season: 2024, syncGoals: true }
-      });
-      if (error) throw error;
       toast({ 
-        title: "Estaduais sincronizados!", 
-        description: `${data.leaguesSynced} ligas, ${data.matchesUpserted} partidas, ${data.goalsUpserted} gols.` 
+        title: "Sincronização de estaduais iniciada!", 
+        description: "Descobrindo temporadas disponíveis para 11 ligas. Isso pode levar até 2 minutos com rate limiting." 
       });
+      const { data, error } = await supabase.functions.invoke('sync-estaduais-bulk');
+      if (error) throw error;
+      const desc = data.stoppedEarly
+        ? `Parou cedo por tempo. ${data.leaguesSynced} ligas, ${data.seasonsSynced} temporadas, ${data.matchesUpserted} partidas. API: ${data.apiRequestsMade} req usadas.`
+        : `${data.leaguesSynced} ligas, ${data.seasonsSynced} temporadas, ${data.matchesUpserted} partidas importadas. API: ${data.apiRequestsMade} req usadas, ${data.apiRemainingQuota} restantes.`;
+      toast({ title: "Estaduais sincronizados!", description: desc });
       refetchLogs();
     } catch (error) {
       toast({ 
@@ -324,6 +327,8 @@ export default function AdminControlCenter() {
         description: String(error), 
         variant: "destructive" 
       });
+    } finally {
+      setSyncingEstaduais(false);
     }
   };
 
@@ -739,8 +744,9 @@ export default function AdminControlCenter() {
                     <Button variant="outline" className="w-full justify-start" onClick={handleRebuildArtilharia}>
                       <Trophy className="w-4 h-4 mr-2" /> Reconstruir Artilharia
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={handleSyncEstaduais}>
-                      <MapPin className="w-4 h-4 mr-2" /> Sincronizar Estaduais
+                    <Button variant="outline" className="w-full justify-start" onClick={handleSyncEstaduais} disabled={syncingEstaduais}>
+                      {syncingEstaduais ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}
+                      {syncingEstaduais ? 'Sincronizando Estaduais...' : 'Sincronizar Estaduais'}
                     </Button>
                   </CardContent>
                 </Card>

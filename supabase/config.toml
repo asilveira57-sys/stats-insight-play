@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.generate-retroactive-articles]
 verify_jwt = false
+
+[functions.sync-estaduais-bulk]
+verify_jwt = false
