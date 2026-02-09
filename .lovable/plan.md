@@ -1,94 +1,99 @@
 
+# Importacao GitHub em Background (Backend Function)
 
-# Plano: Sincronizar Estaduais - Todos os Anos com Rate Limiting
-
-## Resumo
-
-Criar uma nova edge function dedicada (`sync-estaduais-bulk`) que descobre automaticamente as temporadas disponiveis para cada campeonato estadual na API-Football e importa todas, com controle rigoroso de rate limit. O botao no painel admin dispara essa funcao e retorna imediatamente ao usuario (background).
-
-## Problema Atual
-
-- O botao "Sincronizar Estaduais" chama `sync-api-football` com apenas `season: 2024`
-- Nao descobre quais temporadas estao disponiveis por liga
-- Nao tem tratamento adequado para multiplas temporadas + rate limit do plano free (100 req/dia)
+## Problema
+Toda a logica de importacao roda no navegador (dentro do componente React `GitHubImportWizard`). Quando voce troca de aba ou navega para outra pagina, o React desmonta o componente e a importacao para imediatamente. Por isso os batches ficam travados em "processing" com 0 linhas.
 
 ## Solucao
+Mover toda a logica de importacao para uma **backend function** que roda independentemente do navegador. O frontend apenas dispara o job e consulta o progresso via polling.
 
-### 1. Nova Edge Function: `sync-estaduais-bulk`
+## Arquitetura
 
-Funcao que:
-1. Consulta `/leagues?id={leagueId}` para descobrir as temporadas disponiveis de cada estadual
-2. Itera liga por liga, temporada por temporada, chamando a funcao `sync-api-football` existente para cada combinacao
-3. Implementa rate limiting inteligente:
-   - 2s entre requisicoes de fixtures por liga/temporada  
-   - Monitora headers `x-ratelimit-remaining` da API-Football
-   - Pausa automatica se aproximar do limite (backoff exponencial)
-   - Desativa syncGoals para economizar requisicoes (cada gol = 1 req extra)
-4. Retorna progresso acumulado (ligas, temporadas, partidas importadas)
+```text
++------------------+          +---------------------------+         +----------+
+|   Frontend       |  POST    |  import-github-data       |  SQL    | Database |
+|  (GitHubWizard)  | -------> |  (backend function)       | ------> |          |
+|                  |          |                           |         |          |
+|  Poll csv_imports|  SELECT  |  - Fetch files from GH    |         |          |
+|  every 3s        | <------- |  - Parse JSON/CSV         |         |          |
++------------------+          |  - Resolve teams/leagues   |         |          |
+                              |  - Insert matches          |         |          |
+                              |  - Update csv_imports row  |         |          |
+                              +---------------------------+         +----------+
+```
 
-Ligas estaduais a sincronizar (10 + Copa do Nordeste):
-- 475 (Paulista), 423 (Carioca), 425 (Mineiro), 442 (Gaucho)
-- 444 (Paranaense), 422 (Pernambucano), 441 (Cearense), 440 (Baiano)
-- 519 (Catarinense), 428 (Goiano), 461 (Copa do Nordeste)
+## Etapas de Implementacao
 
-### 2. Atualizar Frontend (AdminControlCenter.tsx)
+### 1. Nova backend function: `import-github-data`
+Criar `supabase/functions/import-github-data/index.ts` que recebe:
+- `batch_id` (UUID do csv_imports ja criado)
+- `owner`, `repo` (do GitHub)
+- `provider` (string identificadora)
+- `files` (lista de `{ path, leagueName, country, season, fileType }`)
 
-- Modificar `handleSyncEstaduais` para chamar `sync-estaduais-bulk` em vez de `sync-api-football`
-- Adicionar estado de loading no botao durante a execucao
-- Toast informando que o processo esta rodando em background com estimativa
+A funcao:
+1. Busca os arquivos do GitHub (em lotes de 3, como ja faz hoje)
+2. Parseia JSON/CSV usando a mesma logica que ja existe em `githubImportUtils.ts` (reescrita em Deno)
+3. Resolve ligas, temporadas e times (usando caches em memoria + queries ao banco)
+4. Insere partidas com deduplicacao por `(liga_id, data, time_casa_id, time_fora_id)`
+5. Atualiza a linha em `csv_imports` com progresso a cada lote de arquivos processado
+6. Registra em `sync_logs` ao final
+7. Implementa safety check de tempo (~140s) para salvar progresso parcial antes do timeout
+
+### 2. Reescrever o frontend `GitHubImportWizard`
+- **Scan** (passo 1-2): continua no frontend, pois e rapido
+- **Import** (passo 3): muda completamente:
+  - Cria o registro em `csv_imports` com status `processing`
+  - Chama a backend function `import-github-data` via `supabase.functions.invoke()` (fire-and-forget, sem await do resultado)
+  - Inicia **polling** a cada 3 segundos na tabela `csv_imports` para mostrar progresso
+  - O usuario pode navegar livremente; ao voltar, o polling retoma e mostra o estado atual
+
+### 3. Adicionar coluna `progress_detail` na tabela `csv_imports`
+Uma coluna JSONB para a backend function reportar progresso granular:
+```json
+{
+  "processed_files": 3,
+  "total_files": 8,
+  "current_file": "Brasileirao/2020.csv",
+  "inserted": 245,
+  "updated": 12,
+  "skipped": 3,
+  "failed": 1
+}
+```
+
+### 4. Atualizar `CsvImportHistory` para mostrar jobs em andamento
+- Mostrar badge "Em andamento" para batches com status `processing`
+- Auto-refresh da lista enquanto houver jobs ativos
 
 ## Detalhes Tecnicos
 
-### Edge Function `sync-estaduais-bulk/index.ts`
+### Backend function (`import-github-data/index.ts`)
+- Usa `createClient` do Supabase com `SUPABASE_SERVICE_ROLE_KEY` para acesso irrestrito
+- Replica a logica de parsing de `githubImportUtils.ts` e `canonicalUtils.ts` diretamente no arquivo (edge functions nao compartilham codigo do frontend)
+- Ja existe `_shared/canonicalUtils.ts` com `normalizeName`, `slugify`, `resolveTeamId`, `resolveLeagueId` -- sera reutilizado
+- Busca arquivos do GitHub usando fetch direto (sem depender da outra edge function)
+- Atualiza `csv_imports` a cada arquivo processado para dar feedback em tempo real
+- Safety check: monitora `Date.now()` e se chegar perto de 140s, salva progresso parcial e retorna com status `partial`
 
-```text
-Para cada liga estadual:
-  1. GET /leagues?id={leagueId} -> extrair seasons[]
-  2. Para cada season disponivel:
-     a. Chamar sync-api-football internamente (reutilizar logica)
-     b. Aguardar delay de 2-3s entre chamadas
-     c. Verificar rate limit headers
-     d. Se rate limit < 10, pausar 60s
-  3. Acumular stats (matches, teams, errors)
-  4. Retornar resultado consolidado
-```
+### Frontend (GitHubImportWizard)
+- Apos disparar a funcao, entra em modo "polling":
+  - `useQuery` com `refetchInterval: 3000` na row do `csv_imports`
+  - Le `progress_detail` JSONB para mostrar barra de progresso e contadores
+  - Quando `status` muda para `completed` ou `failed`, para o polling
+- Se o usuario sair e voltar, o componente re-monta e detecta batches em `processing` automaticamente, retomando a exibicao do progresso
 
-Rate limiting:
-- Delay base: 2s entre requisicoes de fixtures
-- Delay entre ligas: 5s  
-- Backoff: se `x-ratelimit-remaining < 10`, pausa de 60s
-- syncGoals desativado por padrao (economia de requisicoes)
-- Timeout: funcao Deno permite ate ~150s; se exceder, retorna resultado parcial
+### Migracao SQL
+- `ALTER TABLE csv_imports ADD COLUMN progress_detail JSONB DEFAULT '{}'`
 
-### Arquivos a criar/modificar
+### Config
+- Adicionar `[functions.import-github-data]` com `verify_jwt = false` no config.toml
 
-| Arquivo | Acao |
-|---------|------|
-| `supabase/functions/sync-estaduais-bulk/index.ts` | Criar nova edge function |
-| `supabase/config.toml` | Adicionar config `verify_jwt = false` |
-| `src/pages/AdminControlCenter.tsx` | Atualizar handler e adicionar loading state |
+## Limpeza
+- Marcar os 2 batches travados como `failed` no banco
+- Remover toda a logica de importacao pesada do componente React (resolve*, import loops)
 
-### Fluxo de execucao
-
-```text
-[Botao Admin] 
-    |
-    v
-[sync-estaduais-bulk] 
-    |
-    +--> GET /leagues?id=475 -> seasons: [2020,2021,2022,2023,2024,2025]
-    |    |
-    |    +--> GET /fixtures?league=475&season=2020
-    |    +--> (2s delay)
-    |    +--> GET /fixtures?league=475&season=2021
-    |    +--> ...
-    |
-    +--> (5s delay)
-    +--> GET /leagues?id=423 -> seasons: [2020,2021,2022,2023,2024,2025]
-    |    +--> GET /fixtures?league=423&season=2020
-    |    +--> ...
-    |
-    v
-[Retorna stats consolidado]
-```
-
+## Resultado
+- Voce clica "Importar", pode fechar a aba, ir tomar cafe, e quando voltar os dados estarao la
+- Progresso visivel em tempo real via polling
+- Preparado para futuro cron automatico
