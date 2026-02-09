@@ -405,6 +405,12 @@ export default function AdminControlCenter() {
                   Webhooks
                 </Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/admin/csv-import">
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV Import
+                </Link>
+              </Button>
               <Button 
                 onClick={handleSyncAll} 
                 disabled={syncingAll}
