@@ -32,6 +32,7 @@ interface ProcessedArticle {
   time_fora: string;
   data: string;
   word_count: number;
+  slug: string;
   success: boolean;
   error?: string;
 }
@@ -490,6 +491,7 @@ serve(async (req) => {
           time_fora: timeFora,
           data: matchData.data,
           word_count: wordCount,
+          slug,
           success: true,
         });
 
@@ -504,6 +506,7 @@ serve(async (req) => {
           time_fora: timeFora,
           data: matchData.data,
           word_count: 0,
+          slug: "",
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
         });
