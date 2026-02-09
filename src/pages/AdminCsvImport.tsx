@@ -3,12 +3,13 @@ import { Helmet } from "react-helmet-async";
 import { Layout } from "@/components/layout/Layout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Upload, History } from "lucide-react";
+import { Loader2, Upload, History, Github } from "lucide-react";
 import { CsvUploadStep } from "@/components/admin/csv/CsvUploadStep";
 import { CsvMappingStep } from "@/components/admin/csv/CsvMappingStep";
 import { CsvDryRunStep } from "@/components/admin/csv/CsvDryRunStep";
 import { CsvImportExecutor } from "@/components/admin/csv/CsvImportExecutor";
 import { CsvImportHistory } from "@/components/admin/csv/CsvImportHistory";
+import { GitHubImportWizard } from "@/components/admin/csv/GitHubImportWizard";
 import type { DryRunResult } from "@/lib/csvImportUtils";
 
 type Step = "upload" | "mapping" | "dryrun" | "importing";
@@ -81,7 +82,8 @@ export default function AdminCsvImport() {
 
           <Tabs defaultValue="import">
             <TabsList className="mb-4">
-              <TabsTrigger value="import" className="flex items-center gap-1"><Upload className="w-4 h-4" /> Nova Importação</TabsTrigger>
+              <TabsTrigger value="import" className="flex items-center gap-1"><Upload className="w-4 h-4" /> CSV Manual</TabsTrigger>
+              <TabsTrigger value="github" className="flex items-center gap-1"><Github className="w-4 h-4" /> GitHub Auto</TabsTrigger>
               <TabsTrigger value="history" className="flex items-center gap-1"><History className="w-4 h-4" /> Histórico</TabsTrigger>
             </TabsList>
 
@@ -113,6 +115,10 @@ export default function AdminCsvImport() {
                   dryRun={dryRun} newLeagueName={newLeagueName} onComplete={handleReset}
                 />
               )}
+            </TabsContent>
+
+            <TabsContent value="github">
+              <GitHubImportWizard />
             </TabsContent>
 
             <TabsContent value="history">
