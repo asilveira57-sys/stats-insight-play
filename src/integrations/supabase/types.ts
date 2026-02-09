@@ -481,6 +481,7 @@ export type Database = {
           id: string
           liga_id: string | null
           mapping_template_id: string | null
+          progress_detail: Json | null
           provider: string | null
           reverted_at: string | null
           rows_failed: number | null
@@ -502,6 +503,7 @@ export type Database = {
           id?: string
           liga_id?: string | null
           mapping_template_id?: string | null
+          progress_detail?: Json | null
           provider?: string | null
           reverted_at?: string | null
           rows_failed?: number | null
@@ -523,6 +525,7 @@ export type Database = {
           id?: string
           liga_id?: string | null
           mapping_template_id?: string | null
+          progress_detail?: Json | null
           provider?: string | null
           reverted_at?: string | null
           rows_failed?: number | null

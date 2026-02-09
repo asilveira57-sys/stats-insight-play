@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,18 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Github, FolderTree, Play, CheckCircle, XCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { normalizeName, slugify } from "@/lib/canonicalUtils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   parseGitHubUrl,
   analyzeRepoTree,
-  parseJsonMatches,
-  parseCsvMatches,
-  type GitHubRepoConfig,
   type DetectedCompetition,
-  type ParsedMatch,
 } from "@/lib/githubImportUtils";
 
 type WizardStep = "config" | "scanning" | "review" | "importing" | "done";
 
 export function GitHubImportWizard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<WizardStep>("config");
   const [repoUrl, setRepoUrl] = useState("https://github.com/ricardo-mattoss/Brazilian-Soccer-Data");
   const [provider, setProvider] = useState("github_brazilian_soccer_data");
@@ -31,10 +28,66 @@ export function GitHubImportWizard() {
   const [competitions, setCompetitions] = useState<DetectedCompetition[]>([]);
   const [expandedComps, setExpandedComps] = useState<Set<string>>(new Set());
   const [scanError, setScanError] = useState<string | null>(null);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importStats, setImportStats] = useState({ inserted: 0, updated: 0, skipped: 0, failed: 0, totalFiles: 0, processedFiles: 0 });
-  const [importErrors, setImportErrors] = useState<string[]>([]);
-  const [importStatus, setImportStatus] = useState<"running" | "completed" | "failed">("running");
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+
+  // Check for active batches on mount
+  useEffect(() => {
+    const checkActive = async () => {
+      const { data } = await supabase
+        .from("csv_imports" as any)
+        .select("id")
+        .eq("status", "processing")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setActiveBatchId((data[0] as any).id);
+        setStep("importing");
+      }
+    };
+    checkActive();
+  }, []);
+
+  // Polling for active batch progress
+  const { data: batchData } = useQuery({
+    queryKey: ["github-import-progress", activeBatchId],
+    queryFn: async () => {
+      if (!activeBatchId) return null;
+      const { data, error } = await supabase
+        .from("csv_imports" as any)
+        .select("*")
+        .eq("id", activeBatchId)
+        .single();
+      if (error) throw error;
+      return data as any;
+    },
+    enabled: !!activeBatchId,
+    refetchInterval: activeBatchId ? 3000 : false,
+  });
+
+  // When batch completes, stop polling and show done
+  useEffect(() => {
+    if (batchData && (batchData.status === "completed" || batchData.status === "failed")) {
+      setStep("done");
+      queryClient.invalidateQueries({ queryKey: ["csv-imports"] });
+    }
+  }, [batchData?.status]);
+
+  const progress = batchData?.progress_detail || {};
+  const importStats = {
+    inserted: batchData?.rows_inserted || progress.inserted || 0,
+    updated: batchData?.rows_updated || progress.updated || 0,
+    skipped: batchData?.rows_skipped || progress.skipped || 0,
+    failed: batchData?.rows_failed || progress.failed || 0,
+    totalFiles: progress.total_files || 0,
+    processedFiles: progress.processed_files || 0,
+  };
+  const importProgress = importStats.totalFiles > 0
+    ? Math.round((importStats.processedFiles / importStats.totalFiles) * 100)
+    : 0;
+  const importStatus = batchData?.status === "completed" ? "completed"
+    : batchData?.status === "failed" ? "failed"
+    : "running";
+  const importErrors: string[] = batchData?.error_report || [];
 
   // Step 1: Scan repository
   const handleScan = async () => {
@@ -59,7 +112,7 @@ export function GitHubImportWizard() {
       const detected = analyzeRepoTree(tree);
 
       if (detected.length === 0) {
-        setScanError("Nenhuma competição detectada no repositório. Verifique se existem arquivos .json ou .csv.");
+        setScanError("Nenhuma competição detectada no repositório.");
         setStep("config");
         return;
       }
@@ -72,7 +125,6 @@ export function GitHubImportWizard() {
     }
   };
 
-  // Toggle competition selection
   const toggleCompetition = (path: string) => {
     setCompetitions((prev) =>
       prev.map((c) =>
@@ -83,21 +135,16 @@ export function GitHubImportWizard() {
     );
   };
 
-  // Toggle season selection
   const toggleSeason = (compPath: string, seasonPath: string) => {
     setCompetitions((prev) =>
       prev.map((c) =>
         c.path === compPath
-          ? {
-              ...c,
-              seasons: c.seasons.map((s) => (s.path === seasonPath ? { ...s, selected: !s.selected } : s)),
-            }
+          ? { ...c, seasons: c.seasons.map((s) => (s.path === seasonPath ? { ...s, selected: !s.selected } : s)) }
           : c
       )
     );
   };
 
-  // Toggle expand/collapse
   const toggleExpand = (path: string) => {
     setExpandedComps((prev) => {
       const next = new Set(prev);
@@ -107,42 +154,38 @@ export function GitHubImportWizard() {
     });
   };
 
-  // Count selected
   const totalSelectedSeasons = competitions.reduce(
     (sum, c) => sum + c.seasons.filter((s) => s.selected).length,
     0
   );
 
-  // Step 3: Import
+  // Step 3: Fire-and-forget import
   const handleImport = async () => {
     const parsed = parseGitHubUrl(repoUrl);
     if (!parsed) return;
 
-    setStep("importing");
-    setImportStatus("running");
-    setImportProgress(0);
-    setImportStats({ inserted: 0, updated: 0, skipped: 0, failed: 0, totalFiles: 0, processedFiles: 0 });
-    setImportErrors([]);
-
-    // Collect all selected season files
-    const selectedFiles: { comp: DetectedCompetition; season: typeof competitions[0]["seasons"][0] }[] = [];
+    // Collect selected files
+    const selectedFiles: { path: string; leagueName: string; country: string; season: string; fileType: string }[] = [];
     for (const comp of competitions) {
       for (const season of comp.seasons) {
         if (season.selected) {
-          selectedFiles.push({ comp, season });
+          selectedFiles.push({
+            path: season.path,
+            leagueName: comp.name.split(" / ").pop() || comp.name,
+            country: comp.country,
+            season: season.year,
+            fileType: season.fileType,
+          });
         }
       }
     }
 
-    const totalFiles = selectedFiles.length;
-    let inserted = 0, updated = 0, skipped = 0, failed = 0;
-    const errors: string[] = [];
+    if (selectedFiles.length === 0) return;
 
-    // Create import batch
-    let batchId: string | null = null;
+    // Create batch record
     try {
       const { data: batch, error: batchErr } = await supabase
-        .from("csv_imports")
+        .from("csv_imports" as any)
         .insert({
           user_id: user?.id || "",
           file_name: `github:${parsed.owner}/${parsed.repo}`,
@@ -150,241 +193,38 @@ export function GitHubImportWizard() {
           provider,
           total_rows: 0,
           status: "processing",
-        })
+          progress_detail: { processed_files: 0, total_files: selectedFiles.length, inserted: 0, updated: 0, skipped: 0, failed: 0 },
+        } as any)
         .select("id")
         .single();
+
       if (batchErr) throw new Error(batchErr.message);
-      batchId = batch.id;
+      const batchId = (batch as any).id;
+      setActiveBatchId(batchId);
+      setStep("importing");
+
+      // Fire-and-forget: invoke backend function
+      supabase.functions.invoke("import-github-data", {
+        body: {
+          batch_id: batchId,
+          owner: parsed.owner,
+          repo: parsed.repo,
+          provider,
+          files: selectedFiles,
+        },
+      }).catch((err) => {
+        console.error("Edge function invoke error:", err);
+      });
     } catch (err: any) {
-      setImportStatus("failed");
-      setImportErrors([err.message]);
-      return;
+      setScanError(err.message);
+      setStep("config");
     }
-
-    // Load caches
-    const { data: allTeams } = await supabase.from("times").select("id, nome, slug");
-    const { data: allAliases } = await supabase.from("team_aliases").select("team_id, alias, normalized_alias");
-    const { data: allLeagues } = await supabase.from("ligas").select("id, nome, slug, pais");
-    const { data: allSeasons } = await supabase.from("seasons").select("id, league_id, year");
-
-    const teamCache = new Map<string, string>();
-    for (const t of allTeams || []) {
-      teamCache.set(normalizeName(t.nome), t.id);
-      if (t.slug) teamCache.set(t.slug, t.id);
-    }
-    for (const a of allAliases || []) {
-      if (a.team_id && a.normalized_alias) teamCache.set(a.normalized_alias, a.team_id);
-    }
-
-    const leagueCache = new Map<string, string>();
-    for (const l of allLeagues || []) {
-      leagueCache.set(normalizeName(l.nome), l.id);
-      if (l.slug) leagueCache.set(l.slug, l.id);
-    }
-
-    const seasonCache = new Map<string, string>();
-    for (const s of allSeasons || []) {
-      seasonCache.set(`${s.league_id}|${s.year}`, s.id);
-    }
-
-    // Resolver functions
-    const resolveLeague = async (name: string, country?: string): Promise<string | null> => {
-      const norm = normalizeName(name);
-      const slug = slugify(name);
-      if (leagueCache.has(norm)) return leagueCache.get(norm)!;
-      if (leagueCache.has(slug)) return leagueCache.get(slug)!;
-      const insertData: any = { nome: name, slug, pais: country || null };
-      const { data: newLeague, error } = await supabase.from("ligas").insert(insertData).select("id").single();
-      if (error || !newLeague) return null;
-      leagueCache.set(norm, newLeague.id);
-      leagueCache.set(slug, newLeague.id);
-      return newLeague.id;
-    };
-
-    const resolveSeason = async (leagueId: string, year: number): Promise<string | null> => {
-      const key = `${leagueId}|${year}`;
-      if (seasonCache.has(key)) return seasonCache.get(key)!;
-      const { data: newSeason, error } = await supabase.from("seasons").insert({ league_id: leagueId, year }).select("id").single();
-      if (error || !newSeason) return null;
-      seasonCache.set(key, newSeason.id);
-      return newSeason.id;
-    };
-
-    const resolveTeam = async (name: string): Promise<string | null> => {
-      const norm = normalizeName(name);
-      const slug = slugify(name);
-      if (teamCache.has(norm)) return teamCache.get(norm)!;
-      if (teamCache.has(slug)) return teamCache.get(slug)!;
-      const { data: newTeam, error } = await supabase
-        .from("times")
-        .insert({ nome: name, import_batch_id: batchId } as any)
-        .select("id")
-        .single();
-      if (error || !newTeam) return null;
-      teamCache.set(norm, newTeam.id);
-      teamCache.set(slug, newTeam.id);
-      return newTeam.id;
-    };
-
-    // Process files in batches of 3
-    for (let i = 0; i < selectedFiles.length; i += 3) {
-      const batch = selectedFiles.slice(i, i + 3);
-      const paths = batch.map((b) => b.season.path);
-
-      try {
-        const { data: filesData, error: fetchErr } = await supabase.functions.invoke("fetch-github-repo", {
-          body: {
-            action: "multi_files",
-            owner: parsed.owner,
-            repo: parsed.repo,
-            path: paths,
-          },
-        });
-
-        if (fetchErr) {
-          errors.push(`Erro ao buscar arquivos: ${fetchErr.message}`);
-          failed += batch.length;
-          continue;
-        }
-
-        const files = filesData?.files || [];
-
-        for (let j = 0; j < files.length; j++) {
-          const file = files[j];
-          const { comp, season } = batch[j];
-
-          if (!file.content) {
-            errors.push(`${file.path}: ${file.error || "Conteúdo vazio"}`);
-            failed++;
-            continue;
-          }
-
-          // Parse file content
-          let matches: ParsedMatch[] = [];
-          const leagueName = comp.name.split(" / ").pop() || comp.name;
-
-          if (season.fileType === "json") {
-            matches = parseJsonMatches(file.content, leagueName, comp.country, season.year);
-          } else {
-            matches = parseCsvMatches(file.content, leagueName, comp.country, season.year);
-          }
-
-          if (matches.length === 0) {
-            errors.push(`${file.path}: Nenhuma partida detectada`);
-            skipped++;
-            continue;
-          }
-
-          // Import matches
-          for (const match of matches) {
-            if (!match.date || !match.home_team || !match.away_team) { skipped++; continue; }
-            if (normalizeName(match.home_team) === normalizeName(match.away_team)) { skipped++; continue; }
-
-            const leagueId = await resolveLeague(match.league_name, match.country);
-            if (!leagueId) { skipped++; continue; }
-
-            const seasonYear = parseInt(match.season);
-            let seasonId: string | null = null;
-            if (!isNaN(seasonYear)) {
-              seasonId = await resolveSeason(leagueId, seasonYear);
-            }
-
-            const homeId = await resolveTeam(match.home_team);
-            const awayId = await resolveTeam(match.away_team);
-            if (!homeId || !awayId) { failed++; continue; }
-
-            const matchData: any = {
-              time_casa_id: homeId,
-              time_fora_id: awayId,
-              data: match.date,
-              liga_id: leagueId,
-              status: match.status,
-              import_batch_id: batchId,
-            };
-            if (match.home_goals !== null) matchData.gols_casa = match.home_goals;
-            if (match.away_goals !== null) matchData.gols_fora = match.away_goals;
-            if (match.round) {
-              const roundNum = parseInt(match.round);
-              if (!isNaN(roundNum)) matchData.rodada = roundNum;
-            }
-
-            // Dedup check
-            const { data: existing } = await supabase
-              .from("partidas")
-              .select("id")
-              .eq("time_casa_id", homeId)
-              .eq("time_fora_id", awayId)
-              .eq("data", match.date)
-              .eq("liga_id", leagueId)
-              .maybeSingle();
-
-            if (existing) {
-              updated++;
-            } else {
-              const { error: insertErr } = await supabase.from("partidas").insert(matchData);
-              if (insertErr) {
-                failed++;
-                errors.push(`${match.home_team} vs ${match.away_team} (${match.date}): ${insertErr.message}`);
-              } else {
-                inserted++;
-              }
-            }
-          }
-        }
-      } catch (err: any) {
-        errors.push(`Batch error: ${err.message}`);
-        failed += batch.length;
-      }
-
-      const processedFiles = Math.min(i + 3, selectedFiles.length);
-      setImportProgress(Math.round((processedFiles / totalFiles) * 100));
-      setImportStats({ inserted, updated, skipped, failed, totalFiles, processedFiles });
-    }
-
-    // Update batch record
-    const totalRows = inserted + updated + skipped + failed;
-    await supabase.from("csv_imports").update({
-      status: failed > 0 && inserted === 0 ? "failed" : "completed",
-      total_rows: totalRows,
-      rows_inserted: inserted,
-      rows_updated: updated,
-      rows_skipped: skipped,
-      rows_failed: failed,
-      error_report: errors.slice(0, 500),
-    }).eq("id", batchId);
-
-    // Log to sync_logs
-    await supabase.from("sync_logs").insert({
-      entity_type: "github_import",
-      status: "completed",
-      items_processed: totalRows,
-      items_created: inserted,
-      items_failed: failed,
-      details: {
-        batch_id: batchId,
-        repo: `${parsed.owner}/${parsed.repo}`,
-        provider,
-        competitions: competitions.filter((c) => c.selected).map((c) => c.name),
-        inserted,
-        updated,
-        skipped,
-        failed,
-      },
-    });
-
-    setImportStats({ inserted, updated, skipped, failed, totalFiles, processedFiles: totalFiles });
-    setImportErrors(errors);
-    setImportProgress(100);
-    setImportStatus(failed > 0 && inserted === 0 ? "failed" : "completed");
-    setStep("done");
   };
 
   const handleReset = () => {
     setStep("config");
+    setActiveBatchId(null);
     setCompetitions([]);
-    setImportProgress(0);
-    setImportStats({ inserted: 0, updated: 0, skipped: 0, failed: 0, totalFiles: 0, processedFiles: 0 });
-    setImportErrors([]);
   };
 
   return (
@@ -532,6 +372,18 @@ export function GitHubImportWizard() {
           <CardContent className="space-y-4">
             <Progress value={importProgress} />
 
+            {importStatus === "running" && progress.current_file && (
+              <p className="text-xs text-muted-foreground truncate">
+                📄 {progress.current_file}
+              </p>
+            )}
+
+            {importStatus === "running" && (
+              <p className="text-xs text-muted-foreground">
+                ⚡ Processando em background — você pode navegar livremente.
+              </p>
+            )}
+
             <div className="grid grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-green-500/10 text-center">
                 <p className="text-xl font-bold text-green-500">{importStats.inserted}</p>
@@ -553,7 +405,7 @@ export function GitHubImportWizard() {
 
             {importErrors.length > 0 && (
               <div className="max-h-40 overflow-auto border rounded p-2 text-xs text-muted-foreground">
-                {importErrors.slice(0, 50).map((e, i) => (
+                {importErrors.slice(0, 50).map((e: string, i: number) => (
                   <p key={i}>{e}</p>
                 ))}
                 {importErrors.length > 50 && (

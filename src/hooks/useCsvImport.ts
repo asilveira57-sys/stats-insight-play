@@ -12,6 +12,11 @@ export function useCsvImports() {
       if (error) throw error;
       return data as any[];
     },
+    refetchInterval: (query) => {
+      const data = query.state.data as any[] | undefined;
+      const hasActive = data?.some((imp: any) => imp.status === "processing");
+      return hasActive ? 3000 : false;
+    },
   });
 }
 

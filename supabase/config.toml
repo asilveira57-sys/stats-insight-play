@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.sync-estaduais-bulk]
 verify_jwt = false
+
+[functions.import-github-data]
+verify_jwt = false
