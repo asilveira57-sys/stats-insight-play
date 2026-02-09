@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, Plus } from "lucide-react";
+import { Upload, FileText, Plus, Info } from "lucide-react";
 import { useLeaguesForImport } from "@/hooks/useCsvImport";
 
 interface CsvUploadStepProps {
@@ -26,6 +26,7 @@ export function CsvUploadStep({ onFileParsed }: CsvUploadStepProps) {
   const [provider, setProvider] = useState("");
   const [newLeagueName, setNewLeagueName] = useState("");
   const [creatingLeague, setCreatingLeague] = useState(false);
+  const [useManualLeague, setUseManualLeague] = useState(true);
   const { data: leagues } = useLeaguesForImport();
 
   const handleFile = useCallback(
@@ -39,15 +40,15 @@ export function CsvUploadStep({ onFileParsed }: CsvUploadStepProps) {
           text,
           fileName: file.name,
           fileType,
-          ligaId: creatingLeague ? null : ligaId || null,
-          temporada: temporada ? parseInt(temporada) : null,
+          ligaId: useManualLeague ? (creatingLeague ? null : ligaId || null) : null,
+          temporada: useManualLeague && temporada ? parseInt(temporada) : null,
           provider: provider || "csv_manual",
-          newLeagueName: creatingLeague ? newLeagueName : undefined,
+          newLeagueName: useManualLeague && creatingLeague ? newLeagueName : undefined,
         });
       };
       reader.readAsText(file, "UTF-8");
     },
-    [fileType, ligaId, temporada, provider, creatingLeague, newLeagueName, onFileParsed]
+    [fileType, ligaId, temporada, provider, creatingLeague, newLeagueName, useManualLeague, onFileParsed]
   );
 
   const currentYear = new Date().getFullYear();
@@ -80,37 +81,60 @@ export function CsvUploadStep({ onFileParsed }: CsvUploadStepProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="flex items-center gap-2">
-              Liga / Competição
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setCreatingLeague(!creatingLeague)}>
-                <Plus className="w-3 h-3 mr-1" /> {creatingLeague ? "Selecionar existente" : "Criar nova"}
-              </Button>
-            </Label>
-            {creatingLeague ? (
-              <Input value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} placeholder="Nome da nova liga" />
-            ) : (
-              <Select value={ligaId} onValueChange={setLigaId}>
+        {/* Liga/Temporada mode toggle */}
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+          <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground">
+              {useManualLeague
+                ? "Selecione a liga/temporada manualmente abaixo."
+                : "Liga e temporada serão extraídas automaticamente das colunas do CSV (league_name, season)."
+              }
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 text-xs"
+            onClick={() => setUseManualLeague(!useManualLeague)}
+          >
+            {useManualLeague ? "Usar do CSV" : "Selecionar manual"}
+          </Button>
+        </div>
+
+        {useManualLeague && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="flex items-center gap-2">
+                Liga / Competição
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setCreatingLeague(!creatingLeague)}>
+                  <Plus className="w-3 h-3 mr-1" /> {creatingLeague ? "Selecionar existente" : "Criar nova"}
+                </Button>
+              </Label>
+              {creatingLeague ? (
+                <Input value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} placeholder="Nome da nova liga" />
+              ) : (
+                <Select value={ligaId} onValueChange={setLigaId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {leagues?.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.nome} {l.pais ? `(${l.pais})` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div>
+              <Label>Temporada / Ano</Label>
+              <Select value={temporada} onValueChange={setTemporada}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {leagues?.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.nome} {l.pais ? `(${l.pais})` : ""}</SelectItem>
-                  ))}
+                  {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
-            )}
+            </div>
           </div>
-          <div>
-            <Label>Temporada / Ano</Label>
-            <Select value={temporada} onValueChange={setTemporada}>
-              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-              <SelectContent>
-                {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        )}
 
         <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
           <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { mapRow, normalizeDate, type DryRunResult } from "@/lib/csvImportUtils";
 import { normalizeName, slugify } from "@/lib/canonicalUtils";
@@ -45,7 +44,7 @@ export function CsvImportExecutor({
     let effectiveLigaId = ligaId;
 
     try {
-      // Create league if needed
+      // Create league if needed (manual mode)
       if (!effectiveLigaId && newLeagueName) {
         const { data: newLeague, error } = await supabase
           .from("ligas")
@@ -74,13 +73,67 @@ export function CsvImportExecutor({
       if (batchErr) throw new Error(`Falha ao criar batch: ${batchErr.message}`);
       batchId = (batch as any).id;
 
-      // Load existing teams for resolution
+      // Load existing teams for resolution (including aliases)
       const { data: allTeams } = await supabase.from("times").select("id, nome, slug");
+      const { data: allAliases } = await supabase.from("team_aliases").select("team_id, alias, normalized_alias");
       const teamCache = new Map<string, string>();
       for (const t of allTeams || []) {
         teamCache.set(normalizeName(t.nome), t.id);
         if (t.slug) teamCache.set(t.slug, t.id);
       }
+      for (const a of allAliases || []) {
+        if (a.team_id && a.normalized_alias) {
+          teamCache.set(a.normalized_alias, a.team_id);
+        }
+      }
+
+      // League cache for self-describing CSVs
+      const { data: allLeagues } = await supabase.from("ligas").select("id, nome, slug, pais");
+      const leagueCache = new Map<string, string>();
+      for (const l of allLeagues || []) {
+        leagueCache.set(normalizeName(l.nome), l.id);
+        if (l.slug) leagueCache.set(l.slug, l.id);
+      }
+
+      // Season cache
+      const { data: allSeasons } = await supabase.from("seasons").select("id, league_id, year");
+      const seasonCache = new Map<string, string>();
+      for (const s of allSeasons || []) {
+        seasonCache.set(`${s.league_id}|${s.year}`, s.id);
+      }
+
+      const resolveLeague = async (name: string, country?: string): Promise<string | null> => {
+        const norm = normalizeName(name);
+        const slug = slugify(name);
+        if (leagueCache.has(norm)) return leagueCache.get(norm)!;
+        if (leagueCache.has(slug)) return leagueCache.get(slug)!;
+        // Create new league
+        const insertData: any = { nome: name, slug };
+        if (country) insertData.pais = country;
+        const { data: newLeague, error } = await supabase
+          .from("ligas")
+          .insert(insertData)
+          .select("id")
+          .single();
+        if (error || !newLeague) return null;
+        leagueCache.set(norm, newLeague.id);
+        leagueCache.set(slug, newLeague.id);
+        return newLeague.id;
+      };
+
+      const resolveSeason = async (leagueId: string, year: number): Promise<string | null> => {
+        const key = `${leagueId}|${year}`;
+        if (seasonCache.has(key)) return seasonCache.get(key)!;
+        // Create new season
+        const { data: newSeason, error } = await supabase
+          .from("seasons")
+          .insert({ league_id: leagueId, year })
+          .select("id")
+          .single();
+        if (error || !newSeason) return null;
+        seasonCache.set(key, newSeason.id);
+        return newSeason.id;
+      };
 
       const resolveTeam = async (name: string): Promise<string | null> => {
         const norm = normalizeName(name);
@@ -101,7 +154,6 @@ export function CsvImportExecutor({
 
       let inserted = 0, updated = 0, skipped = 0, failed = 0;
       const errors: string[] = [];
-      const BATCH_SIZE = 50;
 
       if (fileType === "matches") {
         for (let i = 0; i < rows.length; i++) {
@@ -109,6 +161,20 @@ export function CsvImportExecutor({
           const date = normalizeDate(mapped.data);
           if (!date || !mapped.time_casa || !mapped.time_fora) { skipped++; continue; }
           if (normalizeName(mapped.time_casa) === normalizeName(mapped.time_fora)) { skipped++; continue; }
+
+          // Resolve league: from CSV column or from manual selection
+          let rowLigaId = effectiveLigaId;
+          if (!rowLigaId && mapped.league_name) {
+            rowLigaId = await resolveLeague(mapped.league_name, mapped.country);
+          }
+          if (!rowLigaId) { skipped++; errors.push(`Linha ${i + 2}: Liga não definida`); continue; }
+
+          // Resolve season
+          let rowSeasonId: string | null = null;
+          const seasonYear = mapped.season ? parseInt(mapped.season) : (temporada || null);
+          if (seasonYear && rowLigaId) {
+            rowSeasonId = await resolveSeason(rowLigaId, seasonYear);
+          }
 
           const homeId = await resolveTeam(mapped.time_casa);
           const awayId = await resolveTeam(mapped.time_fora);
@@ -121,7 +187,7 @@ export function CsvImportExecutor({
             time_casa_id: homeId,
             time_fora_id: awayId,
             data: date,
-            liga_id: effectiveLigaId,
+            liga_id: rowLigaId,
             status: mapped.status || matchStatus,
             import_batch_id: batchId,
           };
@@ -132,14 +198,16 @@ export function CsvImportExecutor({
           if (mapped.rodada) matchData.rodada = parseInt(mapped.rodada);
           if (mapped.hora) matchData.hora = mapped.hora;
 
-          // Check for existing match
-          const { data: existing } = await supabase
+          // Check for existing match (dedup by liga + date + teams)
+          let existingQuery = supabase
             .from("partidas")
             .select("id")
             .eq("time_casa_id", homeId)
             .eq("time_fora_id", awayId)
-            .eq("data", date)
-            .maybeSingle();
+            .eq("data", date);
+          if (rowLigaId) existingQuery = existingQuery.eq("liga_id", rowLigaId);
+
+          const { data: existing } = await existingQuery.maybeSingle();
 
           if (existing) {
             const { error: updateErr } = await supabase
@@ -154,6 +222,7 @@ export function CsvImportExecutor({
             else inserted++;
           }
 
+          // External ID mapping
           if (mapped.external_id && provider) {
             const matchId = existing?.id;
             if (matchId) {
@@ -223,7 +292,6 @@ export function CsvImportExecutor({
             }
           }
           if (!matchId) {
-            // Try to find by team + date
             const { data: matches } = await supabase
               .from("partidas").select("id")
               .eq("data", date)
