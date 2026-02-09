@@ -22,7 +22,7 @@ const API_FOOTBALL_LEAGUES: Record<number, {
   11: { code: 'CSA', name: 'Copa Sudamericana', country: 'South America' },
   
   // Estaduais Brasileiros
-  255: { code: 'SPA', name: 'Campeonato Paulista', country: 'Brazil', tipo: 'ESTADUAL', estado: 'São Paulo' },
+  475: { code: 'SPA', name: 'Campeonato Paulista', country: 'Brazil', tipo: 'ESTADUAL', estado: 'São Paulo' },
   423: { code: 'RJA', name: 'Campeonato Carioca', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio de Janeiro' },
   425: { code: 'MGA', name: 'Campeonato Mineiro', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Minas Gerais' },
   442: { code: 'RSA', name: 'Campeonato Gaúcho', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio Grande do Sul' },
