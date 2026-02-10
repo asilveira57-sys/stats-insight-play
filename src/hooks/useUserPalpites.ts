@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { calculateConfidence } from '@/lib/poisson';
 
 interface UserPalpite {
   id: string;
@@ -151,33 +152,48 @@ export function useCreateUserPalpite() {
   });
 }
 
-export function useUserAccuracyStats(startDate?: string, endDate?: string) {
+export type ConfidenceFilter = 'all' | 'high' | 'medium' | 'low';
+
+export function useUserAccuracyStats(startDate?: string, endDate?: string, confidenceFilter: ConfidenceFilter = 'all') {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-accuracy-stats', user?.id, startDate, endDate],
+    queryKey: ['user-accuracy-stats', user?.id, startDate, endDate, confidenceFilter],
     queryFn: async () => {
       if (!user) return null;
 
       // Get user's predictions for finished matches
+      // Get user's predictions with system prediction probabilities for confidence calc
       const { data: userPalpites, error: palpitesError } = await supabase
         .from('palpites_usuarios')
         .select(`
           id, placar_casa, placar_fora, aceitou_sugestao,
           partida:partidas!inner(
             id, status, gols_casa, gols_fora, data
+          ),
+          palpite_sistema:palpites(
+            prob_casa, prob_empate, prob_fora
           )
         `)
         .eq('user_id', user.id);
 
       if (palpitesError) throw palpitesError;
 
-      // Filter by finished and date range
+      // Filter by finished, date range, and confidence
       const finishedPalpites = (userPalpites || []).filter((p: any) => {
         if (p.partida?.status !== 'finished') return false;
         const matchDate = p.partida?.data;
         if (startDate && matchDate < startDate) return false;
         if (endDate && matchDate > endDate) return false;
+        
+        // Confidence filter
+        if (confidenceFilter !== 'all') {
+          const sistema = p.palpite_sistema;
+          if (!sistema?.prob_casa || !sistema?.prob_empate || !sistema?.prob_fora) return false;
+          const confidence = calculateConfidence(sistema.prob_casa, sistema.prob_empate, sistema.prob_fora);
+          if (confidence !== confidenceFilter) return false;
+        }
+        
         return true;
       });
 
@@ -228,9 +244,9 @@ export function useUserAccuracyStats(startDate?: string, endDate?: string) {
   });
 }
 
-export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
+export function useSystemAccuracyStats(startDate?: string, endDate?: string, confidenceFilter: ConfidenceFilter = 'all') {
   return useQuery({
-    queryKey: ['system-accuracy-stats', startDate, endDate],
+    queryKey: ['system-accuracy-stats', startDate, endDate, confidenceFilter],
     queryFn: async () => {
       // Fetch ALL records without the default 1000 limit using pagination
       const allRecords: any[] = [];
@@ -241,7 +257,7 @@ export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
       while (hasMore) {
         const { data, error } = await supabase
           .from('comparativo_resultados')
-          .select('*, partida:partidas(data)')
+          .select('*, partida:partidas(data), palpite_sistema:palpites(prob_casa, prob_empate, prob_fora)')
           .range(offset, offset + batchSize - 1);
 
         if (error) throw error;
@@ -257,17 +273,24 @@ export function useSystemAccuracyStats(startDate?: string, endDate?: string) {
         }
       }
 
-      // Filter by date range if provided
+      // Filter by date range and confidence
       let results = allRecords;
-      if (startDate || endDate) {
-        results = results.filter((r: any) => {
-          const matchDate = r.partida?.data;
-          if (!matchDate) return true;
+      results = results.filter((r: any) => {
+        const matchDate = r.partida?.data;
+        if (matchDate) {
           if (startDate && matchDate < startDate) return false;
           if (endDate && matchDate > endDate) return false;
-          return true;
-        });
-      }
+        }
+        
+        if (confidenceFilter !== 'all') {
+          const sistema = r.palpite_sistema;
+          if (!sistema?.prob_casa || !sistema?.prob_empate || !sistema?.prob_fora) return false;
+          const confidence = calculateConfidence(sistema.prob_casa, sistema.prob_empate, sistema.prob_fora);
+          if (confidence !== confidenceFilter) return false;
+        }
+        
+        return true;
+      });
 
       const total = results.length;
       const acertosResultado = results.filter(r => r.sistema_acertou_resultado).length;
