@@ -11,11 +11,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const START_TIME = Date.now();
-const TIME_LIMIT_MS = 140_000; // 140s safety
+const TIME_LIMIT_MS = 120_000; // 120s safety (reduced from 140s)
+
+let REQUEST_START_TIME = Date.now();
 
 function isTimeLimitClose(): boolean {
-  return Date.now() - START_TIME > TIME_LIMIT_MS;
+  return Date.now() - REQUEST_START_TIME > TIME_LIMIT_MS;
 }
 
 // ─── Parsing Logic (replicated from githubImportUtils.ts) ───
@@ -263,6 +264,8 @@ serve(async (req) => {
   let batchId: string | undefined;
 
   try {
+    // Reset start time per request (module-level var persists across invocations)
+    REQUEST_START_TIME = Date.now();
     const body = await req.json();
     batchId = body.batch_id;
     const { owner, repo, provider, files } = body as {
@@ -347,13 +350,13 @@ serve(async (req) => {
     }, 0, 0, 0, 0, []);
 
     // Process files in batches of 3
-    for (let i = 0; i < files.length; i += 3) {
+    for (let i = 0; i < files.length; i += 1) {
       if (isTimeLimitClose()) {
         errors.push("⏱ Tempo limite atingido, progresso salvo parcialmente");
         break;
       }
 
-      const fileBatch = files.slice(i, i + 3);
+      const fileBatch = files.slice(i, i + 1);
       const paths = fileBatch.map((f) => f.path);
 
       // Fetch files from GitHub
@@ -408,7 +411,7 @@ serve(async (req) => {
         }
 
         // Import matches in batches for speed
-        const MATCH_BATCH_SIZE = 10;
+        const MATCH_BATCH_SIZE = 3;
         for (let mi = 0; mi < matches.length; mi += MATCH_BATCH_SIZE) {
           if (isTimeLimitClose()) break;
 
@@ -546,7 +549,7 @@ serve(async (req) => {
         inserted, updated, skipped, failed,
         files_processed: processedFiles,
         total_files: files.length,
-        time_elapsed_ms: Date.now() - START_TIME,
+        time_elapsed_ms: Date.now() - REQUEST_START_TIME,
       },
     });
 
