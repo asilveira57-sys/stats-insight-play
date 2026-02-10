@@ -32,7 +32,8 @@ export function HeroSection() {
             <img 
               src={statballLogo} 
               alt="StatBall" 
-              className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)]"
+              className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)] bg-transparent"
+              style={{ background: 'none' }}
             />
           </div>
           

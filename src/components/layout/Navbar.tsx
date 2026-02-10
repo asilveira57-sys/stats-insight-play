@@ -160,7 +160,8 @@ export function Navbar() {
             <img 
               src={statballLogo} 
               alt="StatBall Logo" 
-              className="h-10 object-contain"
+              className="h-10 object-contain bg-transparent"
+              style={{ background: 'none' }}
             />
           </Link>
 
