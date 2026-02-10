@@ -304,19 +304,35 @@ serve(async (req) => {
     const teamCache = new Map<string, string>();
     const leagueCache = new Map<string, string>();
 
-    // Pre-load teams into cache
-    const { data: allTeams } = await supabase.from("times").select("id, nome, slug").eq("status", "active");
-    for (const t of allTeams || []) {
+    // Pre-load teams into cache (paginated to avoid 1000-row default limit)
+    async function fetchAll(table: string, select: string, filter?: { col: string; val: string }) {
+      const allRows: any[] = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      while (true) {
+        let query = supabase.from(table).select(select).range(from, from + PAGE_SIZE - 1);
+        if (filter) query = query.eq(filter.col, filter.val);
+        const { data, error } = await query;
+        if (error || !data || data.length === 0) break;
+        allRows.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return allRows;
+    }
+
+    const allTeams = await fetchAll("times", "id, nome, slug", { col: "status", val: "active" });
+    for (const t of allTeams) {
       teamCache.set(normalizeName(t.nome), t.id);
       if (t.slug) teamCache.set(t.slug, t.id);
     }
-    const { data: allAliases } = await supabase.from("team_aliases").select("team_id, normalized_alias");
-    for (const a of allAliases || []) {
+    const allAliases = await fetchAll("team_aliases", "team_id, normalized_alias");
+    for (const a of allAliases) {
       if (a.team_id && a.normalized_alias) teamCache.set(a.normalized_alias, a.team_id);
     }
     // Pre-load leagues into cache
-    const { data: allLeagues } = await supabase.from("ligas").select("id, nome, slug");
-    for (const l of allLeagues || []) {
+    const allLeagues = await fetchAll("ligas", "id, nome, slug");
+    for (const l of allLeagues) {
       leagueCache.set(normalizeName(l.nome), l.id);
       if (l.slug) leagueCache.set(l.slug, l.id);
     }
@@ -450,6 +466,17 @@ serve(async (req) => {
             }
 
             // Resolve/create match via RPC (single DB call)
+            // Check if match exists first to distinguish insert vs update
+            const existingNorm = `${homeId}|${awayId}|${match.date}`;
+            const { data: existingMatch } = await supabase.from("partidas")
+              .select("id")
+              .eq("time_casa_id", homeId)
+              .eq("time_fora_id", awayId)
+              .eq("data", match.date)
+              .maybeSingle();
+
+            const isNew = !existingMatch;
+
             const { data: matchId, error: merr } = await supabase.rpc("resolve_or_create_match", {
               p_time_casa_id: homeId,
               p_time_fora_id: awayId,
@@ -474,7 +501,11 @@ serve(async (req) => {
               }).eq("id", matchId);
             }
 
-            updated++;
+            if (isNew) {
+              inserted++;
+            } else {
+              updated++;
+            }
           });
 
           await Promise.all(promises);
@@ -493,7 +524,7 @@ serve(async (req) => {
     }
 
     // Final update
-    const finalStatus = isTimeLimitClose() ? "processing" : (failed > 0 && inserted === 0 ? "failed" : "completed");
+    const finalStatus = isTimeLimitClose() ? "failed" : (failed > 0 && inserted === 0 ? "failed" : "completed");
     await updateBatch(supabase, batchId, finalStatus, {
       processed_files: processedFiles,
       total_files: files.length,
