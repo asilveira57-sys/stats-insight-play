@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { History, RotateCcw, Download, Loader2 } from "lucide-react";
+import { History, RotateCcw, Download, Loader2, XCircle } from "lucide-react";
 import { useCsvImports } from "@/hooks/useCsvImport";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,16 @@ export function CsvImportHistory() {
     }
   };
 
+  const handleCancel = async (importId: string) => {
+    try {
+      await supabase.from("csv_imports" as any).update({ status: "failed", updated_at: new Date().toISOString() } as any).eq("id", importId);
+      toast({ title: "Importação cancelada" });
+      queryClient.invalidateQueries({ queryKey: ["csv-imports"] });
+    } catch (error) {
+      toast({ title: "Erro ao cancelar", description: String(error), variant: "destructive" });
+    }
+  };
+
   const downloadErrors = (imp: any) => {
     const errors = imp.error_report || [];
     if (errors.length === 0) return;
@@ -106,6 +116,11 @@ export function CsvImportHistory() {
                     <TableCell className="text-xs text-destructive">{imp.rows_failed}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        {imp.status === "processing" && (
+                          <Button size="sm" variant="ghost" onClick={() => handleCancel(imp.id)} title="Cancelar importação travada" className="text-destructive">
+                            <XCircle className="w-3 h-3" />
+                          </Button>
+                        )}
                         {imp.status === "completed" && (
                           <Button size="sm" variant="ghost" onClick={() => handleRevert(imp.id)} title="Reverter">
                             <RotateCcw className="w-3 h-3" />
