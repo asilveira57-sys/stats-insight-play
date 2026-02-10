@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useUserPalpites, useUserAccuracyStats, useSystemAccuracyStats } from '@/hooks/useUserPalpites';
+import { useUserPalpites, useUserAccuracyStats, useSystemAccuracyStats, type ConfidenceFilter } from '@/hooks/useUserPalpites';
+import { calculateConfidence } from '@/lib/poisson';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -37,10 +38,11 @@ export function UserPalpitesHistory() {
   const [endDate, setEndDate] = useState<string>(() => 
     format(new Date(), 'yyyy-MM-dd')
   );
+  const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>('all');
   
   const { data: palpites, isLoading } = useUserPalpites();
-  const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats(startDate, endDate);
-  const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats(startDate, endDate);
+  const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats(startDate, endDate, confidenceFilter);
+  const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats(startDate, endDate, confidenceFilter);
 
   // Quick date presets
   const setDatePreset = (preset: 'week' | 'month' | '3months' | 'year' | 'all') => {
@@ -66,12 +68,37 @@ export function UserPalpitesHistory() {
     }
   };
 
-  // Filter palpites by date
+  // Helper to get confidence for a palpite
+  const getConfidence = (palpite: any): 'high' | 'medium' | 'low' | null => {
+    const sistema = palpite.palpite_sistema;
+    if (!sistema?.prob_casa || !sistema?.prob_empate || !sistema?.prob_fora) return null;
+    return calculateConfidence(sistema.prob_casa, sistema.prob_empate, sistema.prob_fora);
+  };
+
+  const confidenceLabelMap: Record<string, string> = {
+    high: 'Alta',
+    medium: 'Média',
+    low: 'Baixa',
+  };
+
+  const confidenceColorMap: Record<string, string> = {
+    high: 'bg-green-500/15 text-green-400 border-green-500/30',
+    medium: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+    low: 'bg-red-500/15 text-red-400 border-red-500/30',
+  };
+
+  // Filter palpites by date and confidence
   const filteredPalpites = palpites?.filter(p => {
     const matchDate = p.partida?.data;
     if (!matchDate) return true;
     if (startDate && matchDate < startDate) return false;
     if (endDate && matchDate > endDate) return false;
+    
+    if (confidenceFilter !== 'all') {
+      const confidence = getConfidence(p);
+      if (confidence !== confidenceFilter) return false;
+    }
+    
     return true;
   });
 
@@ -210,8 +237,32 @@ export function UserPalpitesHistory() {
                 className="h-8 w-36 text-xs"
               />
             </div>
+        </div>
+
+        {/* Confidence Filter */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium">Confiança:</span>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: 'all', label: 'Todas' },
+              { value: 'high', label: '🟢 Alta' },
+              { value: 'medium', label: '🟡 Média' },
+              { value: 'low', label: '🔴 Baixa' },
+            ] as const).map((opt) => (
+              <Button
+                key={opt.value}
+                variant={confidenceFilter === opt.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setConfidenceFilter(opt.value)}
+                className="text-xs"
+              >
+                {opt.label}
+              </Button>
+            ))}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Stats Cards */}
@@ -456,6 +507,18 @@ export function UserPalpitesHistory() {
                     <span>
                       {format(new Date(match.data), "dd 'de' MMM", { locale: ptBR })}
                     </span>
+                    {(() => {
+                      const conf = getConfidence(palpite);
+                      if (!conf) return null;
+                      return (
+                        <>
+                          <span>•</span>
+                          <span className={cn('px-1.5 py-0.5 rounded-md border text-[10px] font-medium', confidenceColorMap[conf])}>
+                            {confidenceLabelMap[conf]}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               );
