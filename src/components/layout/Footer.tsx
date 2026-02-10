@@ -4,7 +4,7 @@ import { CookiePreferencesButton } from "@/components/privacy/CookieConsentBanne
 
 export function Footer() {
   return (
-    <footer className="bg-surface-1 border-t border-border/50 mt-auto">
+    <footer className="dark bg-surface-1 border-t border-border/50 mt-auto">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
