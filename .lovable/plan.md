@@ -1,52 +1,44 @@
 
 
-# Fixar Navbar e Footer no Tema Escuro (Independente do Toggle)
+## Filtro por Confianca no Historico de Palpites
 
-## Problema
-A logo do Statball (`statball-logo.png`) foi desenhada para fundo escuro. No modo claro, ela aparece com fundo branco/acinzentado e perde legibilidade. No modo escuro, a transparencia do PNG tambem causa artefatos visuais. Trocar logos dinamicamente ja gastou creditos e nao funcionou bem.
+### O que sera feito
+Adicionar filtros de confianca (Alta, Media, Baixa, Todas) no historico de palpites do usuario, permitindo analisar o percentual de acerto por nivel de confianca -- tanto nos cards de estatisticas quanto na lista de palpites.
 
-## Solucao
-Forcar a **Navbar** e o **cabecalho do Footer** a sempre usarem o tema escuro, independente do toggle claro/escuro. Isso elimina a necessidade de duas versoes da logo e garante consistencia visual.
+### Como funciona hoje
+- O historico mostra todos os palpites sem distincao de confianca
+- Os cards de estatisticas (Sua Assertividade, IA do Sistema, Quando Seguiu a IA) mostram numeros agregados
+- A confianca ja e calculada no sistema a partir das probabilidades (prob_casa, prob_empate, prob_fora) usando a funcao `calculateConfidence` do poisson.ts
 
-O **Hero** tambem sera fixado no tema escuro, pois ja usa overlays escuros sobre a imagem de fundo.
+### Logica de confianca
+A confianca e derivada das probabilidades do palpite do sistema:
+- **Alta**: probabilidade maxima >= 55% e spread >= 30
+- **Media**: probabilidade maxima >= 40% e spread >= 15
+- **Baixa**: demais casos
 
-## O que muda
+### Mudancas planejadas
 
-### 1. Navbar (sempre escura)
-- Envolver o `<nav>` com a classe `dark` forcada, aplicando cores de fundo e texto do tema escuro diretamente
-- Substituir classes que dependem de variaveis CSS do tema (`bg-background`, `text-foreground`, etc.) por valores fixos escuros
-- A logo usara sempre `statball-logo.png` (versao escura), sem logica condicional de tema
+#### 1. Hook `useUserPalpites` (src/hooks/useUserPalpites.ts)
+- Na query `useUserPalpites`, incluir `prob_casa, prob_empate, prob_fora` no select do `palpite_sistema` (ja busca `placar_casa_estimado, placar_fora_estimado, prob_casa, prob_empate, prob_fora` -- ja esta la)
+- Na funcao `useUserAccuracyStats`, adicionar parametro opcional `confidenceFilter` e calcular as estatisticas segmentadas por nivel de confianca
+- Na funcao `useSystemAccuracyStats`, adicionar o mesmo filtro de confianca, cruzando com a tabela `palpites` para obter as probabilidades
 
-### 2. Footer (sempre escuro)
-- Aplicar a classe `dark` no container principal do Footer
-- Manter todas as cores internas no padrao escuro, independente do tema global
+#### 2. Componente `UserPalpitesHistory` (src/components/palpites/UserPalpitesHistory.tsx)
+- Adicionar estado `confidenceFilter` com opcoes: "all", "high", "medium", "low"
+- Adicionar botoes de filtro (estilo similar aos botoes de periodo ja existentes) na area de filtros
+- Aplicar o filtro na lista `filteredPalpites`, calculando a confianca de cada palpite a partir das probabilidades do sistema
+- Passar o filtro para os hooks de estatisticas para que os cards reflitam apenas o nivel selecionado
+- Exibir badge de confianca em cada item do historico para referencia visual
 
-### 3. HeroSection (sempre escura)
-- Remover a importacao do `useTheme` e da logo light
-- Usar sempre `statball-logo.png`
-- Os overlays ja sao escuros, entao o visual permanece identico
+#### 3. Detalhes tecnicos
+- Importar `calculateConfidence` de `@/lib/poisson` no componente de historico
+- Para cada palpite que tem `palpite_sistema` com probabilidades, calcular o nivel de confianca
+- Palpites sem sistema vinculado serao tratados como "sem confianca definida" e incluidos apenas no filtro "Todas"
+- Os tres cards de estatisticas (Sua Assertividade, IA do Sistema, Quando Seguiu a IA) serao recalculados com base no filtro de confianca ativo
 
-### 4. Sem impacto no resto da pagina
-- O toggle claro/escuro continua funcionando normalmente para todo o conteudo abaixo do hero e acima do footer
-- Cards, tabelas, graficos, paginas internas -- tudo responde ao tema normalmente
+### Resultado esperado
+O usuario podera clicar em "Alta", "Media", "Baixa" ou "Todas" e ver imediatamente:
+- Percentual de acerto de resultado e placar exato filtrado por confianca
+- Lista de palpites filtrada mostrando apenas os do nivel selecionado
+- Badge de confianca visivel em cada palpite da lista
 
-## Detalhes Tecnicos
-
-### Abordagem CSS
-A forma mais limpa e usar a classe `dark` do Tailwind como escopo local:
-
-```html
-<nav class="dark bg-background ...">
-```
-
-Quando um elemento tem a classe `dark`, as variaveis CSS do tema escuro se aplicam a ele e a todos os filhos, independente do tema global. Isso funciona porque o Tailwind usa `class` strategy para temas.
-
-### Arquivos a editar
-1. **`src/components/layout/Navbar.tsx`** -- Adicionar classe `dark` ao `<nav>`, remover logica condicional de tema se houver
-2. **`src/components/layout/Footer.tsx`** -- Adicionar classe `dark` ao `<footer>`
-3. **`src/components/home/HeroSection.tsx`** -- Remover `useTheme`, usar sempre logo escura, adicionar classe `dark` ao `<section>`
-
-### Arquivos que NAO mudam
-- `ThemeContext.tsx` -- o toggle continua funcionando
-- `ThemeToggle.tsx` -- o botao continua visivel e funcional
-- `index.css` -- nenhuma variavel CSS muda
