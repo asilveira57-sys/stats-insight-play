@@ -526,8 +526,9 @@ serve(async (req) => {
       }, inserted, updated, skipped, failed, errors);
     }
 
-    // Final update
-    const finalStatus = isTimeLimitClose() ? "failed" : (failed > 0 && inserted === 0 ? "failed" : "completed");
+    // Final update — only "failed" if work was actually skipped
+    const allFilesProcessed = processedFiles >= files.length;
+    const finalStatus = allFilesProcessed ? "completed" : (isTimeLimitClose() ? "failed" : (failed > 0 && inserted === 0 ? "failed" : "completed"));
     await updateBatch(supabase, batchId, finalStatus, {
       processed_files: processedFiles,
       total_files: files.length,
