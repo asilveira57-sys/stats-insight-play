@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { History, RotateCcw, Download, Loader2, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { History, RotateCcw, Download, Loader2, XCircle, Eye, Info } from "lucide-react";
 import { useCsvImports } from "@/hooks/useCsvImport";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,11 +17,11 @@ export function CsvImportHistory() {
   const { data: imports, isLoading } = useCsvImports();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [viewBatchId, setViewBatchId] = useState<string | null>(null);
+  const [batchMatches, setBatchMatches] = useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
 
   const hasActiveJobs = imports?.some((imp: any) => imp.status === "processing");
-
-  // Auto-refresh while jobs are active
-  // We do this via the hook's refetchInterval instead
 
   const statusBadge = (status: string, imp: any) => {
     if (status === "processing") {
@@ -30,9 +32,7 @@ export function CsvImportHistory() {
       return (
         <div className="flex items-center gap-2">
           <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-          <Badge className="bg-blue-500/20 text-blue-500">
-            {pct}%
-          </Badge>
+          <Badge className="bg-blue-500/20 text-blue-500">{pct}%</Badge>
         </div>
       );
     }
@@ -76,70 +76,166 @@ export function CsvImportHistory() {
     a.href = url; a.download = `erros_${imp.file_name}.txt`; a.click();
   };
 
+  const handleViewMatches = async (importId: string) => {
+    setViewBatchId(importId);
+    setLoadingMatches(true);
+    setBatchMatches([]);
+    try {
+      const { data, error } = await supabase
+        .from("partidas")
+        .select("id, data, gols_casa, gols_fora, status, time_casa:times!partidas_time_casa_id_fkey(nome), time_fora:times!partidas_time_fora_id_fkey(nome), liga:ligas!partidas_liga_id_fkey(nome)")
+        .eq("import_batch_id", importId)
+        .order("data", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      setBatchMatches(data || []);
+    } catch (error) {
+      toast({ title: "Erro ao buscar partidas", description: String(error), variant: "destructive" });
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
+
+  const renderUpdatedTooltip = (imp: any) => {
+    if (imp.status === "completed" && (imp.rows_inserted || 0) === 0 && (imp.rows_updated || 0) > 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3 h-3 text-muted-foreground inline ml-1 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p>Partidas já existentes foram atualizadas com novos dados (placares, status). Nenhuma partida nova foi criada.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return null;
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <History className="w-5 h-5" /> Histórico de Importações
-          {hasActiveJobs && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <p className="text-muted-foreground text-center py-4">Carregando...</p>
-        ) : !imports || imports.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">Nenhuma importação realizada</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Data</TableHead>
-                  <TableHead className="text-xs">Arquivo</TableHead>
-                  <TableHead className="text-xs">Tipo</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs">Inseridos</TableHead>
-                  <TableHead className="text-xs">Atualizados</TableHead>
-                  <TableHead className="text-xs">Falhas</TableHead>
-                  <TableHead className="text-xs">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {imports.map((imp: any) => (
-                  <TableRow key={imp.id}>
-                    <TableCell className="text-xs">{format(new Date(imp.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
-                    <TableCell className="text-xs max-w-32 truncate">{imp.file_name}</TableCell>
-                    <TableCell className="text-xs">{imp.file_type}</TableCell>
-                    <TableCell>{statusBadge(imp.status, imp)}</TableCell>
-                    <TableCell className="text-xs text-green-500">{imp.rows_inserted}</TableCell>
-                    <TableCell className="text-xs text-blue-500">{imp.rows_updated}</TableCell>
-                    <TableCell className="text-xs text-destructive">{imp.rows_failed}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {imp.status === "processing" && (
-                          <Button size="sm" variant="ghost" onClick={() => handleCancel(imp.id)} title="Cancelar importação travada" className="text-destructive">
-                            <XCircle className="w-3 h-3" />
-                          </Button>
-                        )}
-                        {imp.status === "completed" && (
-                          <Button size="sm" variant="ghost" onClick={() => handleRevert(imp.id)} title="Reverter">
-                            <RotateCcw className="w-3 h-3" />
-                          </Button>
-                        )}
-                        {imp.error_report?.length > 0 && (
-                          <Button size="sm" variant="ghost" onClick={() => downloadErrors(imp)} title="Baixar erros">
-                            <Download className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-5 h-5" /> Histórico de Importações
+            {hasActiveJobs && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-muted-foreground text-center py-4">Carregando...</p>
+          ) : !imports || imports.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">Nenhuma importação realizada</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Arquivo</TableHead>
+                    <TableHead className="text-xs">Tipo</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Inseridos</TableHead>
+                    <TableHead className="text-xs">Atualizados</TableHead>
+                    <TableHead className="text-xs">Falhas</TableHead>
+                    <TableHead className="text-xs">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                </TableHeader>
+                <TableBody>
+                  {imports.map((imp: any) => (
+                    <TableRow key={imp.id}>
+                      <TableCell className="text-xs">{format(new Date(imp.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
+                      <TableCell className="text-xs max-w-32 truncate">{imp.file_name}</TableCell>
+                      <TableCell className="text-xs">{imp.file_type}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {statusBadge(imp.status, imp)}
+                          {renderUpdatedTooltip(imp)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-green-500">{imp.rows_inserted}</TableCell>
+                      <TableCell className="text-xs text-blue-500">{imp.rows_updated}</TableCell>
+                      <TableCell className="text-xs text-destructive">{imp.rows_failed}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {(imp.status === "completed" || imp.status === "failed") && (
+                            <Button size="sm" variant="ghost" onClick={() => handleViewMatches(imp.id)} title="Ver jogos importados">
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                          )}
+                          {imp.status === "processing" && (
+                            <Button size="sm" variant="ghost" onClick={() => handleCancel(imp.id)} title="Cancelar importação travada" className="text-destructive">
+                              <XCircle className="w-3 h-3" />
+                            </Button>
+                          )}
+                          {imp.status === "completed" && (
+                            <Button size="sm" variant="ghost" onClick={() => handleRevert(imp.id)} title="Reverter">
+                              <RotateCcw className="w-3 h-3" />
+                            </Button>
+                          )}
+                          {imp.error_report?.length > 0 && (
+                            <Button size="sm" variant="ghost" onClick={() => downloadErrors(imp)} title="Baixar erros">
+                              <Download className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal: Ver partidas do batch */}
+      <Dialog open={!!viewBatchId} onOpenChange={() => setViewBatchId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" /> Partidas desta Importação
+            </DialogTitle>
+          </DialogHeader>
+          {loadingMatches ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          ) : batchMatches.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Nenhuma partida vinculada a este batch. Importações anteriores à correção não têm rastreabilidade.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <p className="text-xs text-muted-foreground mb-2">{batchMatches.length} partida(s) encontrada(s)</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Casa</TableHead>
+                    <TableHead className="text-xs">Placar</TableHead>
+                    <TableHead className="text-xs">Fora</TableHead>
+                    <TableHead className="text-xs">Liga</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batchMatches.map((m: any) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs">{m.data ? format(new Date(m.data), "dd/MM/yy") : "-"}</TableCell>
+                      <TableCell className="text-xs">{m.time_casa?.nome || "-"}</TableCell>
+                      <TableCell className="text-xs font-bold">
+                        {m.gols_casa !== null ? `${m.gols_casa} x ${m.gols_fora}` : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs">{m.time_fora?.nome || "-"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{m.liga?.nome || "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

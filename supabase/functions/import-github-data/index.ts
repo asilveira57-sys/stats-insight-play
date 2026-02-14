@@ -495,12 +495,18 @@ serve(async (req) => {
               return;
             }
 
-            // Update goals if available
+            // Update goals + batch ID if available
             if (match.home_goals !== null && match.away_goals !== null) {
               await supabase.from("partidas").update({
                 gols_casa: match.home_goals,
                 gols_fora: match.away_goals,
                 status: "finished",
+                import_batch_id: batchId,
+              }).eq("id", matchId);
+            } else if (isNew) {
+              // Even without goals, stamp new matches with the batch ID
+              await supabase.from("partidas").update({
+                import_batch_id: batchId,
               }).eq("id", matchId);
             }
 
