@@ -327,6 +327,232 @@ export type Database = {
           },
         ]
       }
+      cartola_atletas: {
+        Row: {
+          apelido: string
+          cartola_atleta_id: number
+          clube_id: number | null
+          created_at: string
+          nome: string | null
+          posicao_id: number | null
+          status_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          apelido: string
+          cartola_atleta_id: number
+          clube_id?: number | null
+          created_at?: string
+          nome?: string | null
+          posicao_id?: number | null
+          status_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          apelido?: string
+          cartola_atleta_id?: number
+          clube_id?: number | null
+          created_at?: string
+          nome?: string | null
+          posicao_id?: number | null
+          status_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cartola_atletas_clube_id_fkey"
+            columns: ["clube_id"]
+            isOneToOne: false
+            referencedRelation: "cartola_clubes"
+            referencedColumns: ["cartola_clube_id"]
+          },
+        ]
+      }
+      cartola_clubes: {
+        Row: {
+          abreviacao: string | null
+          cartola_clube_id: number
+          created_at: string
+          escudo_url: string | null
+          nome: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          abreviacao?: string | null
+          cartola_clube_id: number
+          created_at?: string
+          escudo_url?: string | null
+          nome: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          abreviacao?: string | null
+          cartola_clube_id?: number
+          created_at?: string
+          escudo_url?: string | null
+          nome?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cartola_partidas: {
+        Row: {
+          cartola_partida_id: number | null
+          casa_clube_id: number | null
+          created_at: string
+          data_partida: string | null
+          id: string
+          partida_statball_id: string | null
+          placar_casa: number | null
+          placar_visitante: number | null
+          rodada: number
+          season: number
+          status_partida: string | null
+          updated_at: string
+          visitante_clube_id: number | null
+        }
+        Insert: {
+          cartola_partida_id?: number | null
+          casa_clube_id?: number | null
+          created_at?: string
+          data_partida?: string | null
+          id?: string
+          partida_statball_id?: string | null
+          placar_casa?: number | null
+          placar_visitante?: number | null
+          rodada: number
+          season: number
+          status_partida?: string | null
+          updated_at?: string
+          visitante_clube_id?: number | null
+        }
+        Update: {
+          cartola_partida_id?: number | null
+          casa_clube_id?: number | null
+          created_at?: string
+          data_partida?: string | null
+          id?: string
+          partida_statball_id?: string | null
+          placar_casa?: number | null
+          placar_visitante?: number | null
+          rodada?: number
+          season?: number
+          status_partida?: string | null
+          updated_at?: string
+          visitante_clube_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cartola_partidas_casa_clube_id_fkey"
+            columns: ["casa_clube_id"]
+            isOneToOne: false
+            referencedRelation: "cartola_clubes"
+            referencedColumns: ["cartola_clube_id"]
+          },
+          {
+            foreignKeyName: "cartola_partidas_partida_statball_id_fkey"
+            columns: ["partida_statball_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cartola_partidas_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "cartola_temporadas"
+            referencedColumns: ["season"]
+          },
+          {
+            foreignKeyName: "cartola_partidas_visitante_clube_id_fkey"
+            columns: ["visitante_clube_id"]
+            isOneToOne: false
+            referencedRelation: "cartola_clubes"
+            referencedColumns: ["cartola_clube_id"]
+          },
+        ]
+      }
+      cartola_scouts_rodada: {
+        Row: {
+          campos_scout: Json | null
+          cartola_atleta_id: number
+          clube_id: number | null
+          created_at: string
+          participou: boolean | null
+          pontos: number | null
+          preco: number | null
+          rodada: number
+          season: number
+          updated_at: string
+          variacao_preco: number | null
+        }
+        Insert: {
+          campos_scout?: Json | null
+          cartola_atleta_id: number
+          clube_id?: number | null
+          created_at?: string
+          participou?: boolean | null
+          pontos?: number | null
+          preco?: number | null
+          rodada: number
+          season: number
+          updated_at?: string
+          variacao_preco?: number | null
+        }
+        Update: {
+          campos_scout?: Json | null
+          cartola_atleta_id?: number
+          clube_id?: number | null
+          created_at?: string
+          participou?: boolean | null
+          pontos?: number | null
+          preco?: number | null
+          rodada?: number
+          season?: number
+          updated_at?: string
+          variacao_preco?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cartola_scouts_rodada_cartola_atleta_id_fkey"
+            columns: ["cartola_atleta_id"]
+            isOneToOne: false
+            referencedRelation: "cartola_atletas"
+            referencedColumns: ["cartola_atleta_id"]
+          },
+          {
+            foreignKeyName: "cartola_scouts_rodada_clube_id_fkey"
+            columns: ["clube_id"]
+            isOneToOne: false
+            referencedRelation: "cartola_clubes"
+            referencedColumns: ["cartola_clube_id"]
+          },
+        ]
+      }
+      cartola_temporadas: {
+        Row: {
+          created_at: string
+          fonte_historico: string | null
+          season: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fonte_historico?: string | null
+          season: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fonte_historico?: string | null
+          season?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       comparativo_resultados: {
         Row: {
           created_at: string | null
