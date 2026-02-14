@@ -37,6 +37,7 @@ import AdminUserDetail from "./pages/AdminUserDetail";
 import AdminPlanos from "./pages/AdminPlanos";
 import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminCsvImport from "./pages/AdminCsvImport";
+import AdminCartola from "./pages/AdminCartola";
 import MinhaAssinatura from "./pages/MinhaAssinatura";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoFalha from "./pages/PagamentoFalha";
@@ -113,6 +114,7 @@ const App = () => (
             <Route path="/admin/planos" element={<AdminPlanos />} />
             <Route path="/admin/webhooks" element={<AdminWebhooks />} />
             <Route path="/admin/csv-import" element={<AdminCsvImport />} />
+            <Route path="/admin/cartola" element={<AdminCartola />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
             <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
