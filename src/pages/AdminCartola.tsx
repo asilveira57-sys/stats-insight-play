@@ -117,7 +117,7 @@ export default function AdminCartola() {
   }
   if (!isAdmin) return null;
 
-  const availableSeasons = Array.from({ length: 13 }, (_, i) => 2014 + i);
+  const availableSeasons = [2014, 2015, 2016, 2017, 2018, 2019, 2020];
   const isAnyLoading = importHistory.isPending || syncSeason.isPending || syncRound.isPending;
 
   return (
@@ -196,7 +196,7 @@ export default function AdminCartola() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Importa dados de clubes, atletas, partidas e scouts do repositório CartolaFCDados (2014-2017).
+                    Importa dados de clubes, atletas, partidas e scouts dos repositórios caRtola (2014-2020) e CartolaFCDados (2014-2017). Para temporadas 2021+, use a sincronização via API.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {availableSeasons.map(year => (
@@ -209,7 +209,7 @@ export default function AdminCartola() {
                         className="text-xs"
                       >
                         {year}
-                        {year > 2017 && <span className="ml-1 text-[10px] opacity-60">(limitado)</span>}
+                        {year <= 2017 && <span className="ml-1 text-[10px] opacity-60">(2 fontes)</span>}
                       </Button>
                     ))}
                   </div>
