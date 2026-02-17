@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -124,18 +124,18 @@ export default function AdminWebhooks() {
 
   if (loadingAdmin) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto px-4 py-16 flex justify-center">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!isAdmin) return null;
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-display font-bold">Logs de Webhooks</h1>
@@ -334,6 +334,6 @@ export default function AdminWebhooks() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

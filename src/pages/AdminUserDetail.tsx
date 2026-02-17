@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,41 +27,41 @@ export default function AdminUserDetail() {
 
   if (adminLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-muted-foreground">Verificando permissões...</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-destructive">Acesso não autorizado</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (isLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!data) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-destructive">Usuário não encontrado</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -69,7 +69,7 @@ export default function AdminUserDetail() {
     data;
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -396,6 +396,6 @@ export default function AdminUserDetail() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

@@ -1,4 +1,5 @@
 import { ArrowLeft, AlertTriangle, Users, Copy, GitMerge } from "lucide-react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,10 +44,12 @@ export default function AdminDataQuality() {
 
   if (authLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-96 w-full" />
-      </div>
+      <AdminLayout>
+        <div className="container mx-auto p-6 space-y-6">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -55,6 +58,7 @@ export default function AdminDataQuality() {
   }
 
   return (
+    <AdminLayout>
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -265,5 +269,6 @@ export default function AdminDataQuality() {
         </CardContent>
       </Card>
     </div>
+    </AdminLayout>
   );
 }

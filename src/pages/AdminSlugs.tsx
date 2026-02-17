@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -55,7 +55,7 @@ export default function AdminSlugs() {
 
   if (loadingAuth) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto py-8 px-4">
           <div className="space-y-4">
             <Skeleton className="h-8 w-64" />
@@ -67,7 +67,7 @@ export default function AdminSlugs() {
             </div>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -76,7 +76,7 @@ export default function AdminSlugs() {
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto py-8 px-4 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -230,6 +230,6 @@ export default function AdminSlugs() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

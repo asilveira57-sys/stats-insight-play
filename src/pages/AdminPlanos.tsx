@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,18 +161,18 @@ export default function AdminPlanos() {
 
   if (loadingAdmin) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto px-4 py-16 flex justify-center">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!isAdmin) return null;
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -286,7 +286,7 @@ export default function AdminPlanos() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }
 

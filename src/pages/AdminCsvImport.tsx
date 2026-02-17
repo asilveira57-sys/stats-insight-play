@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, History, Github } from "lucide-react";
@@ -64,7 +64,7 @@ export default function AdminCsvImport() {
   };
 
   if (isLoading) {
-    return <Layout><div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></Layout>;
+    return <AdminLayout><div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></AdminLayout>;
   }
   if (!isAdmin) return null;
 
@@ -74,7 +74,7 @@ export default function AdminCsvImport() {
         <title>Importar CSV | Admin Statball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto px-4 py-6 max-w-5xl">
           <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <Upload className="w-6 h-6 text-primary" /> Importar CSV
@@ -126,7 +126,7 @@ export default function AdminCsvImport() {
             </TabsContent>
           </Tabs>
         </div>
-      </Layout>
+      </AdminLayout>
     </>
   );
 }
