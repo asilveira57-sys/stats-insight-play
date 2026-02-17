@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,26 +29,26 @@ export default function AdminUserProfiles() {
 
   if (adminLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-muted-foreground">Verificando permissões...</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-destructive">Acesso não autorizado</p>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -217,6 +217,6 @@ export default function AdminUserProfiles() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

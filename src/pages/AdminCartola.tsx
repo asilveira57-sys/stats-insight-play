@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export default function AdminCartola() {
   };
 
   if (authLoading) {
-    return <Layout><div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></Layout>;
+    return <AdminLayout><div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></AdminLayout>;
   }
   if (!isAdmin) return null;
 
@@ -126,7 +126,7 @@ export default function AdminCartola() {
         <title>Integração Cartola | Admin Statball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto px-4 py-6 max-w-5xl space-y-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Trophy className="w-6 h-6 text-primary" /> Integração Cartola FC
@@ -390,7 +390,7 @@ export default function AdminCartola() {
             </TabsContent>
           </Tabs>
         </div>
-      </Layout>
+      </AdminLayout>
 
       {/* Manual Mapping Modal */}
       <Dialog open={mappingModalOpen} onOpenChange={setMappingModalOpen}>

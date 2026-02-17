@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,11 +110,11 @@ export default function AdminLgpdPage() {
 
   if (adminLoading || configLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -123,7 +123,7 @@ export default function AdminLgpdPage() {
   const complianceStatus = config?.banner_enabled ? 'ok' : 'warning';
 
   return (
-    <Layout>
+    <AdminLayout>
       <Helmet>
         <title>LGPD e Privacidade | Admin | Statball</title>
         <meta name="robots" content="noindex, nofollow" />
@@ -518,6 +518,6 @@ export default function AdminLgpdPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }

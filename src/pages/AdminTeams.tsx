@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -115,7 +115,7 @@ export default function AdminTeams() {
 
   if (loadingAuth) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto py-8 px-4">
           <div className="space-y-4">
             <Skeleton className="h-8 w-64" />
@@ -127,7 +127,7 @@ export default function AdminTeams() {
             </div>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -136,7 +136,7 @@ export default function AdminTeams() {
   }
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container mx-auto py-8 px-4 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -405,6 +405,6 @@ export default function AdminTeams() {
           refetchDuplicates();
         }}
       />
-    </Layout>
+    </AdminLayout>
   );
 }

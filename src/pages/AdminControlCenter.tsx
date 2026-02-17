@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Layout } from "@/components/layout/Layout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useSystemHealth, useSyncSources, useSyncLogs, useUserStats, useContentStats, usePriorityStats } from "@/hooks/useAdminStats";
 import { useRetroactiveArticles } from "@/hooks/useRetroactiveArticles";
@@ -334,11 +334,11 @@ export default function AdminControlCenter() {
 
   if (isLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -351,7 +351,7 @@ export default function AdminControlCenter() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       
-      <Layout>
+      <AdminLayout>
         <div className="container mx-auto px-4 py-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -916,7 +916,7 @@ export default function AdminControlCenter() {
             </TabsContent>
           </Tabs>
         </div>
-      </Layout>
+      </AdminLayout>
     </>
   );
 }
