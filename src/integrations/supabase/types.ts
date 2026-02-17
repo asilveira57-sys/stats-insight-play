@@ -2463,25 +2463,34 @@ export type Database = {
       team_aliases: {
         Row: {
           alias: string
+          confidence: number | null
           created_at: string | null
+          external_id: string | null
           id: string
           normalized_alias: string
+          source: string | null
           source_id: string | null
           team_id: string | null
         }
         Insert: {
           alias: string
+          confidence?: number | null
           created_at?: string | null
+          external_id?: string | null
           id?: string
           normalized_alias: string
+          source?: string | null
           source_id?: string | null
           team_id?: string | null
         }
         Update: {
           alias?: string
+          confidence?: number | null
           created_at?: string | null
+          external_id?: string | null
           id?: string
           normalized_alias?: string
+          source?: string | null
           source_id?: string | null
           team_id?: string | null
         }
