@@ -2595,6 +2595,7 @@ export type Database = {
           short_code: string | null
           slug: string | null
           slug_locked: boolean
+          status: string
           updated_at: string | null
         }
         Insert: {
@@ -2616,6 +2617,7 @@ export type Database = {
           short_code?: string | null
           slug?: string | null
           slug_locked?: boolean
+          status?: string
           updated_at?: string | null
         }
         Update: {
@@ -2637,6 +2639,7 @@ export type Database = {
           short_code?: string | null
           slug?: string | null
           slug_locked?: boolean
+          status?: string
           updated_at?: string | null
         }
         Relationships: [
