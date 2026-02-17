@@ -2511,6 +2511,39 @@ export type Database = {
           },
         ]
       }
+      team_merge_logs: {
+        Row: {
+          created_at: string
+          id: string
+          merged_by: string | null
+          source_canonical_name: string
+          source_canonical_slug: string | null
+          summary: Json
+          team_source_id: string
+          team_target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          merged_by?: string | null
+          source_canonical_name: string
+          source_canonical_slug?: string | null
+          summary?: Json
+          team_source_id: string
+          team_target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          merged_by?: string | null
+          source_canonical_name?: string
+          source_canonical_slug?: string | null
+          summary?: Json
+          team_source_id?: string
+          team_target_id?: string
+        }
+        Relationships: []
+      }
       tecnico_partida: {
         Row: {
           created_at: string | null
