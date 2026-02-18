@@ -70,9 +70,9 @@ export default function AdminTeams() {
     data: duplicates,
     isLoading: loadingDuplicates,
     refetch: refetchDuplicates,
-  } = useSuggestedDuplicates(50);
+  } = useSuggestedDuplicates();
 
-  const { data: mergeLogs, isLoading: loadingLogs } = useMergeLogs(50);
+  const { data: mergeLogs, isLoading: loadingLogs } = useMergeLogs();
 
   const consolidateAliases = useConsolidateAliases();
 
