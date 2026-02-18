@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -151,26 +152,15 @@ export default function PerformancePrevisoes() {
   const { data: comparisons, isLoading } = useQuery({
     queryKey: ['performance-previsoes-data'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          partida_id,
-          sistema_acertou_resultado,
-          sistema_acertou_placar,
-          total_usuarios_palpitaram,
-          usuarios_acertaram_resultado,
-          usuarios_acertaram_placar,
-          created_at,
-          partidas!inner(
-            data,
-            ligas!inner(nome, slug)
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as unknown as ComparisonData[];
+      const data = await fetchAllRecords<ComparisonData>(
+        'comparativo_resultados',
+        `id, partida_id, sistema_acertou_resultado, sistema_acertou_placar,
+         total_usuarios_palpitaram, usuarios_acertaram_resultado, usuarios_acertaram_placar,
+         created_at, partidas!inner(data, ligas!inner(nome, slug))`,
+        undefined,
+        { column: 'created_at', ascending: false }
+      );
+      return data;
     }
   });
 

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Brain, Users, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,21 +37,14 @@ export function WeeklyEvolutionWidget() {
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
       
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          sistema_acertou_resultado,
-          total_usuarios_palpitaram,
-          usuarios_acertaram_resultado,
-          created_at,
-          partidas (data)
-        `)
-        .gte('created_at', twoMonthsAgo.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data as ComparisonData[];
+      const data = await fetchAllRecords<ComparisonData>(
+        'comparativo_resultados',
+        `id, sistema_acertou_resultado, total_usuarios_palpitaram,
+         usuarios_acertaram_resultado, created_at, partidas(data)`,
+        (q) => q.gte('created_at', twoMonthsAgo.toISOString()),
+        { column: 'created_at', ascending: true }
+      );
+      return data;
     },
     staleTime: 5 * 60 * 1000,
   });
