@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -14,7 +15,7 @@ import {
   BarChart3,
   FileText
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,29 +80,14 @@ export default function EvolucaoSemanal() {
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
       
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          partida_id,
-          sistema_acertou_resultado,
-          total_usuarios_palpitaram,
-          usuarios_acertaram_resultado,
-          created_at,
-          partidas (
-            data,
-            liga_id,
-            ligas (
-              nome,
-              slug
-            )
-          )
-        `)
-        .gte('created_at', sixMonthsAgo.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data as ComparisonData[];
+      const data = await fetchAllRecords<ComparisonData>(
+        'comparativo_resultados',
+        `id, partida_id, sistema_acertou_resultado, total_usuarios_palpitaram,
+         usuarios_acertaram_resultado, created_at, partidas(data, liga_id, ligas(nome, slug))`,
+        (q) => q.gte('created_at', sixMonthsAgo.toISOString()),
+        { column: 'created_at', ascending: true }
+      );
+      return data;
     },
   });
 

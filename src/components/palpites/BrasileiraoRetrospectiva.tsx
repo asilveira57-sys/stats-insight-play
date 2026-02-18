@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Target, TrendingUp, Calendar, Award } from "lucide-react";
@@ -17,20 +17,12 @@ export function BrasileiraoRetrospectiva() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['brasileirao-retrospective'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          sistema_acertou_resultado,
-          sistema_acertou_placar,
-          sistema_prob_resultado,
-          partidas!inner(
-            liga_id,
-            ligas!inner(codigo_api)
-          )
-        `)
-        .eq('partidas.ligas.codigo_api', 'BSA');
-
-      if (error) throw error;
+      const data = await fetchAllRecords<{ sistema_acertou_resultado: boolean | null; sistema_acertou_placar: boolean | null; sistema_prob_resultado: number | null }>(
+        'comparativo_resultados',
+        `sistema_acertou_resultado, sistema_acertou_placar, sistema_prob_resultado,
+         partidas!inner(liga_id, ligas!inner(codigo_api))`,
+        (q) => q.eq('partidas.ligas.codigo_api', 'BSA')
+      );
 
       const total = data?.length || 0;
       const acertosResultado = data?.filter(d => d.sistema_acertou_resultado).length || 0;

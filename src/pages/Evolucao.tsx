@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,26 +45,13 @@ export default function Evolucao() {
     queryFn: async () => {
       const threeMonthsAgo = subMonths(new Date(), 3).toISOString();
       
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          created_at,
-          sistema_acertou_resultado,
-          usuarios_acertaram_resultado,
-          total_usuarios_palpitaram,
-          partida_id,
-          partidas!inner (
-            data,
-            liga_id,
-            ligas (nome)
-          )
-        `)
-        .gte('created_at', threeMonthsAgo)
-        .not('sistema_acertou_resultado', 'is', null)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const data = await fetchAllRecords(
+        'comparativo_resultados',
+        `id, created_at, sistema_acertou_resultado, usuarios_acertaram_resultado,
+         total_usuarios_palpitaram, partida_id, partidas!inner(data, liga_id, ligas(nome))`,
+        (q) => q.gte('created_at', threeMonthsAgo).not('sistema_acertou_resultado', 'is', null),
+        { column: 'created_at', ascending: true }
+      );
       return data;
     },
   });

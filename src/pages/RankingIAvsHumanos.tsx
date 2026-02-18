@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -160,35 +161,20 @@ export default function RankingIAvsHumanos() {
   const { data: comparisons, isLoading } = useQuery({
     queryKey: ['ranking-ia-vs-humanos'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          partida_id,
-          placar_oficial_casa,
-          placar_oficial_fora,
-          resultado_oficial,
-          sistema_placar_casa,
-          sistema_placar_fora,
-          sistema_resultado_previsto,
-          sistema_acertou_resultado,
-          sistema_acertou_placar,
-          total_usuarios_palpitaram,
-          usuarios_acertaram_resultado,
-          usuarios_acertaram_placar,
-          created_at,
-          partidas!inner(
-            data,
-            rodada,
-            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
-            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
-            ligas!inner(nome, slug)
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as unknown as ComparisonData[];
+      const data = await fetchAllRecords<ComparisonData>(
+        'comparativo_resultados',
+        `id, partida_id, placar_oficial_casa, placar_oficial_fora, resultado_oficial,
+         sistema_placar_casa, sistema_placar_fora, sistema_resultado_previsto,
+         sistema_acertou_resultado, sistema_acertou_placar,
+         total_usuarios_palpitaram, usuarios_acertaram_resultado, usuarios_acertaram_placar,
+         created_at, partidas!inner(data, rodada,
+           time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
+           time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
+           ligas!inner(nome, slug))`,
+        undefined,
+        { column: 'created_at', ascending: false }
+      );
+      return data;
     }
   });
 

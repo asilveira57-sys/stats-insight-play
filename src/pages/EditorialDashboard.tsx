@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -124,19 +125,10 @@ export default function EditorialDashboard() {
   const { data: comparisonStats } = useQuery({
     queryKey: ['editorial-comparison-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select(`
-          id,
-          sistema_acertou_resultado,
-          partidas (
-            liga_id,
-            ligas (nome)
-          )
-        `)
-        .limit(1000);
-
-      if (error) throw error;
+      const data = await fetchAllRecords<{ id: string; sistema_acertou_resultado: boolean | null; partidas: { liga_id: string; ligas: { nome: string } | null } | null }>(
+        'comparativo_resultados',
+        `id, sistema_acertou_resultado, partidas(liga_id, ligas(nome))`
+      );
       return data;
     },
     enabled: isAdmin,
@@ -146,14 +138,12 @@ export default function EditorialDashboard() {
   const { data: teamPillarStats } = useQuery({
     queryKey: ['editorial-team-pillars'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('times')
-        .select('id, nome, pillar_content, pillar_updated_at, priority_score')
-        .not('pillar_content', 'is', null)
-        .order('priority_score', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
+      const data = await fetchAllRecords<{ id: string; nome: string; pillar_content: any; pillar_updated_at: string | null; priority_score: number | null }>(
+        'times',
+        'id, nome, pillar_content, pillar_updated_at, priority_score',
+        (q) => q.not('pillar_content', 'is', null),
+        { column: 'priority_score', ascending: false }
+      );
       return data;
     },
     enabled: isAdmin,
@@ -163,14 +153,12 @@ export default function EditorialDashboard() {
   const { data: leaguePillarStats } = useQuery({
     queryKey: ['editorial-league-pillars'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ligas')
-        .select('id, nome, pillar_content, pillar_updated_at, priority_score')
-        .not('pillar_content', 'is', null)
-        .order('priority_score', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
+      const data = await fetchAllRecords<{ id: string; nome: string; pillar_content: any; pillar_updated_at: string | null; priority_score: number | null }>(
+        'ligas',
+        'id, nome, pillar_content, pillar_updated_at, priority_score',
+        (q) => q.not('pillar_content', 'is', null),
+        { column: 'priority_score', ascending: false }
+      );
       return data;
     },
     enabled: isAdmin,
