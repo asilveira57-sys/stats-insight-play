@@ -2511,6 +2511,101 @@ export type Database = {
           },
         ]
       }
+      team_merge_analysis_cache: {
+        Row: {
+          created_by_user_id: string | null
+          data_version_hash: string
+          generated_at: string
+          id: string
+          payload_json: Json
+          team_a_id: string
+          team_b_id: string
+        }
+        Insert: {
+          created_by_user_id?: string | null
+          data_version_hash: string
+          generated_at?: string
+          id?: string
+          payload_json: Json
+          team_a_id: string
+          team_b_id: string
+        }
+        Update: {
+          created_by_user_id?: string | null
+          data_version_hash?: string
+          generated_at?: string
+          id?: string
+          payload_json?: Json
+          team_a_id?: string
+          team_b_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_merge_analysis_cache_team_a_id_fkey"
+            columns: ["team_a_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_merge_analysis_cache_team_b_id_fkey"
+            columns: ["team_b_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_merge_decisions: {
+        Row: {
+          created_at: string
+          decided_at: string
+          decided_by_user_id: string | null
+          decision_reason: string
+          decision_reason_detail: string | null
+          id: string
+          kept_team_id: string
+          removed_team_id: string
+          report_snapshot_json: Json | null
+          risk_level: string | null
+          similarity_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string
+          decided_by_user_id?: string | null
+          decision_reason: string
+          decision_reason_detail?: string | null
+          id?: string
+          kept_team_id: string
+          removed_team_id: string
+          report_snapshot_json?: Json | null
+          risk_level?: string | null
+          similarity_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string
+          decided_by_user_id?: string | null
+          decision_reason?: string
+          decision_reason_detail?: string | null
+          id?: string
+          kept_team_id?: string
+          removed_team_id?: string
+          report_snapshot_json?: Json | null
+          risk_level?: string | null
+          similarity_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_merge_decisions_kept_team_id_fkey"
+            columns: ["kept_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_merge_logs: {
         Row: {
           created_at: string
