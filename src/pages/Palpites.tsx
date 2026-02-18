@@ -38,9 +38,13 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
+import { useHasActiveAccess } from "@/hooks/usePayments";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Palpites() {
   const { user } = useAuth();
+  const { hasAccess } = useHasActiveAccess();
+  const { toast } = useToast();
   const [selectedLeague, setSelectedLeague] = useState("all");
   const [selectedConfidence, setSelectedConfidence] = useState("all");
   const [selectedPalpiteStatus, setSelectedPalpiteStatus] = useState("all");
@@ -261,8 +265,18 @@ export default function Palpites() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleExportCSV}
-                    className="gap-2"
+                    onClick={() => {
+                      if (!user || !hasAccess) {
+                        toast({
+                          title: "Recurso Premium",
+                          description: "Contrate um plano ativo para exportar os dados em CSV.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      handleExportCSV();
+                    }}
+                    className={cn("gap-2", (!user || !hasAccess) && "opacity-50 cursor-not-allowed")}
                   >
                     <Download className="w-4 h-4" />
                     <span className="hidden sm:inline">Exportar CSV</span>
