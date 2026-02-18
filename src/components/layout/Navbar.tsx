@@ -52,7 +52,7 @@ const menuStructure = {
     icon: FileText,
     items: [
       { href: "/noticias", label: "Análises e Notícias", description: "Conteúdo analítico e séries" },
-      { href: "/palpites", label: "Pré-Jogo", description: "Análise matemática antes do jogo" },
+      { href: "/palpites", label: "Palpite", description: "Palpites matemáticos para os jogos" },
     ]
   },
   validacao: {
