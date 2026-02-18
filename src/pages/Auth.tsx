@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ const nomeSchema = z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').op
 
 export default function Auth() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from || '/';
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -28,7 +30,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/precos', { replace: true });
+      navigate(from, { replace: true });
     }
   }, [user, navigate]);
 

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AnalyticsScripts } from "@/components/analytics/AnalyticsScripts";
 import { CookieConsentBanner } from "@/components/privacy/CookieConsentBanner";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
@@ -68,6 +69,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <AnalyticsScripts />
           <CookieConsentBanner />
           <Routes>
