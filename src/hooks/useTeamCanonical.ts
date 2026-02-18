@@ -154,12 +154,12 @@ export function useTeamAliases(teamId: string | null) {
 }
 
 // Fetch suggested duplicates
-export function useSuggestedDuplicates(limit: number = 50) {
+export function useSuggestedDuplicates() {
   return useQuery({
-    queryKey: ["suggested-duplicates", limit],
+    queryKey: ["suggested-duplicates"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_suggested_duplicates", {
-        p_limit: limit,
+        p_limit: 10000,
       });
 
       if (error) throw error;
@@ -169,16 +169,14 @@ export function useSuggestedDuplicates(limit: number = 50) {
 }
 
 // Fetch merge logs
-export function useMergeLogs(limit: number = 50) {
+export function useMergeLogs() {
   return useQuery({
-    queryKey: ["merge-logs", limit],
+    queryKey: ["merge-logs"],
     queryFn: async () => {
-      // Use raw query since table might not be in generated types yet
       const { data, error } = await supabase
-        .from("team_merge_logs" as never)
+        .from("team_merge_logs")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(limit);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       return (data || []) as unknown as MergeLog[];
