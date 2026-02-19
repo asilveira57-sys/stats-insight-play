@@ -106,7 +106,7 @@ export function AdSlot({ position, className = "" }: AdSlotProps) {
         ref={adRef}
         className="adsbygoogle"
         style={{ display: "block", ...config.style }}
-        data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" // TODO: Replace with actual publisher ID
+        data-ad-client="ca-pub-2204887945491050"
         data-ad-slot={config.slot}
         data-ad-format={config.format}
         data-ad-layout={config.format === "fluid" ? "in-article" : undefined}
