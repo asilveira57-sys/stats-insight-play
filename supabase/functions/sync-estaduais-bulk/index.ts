@@ -160,12 +160,14 @@ Deno.serve(async (req) => {
         );
         rateState = rs1;
 
-        const seasons: number[] = leagueData.response?.[0]?.seasons
+        const allSeasons: number[] = leagueData.response?.[0]?.seasons
           ?.map((s: any) => s.year)
           ?.sort((a: number, b: number) => a - b) || [];
 
+        // Free plan only supports 2022-2024, filter to avoid wasting API requests
+        const seasons = allSeasons.filter(y => y >= 2022 && y <= 2025);
         stats.seasonsDiscovered[leagueInfo.name] = seasons;
-        console.log(`Found ${seasons.length} seasons for ${leagueInfo.name}: ${seasons.join(', ')}`);
+        console.log(`Found ${allSeasons.length} total seasons, using ${seasons.length} (2022+): ${seasons.join(', ')}`);
 
         await delay(2000); // Delay between league discovery and fixtures
 
