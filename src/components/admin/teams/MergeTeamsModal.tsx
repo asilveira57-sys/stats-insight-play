@@ -46,6 +46,7 @@ const DECISION_REASONS = [
   { value: "duplicidade_ligas_adversarios", label: "Duplicidade confirmada por ligas/adversários" },
   { value: "duplicidade_id_externo", label: "Duplicidade confirmada por ID externo" },
   { value: "duplicidade_verificacao_manual", label: "Duplicidade confirmada por verificação manual externa" },
+  { value: "validacao_externa_automatica", label: "Validação externa automática (IA + busca)" },
   { value: "dados_insuficientes_assumir_risco", label: "Decisão com dados insuficientes (assumir risco)" },
 ];
 
