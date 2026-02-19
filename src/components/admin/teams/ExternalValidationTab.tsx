@@ -18,6 +18,7 @@ import {
   Shield,
   Bot,
   MapPin,
+  Download,
 } from "lucide-react";
 import {
   useRunExternalValidation,
@@ -97,15 +98,33 @@ export function ExternalValidationTab({
 
         <div className="flex items-center gap-2">
           {result && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRunValidation(true)}
-              disabled={isRunning}
-            >
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Revalidar
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `validacao-${teamAName}-${teamBName}-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRunValidation(true)}
+                disabled={isRunning}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Revalidar
+              </Button>
+            </>
           )}
           {!result && (
             <Button onClick={() => handleRunValidation(false)} disabled={isRunning}>
