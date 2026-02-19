@@ -80,3 +80,9 @@ verify_jwt = false
 
 [functions.import-github-data]
 verify_jwt = false
+
+[functions.team-merge-report]
+verify_jwt = false
+
+[functions.run-team-merge-validation]
+verify_jwt = false

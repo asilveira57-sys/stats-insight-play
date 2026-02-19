@@ -33,8 +33,10 @@ import {
   Calendar,
   Users,
   Search,
+  Globe,
 } from "lucide-react";
 import { useMergeReport, type TeamReportData, type MergeReport } from "@/hooks/useMergeReport";
+import { ExternalValidationTab } from "./ExternalValidationTab";
 
 interface PreMergeReportModalProps {
   open: boolean;
@@ -209,11 +211,15 @@ export function PreMergeReportModal({
 
             {/* Tabs for detailed views */}
             <Tabs defaultValue="leagues" className="w-full">
-              <TabsList className="w-full grid grid-cols-4">
+              <TabsList className="w-full grid grid-cols-5">
                 <TabsTrigger value="leagues">Competições</TabsTrigger>
                 <TabsTrigger value="opponents">Adversários</TabsTrigger>
-                <TabsTrigger value="matches-a">Partidas {report.team_a.nome.slice(0, 15)}</TabsTrigger>
-                <TabsTrigger value="matches-b">Partidas {report.team_b.nome.slice(0, 15)}</TabsTrigger>
+                <TabsTrigger value="matches-a">Partidas {report.team_a.nome.slice(0, 12)}</TabsTrigger>
+                <TabsTrigger value="matches-b">Partidas {report.team_b.nome.slice(0, 12)}</TabsTrigger>
+                <TabsTrigger value="external" className="gap-1">
+                  <Globe className="h-3.5 w-3.5" />
+                  Validação
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="leagues">
@@ -245,6 +251,16 @@ export function PreMergeReportModal({
                   onPageChange={setMatchPage}
                   pageSize={MATCHES_PER_PAGE}
                   onExport={() => exportTeamCSV(report.team_b)}
+                />
+              </TabsContent>
+
+              <TabsContent value="external">
+                <ExternalValidationTab
+                  teamAId={teamAId}
+                  teamAName={teamAName}
+                  teamBId={teamBId}
+                  teamBName={teamBName}
+                  onAutoMergeComplete={onClose}
                 />
               </TabsContent>
             </Tabs>

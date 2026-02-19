@@ -2563,12 +2563,14 @@ export type Database = {
           decided_by_user_id: string | null
           decision_reason: string
           decision_reason_detail: string | null
+          decision_source: string | null
           id: string
           kept_team_id: string
           removed_team_id: string
           report_snapshot_json: Json | null
           risk_level: string | null
           similarity_score: number | null
+          validation_run_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2576,12 +2578,14 @@ export type Database = {
           decided_by_user_id?: string | null
           decision_reason: string
           decision_reason_detail?: string | null
+          decision_source?: string | null
           id?: string
           kept_team_id: string
           removed_team_id: string
           report_snapshot_json?: Json | null
           risk_level?: string | null
           similarity_score?: number | null
+          validation_run_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2589,12 +2593,14 @@ export type Database = {
           decided_by_user_id?: string | null
           decision_reason?: string
           decision_reason_detail?: string | null
+          decision_source?: string | null
           id?: string
           kept_team_id?: string
           removed_team_id?: string
           report_snapshot_json?: Json | null
           risk_level?: string | null
           similarity_score?: number | null
+          validation_run_id?: string | null
         }
         Relationships: [
           {
@@ -2602,6 +2608,13 @@ export type Database = {
             columns: ["kept_team_id"]
             isOneToOne: false
             referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_merge_decisions_validation_run_id_fkey"
+            columns: ["validation_run_id"]
+            isOneToOne: false
+            referencedRelation: "team_merge_validation_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -2636,6 +2649,63 @@ export type Database = {
           summary?: Json
           team_source_id?: string
           team_target_id?: string
+        }
+        Relationships: []
+      }
+      team_merge_validation_runs: {
+        Row: {
+          ai_model_used: string | null
+          confidence_score: number | null
+          created_at: string
+          created_by_user_id: string | null
+          decision: string | null
+          evidence_json: Json | null
+          finished_at: string | null
+          id: string
+          kept_team_id: string
+          reasons_json: Json | null
+          removed_team_id: string
+          risk_level: string | null
+          sample_games_json: Json | null
+          search_provider_used: string | null
+          slug_suggestion: Json | null
+          started_at: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by_user_id?: string | null
+          decision?: string | null
+          evidence_json?: Json | null
+          finished_at?: string | null
+          id?: string
+          kept_team_id: string
+          reasons_json?: Json | null
+          removed_team_id: string
+          risk_level?: string | null
+          sample_games_json?: Json | null
+          search_provider_used?: string | null
+          slug_suggestion?: Json | null
+          started_at?: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by_user_id?: string | null
+          decision?: string | null
+          evidence_json?: Json | null
+          finished_at?: string | null
+          id?: string
+          kept_team_id?: string
+          reasons_json?: Json | null
+          removed_team_id?: string
+          risk_level?: string | null
+          sample_games_json?: Json | null
+          search_provider_used?: string | null
+          slug_suggestion?: Json | null
+          started_at?: string
         }
         Relationships: []
       }
