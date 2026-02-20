@@ -3046,6 +3046,8 @@ export type Database = {
           created_at: string | null
           estado: string | null
           id: string
+          ie: string | null
+          ie_isento: boolean | null
           logradouro: string | null
           nome_fiscal: string | null
           numero: string | null
@@ -3062,6 +3064,8 @@ export type Database = {
           created_at?: string | null
           estado?: string | null
           id?: string
+          ie?: string | null
+          ie_isento?: boolean | null
           logradouro?: string | null
           nome_fiscal?: string | null
           numero?: string | null
@@ -3078,6 +3082,8 @@ export type Database = {
           created_at?: string | null
           estado?: string | null
           id?: string
+          ie?: string | null
+          ie_isento?: boolean | null
           logradouro?: string | null
           nome_fiscal?: string | null
           numero?: string | null

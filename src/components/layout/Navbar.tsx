@@ -232,8 +232,8 @@ export function Navbar() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
-                    <User className="w-5 h-5" />
+                  <Button variant="ghost" size="icon" className="relative text-foreground">
+                    <User className="w-5 h-5 text-foreground" />
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-secondary rounded-full" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -246,12 +246,6 @@ export function Navbar() {
                     <Link to="/configuracoes/perfil" className="flex items-center cursor-pointer">
                       <Settings className="w-4 h-4 mr-2" />
                       Configurações
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/precos" className="flex items-center cursor-pointer">
-                      <Star className="w-4 h-4 mr-2" />
-                      Meu Plano
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

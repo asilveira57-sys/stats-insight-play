@@ -337,18 +337,20 @@ function GestaoPlanoTab() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <Button onClick={() => navigate("/precos")}>
+                <Button onClick={() => navigate("/precos?tab=onetime")}>
                   <Crown className="w-4 h-4 mr-2" /> Fazer Upgrade
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/minha-assinatura")}>
-                  <CreditCard className="w-4 h-4 mr-2" /> Gerenciar Pagamentos
-                </Button>
+                <Link to="/minha-assinatura">
+                  <Button variant="outline">
+                    <CreditCard className="w-4 h-4 mr-2" /> Gerenciar Pagamentos
+                  </Button>
+                </Link>
               </div>
             </div>
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">Nenhuma assinatura ativa.</p>
-              <Button onClick={() => navigate("/precos")}>Ver Planos</Button>
+              <Button onClick={() => navigate("/precos?tab=onetime")}>Ver Planos</Button>
             </div>
           )}
         </CardContent>
@@ -364,8 +366,9 @@ function FaturamentoTab() {
   const queryClient = useQueryClient();
   const { fiscal } = useSettingsData();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const [form, setForm] = useState<Record<string, any>>({});
 
+  const { profile } = useSettingsData();
   const f = fiscal.data;
   const cpf = form.cpf ?? f?.cpf ?? '';
   const nome_fiscal = form.nome_fiscal ?? f?.nome_fiscal ?? '';
@@ -376,6 +379,23 @@ function FaturamentoTab() {
   const bairro = form.bairro ?? f?.bairro ?? '';
   const cidade = form.cidade ?? f?.cidade ?? '';
   const estado = form.estado ?? f?.estado ?? '';
+  const ie = form.ie ?? (f as any)?.ie ?? '';
+  const ieIsento = form.ie_isento ?? (f as any)?.ie_isento ?? false;
+
+  const cleanedCpf = cpf.replace(/\D/g, '');
+  const isPJ = cleanedCpf.length >= 14;
+
+  const fillFromProfile = () => {
+    const p = profile.data;
+    if (!p) return;
+    setForm(f => ({
+      ...f,
+      nome_fiscal: (p as any)?.nome || f.nome_fiscal || '',
+      cidade: (p as any)?.city || f.cidade || '',
+      estado: (p as any)?.state || f.estado || '',
+    }));
+    toast({ title: "Dados preenchidos a partir do perfil!" });
+  };
 
   const validateCpf = (cpf: string) => {
     const cleaned = cpf.replace(/\D/g, '');
@@ -390,9 +410,12 @@ function FaturamentoTab() {
     }
     setSaving(true);
     try {
-      await supabase.from('user_fiscal_data').update({
-        cpf, nome_fiscal, cep, logradouro, numero, complemento, bairro, cidade, estado
-      }).eq('user_id', user.id);
+      const updateData: Record<string, any> = {
+        cpf, nome_fiscal, cep, logradouro, numero, complemento, bairro, cidade, estado,
+        ie: isPJ ? (ieIsento ? null : ie) : null,
+        ie_isento: isPJ ? ieIsento : false,
+      };
+      await supabase.from('user_fiscal_data').update(updateData).eq('user_id', user.id);
 
       queryClient.invalidateQueries({ queryKey: ['settings-fiscal'] });
       toast({ title: "Dados fiscais salvos!" });
@@ -409,20 +432,48 @@ function FaturamentoTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Dados de Faturamento</CardTitle>
-          <CardDescription>Informações para emissão de Nota Fiscal</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Dados de Faturamento</CardTitle>
+              <CardDescription>Informações para emissão de Nota Fiscal</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={fillFromProfile} disabled={!profile.data}>
+              <User className="w-4 h-4 mr-1" /> Preencher com Perfil
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium mb-1.5 block">CPF / CNPJ</label>
               <Input value={cpf} onChange={(e) => setForm(f => ({ ...f, cpf: e.target.value }))} placeholder="000.000.000-00" />
+              {isPJ && <Badge variant="secondary" className="mt-1">Pessoa Jurídica</Badge>}
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Razão Social / Nome</label>
               <Input value={nome_fiscal} onChange={(e) => setForm(f => ({ ...f, nome_fiscal: e.target.value }))} placeholder="Nome fiscal" />
             </div>
           </div>
+          {isPJ && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50 border">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Inscrição Estadual (IE)</label>
+                <Input 
+                  value={ie} 
+                  onChange={(e) => setForm(f => ({ ...f, ie: e.target.value }))} 
+                  placeholder="000.000.000.000" 
+                  disabled={ieIsento}
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-6">
+                <Switch 
+                  checked={ieIsento} 
+                  onCheckedChange={(v) => setForm(f => ({ ...f, ie_isento: v, ie: '' }))} 
+                />
+                <label className="text-sm">Isento de IE</label>
+              </div>
+            </div>
+          )}
           <Separator />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -489,7 +540,7 @@ function PreferenciasTab() {
   const notifEmail = form.notifications_email ?? prefs?.notifications_email ?? true;
   const notifPush = form.notifications_push ?? prefs?.notifications_push ?? false;
   const publicProfile = form.public_profile ?? prefs?.public_profile ?? false;
-  const favoriteTeam = form.favorite_team_id ?? prefs?.favorite_team_id ?? '';
+  const favoriteTeam = form.favorite_team_id ?? prefs?.favorite_team_id ?? null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -499,7 +550,7 @@ function PreferenciasTab() {
         notifications_email: notifEmail,
         notifications_push: notifPush,
         public_profile: publicProfile,
-        favorite_team_id: favoriteTeam || null,
+        favorite_team_id: favoriteTeam === 'none' ? null : (favoriteTeam || null),
       });
       toast({ title: "Preferências salvas!" });
     } catch (err: any) {
@@ -570,12 +621,12 @@ function PreferenciasTab() {
           {/* Favorite team */}
           <div>
             <label className="text-sm font-medium mb-2 block flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> Time Favorito</label>
-            <Select value={favoriteTeam || ''} onValueChange={(v) => setForm(f => ({ ...f, favorite_team_id: v }))}>
+            <Select value={favoriteTeam || 'none'} onValueChange={(v) => setForm(f => ({ ...f, favorite_team_id: v }))}>
               <SelectTrigger className="w-full md:w-80">
                 <SelectValue placeholder="Selecione seu time" />
               </SelectTrigger>
               <SelectContent className="max-h-60">
-                <SelectItem value="">Nenhum</SelectItem>
+                <SelectItem value="none">Nenhum</SelectItem>
                 {teams.data?.map((t: any) => (
                   <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
                 ))}
