@@ -60,6 +60,7 @@ const menuGroups = [
     items: [
       { title: "Usuários", url: "/admin/usuarios", icon: UsersIcon },
       { title: "Planos", url: "/admin/planos", icon: Crown },
+      { title: "Gamificação", url: "/admin/gamificacao", icon: Trophy },
       { title: "Webhooks MP", url: "/admin/webhooks", icon: Zap },
     ],
   },
