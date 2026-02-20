@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.run-team-merge-validation]
 verify_jwt = false
+
+[functions.refresh-rankings]
+verify_jwt = false

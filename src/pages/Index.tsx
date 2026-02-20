@@ -3,6 +3,8 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { HeroSection } from "@/components/home/HeroSection";
+import { GamificationCard } from "@/components/gamification/GamificationCard";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   BookOpen, 
   BarChart3, 
@@ -20,10 +22,23 @@ import {
 } from "lucide-react";
 
 export default function Index() {
+  const { user } = useAuth();
+
   return (
     <Layout>
       {/* BLOCO 1 — HERO */}
       <HeroSection />
+
+      {/* GAMIFICATION CARD — only for logged-in users */}
+      {user && (
+        <section className="py-8 md:py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-md mx-auto">
+              <GamificationCard />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* BLOCO 2 — O QUE É O STATBALL */}
       <section className="py-16 md:py-24 bg-card/50">
