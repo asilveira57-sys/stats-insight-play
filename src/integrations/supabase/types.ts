@@ -276,6 +276,36 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          badge_key: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          name: string
+          rarity: string
+        }
+        Insert: {
+          badge_key: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name: string
+          rarity?: string
+        }
+        Update: {
+          badge_key?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          rarity?: string
+        }
+        Relationships: []
+      }
       cartoes_partida: {
         Row: {
           created_at: string | null
@@ -1138,6 +1168,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gamification_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean
+          rule_key: string
+          updated_at: string
+          xp_value: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          rule_key: string
+          updated_at?: string
+          xp_value?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          rule_key?: string
+          updated_at?: string
+          xp_value?: number
+        }
+        Relationships: []
       }
       gols_partida: {
         Row: {
@@ -2118,6 +2178,39 @@ export type Database = {
         }
         Relationships: []
       }
+      public_rankings_cache: {
+        Row: {
+          id: string
+          period: string
+          period_end: string
+          period_start: string
+          rank_position: number
+          score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          period: string
+          period_end: string
+          period_start: string
+          rank_position?: number
+          score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          period?: string
+          period_end?: string
+          period_start?: string
+          rank_position?: number
+          score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       refunds: {
         Row: {
           amount_cents: number
@@ -2907,6 +3000,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          source_id: string | null
+          source_type: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_fiscal_data: {
         Row: {
           bairro: string | null
@@ -3107,6 +3235,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_xp: {
+        Row: {
+          best_streak_days: number
+          current_streak_days: number
+          last_activity_date: string | null
+          level: number
+          total_xp: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_streak_days?: number
+          current_streak_days?: number
+          last_activity_date?: string | null
+          level?: number
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_streak_days?: number
+          current_streak_days?: number
+          last_activity_date?: string | null
+          level?: number
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       webhook_events: {
         Row: {
           action: string | null
@@ -3149,11 +3307,87 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_events: {
+        Row: {
+          competition_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          match_id: string | null
+          rule_key: string
+          source_id: string | null
+          source_type: string
+          user_id: string
+          xp_delta: number
+        }
+        Insert: {
+          competition_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          rule_key: string
+          source_id?: string | null
+          source_type?: string
+          user_id: string
+          xp_delta?: number
+        }
+        Update: {
+          competition_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          rule_key?: string
+          source_id?: string | null
+          source_type?: string
+          user_id?: string
+          xp_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_events_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xp_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_public_user_summary: {
+        Row: {
+          accuracy_pct: number | null
+          acertos_placar_exato: number | null
+          avatar_url: string | null
+          badge_count: number | null
+          best_streak_days: number | null
+          city: string | null
+          country: string | null
+          current_streak_days: number | null
+          level: number | null
+          nickname: string | null
+          nome: string | null
+          pontuacao_total: number | null
+          state: string | null
+          total_acertos: number | null
+          total_palpites: number | null
+          total_xp: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      calculate_level: { Args: { p_total_xp: number }; Returns: number }
       consolidate_team_aliases: {
         Args: never
         Returns: {
@@ -3218,6 +3452,18 @@ export type Database = {
           p_origin: Database["public"]["Enums"]["ledger_origin"]
           p_reference_id?: string
           p_reference_type?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      grant_xp: {
+        Args: {
+          p_competition_id?: string
+          p_description?: string
+          p_match_id?: string
+          p_rule_key: string
+          p_source_id?: string
+          p_source_type?: string
           p_user_id: string
         }
         Returns: Json
@@ -3293,6 +3539,7 @@ export type Database = {
       slugify_player_name: { Args: { name: string }; Returns: string }
       start_grace_period: { Args: { p_user_id: string }; Returns: Json }
       unaccent: { Args: { "": string }; Returns: string }
+      update_user_streak: { Args: { p_user_id: string }; Returns: Json }
       validate_nickname: {
         Args: { p_nickname: string; p_user_id?: string }
         Returns: {
@@ -3300,6 +3547,7 @@ export type Database = {
           is_valid: boolean
         }[]
       }
+      xp_for_level: { Args: { p_level: number }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

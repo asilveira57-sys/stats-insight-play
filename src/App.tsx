@@ -39,7 +39,9 @@ import AdminPlanos from "./pages/AdminPlanos";
 import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminCsvImport from "./pages/AdminCsvImport";
 import AdminCartola from "./pages/AdminCartola";
+import AdminGamification from "./pages/AdminGamification";
 import MinhaAssinatura from "./pages/MinhaAssinatura";
+import Ranking from "./pages/Ranking";
 import Configuracoes from "./pages/Configuracoes";
 import PerfilPublico from "./pages/PerfilPublico";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
@@ -119,7 +121,9 @@ const App = () => (
             <Route path="/admin/webhooks" element={<AdminWebhooks />} />
             <Route path="/admin/csv-import" element={<AdminCsvImport />} />
             <Route path="/admin/cartola" element={<AdminCartola />} />
+            <Route path="/admin/gamificacao" element={<AdminGamification />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
+            <Route path="/ranking" element={<Ranking />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
             <Route path="/configuracoes/perfil" element={<Configuracoes />} />
             <Route path="/usuario/:username" element={<PerfilPublico />} />

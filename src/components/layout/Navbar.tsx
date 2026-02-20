@@ -61,6 +61,7 @@ const menuStructure = {
     items: [
       { href: "/validacao/semanal", label: "Série Semanal", description: "Validação semanal de palpites" },
       { href: "/ranking/ia-vs-humanos", label: "IA vs Humanos", description: "Comparativo de acertos" },
+      { href: "/ranking", label: "Ranking de Palpiteiros", description: "Top jogadores por XP e acertos" },
       { href: "/retrospectiva/brasileirao-2024", label: "Retrospectiva", description: "Análise histórica completa" },
     ]
   },
