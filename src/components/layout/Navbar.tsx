@@ -242,6 +242,12 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem asChild>
+                    <Link to="/configuracoes/perfil" className="flex items-center cursor-pointer">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Configurações
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/precos" className="flex items-center cursor-pointer">
                       <Star className="w-4 h-4 mr-2" />
                       Meu Plano

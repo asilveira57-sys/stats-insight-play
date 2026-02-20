@@ -2073,33 +2073,45 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           email: string | null
           id: string
           nome: string | null
+          phone: string | null
           plano: Database["public"]["Enums"]["plano_tipo"] | null
+          state: string | null
           status: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           nome?: string | null
+          phone?: string | null
           plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          state?: string | null
           status?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           nome?: string | null
+          phone?: string | null
           plano?: Database["public"]["Enums"]["plano_tipo"] | null
+          state?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string
@@ -2991,6 +3003,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          favorite_team_id: string | null
+          id: string
+          notifications_email: boolean
+          notifications_push: boolean
+          public_profile: boolean
+          theme_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          favorite_team_id?: string | null
+          id?: string
+          notifications_email?: boolean
+          notifications_push?: boolean
+          public_profile?: boolean
+          theme_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          favorite_team_id?: string | null
+          id?: string
+          notifications_email?: boolean
+          notifications_push?: boolean
+          public_profile?: boolean
+          theme_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_favorite_team_id_fkey"
+            columns: ["favorite_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_public_profiles: {
         Row: {
           avatar_status: string | null
@@ -3002,6 +3058,7 @@ export type Database = {
           nickname_normalized: string | null
           updated_at: string | null
           user_id: string
+          username_changes_count: number
         }
         Insert: {
           avatar_status?: string | null
@@ -3013,6 +3070,7 @@ export type Database = {
           nickname_normalized?: string | null
           updated_at?: string | null
           user_id: string
+          username_changes_count?: number
         }
         Update: {
           avatar_status?: string | null
@@ -3024,6 +3082,7 @@ export type Database = {
           nickname_normalized?: string | null
           updated_at?: string | null
           user_id?: string
+          username_changes_count?: number
         }
         Relationships: []
       }
