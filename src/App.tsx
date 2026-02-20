@@ -40,6 +40,8 @@ import AdminWebhooks from "./pages/AdminWebhooks";
 import AdminCsvImport from "./pages/AdminCsvImport";
 import AdminCartola from "./pages/AdminCartola";
 import MinhaAssinatura from "./pages/MinhaAssinatura";
+import Configuracoes from "./pages/Configuracoes";
+import PerfilPublico from "./pages/PerfilPublico";
 import PagamentoSucesso from "./pages/PagamentoSucesso";
 import PagamentoFalha from "./pages/PagamentoFalha";
 import PagamentoPendente from "./pages/PagamentoPendente";
@@ -119,6 +121,8 @@ const App = () => (
             <Route path="/admin/cartola" element={<AdminCartola />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
+            <Route path="/configuracoes/perfil" element={<Configuracoes />} />
+            <Route path="/usuario/:username" element={<PerfilPublico />} />
             <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
             <Route path="/pagamento/falha" element={<PagamentoFalha />} />
             <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
