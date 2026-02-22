@@ -2565,6 +2565,33 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          module: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          module?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          module?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       team_aliases: {
         Row: {
           alias: string
@@ -3140,34 +3167,46 @@ export type Database = {
       user_preferences: {
         Row: {
           created_at: string
+          favorite_league_ids: Json | null
           favorite_team_id: string | null
+          favorite_team_ids: Json | null
+          focus_region: string
           id: string
           notifications_email: boolean
           notifications_push: boolean
           public_profile: boolean
           theme_mode: string
+          timezone: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          favorite_league_ids?: Json | null
           favorite_team_id?: string | null
+          favorite_team_ids?: Json | null
+          focus_region?: string
           id?: string
           notifications_email?: boolean
           notifications_push?: boolean
           public_profile?: boolean
           theme_mode?: string
+          timezone?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          favorite_league_ids?: Json | null
           favorite_team_id?: string | null
+          favorite_team_ids?: Json | null
+          focus_region?: string
           id?: string
           notifications_email?: boolean
           notifications_push?: boolean
           public_profile?: boolean
           theme_mode?: string
+          timezone?: string
           updated_at?: string
           user_id?: string
         }
