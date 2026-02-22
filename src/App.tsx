@@ -55,6 +55,7 @@ import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
 import HubDashboard from "./pages/hub/Dashboard";
+import DashboardHome from "./pages/DashboardHome";
 import HubSources from "./pages/hub/Sources";
 import HubMatches from "./pages/hub/Matches";
 import HubSyncDetails from "./pages/hub/SyncDetails";
@@ -78,6 +79,7 @@ const App = () => (
           <CookieConsentBanner />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/hub" element={<HubDashboard />} />
             <Route path="/hub/sources" element={<HubSources />} />
             <Route path="/hub/matches" element={<HubMatches />} />
