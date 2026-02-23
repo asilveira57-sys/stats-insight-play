@@ -36,17 +36,21 @@ export function useTodayMatches(focusRegion: string) {
         .order('hora', { ascending: true });
       if (error) throw error;
 
-      // Sort: Brazil first, then international
-      const sorted = (data || []).sort((a: any, b: any) => {
-        const aIsBR = a.liga?.pais === 'Brazil' || a.liga?.pais === 'Brasil';
-        const bIsBR = b.liga?.pais === 'Brazil' || b.liga?.pais === 'Brasil';
-        if (focusRegion === 'BR') {
-          if (aIsBR && !bIsBR) return -1;
-          if (!aIsBR && bIsBR) return 1;
-        }
-        return 0;
-      });
-      return sorted;
+      const all = data || [];
+      
+      // Filter by region
+      if (focusRegion === 'BR') {
+        return all.filter((m: any) => {
+          const pais = m.liga?.pais;
+          return pais === 'Brazil' || pais === 'Brasil';
+        });
+      } else if (focusRegion === 'INT') {
+        return all.filter((m: any) => {
+          const pais = m.liga?.pais;
+          return pais !== 'Brazil' && pais !== 'Brasil';
+        });
+      }
+      return all;
     },
     staleTime: 30_000,
   });
