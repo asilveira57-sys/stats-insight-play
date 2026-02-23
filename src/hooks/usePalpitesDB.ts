@@ -260,14 +260,14 @@ async function generatePrediction(match: any): Promise<Prediction | null> {
 }
 
 export function usePredictions(options?: {
-  leagueCode?: string;
+  leagueId?: string;
   confidence?: string;
   days?: number;
 }) {
-  const { leagueCode, confidence, days = 7 } = options || {};
+  const { leagueId, confidence, days = 7 } = options || {};
 
   return useQuery({
-    queryKey: ['predictions', leagueCode, confidence, days],
+    queryKey: ['predictions', leagueId, confidence, days],
     queryFn: async () => {
       const today = new Date();
       const futureDate = new Date(today);
@@ -281,6 +281,7 @@ export function usePredictions(options?: {
           hora,
           time_casa_id,
           time_fora_id,
+          liga_id,
           ligas (
             nome,
             codigo_api,
@@ -293,8 +294,8 @@ export function usePredictions(options?: {
         .order('data', { ascending: true })
         .order('hora', { ascending: true });
 
-      if (leagueCode && leagueCode !== 'all') {
-        query = query.eq('ligas.codigo_api', leagueCode);
+      if (leagueId) {
+        query = query.eq('liga_id', leagueId);
       }
 
       const { data: matches, error } = await query;
@@ -314,11 +315,6 @@ export function usePredictions(options?: {
 
       if (confidence && confidence !== 'all') {
         validPredictions = validPredictions.filter(p => p.confidence === confidence);
-      }
-
-      // Filter by league if specified (need to do this after since ligas is a join)
-      if (leagueCode && leagueCode !== 'all') {
-        validPredictions = validPredictions.filter(p => p.leagueCode === leagueCode);
       }
 
       return validPredictions;
@@ -345,15 +341,41 @@ export function useLeaguesForPredictions() {
   return useQuery({
     queryKey: ['leagues-predictions'],
     queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const future = futureDate.toISOString().split('T')[0];
+
+      // Get distinct league IDs from scheduled matches in next 7 days
+      const { data: matchLeagues } = await supabase
+        .from('partidas')
+        .select('liga_id')
+        .eq('status', 'scheduled')
+        .gte('data', today)
+        .lte('data', future);
+
+      const leagueIds = [...new Set((matchLeagues || []).map(m => m.liga_id).filter(Boolean))];
+      if (leagueIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('ligas')
-        .select('id, nome, logo_url, codigo_api')
+        .select('id, nome, logo_url, codigo_api, pais, slug')
+        .in('id', leagueIds)
         .eq('ativa', true);
 
       if (error) throw error;
-      
+
+      // Deduplicate by slug
+      const seen = new Set<string>();
+      const unique = (data || []).filter(l => {
+        const key = l.slug || l.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       // Sort by priority (Brazilian leagues first)
-      return (data || []).sort((a, b) => {
+      return unique.sort((a, b) => {
         const priorityA = LEAGUE_PRIORITY[a.codigo_api || ''] ?? 50;
         const priorityB = LEAGUE_PRIORITY[b.codigo_api || ''] ?? 50;
         return priorityA - priorityB;
