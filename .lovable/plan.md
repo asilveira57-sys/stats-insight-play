@@ -1,57 +1,119 @@
 
 
-# Plano de Melhorias - Perfil e Configuracoes
+# Correção do Filtro de Ligas na Página de Palpites
 
-## Problemas Identificados e Solucoes
+## Problemas Identificados
 
-### 1. Icone de perfil some no modo noite
-A Navbar forca `className="dark"` no elemento `<nav>`, o que faz o icone `<User>` (com `variant="ghost"`) ficar invisivel por falta de contraste. O botao usa cor do foreground que no contexto dark-on-dark desaparece.
+1. **"Brazilian Cup Matches" duplicada 10+ vezes** na tabela `ligas` (todas sem `codigo_api`, importadas incorretamente)
+2. **Nomes em inglês** ("Brazilian Cup Matches", "Brasileirao Matches", "Libertadores Matches") que deveriam estar em português
+3. **Filtro exibe ligas sem partidas** agendadas, poluindo a interface
+4. **Clique seleciona o bloco inteiro** em azul (problema de CSS no componente)
 
-**Solucao:** Adicionar classe explicita de cor ao icone do User no botao de perfil (ex: `text-foreground`) para garantir visibilidade independente do tema.
+## Solução
 
-### 2. Remover "Meu Plano" do dropdown do usuario
-Conforme indicado nas imagens, o link "Meu Plano" no dropdown da Navbar e redundante.
+### 1. Limpeza do Banco de Dados (Migration SQL)
 
-**Solucao:** Remover as linhas 251-256 do Navbar.tsx que conteem o `DropdownMenuItem` com "Meu Plano" apontando para `/precos`.
+- Desativar (`ativa = false`) todas as ligas duplicadas "Brazilian Cup Matches" (IDs órfãos sem `codigo_api`)
+- Desativar "Brasileirao Matches" e "Libertadores Matches" (duplicatas informais)
+- Migrar partidas dessas ligas para as ligas canônicas correspondentes:
+  - "Brazilian Cup Matches" -> "Copa do Brasil" (`dadb34d3-...`)
+  - "Brasileirao Matches" -> "Campeonato Brasileiro Série A" (`c47cb84c-...`)
+  - "Libertadores Matches" -> "Copa Libertadores" (`a05c6f7e-...`)
 
-### 3. "Minha Assinatura" deve voltar para dentro do Perfil
-Atualmente o botao "Gerenciar Pagamentos" na aba Plano redireciona para `/minha-assinatura` (pagina separada). O usuario quer que a gestao de assinatura fique integrada dentro da aba "Plano" em `/configuracoes/perfil`.
+### 2. Filtro de Ligas Inteligente (Palpites.tsx + usePalpitesDB.ts)
 
-**Solucao:** Incorporar o conteudo essencial de "Minha Assinatura" (historico de pagamentos e assinaturas recorrentes) diretamente na aba `GestaoPlanoTab`, removendo o botao de redirecionamento externo. O link "Gerenciar Pagamentos" passara a expandir/mostrar as secoes de historico inline.
+- Alterar `useLeaguesForPredictions` para buscar **somente ligas que possuem partidas agendadas nos próximos 7 dias** (JOIN com `partidas`)
+- Remover o `.slice(0, 6)` que limita artificialmente a 6 ligas
+- Deduplicar por `slug` no frontend como fallback de segurança
+- Ordenar: Brasil primeiro, depois internacionais, alfabeticamente dentro de cada grupo
 
-### 4. "Fazer Upgrade" deve abrir na aba Avulso por padrao
-O botao "Fazer Upgrade" na aba Plano navega para `/precos` que abre na aba "Assinatura" por padrao. O usuario quer que abra na aba "Avulso".
+### 3. Correção Visual (Palpites.tsx)
 
-**Solucao:** Alterar a navegacao do botao "Fazer Upgrade" de `navigate("/precos")` para `navigate("/precos?tab=onetime")`. A pagina Precos ja le o parametro `tab` da URL (linha 39), entao basta passar o valor correto.
-
-### 5. Faturamento: puxar dados do perfil e adicionar IE
-O formulario de faturamento nao puxa dados ja preenchidos no perfil (nome, cidade, estado). Alem disso, falta campo de IE (Inscricao Estadual) para pessoa juridica com opcao "Isento".
-
-**Solucao:**
-- Adicionar botao "Preencher com dados do perfil" que copia `nome` do profile para `nome_fiscal`, e `cidade`/`estado` do profile para os campos correspondentes de faturamento.
-- Adicionar deteccao automatica PF/PJ baseada no tamanho do CPF/CNPJ (11 = PF, 14 = PJ).
-- Quando PJ detectada, exibir campo "Inscricao Estadual (IE)" com checkbox "Isento de IE".
-- Requer migration para adicionar colunas `ie` (text) e `ie_isento` (boolean default false) na tabela `user_fiscal_data`.
-
-### 6. Preferencias bugada na rota
-A aba Preferencias carrega uma query de times (`useQuery` para `times`) dentro do componente, mas o `Select` com valor vazio (`value=""` para "Nenhum") causa problemas no Radix Select que nao aceita string vazia como valor valido.
-
-**Solucao:** Substituir `value=""` por `value="none"` no SelectItem de "Nenhum" e ajustar a logica para converter "none" em `null` ao salvar. Tambem garantir que o estado inicial trate `null` como `"none"`.
+- Adicionar `outline-none` e `select-none` nos botões de filtro para remover o destaque azul ao clicar
+- Garantir que a seleção visual funcione corretamente sem selecionar o bloco inteiro
 
 ---
 
-## Detalhes Tecnicos
+## Detalhes Técnicos
 
-### Arquivos a modificar:
-1. **`src/components/layout/Navbar.tsx`** - Fix icone dark mode + remover "Meu Plano"
-2. **`src/pages/Configuracoes.tsx`** - Integrar assinatura na aba Plano, fix Preferencias, melhorar Faturamento
-3. **`src/pages/Precos.tsx`** - Nenhuma mudanca necessaria (ja suporta `?tab=`)
+### Migration SQL
 
-### Migration SQL necessaria:
-- Adicionar `ie TEXT` e `ie_isento BOOLEAN DEFAULT false` a `user_fiscal_data`
+```sql
+-- Migrar partidas de ligas duplicadas para as canônicas
+UPDATE partidas SET liga_id = 'dadb34d3-3d0b-4e0a-a25c-10cbde5dbafd'
+WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Brazilian Cup Matches');
 
-### Ordem de execucao:
-1. Migration SQL (ie/ie_isento)
-2. Navbar.tsx (icone + remover Meu Plano)
-3. Configuracoes.tsx (todas as melhorias das abas)
+UPDATE partidas SET liga_id = 'c47cb84c-8cb0-444b-a2b7-9f328c20cc72'
+WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Brasileirao Matches');
+
+UPDATE partidas SET liga_id = 'a05c6f7e-7a3e-493a-81ab-5c54f59c8b05'
+WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Libertadores Matches');
+
+-- Desativar duplicatas
+UPDATE ligas SET ativa = false WHERE nome IN ('Brazilian Cup Matches', 'Brasileirao Matches', 'Libertadores Matches');
+```
+
+### Hook `useLeaguesForPredictions` (usePalpitesDB.ts)
+
+Reescrever para buscar apenas ligas com partidas agendadas, usando uma query que faz JOIN:
+
+```typescript
+export function useLeaguesForPredictions() {
+  return useQuery({
+    queryKey: ['leagues-predictions'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const future = futureDate.toISOString().split('T')[0];
+
+      // Get distinct league IDs from scheduled matches
+      const { data: matchLeagues } = await supabase
+        .from('partidas')
+        .select('liga_id')
+        .eq('status', 'scheduled')
+        .gte('data', today)
+        .lte('data', future);
+
+      const leagueIds = [...new Set((matchLeagues || []).map(m => m.liga_id).filter(Boolean))];
+      if (leagueIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('ligas')
+        .select('id, nome, logo_url, codigo_api, pais, slug')
+        .in('id', leagueIds)
+        .eq('ativa', true);
+
+      if (error) throw error;
+
+      // Deduplicate by slug
+      const seen = new Set();
+      const unique = (data || []).filter(l => {
+        if (seen.has(l.slug)) return false;
+        seen.add(l.slug);
+        return true;
+      });
+
+      // Sort: Brazil first, then by priority/name
+      return unique.sort((a, b) => {
+        const priorityA = LEAGUE_PRIORITY[a.codigo_api || ''] ?? 50;
+        const priorityB = LEAGUE_PRIORITY[b.codigo_api || ''] ?? 50;
+        return priorityA - priorityB;
+      });
+    },
+  });
+}
+```
+
+### Filtro visual (Palpites.tsx)
+
+- Remover `.slice(0, 6)` para exibir todas as ligas com partidas
+- Adicionar classes `outline-none select-none focus:outline-none` nos botões de filtro
+- Filtrar por `league.id` em vez de `codigo_api` (pois algumas ligas não possuem `codigo_api`)
+
+### Arquivos modificados
+
+1. **Migration SQL** -- limpeza de duplicatas e migração de partidas
+2. **src/hooks/usePalpitesDB.ts** -- hook `useLeaguesForPredictions` inteligente
+3. **src/pages/Palpites.tsx** -- remoção do `.slice(0, 6)`, correção do CSS de seleção, filtro por ID
 
