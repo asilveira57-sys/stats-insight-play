@@ -56,7 +56,7 @@ export default function Palpites() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
-    leagueCode: selectedLeague,
+    leagueId: selectedLeague !== 'all' ? selectedLeague : undefined,
     confidence: selectedConfidence,
     days: 7,
   });
@@ -311,7 +311,7 @@ export default function Palpites() {
                     <button
                       onClick={() => setSelectedLeague("all")}
                       className={cn(
-                        "px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        "px-3 py-2 rounded-lg text-sm font-medium transition-all outline-none select-none focus:outline-none",
                         selectedLeague === "all"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted hover:bg-muted/80 text-muted-foreground"
@@ -322,26 +322,25 @@ export default function Palpites() {
                     {loadingLeagues ? (
                       <Skeleton className="h-9 w-32" />
                     ) : (
-                      leagues?.slice(0, 6).map((league) => {
+                      leagues?.map((league) => {
                         const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || 0;
+                        const isSelected = selectedLeague === league.id;
                         return (
                           <button
                             key={league.id}
-                            onClick={() => setSelectedLeague(league.codigo_api || '')}
+                            onClick={() => setSelectedLeague(league.id)}
                             className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all relative",
-                              selectedLeague === league.codigo_api
+                              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all relative outline-none select-none focus:outline-none",
+                              isSelected
                                 ? "bg-primary text-primary-foreground"
-                                : matchCount === 0 
-                                  ? "bg-muted/50 hover:bg-muted/60 text-muted-foreground/60"
-                                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                                : "bg-muted hover:bg-muted/80 text-muted-foreground"
                             )}
                           >
                             {league.logo_url && (
                               <img
                                 src={league.logo_url}
                                 alt={league.nome}
-                                className={cn("w-4 h-4 object-contain", matchCount === 0 && "opacity-50")}
+                                className="w-4 h-4 object-contain"
                               />
                             )}
                             <span className="hidden sm:inline">{league.nome}</span>
@@ -369,7 +368,7 @@ export default function Palpites() {
                         key={filter.id}
                         onClick={() => setSelectedConfidence(filter.id)}
                         className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                          "px-3 py-2 rounded-lg text-sm font-medium transition-all outline-none select-none focus:outline-none",
                           selectedConfidence === filter.id
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted hover:bg-muted/80 text-muted-foreground"
