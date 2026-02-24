@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { subDays, subHours, format } from "date-fns";
 
 export interface SystemHealth {
@@ -207,8 +208,7 @@ export function useSyncLogs(filters?: {
       let query = supabase
         .from('sync_logs')
         .select('*, data_sources(name)')
-        .order('created_at', { ascending: false })
-        .limit(filters?.limit || 100);
+        .order('created_at', { ascending: false });
 
       if (filters?.dateFrom) {
         query = query.gte('created_at', filters.dateFrom);

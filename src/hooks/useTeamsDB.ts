@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import type { Json } from "@/integrations/supabase/types";
 
 export interface TeamColors {
@@ -71,13 +72,10 @@ export function useTeams() {
   return useQuery({
     queryKey: ['teams'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('times')
-        .select('*')
-        .order('nome');
-      
-      if (error) throw error;
-      return (data || []).map(mapToTime);
+      const data = await fetchAllRecords<any>(
+        'times', '*', undefined, { column: 'nome', ascending: true }
+      );
+      return data.map(mapToTime);
     },
   });
 }
@@ -97,36 +95,26 @@ export function useTeamStats(teamId: string | null) {
 
       if (teamError) throw teamError;
 
-      // Buscar partidas do time (casa e fora) finalizadas
-      const { data: homeMatches, error: homeError } = await supabase
-        .from('partidas')
-        .select(`
-          *,
-          liga:ligas(nome, logo_url)
-        `)
-        .eq('time_casa_id', teamId)
-        .eq('status', 'finished')
-        .order('data', { ascending: false });
+      // Buscar partidas do time (casa e fora) finalizadas - sem limite
+      const homeMatches = await fetchAllRecords<any>(
+        'partidas',
+        '*, liga:ligas(nome, logo_url)',
+        (q) => q.eq('time_casa_id', teamId).eq('status', 'finished'),
+        { column: 'data', ascending: false }
+      );
 
-      if (homeError) throw homeError;
-
-      const { data: awayMatches, error: awayError } = await supabase
-        .from('partidas')
-        .select(`
-          *,
-          liga:ligas(nome, logo_url)
-        `)
-        .eq('time_fora_id', teamId)
-        .eq('status', 'finished')
-        .order('data', { ascending: false });
-
-      if (awayError) throw awayError;
+      const awayMatches = await fetchAllRecords<any>(
+        'partidas',
+        '*, liga:ligas(nome, logo_url)',
+        (q) => q.eq('time_fora_id', teamId).eq('status', 'finished'),
+        { column: 'data', ascending: false }
+      );
 
       // Calcular estatísticas em casa
       let vitoriasCasa = 0, empatesCasa = 0, derrotasCasa = 0;
       let golsMarcadosCasa = 0, golsSofridosCasa = 0;
 
-      homeMatches?.forEach(match => {
+      homeMatches.forEach(match => {
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
         golsMarcadosCasa += golsCasa;
@@ -141,7 +129,7 @@ export function useTeamStats(teamId: string | null) {
       let vitoriasFora = 0, empatesFora = 0, derrotasFora = 0;
       let golsMarcadosFora = 0, golsSofridosFora = 0;
 
-      awayMatches?.forEach(match => {
+      awayMatches.forEach(match => {
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
         golsMarcadosFora += golsFora;
@@ -153,7 +141,7 @@ export function useTeamStats(teamId: string | null) {
       });
 
       // Combinar todas as partidas e ordenar por data para pegar as últimas 5
-      const allMatches = [...(homeMatches || []), ...(awayMatches || [])]
+      const allMatches = [...homeMatches, ...awayMatches]
         .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
       // Calcular forma (últimas 5 partidas)
@@ -184,19 +172,19 @@ export function useTeamStats(teamId: string | null) {
         escudo_url: team.escudo_url,
         pais: team.pais,
         cores: team.cores as { primary: string; secondary: string } | null,
-        jogos: (homeMatches?.length || 0) + (awayMatches?.length || 0),
+        jogos: homeMatches.length + awayMatches.length,
         vitorias: vitoriasCasa + vitoriasFora,
         empates: empatesCasa + empatesFora,
         derrotas: derrotasCasa + derrotasFora,
         golsMarcados: golsMarcadosCasa + golsMarcadosFora,
         golsSofridos: golsSofridosCasa + golsSofridosFora,
-        jogosCasa: homeMatches?.length || 0,
+        jogosCasa: homeMatches.length,
         vitoriasCasa,
         empatesCasa,
         derrotasCasa,
         golsMarcadosCasa,
         golsSofridosCasa,
-        jogosFora: awayMatches?.length || 0,
+        jogosFora: awayMatches.length,
         vitoriasFora,
         empatesFora,
         derrotasFora,
@@ -221,15 +209,14 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
       
       // Se tem filtro de liga, buscar times que jogaram nessa liga
       if (leagueId) {
-        const { data: matchTeams, error: matchError } = await supabase
-          .from('partidas')
-          .select('time_casa_id, time_fora_id')
-          .eq('liga_id', leagueId);
-        
-        if (matchError) throw matchError;
+        const matchTeams = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+          'partidas',
+          'time_casa_id, time_fora_id',
+          (q) => q.eq('liga_id', leagueId)
+        );
         
         const teamIds = new Set<string>();
-        matchTeams?.forEach(m => {
+        matchTeams.forEach(m => {
           if (m.time_casa_id) teamIds.add(m.time_casa_id);
           if (m.time_fora_id) teamIds.add(m.time_fora_id);
         });
@@ -289,30 +276,29 @@ export function useTeamsByLeague(leagueId: string | null) {
     queryFn: async () => {
       if (!leagueId) return [];
       
-      // Buscar times que participaram de partidas nessa liga
-      const { data: matches, error: matchError } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id')
-        .eq('liga_id', leagueId);
-      
-      if (matchError) throw matchError;
+      // Buscar times que participaram de partidas nessa liga - sem limite
+      const matches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'time_casa_id, time_fora_id',
+        (q) => q.eq('liga_id', leagueId)
+      );
       
       const teamIds = new Set<string>();
-      matches?.forEach(m => {
+      matches.forEach(m => {
         if (m.time_casa_id) teamIds.add(m.time_casa_id);
         if (m.time_fora_id) teamIds.add(m.time_fora_id);
       });
       
       if (teamIds.size === 0) return [];
       
-      const { data, error } = await supabase
-        .from('times')
-        .select('*')
-        .in('id', Array.from(teamIds))
-        .order('nome');
+      const teamsData = await fetchAllRecords<any>(
+        'times',
+        '*',
+        (q) => q.in('id', Array.from(teamIds)),
+        { column: 'nome', ascending: true }
+      );
       
-      if (error) throw error;
-      return (data || []).map(mapToTime);
+      return teamsData.map(mapToTime);
     },
     enabled: !!leagueId,
   });
@@ -339,15 +325,14 @@ export function useHeadToHead(team1Id: string | null, team2Id: string | null) {
     queryFn: async () => {
       if (!team1Id || !team2Id) return null;
       
-      // Buscar partidas onde os dois times se enfrentaram
-      const { data: matches, error } = await supabase
-        .from('partidas')
-        .select('*')
-        .eq('status', 'finished')
-        .or(`and(time_casa_id.eq.${team1Id},time_fora_id.eq.${team2Id}),and(time_casa_id.eq.${team2Id},time_fora_id.eq.${team1Id})`)
-        .order('data', { ascending: false });
-      
-      if (error) throw error;
+      // Buscar partidas onde os dois times se enfrentaram - sem limite
+      const matches = await fetchAllRecords<any>(
+        'partidas',
+        '*',
+        (q) => q.eq('status', 'finished')
+          .or(`and(time_casa_id.eq.${team1Id},time_fora_id.eq.${team2Id}),and(time_casa_id.eq.${team2Id},time_fora_id.eq.${team1Id})`),
+        { column: 'data', ascending: false }
+      );
       
       let vitoriasTime1 = 0;
       let vitoriasTime2 = 0;
@@ -355,7 +340,7 @@ export function useHeadToHead(team1Id: string | null, team2Id: string | null) {
       let golsTime1 = 0;
       let golsTime2 = 0;
       
-      const ultimosJogos = (matches || []).slice(0, 5).map(match => {
+      const ultimosJogos = matches.slice(0, 5).map(match => {
         const time1EmCasa = match.time_casa_id === team1Id;
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
@@ -384,7 +369,7 @@ export function useHeadToHead(team1Id: string | null, team2Id: string | null) {
       });
       
       // Contar todos os jogos
-      (matches || []).slice(5).forEach(match => {
+      matches.slice(5).forEach(match => {
         const time1EmCasa = match.time_casa_id === team1Id;
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
@@ -405,7 +390,7 @@ export function useHeadToHead(team1Id: string | null, team2Id: string | null) {
       });
       
       return {
-        totalJogos: matches?.length || 0,
+        totalJogos: matches.length,
         vitoriasTime1,
         vitoriasTime2,
         empates,

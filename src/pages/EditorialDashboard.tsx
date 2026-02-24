@@ -100,11 +100,13 @@ export default function EditorialDashboard() {
   const { data: allContent, isLoading: loadingContent, refetch: refetchContent } = useQuery({
     queryKey: ['editorial-content'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('noticias')
-        .select('id, titulo, slug, publicada, data_publicacao, created_at')
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const data = await fetchAllRecords<any>(
+        'noticias',
+        'id, titulo, slug, publicada, data_publicacao, created_at',
+        undefined,
+        { column: 'created_at', ascending: false }
+      );
+      const error = null;
 
       if (error) throw error;
 

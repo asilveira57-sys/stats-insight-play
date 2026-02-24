@@ -178,31 +178,21 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
         });
       });
 
-      // Fallback: get team-level stats for competitions without individual goals
-      let matchesQuery = supabase
-        .from('partidas')
-        .select(`
-          id,
-          liga_id,
-          data,
-          time_casa_id,
-          time_fora_id,
-          gols_casa,
-          gols_fora,
+      // Fallback: get team-level stats for competitions without individual goals - sem limite
+      const matches = await fetchAllRecords<any>(
+        'partidas',
+        `id, liga_id, data, time_casa_id, time_fora_id, gols_casa, gols_fora,
           ligas (id, nome),
           time_casa:times!partidas_time_casa_id_fkey (id, nome, escudo_url, cores),
-          time_fora:times!partidas_time_fora_id_fkey (id, nome, escudo_url, cores)
-        `)
-        .in('liga_id', leagueIds)
-        .eq('status', 'finished')
-        .not('gols_casa', 'is', null)
-        .not('gols_fora', 'is', null);
-
-      if (startDate && endDate) {
-        matchesQuery = matchesQuery.gte('data', startDate).lte('data', endDate);
-      }
-
-      const { data: matches } = await matchesQuery;
+          time_fora:times!partidas_time_fora_id_fkey (id, nome, escudo_url, cores)`,
+        (q) => {
+          let filtered = q.in('liga_id', leagueIds).eq('status', 'finished').not('gols_casa', 'is', null).not('gols_fora', 'is', null);
+          if (startDate && endDate) {
+            filtered = filtered.gte('data', startDate).lte('data', endDate);
+          }
+          return filtered;
+        }
+      );
 
       if (matches) {
         const existingCompetitionIds = new Set(competitionScorers.map(c => c.competitionId));

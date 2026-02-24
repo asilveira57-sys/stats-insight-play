@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculateConfidence } from '@/lib/poisson';
+import { fetchAllRecords } from '@/lib/supabaseHelpers';
 
 interface UserPalpite {
   id: string;
@@ -60,10 +61,9 @@ export function useUserPalpites() {
     queryFn: async () => {
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('palpites_usuarios')
-        .select(`
-          *,
+      const data = await fetchAllRecords<any>(
+        'palpites_usuarios',
+        `*,
           partida:partidas(
             id, data, hora, status, gols_casa, gols_fora,
             time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
@@ -73,12 +73,10 @@ export function useUserPalpites() {
           palpite_sistema:palpites(
             placar_casa_estimado, placar_fora_estimado,
             prob_casa, prob_empate, prob_fora
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+          )`,
+        (q) => q.eq('user_id', user.id),
+        { column: 'created_at', ascending: false }
+      );
       return data as unknown as UserPalpiteWithMatch[];
     },
     enabled: !!user,
@@ -164,20 +162,17 @@ export function useUserAccuracyStats(startDate?: string, endDate?: string, confi
 
       // Get user's predictions for finished matches
       // Get user's predictions with system prediction probabilities for confidence calc
-      const { data: userPalpites, error: palpitesError } = await supabase
-        .from('palpites_usuarios')
-        .select(`
-          id, placar_casa, placar_fora, aceitou_sugestao,
+      const userPalpites = await fetchAllRecords<any>(
+        'palpites_usuarios',
+        `id, placar_casa, placar_fora, aceitou_sugestao,
           partida:partidas!inner(
             id, status, gols_casa, gols_fora, data
           ),
           palpite_sistema:palpites(
             prob_casa, prob_empate, prob_fora
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (palpitesError) throw palpitesError;
+          )`,
+        (q) => q.eq('user_id', user.id)
+      );
 
       // Filter by finished, date range, and confidence
       const finishedPalpites = (userPalpites || []).filter((p: any) => {

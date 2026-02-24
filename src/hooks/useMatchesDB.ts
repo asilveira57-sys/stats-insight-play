@@ -150,55 +150,74 @@ export function useMatchesFromDB(options?: {
   return useQuery({
     queryKey: ['db-matches', options],
     queryFn: async () => {
-      let query = supabase
-        .from('partidas')
-        .select(`
-          id,
-          data,
-          hora,
-          gols_casa,
-          gols_fora,
-          status,
-          rodada,
-          liga:ligas!partidas_liga_id_fkey(id, nome, logo_url, codigo_api),
-          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url, cores),
-          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url, cores)
-        `)
-        .order('data', { ascending: true })
-        .order('hora', { ascending: true });
-
+      // Resolve league ID if needed
+      let leagueId: string | null = null;
       if (options?.leagueCode) {
         const { data: league } = await supabase
           .from('ligas')
           .select('id')
           .eq('codigo_api', options.leagueCode)
           .maybeSingle();
-        
-        if (league) {
-          query = query.eq('liga_id', league.id);
+        leagueId = league?.id || null;
+      }
+
+      // Fetch all records using pagination to avoid 1000-row limit
+      const allRecords: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = supabase
+          .from('partidas')
+          .select(`
+            id,
+            data,
+            hora,
+            gols_casa,
+            gols_fora,
+            status,
+            rodada,
+            liga:ligas!partidas_liga_id_fkey(id, nome, logo_url, codigo_api),
+            time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url, cores),
+            time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url, cores)
+          `)
+          .order('data', { ascending: true })
+          .order('hora', { ascending: true })
+          .range(offset, offset + batchSize - 1);
+
+        if (leagueId) {
+          query = query.eq('liga_id', leagueId);
+        }
+
+        if (options?.dateFrom) {
+          query = query.gte('data', options.dateFrom);
+        }
+
+        if (options?.dateTo) {
+          query = query.lte('data', options.dateTo);
+        }
+
+        if (options?.status) {
+          query = query.eq('status', options.status);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allRecords.push(...data);
+          offset += batchSize;
+          if (data.length < batchSize) hasMore = false;
+        } else {
+          hasMore = false;
         }
       }
-
-      if (options?.dateFrom) {
-        query = query.gte('data', options.dateFrom);
-      }
-
-      if (options?.dateTo) {
-        query = query.lte('data', options.dateTo);
-      }
-
-      if (options?.status) {
-        query = query.eq('status', options.status);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
       
-      return (data as unknown as Partida[]).map(transformMatch);
+      return (allRecords as unknown as Partida[]).map(transformMatch);
     },
-    staleTime: 1000 * 30, // 30 seconds - refresh more often for live scores
-    refetchInterval: 1000 * 30, // Auto-refetch every 30 seconds for live updates
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 30,
   });
 }
 
