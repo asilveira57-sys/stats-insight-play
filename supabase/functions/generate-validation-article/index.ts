@@ -75,7 +75,7 @@ function getResultLabel(resultado: string): string {
   }
 }
 
-async function generateValidationContent(matchData: MatchData, LOVABLE_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
+async function generateValidationContent(matchData: MatchData, OPENAI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
   const palpite = matchData.palpite;
   const comparativo = matchData.comparativo;
   
@@ -212,14 +212,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { 
           role: "system", 
@@ -232,7 +232,9 @@ Responda APENAS em formato JSON válido:
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Text generation error:", response.status, errorText);
+    console.error("OpenAI text generation error:", response.status, errorText);
+    if (response.status === 429) throw new Error("OpenAI rate limit exceeded. Try again later.");
+    if (response.status === 402) throw new Error("OpenAI payment required. Check your API credits.");
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -258,7 +260,7 @@ Responda APENAS em formato JSON válido:
   }
 }
 
-async function generateValidationThumbnail(matchData: MatchData, LOVABLE_API_KEY: string): Promise<string | null> {
+async function generateValidationThumbnail(matchData: MatchData, OPENAI_API_KEY: string): Promise<string | null> {
   const placarReal = `${matchData.gols_casa} x ${matchData.gols_fora}`;
   
   const prompt = `Create a professional sports validation/analysis thumbnail:
@@ -274,16 +276,19 @@ async function generateValidationThumbnail(matchData: MatchData, LOVABLE_API_KEY
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"]
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+        response_format: "b64_json",
       }),
     });
 
@@ -292,14 +297,15 @@ async function generateValidationThumbnail(matchData: MatchData, LOVABLE_API_KEY
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+    const base64Image = data.data?.[0]?.b64_json;
+    return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating thumbnail:", error);
     return null;
   }
 }
 
-async function generateValidationInternalImage(matchData: MatchData, LOVABLE_API_KEY: string): Promise<string | null> {
+async function generateValidationInternalImage(matchData: MatchData, OPENAI_API_KEY: string): Promise<string | null> {
   const prompt = `Create a professional comparison infographic image:
 - Modern dark background with gradient
 - Split screen concept: PREDICTION vs REALITY
@@ -313,16 +319,19 @@ async function generateValidationInternalImage(matchData: MatchData, LOVABLE_API
 - Modern sports analytics visual style`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"]
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+        response_format: "b64_json",
       }),
     });
 
@@ -331,7 +340,8 @@ async function generateValidationInternalImage(matchData: MatchData, LOVABLE_API
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+    const base64Image = data.data?.[0]?.b64_json;
+    return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating internal image:", error);
     return null;
@@ -376,12 +386,12 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -497,12 +507,12 @@ serve(async (req) => {
         console.log(`Processing validation for: ${matchData.time_casa.nome} vs ${matchData.time_fora.nome} (${matchData.gols_casa}-${matchData.gols_fora})`);
 
         // Generate validation content
-        const textContent = await generateValidationContent(matchData, LOVABLE_API_KEY);
+        const textContent = await generateValidationContent(matchData, OPENAI_API_KEY);
         console.log(`Validation text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
         // Generate and upload thumbnail
         let imageUrl: string | null = null;
-        const thumbnailBase64 = await generateValidationThumbnail(matchData, LOVABLE_API_KEY);
+        const thumbnailBase64 = await generateValidationThumbnail(matchData, OPENAI_API_KEY);
         
         if (thumbnailBase64) {
           imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `validation-${match.id}.png`);
@@ -513,7 +523,7 @@ serve(async (req) => {
 
         // Generate and upload internal image
         let internalImageUrl: string | null = null;
-        const internalImageBase64 = await generateValidationInternalImage(matchData, LOVABLE_API_KEY);
+        const internalImageBase64 = await generateValidationInternalImage(matchData, OPENAI_API_KEY);
         
         if (internalImageBase64) {
           internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `validation-${match.id}-internal.png`);

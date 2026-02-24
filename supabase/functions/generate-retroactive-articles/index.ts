@@ -165,14 +165,14 @@ ${relatedLinksHtml ? `\nAdicione ao final do artigo os seguintes links relaciona
 
 LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivesse ANTES do jogo acontecer.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -184,6 +184,8 @@ LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivess
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 429) throw new Error(`AI API error 429: Rate limit exceeded`);
+    if (response.status === 402) throw new Error(`AI API error 402: Payment required`);
     throw new Error(`AI API error ${response.status}: ${errorText}`);
   }
 
@@ -225,16 +227,19 @@ async function generateThumbnail(
 - Use abstract shapes, stadium architecture, and atmospheric effects only`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+        response_format: "b64_json",
       }),
     });
 
@@ -244,16 +249,22 @@ async function generateThumbnail(
     }
 
     const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const base64Image = data.data?.[0]?.b64_json;
 
-    if (!imageUrl || !imageUrl.startsWith("data:image")) {
-      console.error("No valid image URL in response");
+    if (!base64Image) {
+      console.error("No valid image in DALL-E response");
+      return null;
+    }
+
+    const imageUrl = `data:image/png;base64,${base64Image}`;
+
+    if (!base64Image) {
+      console.error("No image data after extraction");
       return null;
     }
 
     // Extract base64 data and upload to storage
-    const base64Data = imageUrl.split(",")[1];
-    const imageBuffer = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+    const imageBuffer = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
     
     const fileName = `${match.id}.png`;
     
@@ -331,11 +342,11 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-  if (!lovableApiKey) {
+  if (!openaiApiKey) {
     return new Response(
-      JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+      JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -449,7 +460,7 @@ serve(async (req) => {
         const { content, title, summary } = await generateArticleContent(
           matchData,
           relatedLinks,
-          lovableApiKey
+          openaiApiKey
         );
 
         const wordCount = countWords(content);
@@ -461,7 +472,7 @@ serve(async (req) => {
         }
 
         // Generate thumbnail
-        const thumbnailUrl = await generateThumbnail(matchData, supabase, lovableApiKey);
+        const thumbnailUrl = await generateThumbnail(matchData, supabase, openaiApiKey);
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
