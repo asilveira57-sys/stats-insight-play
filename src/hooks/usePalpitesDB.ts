@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import {
   calculateMatchProbabilities,
   calculateExpectedGoals,
@@ -85,29 +86,25 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
 
   if (!team) return null;
 
-  // Get finished matches where this team played
-  const { data: homeMatches } = await supabase
-    .from('partidas')
-    .select('gols_casa, gols_fora')
-    .eq('time_casa_id', teamId)
-    .eq('status', 'finished')
-    .not('gols_casa', 'is', null)
-    .not('gols_fora', 'is', null);
+  // Get finished matches where this team played - sem limite
+  const homeMatches = await fetchAllRecords<any>(
+    'partidas',
+    'gols_casa, gols_fora',
+    (q) => q.eq('time_casa_id', teamId).eq('status', 'finished').not('gols_casa', 'is', null).not('gols_fora', 'is', null)
+  );
 
-  const { data: awayMatches } = await supabase
-    .from('partidas')
-    .select('gols_casa, gols_fora')
-    .eq('time_fora_id', teamId)
-    .eq('status', 'finished')
-    .not('gols_casa', 'is', null)
-    .not('gols_fora', 'is', null);
+  const awayMatches = await fetchAllRecords<any>(
+    'partidas',
+    'gols_casa, gols_fora',
+    (q) => q.eq('time_fora_id', teamId).eq('status', 'finished').not('gols_casa', 'is', null).not('gols_fora', 'is', null)
+  );
 
   let wins = 0, draws = 0, losses = 0;
   let goalsScored = 0, goalsConceded = 0;
   let homeWins = 0, awayWins = 0;
 
   // Process home matches
-  (homeMatches || []).forEach(match => {
+  homeMatches.forEach(match => {
     goalsScored += match.gols_casa || 0;
     goalsConceded += match.gols_fora || 0;
     
@@ -122,7 +119,7 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
   });
 
   // Process away matches
-  (awayMatches || []).forEach(match => {
+  awayMatches.forEach(match => {
     goalsScored += match.gols_fora || 0;
     goalsConceded += match.gols_casa || 0;
     
@@ -141,16 +138,16 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
     nome: team.nome,
     escudo_url: team.escudo_url,
     cores: team.cores as { primary: string; secondary: string } | null,
-    totalMatches: (homeMatches?.length || 0) + (awayMatches?.length || 0),
+    totalMatches: homeMatches.length + awayMatches.length,
     wins,
     draws,
     losses,
     goalsScored,
     goalsConceded,
     homeWins,
-    homeMatches: homeMatches?.length || 0,
+    homeMatches: homeMatches.length,
     awayWins,
-    awayMatches: awayMatches?.length || 0,
+    awayMatches: awayMatches.length,
   };
 }
 
@@ -273,35 +270,21 @@ export function usePredictions(options?: {
       const futureDate = new Date(today);
       futureDate.setDate(today.getDate() + days);
 
-      let query = supabase
-        .from('partidas')
-        .select(`
-          id,
-          data,
-          hora,
-          time_casa_id,
-          time_fora_id,
-          liga_id,
-          ligas (
-            nome,
-            codigo_api,
-            logo_url
-          )
-        `)
-        .eq('status', 'scheduled')
-        .gte('data', today.toISOString().split('T')[0])
-        .lte('data', futureDate.toISOString().split('T')[0])
-        .order('data', { ascending: true })
-        .order('hora', { ascending: true });
+      const matches = await fetchAllRecords<any>(
+        'partidas',
+        `id, data, hora, time_casa_id, time_fora_id, liga_id, ligas(nome, codigo_api, logo_url)`,
+        (q) => {
+          let filtered = q
+            .eq('status', 'scheduled')
+            .gte('data', today.toISOString().split('T')[0])
+            .lte('data', futureDate.toISOString().split('T')[0]);
+          if (leagueId) filtered = filtered.eq('liga_id', leagueId);
+          return filtered;
+        },
+        { column: 'data', ascending: true }
+      );
 
-      if (leagueId) {
-        query = query.eq('liga_id', leagueId);
-      }
-
-      const { data: matches, error } = await query;
-
-      if (error) throw error;
-      if (!matches) return [];
+      if (!matches || matches.length === 0) return [];
 
       // Generate predictions for each match
       const predictions = await Promise.all(
@@ -346,15 +329,14 @@ export function useLeaguesForPredictions() {
       futureDate.setDate(futureDate.getDate() + 7);
       const future = futureDate.toISOString().split('T')[0];
 
-      // Get distinct league IDs from scheduled matches in next 7 days
-      const { data: matchLeagues } = await supabase
-        .from('partidas')
-        .select('liga_id')
-        .eq('status', 'scheduled')
-        .gte('data', today)
-        .lte('data', future);
+      // Get distinct league IDs from scheduled matches in next 7 days - sem limite
+      const matchLeagues = await fetchAllRecords<{ liga_id: string | null }>(
+        'partidas',
+        'liga_id',
+        (q) => q.eq('status', 'scheduled').gte('data', today).lte('data', future)
+      );
 
-      const leagueIds = [...new Set((matchLeagues || []).map(m => m.liga_id).filter(Boolean))];
+      const leagueIds = [...new Set(matchLeagues.map(m => m.liga_id).filter(Boolean))];
       if (leagueIds.length === 0) return [];
 
       const { data, error } = await supabase
@@ -393,23 +375,17 @@ export function useLeagueMatchCounts() {
       const futureDate = new Date(today);
       futureDate.setDate(today.getDate() + 7);
 
-      const { data, error } = await supabase
-        .from('partidas')
-        .select(`
-          id,
-          ligas (
-            codigo_api
-          )
-        `)
-        .eq('status', 'scheduled')
-        .gte('data', today.toISOString().split('T')[0])
-        .lte('data', futureDate.toISOString().split('T')[0]);
-
-      if (error) throw error;
+      const data = await fetchAllRecords<any>(
+        'partidas',
+        'id, ligas(codigo_api)',
+        (q) => q.eq('status', 'scheduled')
+          .gte('data', today.toISOString().split('T')[0])
+          .lte('data', futureDate.toISOString().split('T')[0])
+      );
 
       // Count matches per league
       const counts = new Map<string, number>();
-      (data || []).forEach(match => {
+      data.forEach(match => {
         const leagueCode = (match.ligas as any)?.codigo_api;
         if (leagueCode) {
           counts.set(leagueCode, (counts.get(leagueCode) || 0) + 1);

@@ -113,22 +113,22 @@ export function useGeneralPredictionStats(period: '1d' | '7d' | '30d') {
       const since = new Date();
       since.setDate(since.getDate() - daysAgo);
       
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select('*')
-        .gte('created_at', since.toISOString());
-      if (error) throw error;
+      const data = await fetchAllRecords<any>(
+        'comparativo_resultados',
+        '*',
+        (q) => q.gte('created_at', since.toISOString())
+      );
       
-      const total = data?.length || 0;
-      const acertosResultado = data?.filter(d => d.sistema_acertou_resultado).length || 0;
-      const acertosPlacar = data?.filter(d => d.sistema_acertou_placar).length || 0;
+      const total = data.length;
+      const acertosResultado = data.filter((d: any) => d.sistema_acertou_resultado).length;
+      const acertosPlacar = data.filter((d: any) => d.sistema_acertou_placar).length;
       
       return {
         total,
         pctResultado: total > 0 ? Math.round((acertosResultado / total) * 100) : 0,
         pctPlacar: total > 0 ? Math.round((acertosPlacar / total) * 100) : 0,
-        totalUsuarios: data?.reduce((s, d) => s + (d.total_usuarios_palpitaram || 0), 0) || 0,
-        usuariosAcertaram: data?.reduce((s, d) => s + (d.usuarios_acertaram_resultado || 0), 0) || 0,
+        totalUsuarios: data.reduce((s: number, d: any) => s + (d.total_usuarios_palpitaram || 0), 0),
+        usuariosAcertaram: data.reduce((s: number, d: any) => s + (d.usuarios_acertaram_resultado || 0), 0),
       };
     },
     staleTime: 120_000,
@@ -140,14 +140,14 @@ export function useAIPredictionStats() {
   return useQuery({
     queryKey: ['dashboard-ai-predictions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comparativo_resultados')
-        .select('sistema_acertou_resultado, sistema_acertou_placar');
-      if (error) throw error;
+      const data = await fetchAllRecords<any>(
+        'comparativo_resultados',
+        'sistema_acertou_resultado, sistema_acertou_placar'
+      );
       
-      const total = data?.length || 0;
-      const acertosResultado = data?.filter(d => d.sistema_acertou_resultado).length || 0;
-      const acertosPlacar = data?.filter(d => d.sistema_acertou_placar).length || 0;
+      const total = data.length;
+      const acertosResultado = data.filter((d: any) => d.sistema_acertou_resultado).length;
+      const acertosPlacar = data.filter((d: any) => d.sistema_acertou_placar).length;
       
       return {
         total,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { useToast } from "@/hooks/use-toast";
 
 export type EntityType = "team" | "match";
@@ -102,37 +103,32 @@ export function useTeamsWithSlugInfo(filters: SlugFilters) {
   return useQuery({
     queryKey: ["teams-slug-admin", filters],
     queryFn: async () => {
-      // Buscar times
-      let query = supabase
-        .from("times")
-        .select("id, nome, slug, slug_locked, name_normalized, api_id, escudo_url, pais, updated_at")
-        .order("nome");
+      // Buscar times - sem limite
+      const teams = await fetchAllRecords<any>(
+        'times',
+        'id, nome, slug, slug_locked, name_normalized, api_id, escudo_url, pais, updated_at',
+        filters.search
+          ? (q) => q.or(`nome.ilike.%${filters.search}%,slug.ilike.%${filters.search}%,api_id.eq.${parseInt(filters.search) || 0}`)
+          : undefined,
+        { column: 'nome', ascending: true }
+      );
 
-      // Filtro de busca
-      if (filters.search) {
-        query = query.or(
-          `nome.ilike.%${filters.search}%,slug.ilike.%${filters.search}%,api_id.eq.${parseInt(filters.search) || 0}`
-        );
-      }
-
-      const { data: teams, error } = await query;
-      if (error) throw error;
-
-      // Buscar contagem de slugs duplicados
-      const { data: slugCounts } = await supabase
-        .from("times")
-        .select("slug")
-        .not("slug", "is", null);
+      // Buscar contagem de slugs duplicados - sem limite
+      const slugCounts = await fetchAllRecords<{ slug: string | null }>(
+        'times',
+        'slug',
+        (q) => q.not('slug', 'is', null)
+      );
 
       const slugCountMap: Record<string, number> = {};
-      slugCounts?.forEach((t) => {
+      slugCounts.forEach((t) => {
         if (t.slug) {
           slugCountMap[t.slug] = (slugCountMap[t.slug] || 0) + 1;
         }
       });
 
       // Buscar external_id_map para times
-      const teamIds = teams?.map((t) => t.id) || [];
+      const teamIds = teams.map((t) => t.id);
       const { data: externalMaps } = await supabase
         .from("external_id_map")
         .select("internal_id, external_id, source_id")
@@ -152,7 +148,7 @@ export function useTeamsWithSlugInfo(filters: SlugFilters) {
       });
 
       // Mapear times com status e external_ids
-      const teamsWithInfo: TeamWithSlugInfo[] = (teams || []).map((team) => {
+      const teamsWithInfo: TeamWithSlugInfo[] = teams.map((team) => {
         const externalIds = (externalMaps || [])
           .filter((e) => e.internal_id === team.id)
           .map((e) => ({
@@ -196,39 +192,35 @@ export function useMatchesWithSlugInfo(filters: SlugFilters) {
   return useQuery({
     queryKey: ["matches-slug-admin", filters],
     queryFn: async () => {
-      let query = supabase
-        .from("partidas")
-        .select(`
-          id, slug, slug_locked, data, hora, api_id, updated_at,
+      // Buscar partidas - sem limite
+      const matches = await fetchAllRecords<any>(
+        'partidas',
+        `id, slug, slug_locked, data, hora, api_id, updated_at,
           time_casa:times!partidas_time_casa_id_fkey(id, nome, slug),
           time_fora:times!partidas_time_fora_id_fkey(id, nome, slug),
-          liga:ligas!partidas_liga_id_fkey(id, nome)
-        `)
-        .order("data", { ascending: false })
-        .limit(500);
+          liga:ligas!partidas_liga_id_fkey(id, nome)`,
+        filters.search
+          ? (q) => q.or(`slug.ilike.%${filters.search}%,api_id.eq.${parseInt(filters.search) || 0}`)
+          : undefined,
+        { column: 'data', ascending: false }
+      );
 
-      if (filters.search) {
-        query = query.or(`slug.ilike.%${filters.search}%,api_id.eq.${parseInt(filters.search) || 0}`);
-      }
-
-      const { data: matches, error } = await query;
-      if (error) throw error;
-
-      // Buscar contagem de slugs duplicados
-      const { data: slugCounts } = await supabase
-        .from("partidas")
-        .select("slug")
-        .not("slug", "is", null);
+      // Buscar contagem de slugs duplicados - sem limite
+      const slugCounts = await fetchAllRecords<{ slug: string | null }>(
+        'partidas',
+        'slug',
+        (q) => q.not('slug', 'is', null)
+      );
 
       const slugCountMap: Record<string, number> = {};
-      slugCounts?.forEach((m) => {
+      slugCounts.forEach((m) => {
         if (m.slug) {
           slugCountMap[m.slug] = (slugCountMap[m.slug] || 0) + 1;
         }
       });
 
       // Buscar external_id_map para partidas
-      const matchIds = matches?.map((m) => m.id) || [];
+      const matchIds = matches.map((m) => m.id);
       const { data: externalMaps } = await supabase
         .from("external_id_map")
         .select("internal_id, external_id, source_id")
@@ -244,7 +236,7 @@ export function useMatchesWithSlugInfo(filters: SlugFilters) {
         sourceNameMap[s.id] = s.name;
       });
 
-      const matchesWithInfo: MatchWithSlugInfo[] = (matches || []).map((match) => {
+      const matchesWithInfo: MatchWithSlugInfo[] = matches.map((match) => {
         const externalIds = (externalMaps || [])
           .filter((e) => e.internal_id === match.id)
           .map((e) => ({
@@ -505,10 +497,14 @@ export function useSlugStats() {
       const { data: teamsNoSlug } = await supabase.from("times").select("id", { count: "exact", head: true }).is("slug", null);
       const { data: teamsLocked } = await supabase.from("times").select("id", { count: "exact", head: true }).eq("slug_locked", true);
       
-      // Conflitos de times
-      const { data: teamSlugs } = await supabase.from("times").select("slug").not("slug", "is", null);
+      // Conflitos de times - sem limite
+      const teamSlugs = await fetchAllRecords<{ slug: string | null }>(
+        'times',
+        'slug',
+        (q) => q.not('slug', 'is', null)
+      );
       const teamSlugCounts: Record<string, number> = {};
-      teamSlugs?.forEach((t) => {
+      teamSlugs.forEach((t) => {
         if (t.slug) teamSlugCounts[t.slug] = (teamSlugCounts[t.slug] || 0) + 1;
       });
       const teamsWithConflicts = Object.values(teamSlugCounts).filter((c) => c > 1).reduce((a, b) => a + b, 0);

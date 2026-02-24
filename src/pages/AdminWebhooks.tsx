@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -57,21 +58,21 @@ export default function AdminWebhooks() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["admin-webhooks", statusFilter, topicFilter],
     queryFn: async () => {
-      let query = supabase
-        .from("webhook_events")
-        .select("*")
-        .order("received_at", { ascending: false })
-        .limit(200);
-
-      if (statusFilter !== "all") {
-        query = query.eq("processing_status", statusFilter as "pending" | "processing" | "processed" | "failed" | "skipped");
-      }
-      if (topicFilter !== "all") {
-        query = query.eq("topic", topicFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = await fetchAllRecords<any>(
+        'webhook_events',
+        '*',
+        (q) => {
+          let filtered = q;
+          if (statusFilter !== "all") {
+            filtered = filtered.eq("processing_status", statusFilter);
+          }
+          if (topicFilter !== "all") {
+            filtered = filtered.eq("topic", topicFilter);
+          }
+          return filtered;
+        },
+        { column: 'received_at', ascending: false }
+      );
       return data as WebhookEvent[];
     },
     enabled: isAdmin,

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 export interface TeamPillarData {
   id: string;
@@ -68,32 +69,26 @@ export function useTeamBySlug(slug: string | null) {
         return null;
       }
 
-      // Fetch recent finished matches
-      const { data: homeMatches } = await supabase
-        .from("partidas")
-        .select(`
-          id, data, gols_casa, gols_fora, status,
+      // Fetch ALL finished matches (home) - sem limite para stats completas
+      const homeMatches = await fetchAllRecords<any>(
+        'partidas',
+        `id, data, gols_casa, gols_fora, status,
           time_fora:times!partidas_time_fora_id_fkey(id, nome),
-          liga:ligas(id, nome)
-        `)
-        .eq("time_casa_id", team.id)
-        .eq("status", "finished")
-        .order("data", { ascending: false })
-        .limit(20);
+          liga:ligas(id, nome)`,
+        (q) => q.eq('time_casa_id', team.id).eq('status', 'finished'),
+        { column: 'data', ascending: false }
+      );
 
-      const { data: awayMatches } = await supabase
-        .from("partidas")
-        .select(`
-          id, data, gols_casa, gols_fora, status,
+      const awayMatches = await fetchAllRecords<any>(
+        'partidas',
+        `id, data, gols_casa, gols_fora, status,
           time_casa:times!partidas_time_casa_id_fkey(id, nome),
-          liga:ligas(id, nome)
-        `)
-        .eq("time_fora_id", team.id)
-        .eq("status", "finished")
-        .order("data", { ascending: false })
-        .limit(20);
+          liga:ligas(id, nome)`,
+        (q) => q.eq('time_fora_id', team.id).eq('status', 'finished'),
+        { column: 'data', ascending: false }
+      );
 
-      // Fetch upcoming matches
+      // Fetch upcoming matches (limit 5 is intentional)
       const { data: upcomingHome } = await supabase
         .from("partidas")
         .select(`
@@ -121,7 +116,7 @@ export function useTeamBySlug(slug: string | null) {
       let golsMarcados = 0, golsSofridos = 0;
       let vitoriasCasa = 0, vitoriasFora = 0;
 
-      const processedHome = (homeMatches || []).map(m => {
+      const processedHome = homeMatches.map(m => {
         const gc = m.gols_casa ?? 0;
         const gf = m.gols_fora ?? 0;
         golsMarcados += gc;
@@ -143,7 +138,7 @@ export function useTeamBySlug(slug: string | null) {
         };
       });
 
-      const processedAway = (awayMatches || []).map(m => {
+      const processedAway = awayMatches.map(m => {
         const gc = m.gols_casa ?? 0;
         const gf = m.gols_fora ?? 0;
         golsMarcados += gf;

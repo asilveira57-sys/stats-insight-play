@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 export interface NationalTeam {
   id: string;
@@ -60,17 +61,16 @@ export function useNationalTeamsList() {
       const ligaIds = ligas?.map(l => l.id) || [];
       if (ligaIds.length === 0) return [];
 
-      // Get matches from international leagues
-      const { data: matches, error: matchesError } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id')
-        .in('liga_id', ligaIds);
-
-      if (matchesError) throw matchesError;
+      // Get matches from international leagues - sem limite
+      const matches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+        'partidas',
+        'time_casa_id, time_fora_id',
+        (q) => q.in('liga_id', ligaIds)
+      );
 
       // Get unique team IDs
       const teamIds = new Set<string>();
-      matches?.forEach(m => {
+      matches.forEach(m => {
         if (m.time_casa_id) teamIds.add(m.time_casa_id);
         if (m.time_fora_id) teamIds.add(m.time_fora_id);
       });
@@ -118,18 +118,17 @@ export function useNationalTeamsHeadToHead(team1Id: string | null, team2Id: stri
       const ligaIds = Array.from(internationalLeagueMap.keys());
       if (ligaIds.length === 0) return null;
 
-      // Fetch head-to-head matches
-      const { data: matches, error } = await supabase
-        .from('partidas')
-        .select('id, data, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id')
-        .eq('status', 'finished')
-        .not('gols_casa', 'is', null)
-        .not('gols_fora', 'is', null)
-        .in('liga_id', ligaIds)
-        .or(`and(time_casa_id.eq.${team1Id},time_fora_id.eq.${team2Id}),and(time_casa_id.eq.${team2Id},time_fora_id.eq.${team1Id})`)
-        .order('data', { ascending: false });
-
-      if (error) throw error;
+      // Fetch head-to-head matches - sem limite
+      const matches = await fetchAllRecords<any>(
+        'partidas',
+        'id, data, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id',
+        (q) => q.eq('status', 'finished')
+          .not('gols_casa', 'is', null)
+          .not('gols_fora', 'is', null)
+          .in('liga_id', ligaIds)
+          .or(`and(time_casa_id.eq.${team1Id},time_fora_id.eq.${team2Id}),and(time_casa_id.eq.${team2Id},time_fora_id.eq.${team1Id})`),
+        { column: 'data', ascending: false }
+      );
 
       let vitoriasTime1 = 0;
       let vitoriasTime2 = 0;
@@ -152,7 +151,7 @@ export function useNationalTeamsHeadToHead(team1Id: string | null, team2Id: stri
       let maiorVitoriaTime2: { gols: number; placar: string; data: string } | null = null;
       let jogoMaisGols: { total: number; placar: string; data: string } | null = null;
 
-      const partidas: HeadToHeadMatch[] = (matches || []).map(match => {
+      const partidas: HeadToHeadMatch[] = matches.map(match => {
         const time1EmCasa = match.time_casa_id === team1Id;
         const golsCasa = match.gols_casa ?? 0;
         const golsFora = match.gols_fora ?? 0;
@@ -230,7 +229,7 @@ export function useNationalTeamsHeadToHead(team1Id: string | null, team2Id: stri
         };
       });
 
-      const totalJogos = matches?.length || 0;
+      const totalJogos = matches.length;
       const totalGols = golsTime1 + golsTime2;
 
       return {
