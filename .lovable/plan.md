@@ -1,119 +1,183 @@
 
 
-# Correção do Filtro de Ligas na Página de Palpites
+# Plano: Auditoria e Remoção de Limites de Registros (Política Zero Limites)
 
-## Problemas Identificados
+## Problema
+O sistema possui diversas consultas ao banco de dados que esbarram no limite padrão de 1000 registros do Supabase. Isso causa dados incompletos em dashboards, rankings, estatisticas e comparativos -- como mostrado na imagem onde "1000 partidas" aparece como teto.
 
-1. **"Brazilian Cup Matches" duplicada 10+ vezes** na tabela `ligas` (todas sem `codigo_api`, importadas incorretamente)
-2. **Nomes em inglês** ("Brazilian Cup Matches", "Brasileirao Matches", "Libertadores Matches") que deveriam estar em português
-3. **Filtro exibe ligas sem partidas** agendadas, poluindo a interface
-4. **Clique seleciona o bloco inteiro** em azul (problema de CSS no componente)
+## Auditoria Completa
 
-## Solução
+Abaixo estao todos os arquivos com consultas que podem exceder 1000 registros e precisam migrar para `fetchAllRecords` ou `countAllRecords` (de `@/lib/supabaseHelpers`).
 
-### 1. Limpeza do Banco de Dados (Migration SQL)
+### GRUPO 1: Consultas Criticas (alto volume, impacto direto nos dados exibidos)
 
-- Desativar (`ativa = false`) todas as ligas duplicadas "Brazilian Cup Matches" (IDs órfãos sem `codigo_api`)
-- Desativar "Brasileirao Matches" e "Libertadores Matches" (duplicatas informais)
-- Migrar partidas dessas ligas para as ligas canônicas correspondentes:
-  - "Brazilian Cup Matches" -> "Copa do Brasil" (`dadb34d3-...`)
-  - "Brasileirao Matches" -> "Campeonato Brasileiro Série A" (`c47cb84c-...`)
-  - "Libertadores Matches" -> "Copa Libertadores" (`a05c6f7e-...`)
+| # | Arquivo | Consulta | Tabela | Risco |
+|---|---------|----------|--------|-------|
+| 1 | `src/hooks/useUserPalpites.ts` - `useUserPalpites()` | `.select(...)` em `palpites_usuarios` com joins | palpites_usuarios | Alto - usuarios ativos podem ter >1000 palpites |
+| 2 | `src/hooks/useUserPalpites.ts` - `useUserAccuracyStats()` | `.select(...)` em `palpites_usuarios` com joins | palpites_usuarios | Alto - mesma razao |
+| 3 | `src/hooks/useTeamsDB.ts` - `useTeams()` | `.select('*')` em `times` | times | Alto - pode ter >1000 times |
+| 4 | `src/hooks/useTeamsDB.ts` - `useTeamStats()` | `.select(...)` em `partidas` (home + away) | partidas | Alto - times com historico longo |
+| 5 | `src/hooks/useTeamsDB.ts` - `useTeamsByLeague()` | `.select('time_casa_id, time_fora_id')` em `partidas` | partidas | Alto |
+| 6 | `src/hooks/useTeamsDB.ts` - `useHeadToHead()` | `.select('*')` em `partidas` filtrado por 2 times | partidas | Medio |
+| 7 | `src/hooks/useMatchesDB.ts` - `useMatchesFromDB()` | `.select(...)` em `partidas` com joins | partidas | Alto - consulta principal de partidas |
+| 8 | `src/hooks/usePalpitesDB.ts` - `usePredictions()` | `.select(...)` em `partidas` (scheduled) | partidas | Medio |
+| 9 | `src/hooks/usePalpitesDB.ts` - `useLeaguesForPredictions()` | `.select('liga_id')` em `partidas` | partidas | Medio |
+| 10 | `src/hooks/usePalpitesDB.ts` - `useLeagueMatchCounts()` | `.select(...)` em `partidas` | partidas | Medio |
+| 11 | `src/hooks/useNationalTeamsHeadToHead.ts` - `useNationalTeamsList()` | `.select('time_casa_id, time_fora_id')` em `partidas` | partidas | Alto |
+| 12 | `src/hooks/useNationalTeamsHeadToHead.ts` - `useNationalTeamsHeadToHead()` | `.select(...)` em `partidas` | partidas | Medio |
+| 13 | `src/hooks/usePalpitesDB.ts` - `getTeamStats()` | `.select('gols_casa, gols_fora')` em `partidas` (2x) | partidas | Alto - usado para cada predicao |
+| 14 | `src/hooks/useDashboardData.ts` - `useAIPredictionStats()` | `.select(...)` em `comparativo_resultados` | comparativo_resultados | CRITICO - causa o bug da imagem (1000 limite) |
+| 15 | `src/hooks/useDashboardData.ts` - `useGeneralPredictionStats()` | `.select('*')` em `comparativo_resultados` | comparativo_resultados | Alto |
+| 16 | `src/hooks/useTopScorers.ts` - fallback `matchesQuery` | `.select(...)` em `partidas` com joins | partidas | Alto - nao usa fetchAllRecords |
 
-### 2. Filtro de Ligas Inteligente (Palpites.tsx + usePalpitesDB.ts)
+### GRUPO 2: Consultas Administrativas (impacto em dashboards admin)
 
-- Alterar `useLeaguesForPredictions` para buscar **somente ligas que possuem partidas agendadas nos próximos 7 dias** (JOIN com `partidas`)
-- Remover o `.slice(0, 6)` que limita artificialmente a 6 ligas
-- Deduplicar por `slug` no frontend como fallback de segurança
-- Ordenar: Brasil primeiro, depois internacionais, alfabeticamente dentro de cada grupo
+| # | Arquivo | Consulta | Tabela | Risco |
+|---|---------|----------|--------|-------|
+| 17 | `src/hooks/useSlugAdmin.ts` - `useTeamsWithSlugInfo()` | `.select(...)` em `times` + `times` (slugCounts) | times | Alto |
+| 18 | `src/hooks/useSlugAdmin.ts` - `useMatchesWithSlugInfo()` | `.limit(500)` em `partidas` + slugCounts em `partidas` | partidas | CRITICO - limite explicito |
+| 19 | `src/hooks/useAdminStats.ts` - `useSyncLogs()` | `.limit(100)` em `sync_logs` | sync_logs | Medio - limite explicito |
+| 20 | `src/pages/EditorialDashboard.tsx` | `.limit(500)` em `noticias` | noticias | Medio - limite explicito |
+| 21 | `src/pages/AdminWebhooks.tsx` | `.limit(200)` em `webhook_events` | webhook_events | Medio - limite explicito |
+| 22 | `src/pages/hub/Matches.tsx` | `.select(...)` em `partidas` sem paginacao | partidas | Alto |
+| 23 | `src/pages/hub/SyncDetails.tsx` | Varias queries em `partidas`, `gols_partida`, `escalacoes` | multiplas | Alto |
+| 24 | `src/hooks/useTeamPillar.ts` | `.select(...)` em `partidas` (home/away, 4 queries) | partidas | Alto |
 
-### 3. Correção Visual (Palpites.tsx)
+### GRUPO 3: Consultas Seguras (ja usam fetchAllRecords ou countAllRecords)
 
-- Adicionar `outline-none` e `select-none` nos botões de filtro para remover o destaque azul ao clicar
-- Garantir que a seleção visual funcione corretamente sem selecionar o bloco inteiro
+Estes arquivos ja estao corretos:
+- `src/pages/PerformancePrevisoes.tsx` -- usa `fetchAllRecords`
+- `src/pages/Evolucao.tsx` -- usa `fetchAllRecords`
+- `src/hooks/useNationalTeamsRanking.ts` -- usa `fetchAllRecords`
+- `src/hooks/useArtilharia.ts` -- usa `fetchAllRecords`
+- `src/hooks/useTopScorers.ts` (query de gols) -- usa `fetchAllRecords`
+- `src/pages/hub/Competitions.tsx` -- usa `fetchAllRecords`
+- `src/pages/EditorialDashboard.tsx` (comparison stats, pillars) -- usa `fetchAllRecords`
+- `src/hooks/useDashboardData.ts` (KPIs) -- usa `countAllRecords`
+- `src/hooks/useUserPalpites.ts` - `useSystemAccuracyStats()` -- ja usa paginacao manual
+
+### GRUPO 4: Consultas que NAO precisam de alteracao
+
+Queries com `.single()`, `.maybeSingle()`, `.limit(N)` intencional para top-N, ou queries filtradas por ID unico:
+- `useUserPlan.ts` - `.single()` por user
+- `useNoticia()` / `useNoticiaBySlug()` - `.single()`
+- `useUserXP()` - `.single()` por user
+- `useNoticias()` / `useLatestNoticias()` - limite intencional (listagem paginada)
+- `useGamification.ts` - queries pequenas (badges, rules, user-specific)
+- `src/pages/PerfilPublico.tsx` - todas `.single()` por user
+- `src/pages/hub/Teams.tsx` - ja usa paginacao com `.range()`
+- `useTeamSearch()` - `.limit(10)` intencional para autocomplete
+- `usePriorityStats()` - `.limit(10)` intencional para top-10
+- `useAdminStats.ts` - `useUserStats()`, `useContentStats()` -- usam `count: 'exact', head: true`
+- `useMatchDetails.ts` - filtrado por `partida_id` (poucos registros)
 
 ---
 
-## Detalhes Técnicos
+## Plano de Implementacao
 
-### Migration SQL
+### Fase 1: Corrigir o bug visivel (imagem do usuario)
 
-```sql
--- Migrar partidas de ligas duplicadas para as canônicas
-UPDATE partidas SET liga_id = 'dadb34d3-3d0b-4e0a-a25c-10cbde5dbafd'
-WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Brazilian Cup Matches');
+**Arquivo:** `src/hooks/useDashboardData.ts`
+- `useAIPredictionStats()` -- migrar para `fetchAllRecords` em `comparativo_resultados`
+- `useGeneralPredictionStats()` -- migrar para `fetchAllRecords` em `comparativo_resultados`
 
-UPDATE partidas SET liga_id = 'c47cb84c-8cb0-444b-a2b7-9f328c20cc72'
-WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Brasileirao Matches');
+### Fase 2: Hooks de Palpites e Estatisticas
 
-UPDATE partidas SET liga_id = 'a05c6f7e-7a3e-493a-81ab-5c54f59c8b05'
-WHERE liga_id IN (SELECT id FROM ligas WHERE nome = 'Libertadores Matches');
+**Arquivo:** `src/hooks/useUserPalpites.ts`
+- `useUserPalpites()` -- migrar para `fetchAllRecords`
+- `useUserAccuracyStats()` -- migrar para `fetchAllRecords`
 
--- Desativar duplicatas
-UPDATE ligas SET ativa = false WHERE nome IN ('Brazilian Cup Matches', 'Brasileirao Matches', 'Libertadores Matches');
+**Arquivo:** `src/hooks/usePalpitesDB.ts`
+- `getTeamStats()` -- migrar 2 queries de partidas para `fetchAllRecords`
+- `usePredictions()` -- migrar para `fetchAllRecords`
+- `useLeaguesForPredictions()` -- migrar para `fetchAllRecords`
+- `useLeagueMatchCounts()` -- migrar para `fetchAllRecords`
+
+### Fase 3: Hooks de Times e Partidas
+
+**Arquivo:** `src/hooks/useTeamsDB.ts`
+- `useTeams()` -- migrar para `fetchAllRecords`
+- `useTeamStats()` -- migrar 2 queries home/away para `fetchAllRecords`
+- `useTeamsByLeague()` -- migrar 2 queries para `fetchAllRecords`
+- `useHeadToHead()` -- migrar para `fetchAllRecords`
+
+**Arquivo:** `src/hooks/useMatchesDB.ts`
+- `useMatchesFromDB()` -- migrar para `fetchAllRecords`
+
+**Arquivo:** `src/hooks/useTeamPillar.ts`
+- 4 queries de partidas -- migrar para `fetchAllRecords`
+
+### Fase 4: Hooks de Selecoes
+
+**Arquivo:** `src/hooks/useNationalTeamsHeadToHead.ts`
+- `useNationalTeamsList()` -- migrar query de partidas para `fetchAllRecords`
+- `useNationalTeamsHeadToHead()` -- migrar para `fetchAllRecords`
+
+### Fase 5: Hooks de Top Scorers (fallback)
+
+**Arquivo:** `src/hooks/useTopScorers.ts`
+- Query fallback de `matchesQuery` em `partidas` -- migrar para `fetchAllRecords`
+
+### Fase 6: Admin e Hub
+
+**Arquivo:** `src/hooks/useSlugAdmin.ts`
+- `useTeamsWithSlugInfo()` -- migrar queries de `times` para `fetchAllRecords`
+- `useMatchesWithSlugInfo()` -- remover `.limit(500)`, migrar para `fetchAllRecords`
+- slug counts queries -- migrar para `fetchAllRecords`
+
+**Arquivo:** `src/hooks/useAdminStats.ts`
+- `useSyncLogs()` -- remover `.limit(100)`, migrar para `fetchAllRecords`
+
+**Arquivo:** `src/pages/EditorialDashboard.tsx`
+- Query de noticias -- remover `.limit(500)`, migrar para `fetchAllRecords`
+
+**Arquivo:** `src/pages/AdminWebhooks.tsx`
+- Remover `.limit(200)`, migrar para `fetchAllRecords`
+
+**Arquivo:** `src/pages/hub/Matches.tsx`
+- Query de partidas -- migrar para `fetchAllRecords`
+
+**Arquivo:** `src/pages/hub/SyncDetails.tsx`
+- Multiplas queries -- migrar para `fetchAllRecords`
+
+### Fase 7: Queries em componentes auxiliares
+
+**Arquivo:** `src/hooks/useUserPalpitesByMatches.ts`
+- Query em `palpites_usuarios` -- verificar se matchIds pode ultrapassar 1000 e migrar se necessario
+
+---
+
+## Detalhes Tecnicos
+
+Cada migracao segue o mesmo padrao. Exemplo para `useAIPredictionStats`:
+
+```text
+ANTES:
+const { data, error } = await supabase
+  .from('comparativo_resultados')
+  .select('sistema_acertou_resultado, sistema_acertou_placar');
+
+DEPOIS:
+const data = await fetchAllRecords<{...}>(
+  'comparativo_resultados',
+  'sistema_acertou_resultado, sistema_acertou_placar'
+);
 ```
 
-### Hook `useLeaguesForPredictions` (usePalpitesDB.ts)
+Para queries com filtros, usa-se o parametro `filters`:
 
-Reescrever para buscar apenas ligas com partidas agendadas, usando uma query que faz JOIN:
-
-```typescript
-export function useLeaguesForPredictions() {
-  return useQuery({
-    queryKey: ['leagues-predictions'],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 7);
-      const future = futureDate.toISOString().split('T')[0];
-
-      // Get distinct league IDs from scheduled matches
-      const { data: matchLeagues } = await supabase
-        .from('partidas')
-        .select('liga_id')
-        .eq('status', 'scheduled')
-        .gte('data', today)
-        .lte('data', future);
-
-      const leagueIds = [...new Set((matchLeagues || []).map(m => m.liga_id).filter(Boolean))];
-      if (leagueIds.length === 0) return [];
-
-      const { data, error } = await supabase
-        .from('ligas')
-        .select('id, nome, logo_url, codigo_api, pais, slug')
-        .in('id', leagueIds)
-        .eq('ativa', true);
-
-      if (error) throw error;
-
-      // Deduplicate by slug
-      const seen = new Set();
-      const unique = (data || []).filter(l => {
-        if (seen.has(l.slug)) return false;
-        seen.add(l.slug);
-        return true;
-      });
-
-      // Sort: Brazil first, then by priority/name
-      return unique.sort((a, b) => {
-        const priorityA = LEAGUE_PRIORITY[a.codigo_api || ''] ?? 50;
-        const priorityB = LEAGUE_PRIORITY[b.codigo_api || ''] ?? 50;
-        return priorityA - priorityB;
-      });
-    },
-  });
-}
+```text
+const data = await fetchAllRecords<{...}>(
+  'partidas',
+  'gols_casa, gols_fora',
+  (q) => q.eq('time_casa_id', teamId).eq('status', 'finished')
+);
 ```
 
-### Filtro visual (Palpites.tsx)
+## Total de Alteracoes
 
-- Remover `.slice(0, 6)` para exibir todas as ligas com partidas
-- Adicionar classes `outline-none select-none focus:outline-none` nos botões de filtro
-- Filtrar por `league.id` em vez de `codigo_api` (pois algumas ligas não possuem `codigo_api`)
-
-### Arquivos modificados
-
-1. **Migration SQL** -- limpeza de duplicatas e migração de partidas
-2. **src/hooks/usePalpitesDB.ts** -- hook `useLeaguesForPredictions` inteligente
-3. **src/pages/Palpites.tsx** -- remoção do `.slice(0, 6)`, correção do CSS de seleção, filtro por ID
+- **24 consultas** em **14 arquivos** precisam ser migradas
+- **0 alteracoes de schema** necessarias
+- **0 novas dependencias**
+- Todas usam o helper existente `fetchAllRecords` / `countAllRecords`
 
