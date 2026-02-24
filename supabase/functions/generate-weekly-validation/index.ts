@@ -57,7 +57,7 @@ function generateWeeklySlug(weekNumber: number, year: number, leagueSlug: string
   return `validacao-semana-${weekNumber}-temporada-${year}-${leagueSlug}`;
 }
 
-async function generateWeeklyContent(weeklyData: WeeklyData, LOVABLE_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
+async function generateWeeklyContent(weeklyData: WeeklyData, OPENAI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
   const startDate = new Date(weeklyData.startDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
   const endDate = new Date(weeklyData.endDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   
@@ -182,14 +182,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { 
           role: "system", 
@@ -202,13 +202,13 @@ Responda APENAS em formato JSON válido:
 
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
+      throw new Error("OpenAI rate limit exceeded. Please try again later.");
     }
     if (response.status === 402) {
-      throw new Error("Payment required. Please add credits to your Lovable AI workspace.");
+      throw new Error("OpenAI payment required. Check your API credits.");
     }
     const errorText = await response.text();
-    console.error("Text generation error:", response.status, errorText);
+    console.error("OpenAI text generation error:", response.status, errorText);
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -234,7 +234,7 @@ Responda APENAS em formato JSON válido:
   }
 }
 
-async function generateWeeklyThumbnail(weeklyData: WeeklyData, LOVABLE_API_KEY: string): Promise<string | null> {
+async function generateWeeklyThumbnail(weeklyData: WeeklyData, OPENAI_API_KEY: string): Promise<string | null> {
   const prompt = `Create a professional weekly sports validation report thumbnail:
 - Dark modern background with subtle gradient
 - Large text showing "SEMANA ${weeklyData.weekNumber}"
@@ -248,16 +248,19 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, LOVABLE_API_KEY: 
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"]
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+        response_format: "b64_json",
       }),
     });
 
@@ -267,7 +270,8 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, LOVABLE_API_KEY: 
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+    const base64Image = data.data?.[0]?.b64_json;
+    return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating thumbnail:", error);
     return null;
@@ -368,12 +372,12 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -554,7 +558,7 @@ serve(async (req) => {
         console.log(`Generating weekly validation for ${league.nome} (${validMatches.length} matches)`);
 
         // Generate content
-        const textContent = await generateWeeklyContent(weeklyData, LOVABLE_API_KEY);
+        const textContent = await generateWeeklyContent(weeklyData, OPENAI_API_KEY);
         console.log(`Weekly content generated: ${textContent.titulo}`);
 
         // Add internal links and ad slots
@@ -562,7 +566,7 @@ serve(async (req) => {
 
         // Generate thumbnail
         let thumbnailUrl: string | null = null;
-        const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, LOVABLE_API_KEY);
+        const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, OPENAI_API_KEY);
         
         if (thumbnailBase64) {
           const thumbnailFileName = `weekly-validation-${weeklySlug}.png`;
