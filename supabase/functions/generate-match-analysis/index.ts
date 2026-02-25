@@ -356,6 +356,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Safety timer: stop processing before the 150s platform limit
+  const startTime = Date.now();
+  const SAFETY_TIMEOUT_MS = 120_000; // 120s, leaving 30s buffer
+
+  function hasTimeLeft(): boolean {
+    return (Date.now() - startTime) < SAFETY_TIMEOUT_MS;
+  }
+
   try {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -369,11 +377,11 @@ serve(async (req) => {
 
     // Get optional parameters from request body
     let targetMatchId: string | null = null;
-    let processLimit: number = 15; // Default limit per execution
+    let processLimit: number = 3; // Reduced default: each match takes ~60s (text + 2 DALL-E images)
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
-      processLimit = body?.limit || 15;
+      processLimit = body?.limit || 3;
     } catch {
       // No body, process all scheduled matches with default limit
     }
@@ -453,6 +461,12 @@ serve(async (req) => {
     };
 
     for (const match of limitedMatches) {
+      // Check safety timer before processing each match
+      if (!hasTimeLeft()) {
+        console.log(`Safety timer reached after ${results.created} matches. Stopping gracefully.`);
+        break;
+      }
+
       results.processed++;
 
       // Skip if no prediction data
