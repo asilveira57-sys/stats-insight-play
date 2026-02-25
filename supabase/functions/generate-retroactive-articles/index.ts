@@ -340,6 +340,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Safety timer to avoid platform timeout (~150s)
+  const startTime = Date.now();
+  const SAFETY_TIMEOUT_MS = 120_000;
+  const MAX_SAFE_LIMIT = 3;
+
+  function hasTimeLeft(): boolean {
+    return (Date.now() - startTime) < SAFETY_TIMEOUT_MS;
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -353,13 +362,14 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  let limit = 10;
+  let limit = 2;
   let leagueId: string | null = null;
 
   try {
     const body = await req.json();
-    limit = body.limit || 10;
-    leagueId = body.league_id || null;
+    const requestedLimit = Number(body?.limit ?? 2);
+    limit = Math.min(MAX_SAFE_LIMIT, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 2));
+    leagueId = body?.league_id || null;
   } catch {
     // No body, use defaults
   }
@@ -371,12 +381,20 @@ serve(async (req) => {
       .select("*", { count: "exact", head: true })
       .eq("status", "finished");
 
-    const { count: totalNews } = await supabase
-      .from("noticias")
-      .select("*", { count: "exact", head: true })
-      .not("partida_id", "is", null);
+    let pendingCountQuery = supabase
+      .from("partidas")
+      .select("id, palpites!inner(id), noticias!left(partida_id)", { count: "exact", head: true })
+      .eq("status", "finished")
+      .is("noticias.partida_id", null);
 
-    // Get matches without news, with predictions, ordered by date ASC
+    if (leagueId) {
+      pendingCountQuery = pendingCountQuery.eq("liga_id", leagueId);
+    }
+
+    const { count: pendingMatches } = await pendingCountQuery;
+    const alreadyProcessed = Math.max((totalMatches || 0) - (pendingMatches || 0), 0);
+
+    // Get pending matches (without linked article), with predictions, ordered by date ASC
     let query = supabase
       .from("partidas")
       .select(`
@@ -396,9 +414,11 @@ serve(async (req) => {
           forca_time_casa,
           forca_time_fora,
           confianca
-        )
+        ),
+        noticias:noticias!left(partida_id)
       `)
       .eq("status", "finished")
+      .is("noticias.partida_id", null)
       .order("data", { ascending: true })
       .limit(limit);
 
@@ -412,14 +432,7 @@ serve(async (req) => {
       throw new Error(`Failed to fetch matches: ${matchError.message}`);
     }
 
-    // Filter out matches that already have news
-    const { data: existingNews } = await supabase
-      .from("noticias")
-      .select("partida_id")
-      .not("partida_id", "is", null);
-
-    const existingIds = new Set((existingNews || []).map((n: any) => n.partida_id));
-    const matchesToProcess = (matches || []).filter((m: any) => !existingIds.has(m.id));
+    const matchesToProcess = matches || [];
 
     if (matchesToProcess.length === 0) {
       return new Response(
@@ -428,8 +441,8 @@ serve(async (req) => {
           message: "Nenhuma partida pendente para processar",
           progress: {
             total: totalMatches || 0,
-            processed: totalNews || 0,
-            remaining: 0,
+            processed: alreadyProcessed,
+            remaining: pendingMatches || 0,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -439,6 +452,11 @@ serve(async (req) => {
     const results: ProcessedArticle[] = [];
 
     for (const match of matchesToProcess.slice(0, limit)) {
+      if (!hasTimeLeft()) {
+        console.log(`Safety timer reached after ${results.length} partidas. Finalizando lote.`);
+        break;
+      }
+
       const matchData = match as unknown as MatchData;
       const timeCasa = matchData.time_casa?.nome || "Time Casa";
       const timeFora = matchData.time_fora?.nome || "Time Fora";
@@ -477,8 +495,8 @@ serve(async (req) => {
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
 
-        // Create slug
-        const slug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo`;
+        // Create slug (include match id suffix to guarantee uniqueness)
+        const slug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo-${matchData.id.slice(0, 8)}`;
 
         // Insert news article
         const { error: insertError } = await supabase.from("noticias").insert({
@@ -524,6 +542,7 @@ serve(async (req) => {
 
         // Check for rate limit errors
         if (error instanceof Error && (error.message.includes("429") || error.message.includes("402"))) {
+          const successCount = results.filter((r) => r.success).length;
           return new Response(
             JSON.stringify({
               success: false,
@@ -532,8 +551,8 @@ serve(async (req) => {
               processed: results,
               progress: {
                 total: totalMatches || 0,
-                processed: (totalNews || 0) + results.filter((r) => r.success).length,
-                remaining: (totalMatches || 0) - ((totalNews || 0) + results.filter((r) => r.success).length),
+                processed: alreadyProcessed + successCount,
+                remaining: Math.max((pendingMatches || 0) - successCount, 0),
               },
             }),
             { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -564,8 +583,8 @@ serve(async (req) => {
         processed: results,
         progress: {
           total: totalMatches || 0,
-          processed: (totalNews || 0) + successCount,
-          remaining: (totalMatches || 0) - ((totalNews || 0) + successCount),
+          processed: alreadyProcessed + successCount,
+          remaining: Math.max((pendingMatches || 0) - successCount, 0),
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

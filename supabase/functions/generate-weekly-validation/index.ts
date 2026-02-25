@@ -485,8 +485,8 @@ serve(async (req) => {
         return comp !== null;
       });
 
-      // Skip if not enough matches (minimum 3)
-      if (validMatches.length < 3) {
+      // Skip if no matches with comparison data
+      if (validMatches.length < 1) {
         console.log(`Skipping ${league.nome} - only ${validMatches.length} matches with comparison data`);
         results.skipped++;
         continue;
