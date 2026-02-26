@@ -35,7 +35,8 @@ export function BrasileiraoRetrospectiva() {
         acertos_placar: acertosPlacar,
         prob_media: probMedia
       } as RetrospectiveStats;
-    }
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
   });
 
   if (isLoading) {
