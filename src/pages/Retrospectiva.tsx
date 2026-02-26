@@ -105,7 +105,7 @@ export default function Retrospectiva() {
   const { data: matches, isLoading } = useQuery({
     queryKey: ['brasileirao-retrospective-details'],
     queryFn: async () => {
-      // Primeiro buscar as ligas para obter o ID da liga BSA
+      // Get BSA league ID
       const { data: ligaData } = await supabase
         .from('ligas')
         .select('id')
@@ -114,76 +114,38 @@ export default function Retrospectiva() {
 
       if (!ligaData) return [];
 
-      // Buscar todas as partidas da liga BSA
-      const partidas = await fetchAllRecords<{
-        id: string;
-        data: string;
-        rodada: number | null;
-        liga_id: string;
-        time_casa: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
-        time_fora: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
-      }>(
-        'partidas',
-        `id, data, rodada, liga_id,
-         time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
-         time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores)`,
-        (query) => query.eq('liga_id', ligaData.id),
-        { column: 'data', ascending: false }
+      // Query comparativo_resultados directly with join to partidas
+      // This avoids fetching 5000+ partidas separately
+      const allComparativos = await fetchAllRecords<MatchComparison>(
+        'comparativo_resultados',
+        `id,
+         partida_id,
+         placar_oficial_casa,
+         placar_oficial_fora,
+         resultado_oficial,
+         sistema_placar_casa,
+         sistema_placar_fora,
+         sistema_resultado_previsto,
+         sistema_acertou_resultado,
+         sistema_acertou_placar,
+         sistema_prob_resultado,
+         partidas!inner(
+           data, rodada,
+           time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
+           time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores)
+         )`,
+        (query) => query.eq('partidas.liga_id', ligaData.id),
+        { column: 'created_at', ascending: false }
       );
 
-      const partidaIds = partidas.map(p => p.id);
-
-      // Buscar comparativos em lotes para evitar limite
-      const allComparativos: MatchComparison[] = [];
-      const batchSize = 500;
-      
-      for (let i = 0; i < partidaIds.length; i += batchSize) {
-        const batchIds = partidaIds.slice(i, i + batchSize);
-        const { data: comparativos, error } = await supabase
-          .from('comparativo_resultados')
-          .select(`
-            id,
-            partida_id,
-            placar_oficial_casa,
-            placar_oficial_fora,
-            resultado_oficial,
-            sistema_placar_casa,
-            sistema_placar_fora,
-            sistema_resultado_previsto,
-            sistema_acertou_resultado,
-            sistema_acertou_placar,
-            sistema_prob_resultado
-          `)
-          .in('partida_id', batchIds);
-
-        if (error) throw error;
-        
-        if (comparativos) {
-          // Merge com dados de partidas
-          comparativos.forEach(comp => {
-            const partida = partidas.find(p => p.id === comp.partida_id);
-            if (partida) {
-              allComparativos.push({
-                ...comp,
-                partidas: {
-                  data: partida.data,
-                  rodada: partida.rodada,
-                  time_casa: partida.time_casa,
-                  time_fora: partida.time_fora
-                }
-              } as MatchComparison);
-            }
-          });
-        }
-      }
-
-      // Ordenar por data decrescente
+      // Sort by match date descending
       return allComparativos.sort((a, b) => {
         const dateA = a.partidas?.data || '';
         const dateB = b.partidas?.data || '';
         return dateB.localeCompare(dateA);
       });
-    }
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
   });
 
   // Extract available seasons and rodadas

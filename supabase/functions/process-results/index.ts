@@ -5,9 +5,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Paginated fetch to bypass 1000-row limit
+async function fetchAll<T>(
+  supabase: any,
+  table: string,
+  select: string,
+  filters?: (q: any) => any,
+  batchSize = 1000
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  let hasMore = true;
+  while (hasMore) {
+    let q = supabase.from(table).select(select).range(offset, offset + batchSize - 1);
+    if (filters) q = filters(q);
+    const { data, error } = await q;
+    if (error) throw error;
+    if (data && data.length > 0) {
+      all.push(...data);
+      offset += batchSize;
+      if (data.length < batchSize) hasMore = false;
+    } else {
+      hasMore = false;
+    }
+  }
+  return all;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
+  }
+
+  const startTime = Date.now()
+  const SAFETY_TIMEOUT_MS = 120_000 // 120s safety
+
+  function hasTimeLeft(): boolean {
+    return (Date.now() - startTime) < SAFETY_TIMEOUT_MS
   }
 
   try {
@@ -18,35 +52,27 @@ Deno.serve(async (req) => {
 
     console.log('Starting automatic result processing...')
 
-    // Get all finished matches
-    const { data: finishedMatches, error: matchesError } = await supabase
-      .from('partidas')
-      .select('id, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id')
-      .eq('status', 'finished')
-      .not('gols_casa', 'is', null)
-      .not('gols_fora', 'is', null)
+    // Get all finished matches (paginated)
+    const finishedMatches = await fetchAll<{
+      id: string; gols_casa: number | null; gols_fora: number | null;
+      time_casa_id: string | null; time_fora_id: string | null; liga_id: string | null;
+    }>(
+      supabase, 'partidas',
+      'id, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id',
+      (q: any) => q.eq('status', 'finished').not('gols_casa', 'is', null).not('gols_fora', 'is', null)
+    )
 
-    if (matchesError) {
-      console.error('Error fetching finished matches:', matchesError)
-      throw matchesError
-    }
+    console.log(`Found ${finishedMatches.length} finished matches`)
 
-    console.log(`Found ${finishedMatches?.length || 0} finished matches`)
+    // Get already processed matches (paginated)
+    const processedMatches = await fetchAll<{ partida_id: string }>(
+      supabase, 'comparativo_resultados', 'partida_id'
+    )
 
-    // Get already processed matches
-    const { data: processedMatches, error: processedError } = await supabase
-      .from('comparativo_resultados')
-      .select('partida_id')
-
-    if (processedError) {
-      console.error('Error fetching processed matches:', processedError)
-      throw processedError
-    }
-
-    const processedIds = new Set(processedMatches?.map(p => p.partida_id) || [])
+    const processedIds = new Set(processedMatches.map(p => p.partida_id))
 
     // Filter matches that need processing
-    const matchesToProcess = finishedMatches?.filter(m => !processedIds.has(m.id)) || []
+    const matchesToProcess = finishedMatches.filter(m => !processedIds.has(m.id))
 
     console.log(`${matchesToProcess.length} matches need result processing`)
 
@@ -67,6 +93,11 @@ Deno.serve(async (req) => {
 
     // Process each match
     for (const match of matchesToProcess) {
+      if (!hasTimeLeft()) {
+        console.log(`Safety timer reached after processing ${successCount} matches. Stopping.`)
+        break
+      }
+
       try {
         // 1) Process comparativo_resultados via RPC
         const { error } = await supabase.rpc('processar_resultado_partida', {
@@ -116,7 +147,7 @@ Deno.serve(async (req) => {
               })
               if (!xpErr) xpGranted++
             }
-            // Grant XP for correct result (only if not exact score, to avoid double)
+            // Grant XP for correct result (only if not exact score)
             else if (acertouResultado && rulesMap['WINNER_HIT']?.is_enabled) {
               const { error: xpErr } = await supabase.rpc('grant_xp', {
                 p_user_id: palpite.user_id,
@@ -143,11 +174,12 @@ Deno.serve(async (req) => {
 
     const result = {
       success: true,
-      totalFinished: finishedMatches?.length || 0,
+      totalFinished: finishedMatches.length,
       alreadyProcessed: processedIds.size,
       processed: successCount,
       failed: errorCount,
       xpEventsGranted: xpGranted,
+      stoppedEarly: !hasTimeLeft(),
       errors: errors.length > 0 ? errors : undefined,
       timestamp: new Date().toISOString()
     }
