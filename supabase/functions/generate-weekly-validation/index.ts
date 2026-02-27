@@ -57,7 +57,7 @@ function generateWeeklySlug(weekNumber: number, year: number, leagueSlug: string
   return `validacao-semana-${weekNumber}-temporada-${year}-${leagueSlug}`;
 }
 
-async function generateWeeklyContent(weeklyData: WeeklyData, OPENAI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
+async function generateWeeklyContent(weeklyData: WeeklyData, GEMINI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
   const startDate = new Date(weeklyData.startDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
   const endDate = new Date(weeklyData.endDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   
@@ -182,14 +182,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gemini-2.5-flash",
       messages: [
         { 
           role: "system", 
@@ -202,13 +202,13 @@ Responda APENAS em formato JSON válido:
 
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error("OpenAI rate limit exceeded. Please try again later.");
+      throw new Error("Gemini rate limit exceeded. Please try again later.");
     }
     if (response.status === 402) {
-      throw new Error("OpenAI payment required. Check your API credits.");
+      throw new Error("Gemini payment required. Check your API credits.");
     }
     const errorText = await response.text();
-    console.error("OpenAI text generation error:", response.status, errorText);
+    console.error("Gemini text generation error:", response.status, errorText);
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -234,7 +234,7 @@ Responda APENAS em formato JSON válido:
   }
 }
 
-async function generateWeeklyThumbnail(weeklyData: WeeklyData, OPENAI_API_KEY: string): Promise<string | null> {
+async function generateWeeklyThumbnail(weeklyData: WeeklyData, GEMINI_API_KEY: string): Promise<string | null> {
   const prompt = `Create a professional weekly sports validation report thumbnail:
 - Dark modern background with subtle gradient
 - Large text showing "SEMANA ${weeklyData.weekNumber}"
@@ -248,19 +248,14 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, OPENAI_API_KEY: s
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        response_format: "b64_json",
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     });
 
@@ -270,7 +265,7 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, OPENAI_API_KEY: s
     }
 
     const data = await response.json();
-    const base64Image = data.data?.[0]?.b64_json;
+    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating thumbnail:", error);
@@ -372,12 +367,12 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -558,7 +553,7 @@ serve(async (req) => {
         console.log(`Generating weekly validation for ${league.nome} (${validMatches.length} matches)`);
 
         // Generate content
-        const textContent = await generateWeeklyContent(weeklyData, OPENAI_API_KEY);
+        const textContent = await generateWeeklyContent(weeklyData, GEMINI_API_KEY);
         console.log(`Weekly content generated: ${textContent.titulo}`);
 
         // Add internal links and ad slots
@@ -566,7 +561,7 @@ serve(async (req) => {
 
         // Generate thumbnail
         let thumbnailUrl: string | null = null;
-        const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, OPENAI_API_KEY);
+        const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, GEMINI_API_KEY);
         
         if (thumbnailBase64) {
           const thumbnailFileName = `weekly-validation-${weeklySlug}.png`;

@@ -165,14 +165,14 @@ ${relatedLinksHtml ? `\nAdicione ao final do artigo os seguintes links relaciona
 
 LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivesse ANTES do jogo acontecer.`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -227,19 +227,14 @@ async function generateThumbnail(
 - Use abstract shapes, stadium architecture, and atmospheric effects only`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        response_format: "b64_json",
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     });
 
@@ -249,10 +244,10 @@ async function generateThumbnail(
     }
 
     const data = await response.json();
-    const base64Image = data.data?.[0]?.b64_json;
+    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
     if (!base64Image) {
-      console.error("No valid image in DALL-E response");
+      console.error("No valid image in Gemini response");
       return null;
     }
 
@@ -351,11 +346,11 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
-  if (!openaiApiKey) {
+  if (!geminiApiKey) {
     return new Response(
-      JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
+      JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -478,7 +473,7 @@ serve(async (req) => {
         const { content, title, summary } = await generateArticleContent(
           matchData,
           relatedLinks,
-          openaiApiKey
+          geminiApiKey
         );
 
         const wordCount = countWords(content);
@@ -490,7 +485,7 @@ serve(async (req) => {
         }
 
         // Generate thumbnail
-        const thumbnailUrl = await generateThumbnail(matchData, supabase, openaiApiKey);
+        const thumbnailUrl = await generateThumbnail(matchData, supabase, geminiApiKey);
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
