@@ -51,7 +51,7 @@ function generateSlug(timeCasa: string, timeFora: string, dataJogo: string, liga
     .slice(0, 120);
 }
 
-async function generateLongFormContent(matchData: MatchData, OPENAI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
+async function generateLongFormContent(matchData: MatchData, GEMINI_API_KEY: string): Promise<{ titulo: string; resumo: string; texto: string }> {
   const palpite = matchData.palpite;
   const matchDate = new Date(matchData.data).toLocaleDateString('pt-BR', { 
     weekday: 'long', 
@@ -168,14 +168,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gemini-2.5-flash",
       messages: [
         { 
           role: "system", 
@@ -188,9 +188,9 @@ Responda APENAS em formato JSON válido:
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("OpenAI text generation error:", response.status, errorText);
-    if (response.status === 429) throw new Error("OpenAI rate limit exceeded. Try again later.");
-    if (response.status === 402) throw new Error("OpenAI payment required. Check your API credits.");
+    console.error("Gemini text generation error:", response.status, errorText);
+    if (response.status === 429) throw new Error("Gemini rate limit exceeded. Try again later.");
+    if (response.status === 402) throw new Error("Gemini payment required. Check your API credits.");
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -217,7 +217,7 @@ Responda APENAS em formato JSON válido:
   }
 }
 
-async function generateThumbnail(matchData: MatchData, OPENAI_API_KEY: string): Promise<string | null> {
+async function generateThumbnail(matchData: MatchData, GEMINI_API_KEY: string): Promise<string | null> {
   const formattedDate = new Date(matchData.data).toLocaleDateString('pt-BR', { 
     day: '2-digit', 
     month: '2-digit',
@@ -237,19 +237,14 @@ async function generateThumbnail(matchData: MatchData, OPENAI_API_KEY: string): 
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        response_format: "b64_json",
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     });
 
@@ -260,7 +255,7 @@ async function generateThumbnail(matchData: MatchData, OPENAI_API_KEY: string): 
     }
 
     const data = await response.json();
-    const base64Image = data.data?.[0]?.b64_json;
+    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     
     if (!base64Image) {
       console.log("No image in DALL-E response");
@@ -274,7 +269,7 @@ async function generateThumbnail(matchData: MatchData, OPENAI_API_KEY: string): 
   }
 }
 
-async function generateInternalImage(matchData: MatchData, OPENAI_API_KEY: string): Promise<string | null> {
+async function generateInternalImage(matchData: MatchData, GEMINI_API_KEY: string): Promise<string | null> {
   const prompt = `Create a professional sports analytics infographic image:
 - Modern dark background with subtle gradient
 - Football field tactical view with abstract data visualization elements
@@ -288,19 +283,14 @@ async function generateInternalImage(matchData: MatchData, OPENAI_API_KEY: strin
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        response_format: "b64_json",
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     });
 
@@ -309,7 +299,7 @@ async function generateInternalImage(matchData: MatchData, OPENAI_API_KEY: strin
     }
 
     const data = await response.json();
-    const base64Image = data.data?.[0]?.b64_json;
+    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating internal image:", error);
@@ -365,12 +355,12 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -501,12 +491,12 @@ serve(async (req) => {
         console.log(`Processing match: ${matchData.time_casa.nome} vs ${matchData.time_fora.nome}`);
 
         // Generate long-form text content
-        const textContent = await generateLongFormContent(matchData, OPENAI_API_KEY);
+        const textContent = await generateLongFormContent(matchData, GEMINI_API_KEY);
         console.log(`Text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
         // Generate and upload thumbnail
         let imageUrl: string | null = null;
-        const thumbnailBase64 = await generateThumbnail(matchData, OPENAI_API_KEY);
+        const thumbnailBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
         
         if (thumbnailBase64) {
           imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `${match.id}.png`);
@@ -518,7 +508,7 @@ serve(async (req) => {
 
         // Generate and upload internal image
         let internalImageUrl: string | null = null;
-        const internalImageBase64 = await generateInternalImage(matchData, OPENAI_API_KEY);
+        const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
         
         if (internalImageBase64) {
           internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `${match.id}-internal.png`);

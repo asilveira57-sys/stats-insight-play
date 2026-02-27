@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
         removed_team_id,
         created_by_user_id: user.id,
         search_provider_used: "firecrawl",
-        ai_model_used: "openai/gpt-4o-mini",
+        ai_model_used: "gemini/gemini-2.5-flash",
       })
       .select()
       .single();
@@ -213,22 +213,22 @@ Deno.serve(async (req) => {
     const topOppsB = getTopOpponents(matchesB, removed_team_id, 10);
 
     // Call OpenAI API for analysis
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const aiPrompt = buildAIPrompt(
       teamA, teamB, sampleA, sampleB, evidenceResults,
       leaguesA, leaguesB, topOppsA, topOppsB, strict_mode
     );
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "You are a football data analyst. Respond ONLY with valid JSON, no markdown." },
           { role: "user", content: aiPrompt },

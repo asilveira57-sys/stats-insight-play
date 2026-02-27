@@ -27,7 +27,7 @@ interface TeamData {
   };
 }
 
-async function generatePillarContent(teamData: TeamData, OPENAI_API_KEY: string): Promise<{
+async function generatePillarContent(teamData: TeamData, GEMINI_API_KEY: string): Promise<{
   visao_geral: string;
   estilo_jogo: string;
   desempenho_temporada: string;
@@ -71,14 +71,14 @@ REGRAS:
 - Foque em análise estatística e tendências
 - Mantenha tom informativo e objetivo`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista esportivo brasileiro profissional. Escreva em português brasileiro." },
         { role: "user", content: prompt }
@@ -89,10 +89,10 @@ REGRAS:
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("OpenAI API error:", response.status, errorText);
-    if (response.status === 429) throw new Error("OpenAI rate limit exceeded. Try again later.");
-    if (response.status === 402) throw new Error("OpenAI payment required. Check your API credits.");
-    throw new Error(`OpenAI API error: ${response.status}`);
+    console.error("Gemini API error:", response.status, errorText);
+    if (response.status === 429) throw new Error("Gemini rate limit exceeded. Try again later.");
+    if (response.status === 402) throw new Error("Gemini payment required. Check your API credits.");
+    throw new Error(`Gemini API error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -127,10 +127,10 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY not configured");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -249,7 +249,7 @@ serve(async (req) => {
         };
 
         // Generate content
-        const content = await generatePillarContent(teamData, OPENAI_API_KEY);
+        const content = await generatePillarContent(teamData, GEMINI_API_KEY);
 
         // Update team with content
         const { error: updateError } = await supabaseAdmin
