@@ -211,6 +211,159 @@ export default function AdminControlCenter() {
   
   const [syncingSource, setSyncingSource] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [syncingEstaduais, setSyncingEstaduais] = useState(false);
+
+  // Auto-loop batch processing state
+  const [loopState, setLoopState] = useState<{
+    predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
+    retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
+    analyses: { running: boolean; generated: number; failed: number; total: number; log: string[] };
+  }>({
+    predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
+    retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
+    analyses: { running: false, generated: 0, failed: 0, total: 0, log: [] },
+  });
+
+  const stopLoopRef = { predictions: false, retroPredictions: false, analyses: false };
+
+  const runPredictionsLoop = async () => {
+    stopLoopRef.predictions = false;
+    setLoopState(prev => ({ ...prev, predictions: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando geração de palpites...'] } }));
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let round = 0;
+
+    while (!stopLoopRef.predictions) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-predictions');
+        if (error) throw error;
+
+        const gen = data?.generated || 0;
+        const fail = data?.failed || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        const msg = `Lote ${round}: ${gen} gerados, ${fail} falhas (total: ${totalGenerated})`;
+        setLoopState(prev => ({
+          ...prev,
+          predictions: { running: true, generated: totalGenerated, failed: totalFailed, total: data?.totalScheduled || 0, log: [...prev.predictions.log.slice(-19), msg] },
+        }));
+
+        if (gen === 0 && fail === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, '✅ Todos os palpites foram gerados!'] },
+          }));
+          toast({ title: 'Palpites completos!', description: `${totalGenerated} palpites gerados.` });
+          break;
+        }
+      } catch (e) {
+        setLoopState(prev => ({
+          ...prev,
+          predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, `Erro: ${String(e)}`] },
+        }));
+        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+        break;
+      }
+    }
+    if (stopLoopRef.predictions) {
+      setLoopState(prev => ({ ...prev, predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, '⏹ Parado pelo usuário.'] } }));
+    }
+  };
+
+  const runRetroPredictionsLoop = async () => {
+    stopLoopRef.retroPredictions = false;
+    setLoopState(prev => ({ ...prev, retroPredictions: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando palpites retroativos...'] } }));
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let round = 0;
+
+    while (!stopLoopRef.retroPredictions) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-retroactive-predictions', { body: { limit: 100 } });
+        if (error) throw error;
+
+        const gen = data?.generated || 0;
+        const fail = data?.failed || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        const msg = `Lote ${round}: ${gen} gerados, ${fail} falhas (total: ${totalGenerated})`;
+        setLoopState(prev => ({
+          ...prev,
+          retroPredictions: { running: true, generated: totalGenerated, failed: totalFailed, total: data?.totalFinished || 0, log: [...prev.retroPredictions.log.slice(-19), msg] },
+        }));
+
+        if (gen === 0 && fail === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, '✅ Completo!'] },
+          }));
+          toast({ title: 'Palpites retroativos completos!', description: `${totalGenerated} gerados.` });
+          break;
+        }
+      } catch (e) {
+        setLoopState(prev => ({
+          ...prev,
+          retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, `Erro: ${String(e)}`] },
+        }));
+        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+        break;
+      }
+    }
+    if (stopLoopRef.retroPredictions) {
+      setLoopState(prev => ({ ...prev, retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, '⏹ Parado.'] } }));
+    }
+  };
+
+  const runAnalysesLoop = async () => {
+    stopLoopRef.analyses = false;
+    setLoopState(prev => ({ ...prev, analyses: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando geração de análises...'] } }));
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let round = 0;
+
+    while (!stopLoopRef.analyses) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-match-analysis');
+        if (error) throw error;
+
+        const gen = data?.generated || data?.totalGenerated || 0;
+        const fail = data?.failed || data?.totalFailed || 0;
+        const pending = data?.remaining || data?.pendingAnalyses || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        const msg = `Lote ${round}: ${gen} análises, ${fail} falhas. Pendentes: ${pending}`;
+        setLoopState(prev => ({
+          ...prev,
+          analyses: { running: true, generated: totalGenerated, failed: totalFailed, total: pending + totalGenerated, log: [...prev.analyses.log.slice(-19), msg] },
+        }));
+
+        if (gen === 0 || pending === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, '✅ Todas as análises geradas!'] },
+          }));
+          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
+          break;
+        }
+      } catch (e) {
+        setLoopState(prev => ({
+          ...prev,
+          analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `Erro: ${String(e)}`] },
+        }));
+        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+        break;
+      }
+    }
+    if (stopLoopRef.analyses) {
+      setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, '⏹ Parado.'] } }));
+    }
+  };
 
   // Sync handlers
   const handleSyncAll = async () => {
@@ -305,7 +458,7 @@ export default function AdminControlCenter() {
     }
   };
 
-  const [syncingEstaduais, setSyncingEstaduais] = useState(false);
+
 
   const handleSyncEstaduais = async () => {
     setSyncingEstaduais(true);
@@ -695,6 +848,114 @@ export default function AdminControlCenter() {
                   </CardContent>
                 </Card>
 
+                {/* Auto-Loop: Palpites Futuros */}
+                <Card className="md:col-span-2 border-primary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="w-5 h-5 text-primary" />
+                      Geração Automática de Palpites (Futuros)
+                    </CardTitle>
+                    <CardDescription>Gera palpites para todas as partidas agendadas sem palpite, em loop até completar</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={runPredictionsLoop}
+                        disabled={loopState.predictions.running}
+                        className="bg-primary"
+                      >
+                        {loopState.predictions.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.predictions.running ? 'Processando...' : 'Iniciar Loop'}
+                      </Button>
+                      {loopState.predictions.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.predictions = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {loopState.predictions.generated > 0 && (
+                        <Badge variant="outline">{loopState.predictions.generated} gerados / {loopState.predictions.failed} falhas</Badge>
+                      )}
+                    </div>
+                    {loopState.predictions.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.predictions.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Palpites Retroativos */}
+                <Card className="md:col-span-2 border-primary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <RotateCcw className="w-5 h-5 text-primary" />
+                      Geração Automática de Palpites (Retroativos)
+                    </CardTitle>
+                    <CardDescription>Gera palpites para partidas finalizadas sem palpite + processa comparativo</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={runRetroPredictionsLoop}
+                        disabled={loopState.retroPredictions.running}
+                        className="bg-primary"
+                      >
+                        {loopState.retroPredictions.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.retroPredictions.running ? 'Processando...' : 'Iniciar Loop'}
+                      </Button>
+                      {loopState.retroPredictions.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.retroPredictions = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {loopState.retroPredictions.generated > 0 && (
+                        <Badge variant="outline">{loopState.retroPredictions.generated} gerados / {loopState.retroPredictions.failed} falhas</Badge>
+                      )}
+                    </div>
+                    {loopState.retroPredictions.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.retroPredictions.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Análises */}
+                <Card className="md:col-span-2 border-primary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="w-5 h-5 text-primary" />
+                      Geração Automática de Análises Pré-Jogo
+                    </CardTitle>
+                    <CardDescription>Gera análises IA para todas as partidas pendentes, em loop até completar</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={runAnalysesLoop}
+                        disabled={loopState.analyses.running}
+                        className="bg-primary"
+                      >
+                        {loopState.analyses.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.analyses.running ? 'Processando...' : 'Iniciar Loop'}
+                      </Button>
+                      {loopState.analyses.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.analyses = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {loopState.analyses.generated > 0 && (
+                        <Badge variant="outline">{loopState.analyses.generated} geradas / {loopState.analyses.failed} falhas</Badge>
+                      )}
+                    </div>
+                    {loopState.analyses.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.analyses.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Estatísticas de Conteúdo</CardTitle>
@@ -725,16 +986,10 @@ export default function AdminControlCenter() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Geração Manual</CardTitle>
-                    <CardDescription>Gerar conteúdo sob demanda</CardDescription>
+                    <CardTitle>Outras Ações</CardTitle>
+                    <CardDescription>Geração avulsa de conteúdo</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateContent('predictions')}>
-                      <Zap className="w-4 h-4 mr-2" /> Gerar Palpites Faltantes
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateContent('analysis')}>
-                      <FileText className="w-4 h-4 mr-2" /> Gerar Análises Pré-Jogo
-                    </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateContent('weekly')}>
                       <Calendar className="w-4 h-4 mr-2" /> Gerar Validação Semanal
                     </Button>
