@@ -119,18 +119,46 @@ export function getPriorityLevel(score: number): 'high' | 'medium' | 'low' {
   return 'low';
 }
 
-// Mutation to recalculate scores
+// Mutation to recalculate scores (with batching loop for teams)
 export function useRecalculatePriorityScores() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (target: 'all' | 'leagues' | 'teams' = 'all') => {
-      const { data, error } = await supabase.functions.invoke('calculate-priority-scores', {
-        body: { target },
-      });
+    mutationFn: async (params: { target?: 'all' | 'leagues' | 'teams'; onProgress?: (msg: string) => void } = {}) => {
+      const { target = 'all', onProgress } = params;
+      
+      // First pass: leagues (always completes in one call)
+      if (target === 'all' || target === 'leagues') {
+        onProgress?.('Calculando scores de ligas...');
+        const { data, error } = await supabase.functions.invoke('calculate-priority-scores', {
+          body: { target: 'leagues' },
+        });
+        if (error) throw error;
+        onProgress?.(`Ligas atualizadas: ${data?.leagues_updated || 0}`);
+      }
 
-      if (error) throw error;
-      return data;
+      // Second pass: teams in batches
+      if (target === 'all' || target === 'teams') {
+        let offset = 0;
+        let totalUpdated = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          onProgress?.(`Processando times (offset: ${offset})...`);
+          const { data, error } = await supabase.functions.invoke('calculate-priority-scores', {
+            body: { target: 'teams', offset },
+          });
+          if (error) throw error;
+
+          totalUpdated += data?.teams_updated || 0;
+          hasMore = data?.has_more || false;
+          offset += 50; // BATCH_SIZE
+
+          onProgress?.(`Times atualizados: ${totalUpdated}/${data?.teams_total || '?'}`);
+        }
+
+        onProgress?.(`Concluído! Total de times atualizados: ${totalUpdated}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leagues-by-priority'] });

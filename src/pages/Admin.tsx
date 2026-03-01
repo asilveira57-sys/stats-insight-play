@@ -919,10 +919,13 @@ function PriorityScoresSection() {
 
   const handleRecalculate = async () => {
     try {
-      const result = await recalculateMutation.mutateAsync('all');
+      await recalculateMutation.mutateAsync({
+        target: 'all',
+        onProgress: (msg) => console.log('[PriorityScores]', msg),
+      });
       toast({
         title: "Scores recalculados!",
-        description: `${result.leagues_updated} ligas e ${result.teams_updated} times atualizados.`,
+        description: "Ligas e times atualizados com sucesso.",
       });
     } catch (error) {
       toast({
