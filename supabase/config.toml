@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.refresh-rankings]
 verify_jwt = false
+
+[functions.import-csv-direct]
+verify_jwt = false
