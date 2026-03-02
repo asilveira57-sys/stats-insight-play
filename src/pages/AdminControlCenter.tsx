@@ -217,14 +217,14 @@ export default function AdminControlCenter() {
   const [loopState, setLoopState] = useState<{
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
-    analyses: { running: boolean; generated: number; failed: number; total: number; log: string[] };
+    analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
-    analyses: { running: false, generated: 0, failed: 0, total: 0, log: [] },
+    analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
   });
 
-  const stopLoopRef = { predictions: false, retroPredictions: false, analyses: false };
+  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false }))[0];
 
   const runPredictionsLoop = async () => {
     stopLoopRef.predictions = false;
@@ -320,48 +320,111 @@ export default function AdminControlCenter() {
 
   const runAnalysesLoop = async () => {
     stopLoopRef.analyses = false;
-    setLoopState(prev => ({ ...prev, analyses: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando geração de análises...'] } }));
+    setLoopState(prev => ({ ...prev, analyses: { running: true, generated: 0, failed: 0, total: 0, log: ['⏳ Iniciando geração de análises (1 por vez)...'], tasks: [] } }));
     let totalGenerated = 0;
     let totalFailed = 0;
     let round = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 2000;
 
     while (!stopLoopRef.analyses) {
       round++;
       try {
-        const { data, error } = await supabase.functions.invoke('generate-match-analysis');
-        if (error) throw error;
+        const { data, error } = await supabase.functions.invoke('generate-match-analysis', { body: { limit: 1 } });
+        if (error) {
+          const errMsg = String(error);
+          // Rate limit detection
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 60000);
+            const waitSec = Math.round(backoffMs / 1000);
+            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s antes de tentar novamente...`;
+            setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, log: [...prev.analyses.log.slice(-49), msg] } }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
 
-        const gen = data?.generated || data?.totalGenerated || 0;
-        const fail = data?.failed || data?.totalFailed || 0;
-        const pending = data?.remaining || data?.pendingAnalyses || 0;
+        consecutiveErrors = 0;
+        backoffMs = 2000;
+
+        const results = data?.results || {};
+        const gen = results.created || 0;
+        const fail = (results.errors?.length) || 0;
+        const pending = results.stats?.withoutAnalysis || 0;
+        const totalInWindow = results.stats?.totalInWindow || 0;
         totalGenerated += gen;
         totalFailed += fail;
 
-        const msg = `Lote ${round}: ${gen} análises, ${fail} falhas. Pendentes: ${pending}`;
+        // Build task entries from errors
+        const newTasks: { match: string; status: 'ok' | 'fail'; error?: string }[] = [];
+        if (gen > 0) {
+          newTasks.push({ match: `Análise #${totalGenerated}`, status: 'ok' });
+        }
+        if (results.errors) {
+          for (const err of results.errors) {
+            newTasks.push({ match: err, status: 'fail', error: err });
+          }
+        }
+
+        const msg = `✅ Lote ${round}: ${gen} gerada(s), ${fail} falha(s). Pendentes: ${pending}`;
         setLoopState(prev => ({
           ...prev,
-          analyses: { running: true, generated: totalGenerated, failed: totalFailed, total: pending + totalGenerated, log: [...prev.analyses.log.slice(-19), msg] },
+          analyses: {
+            running: true,
+            generated: totalGenerated,
+            failed: totalFailed,
+            total: totalInWindow,
+            log: [...prev.analyses.log.slice(-49), msg],
+            tasks: [...prev.analyses.tasks, ...newTasks],
+          },
         }));
 
-        if (gen === 0 || pending === 0) {
+        if (gen === 0 && fail === 0) {
           setLoopState(prev => ({
             ...prev,
-            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, '✅ Todas as análises geradas!'] },
+            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `🏁 Concluído! ${totalGenerated} análises geradas no total.`] },
           }));
           toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
           break;
         }
+
+        if (pending === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `🏁 Nenhuma análise pendente restante. Total: ${totalGenerated}`] },
+          }));
+          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
+          break;
+        }
+
+        // Small delay between calls to be gentle on the API
+        await new Promise(r => setTimeout(r, 3000));
       } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = String(e);
+        
+        if (consecutiveErrors >= 5) {
+          setLoopState(prev => ({
+            ...prev,
+            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `❌ Parado após ${consecutiveErrors} erros consecutivos: ${errMsg}`], tasks: [...prev.analyses.tasks, { match: `Erro #${totalFailed}`, status: 'fail', error: errMsg }] },
+          }));
+          toast({ title: 'Interrompido por erros', description: `${consecutiveErrors} erros seguidos. ${totalGenerated} análises geradas.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(5 * consecutiveErrors, 30);
         setLoopState(prev => ({
           ...prev,
-          analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `Erro: ${String(e)}`] },
+          analyses: { ...prev.analyses, log: [...prev.analyses.log, `⚠️ Erro (tentativa ${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`], tasks: [...prev.analyses.tasks, { match: `Erro #${totalFailed}`, status: 'fail', error: errMsg }] },
         }));
-        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
-        break;
+        await new Promise(r => setTimeout(r, waitSec * 1000));
       }
     }
     if (stopLoopRef.analyses) {
-      setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, '⏹ Parado.'] } }));
+      setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `⏹ Parado pelo usuário. ${totalGenerated} análises geradas.`] } }));
     }
   };
 
@@ -927,27 +990,47 @@ export default function AdminControlCenter() {
                       <FileText className="w-5 h-5 text-primary" />
                       Geração Automática de Análises Pré-Jogo
                     </CardTitle>
-                    <CardDescription>Gera análises IA para todas as partidas pendentes, em loop até completar</CardDescription>
+                    <CardDescription>Gera análises IA 1 por vez para todas as partidas pendentes, com tratamento de rate limit e retry automático</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Button
                         onClick={runAnalysesLoop}
                         disabled={loopState.analyses.running}
                         className="bg-primary"
                       >
                         {loopState.analyses.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-                        {loopState.analyses.running ? 'Processando...' : 'Iniciar Loop'}
+                        {loopState.analyses.running ? 'Processando...' : 'Gerar Todas as Análises Pendentes'}
                       </Button>
                       {loopState.analyses.running && (
                         <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.analyses = true; }}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
-                      {loopState.analyses.generated > 0 && (
+                      {(loopState.analyses.generated > 0 || loopState.analyses.failed > 0) && (
                         <Badge variant="outline">{loopState.analyses.generated} geradas / {loopState.analyses.failed} falhas</Badge>
                       )}
                     </div>
+                    {/* Progress bar */}
+                    {loopState.analyses.total > 0 && (
+                      <div className="space-y-1">
+                        <Progress value={(loopState.analyses.generated / loopState.analyses.total) * 100} className="h-2" />
+                        <p className="text-xs text-muted-foreground">{loopState.analyses.generated} de {loopState.analyses.total} ({Math.round((loopState.analyses.generated / loopState.analyses.total) * 100)}%)</p>
+                      </div>
+                    )}
+                    {/* Task list */}
+                    {loopState.analyses.tasks.length > 0 && (
+                      <div className="border border-border rounded max-h-40 overflow-auto">
+                        {loopState.analyses.tasks.slice(-20).map((task, i) => (
+                          <div key={i} className={`flex items-center gap-2 px-3 py-1.5 text-xs border-b border-border last:border-0 ${task.status === 'ok' ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
+                            {task.status === 'ok' ? <CheckCircle className="w-3 h-3 text-green-500 shrink-0" /> : <XCircle className="w-3 h-3 text-red-500 shrink-0" />}
+                            <span className="truncate">{task.match}</span>
+                            {task.error && <span className="text-muted-foreground ml-auto truncate max-w-[200px]">{task.error}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Console log */}
                     {loopState.analyses.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.analyses.log.map((l, i) => <div key={i}>{l}</div>)}
