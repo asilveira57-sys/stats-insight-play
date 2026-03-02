@@ -213,6 +213,109 @@ export default function AdminControlCenter() {
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingEstaduais, setSyncingEstaduais] = useState(false);
 
+  // Bulk CSV import state
+  const [csvImportState, setCsvImportState] = useState<{
+    running: boolean;
+    currentFile: string;
+    log: string[];
+    results: { file: string; status: 'pending' | 'ok' | 'fail' | 'processing'; inserted: number; updated: number; error?: string }[];
+  }>({ running: false, currentFile: '', log: [], results: [] });
+
+  const CSV_FILES = [
+    { file: 'Brasileirao_Matches.csv', league_id: 'c47cb84c-8cb0-444b-a2b7-9f328c20cc72', country: 'Brasil', label: 'Brasileirão Série A' },
+    { file: 'Brazilian_Cup_Matches.csv', league_id: 'dadb34d3-3d0b-4e0a-a25c-10cbde5dbafd', country: 'Brasil', label: 'Copa do Brasil' },
+    { file: 'Libertadores_Matches.csv', league_id: 'a05c6f7e-7a3e-493a-81ab-5c54f59c8b05', country: 'América do Sul', label: 'Copa Libertadores' },
+  ];
+
+  const runBulkCsvImport = async () => {
+    setCsvImportState({
+      running: true,
+      currentFile: '',
+      log: ['🚀 Iniciando importação em lote dos 3 CSVs...'],
+      results: CSV_FILES.map(f => ({ file: f.label, status: 'pending', inserted: 0, updated: 0 })),
+    });
+
+    for (let fi = 0; fi < CSV_FILES.length; fi++) {
+      const csvFile = CSV_FILES[fi];
+      setCsvImportState(prev => ({
+        ...prev,
+        currentFile: csvFile.label,
+        log: [...prev.log, `📂 Baixando ${csvFile.file}...`],
+        results: prev.results.map((r, i) => i === fi ? { ...r, status: 'processing' } : r),
+      }));
+
+      try {
+        // Fetch CSV from public folder
+        const res = await fetch(`/data/${csvFile.file}`);
+        if (!res.ok) throw new Error(`Falha ao baixar ${csvFile.file}: HTTP ${res.status}`);
+        const csvText = await res.text();
+
+        setCsvImportState(prev => ({
+          ...prev,
+          log: [...prev.log, `📊 ${csvFile.label}: ${csvText.split('\\n').length - 1} linhas detectadas. Enviando para importação...`],
+        }));
+
+        // Call edge function with continuation support
+        let offset = 0;
+        let batchId: string | undefined;
+        let totalInserted = 0;
+        let totalUpdated = 0;
+
+        while (true) {
+          const { data, error } = await supabase.functions.invoke('import-csv-direct', {
+            body: {
+              csv_text: csvText,
+              league_id: csvFile.league_id,
+              country: csvFile.country,
+              file_name: csvFile.file,
+              batch_id: batchId,
+              offset,
+            },
+          });
+
+          if (error) throw error;
+
+          totalInserted = data.inserted || 0;
+          totalUpdated = data.updated || 0;
+          batchId = data.batch_id;
+
+          if (data.status === 'partial') {
+            offset = data.next_offset;
+            setCsvImportState(prev => ({
+              ...prev,
+              log: [...prev.log, `⏳ ${csvFile.label}: ${offset}/${data.total} processados (parcial). Continuando...`],
+              results: prev.results.map((r, i) => i === fi ? { ...r, inserted: totalInserted, updated: totalUpdated } : r),
+            }));
+            continue;
+          }
+
+          // Completed
+          setCsvImportState(prev => ({
+            ...prev,
+            log: [...prev.log, `✅ ${csvFile.label}: ${totalInserted} inseridos, ${totalUpdated} atualizados`],
+            results: prev.results.map((r, i) => i === fi ? { ...r, status: 'ok', inserted: totalInserted, updated: totalUpdated } : r),
+          }));
+          break;
+        }
+      } catch (e) {
+        const errMsg = String(e);
+        setCsvImportState(prev => ({
+          ...prev,
+          log: [...prev.log, `❌ ${csvFile.label}: ${errMsg}`],
+          results: prev.results.map((r, i) => i === fi ? { ...r, status: 'fail', error: errMsg } : r),
+        }));
+      }
+    }
+
+    setCsvImportState(prev => ({
+      ...prev,
+      running: false,
+      currentFile: '',
+      log: [...prev.log, '🏁 Importação em lote concluída!'],
+    }));
+    toast({ title: 'Importação CSV concluída!', description: 'Os 3 arquivos foram processados.' });
+  };
+
   // Auto-loop batch processing state
   const [loopState, setLoopState] = useState<{
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
@@ -1034,6 +1137,58 @@ export default function AdminControlCenter() {
                     {loopState.analyses.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.analyses.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Bulk CSV Import */}
+                <Card className="md:col-span-2 border-secondary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Database className="w-5 h-5 text-secondary" />
+                      Importar CSVs Históricos em Lote
+                    </CardTitle>
+                    <CardDescription>Importa Brasileirão, Copa do Brasil e Libertadores de uma só vez (dados pré-carregados)</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={runBulkCsvImport}
+                        disabled={csvImportState.running}
+                        variant="secondary"
+                      >
+                        {csvImportState.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {csvImportState.running ? `Importando ${csvImportState.currentFile}...` : 'Importar 3 CSVs'}
+                      </Button>
+                    </div>
+                    {/* File status list */}
+                    {csvImportState.results.length > 0 && (
+                      <div className="border border-border rounded">
+                        {csvImportState.results.map((r, i) => (
+                          <div key={i} className={`flex items-center justify-between px-3 py-2 text-sm border-b border-border last:border-0 ${
+                            r.status === 'ok' ? 'bg-green-500/5' : r.status === 'fail' ? 'bg-red-500/5' : r.status === 'processing' ? 'bg-blue-500/5' : ''
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              {r.status === 'ok' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                              {r.status === 'fail' && <XCircle className="w-4 h-4 text-red-500" />}
+                              {r.status === 'processing' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                              {r.status === 'pending' && <Clock className="w-4 h-4 text-muted-foreground" />}
+                              <span>{r.file}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {r.status === 'ok' && `${r.inserted} inseridos, ${r.updated} atualizados`}
+                              {r.status === 'fail' && r.error?.slice(0, 50)}
+                              {r.status === 'processing' && 'Processando...'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Console */}
+                    {csvImportState.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-40 overflow-auto text-xs font-mono space-y-1">
+                        {csvImportState.log.map((l, i) => <div key={i}>{l}</div>)}
                       </div>
                     )}
                   </CardContent>
