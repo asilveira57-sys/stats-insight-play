@@ -29,10 +29,29 @@ export function CsvUploadStep({ onFileParsed }: CsvUploadStepProps) {
   const [useManualLeague, setUseManualLeague] = useState(true);
   const { data: leagues } = useLeaguesForImport();
 
+  const [validationError, setValidationError] = useState("");
+
+  const isLeagueSelected = useManualLeague
+    ? (creatingLeague ? newLeagueName.trim().length > 0 : ligaId.length > 0)
+    : true;
+
   const handleFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      if (useManualLeague && !creatingLeague && !ligaId) {
+        setValidationError("Selecione uma liga antes de importar o arquivo.");
+        e.target.value = "";
+        return;
+      }
+      if (useManualLeague && creatingLeague && !newLeagueName.trim()) {
+        setValidationError("Informe o nome da nova liga antes de importar.");
+        e.target.value = "";
+        return;
+      }
+      setValidationError("");
+
       const reader = new FileReader();
       reader.onload = (ev) => {
         const text = ev.target?.result as string;
@@ -136,9 +155,19 @@ export function CsvUploadStep({ onFileParsed }: CsvUploadStepProps) {
           </div>
         )}
 
-        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+        {validationError && (
+          <div className="text-sm text-destructive font-medium bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2">
+            ⚠️ {validationError}
+          </div>
+        )}
+
+        <div className={`border-2 border-dashed rounded-lg p-8 text-center ${!isLeagueSelected && useManualLeague ? "border-destructive/40 opacity-60" : "border-border"}`}>
           <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">Arraste o CSV aqui ou clique para selecionar</p>
+          <p className="text-muted-foreground mb-4">
+            {!isLeagueSelected && useManualLeague
+              ? "⬆️ Selecione a liga acima antes de importar"
+              : "Arraste o CSV aqui ou clique para selecionar"}
+          </p>
           <Input type="file" accept=".csv,.tsv,.txt" onChange={handleFile} className="max-w-xs mx-auto" />
         </div>
       </CardContent>
