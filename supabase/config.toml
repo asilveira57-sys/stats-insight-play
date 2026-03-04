@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.import-csv-direct]
 verify_jwt = false
+
+[functions.bulk-merge-teams]
+verify_jwt = false
