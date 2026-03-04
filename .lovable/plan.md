@@ -1,154 +1,108 @@
 
 
-# Plano: Migrar toda geracão de conteudo para OpenAI
+# Varredura Geral de Qualidade de Dados -- Diagnóstico e Plano de Ação
 
-## Contexto
-Atualmente, 6 edge functions usam o Lovable AI Gateway (modelos Gemini) para gerar conteudo. O objetivo e migrar todas para a API da OpenAI diretamente, igual ao padrao ja usado no `run-team-merge-validation`.
+## Diagnóstico Completo
 
-A chave `OPENAI_API_KEY` ja esta configurada no projeto.
+### 1. Partidas em Ligas Fantasma (CRÍTICO)
+Três ligas informais criadas por importações antigas **ainda contêm partidas** que não foram migradas para as ligas canônicas:
 
-## Funcoes Afetadas
+| Liga Fantasma | Partidas | Liga Canônica Correta |
+|---|---|---|
+| `brazilian-cup-matches` (desativada) | 1.335 | Copa do Brasil (`copa-do-brasil`) |
+| `libertadores-matches` (desativada) | 1.254 | Copa Libertadores (`copa-libertadores`) |
+| `brasileirao-matches` (desativada) | 552 | Campeonato Brasileiro Série A (`campeonato-brasileiro-serie-a`) |
 
-| # | Edge Function | Uso atual | Chamadas AI |
-|---|-------------|-----------|-------------|
-| 1 | `generate-retroactive-articles` | Lovable AI / gemini-2.5-flash | 1 texto + 1 imagem |
-| 2 | `generate-match-analysis` | Lovable AI / gemini-2.5-flash | 1 texto + 2 imagens |
-| 3 | `generate-validation-article` | Lovable AI / gemini-2.5-flash | 1 texto + 2 imagens |
-| 4 | `generate-weekly-validation` | Lovable AI / gemini-2.5-flash | 1 texto + 1 imagem |
-| 5 | `generate-team-pillar` | Lovable AI / gemini-2.5-flash | 1 texto |
-| 6 | `generate-league-pillar` | Lovable AI / gemini-2.5-flash | 1 texto |
+Adicionalmente, existem **10 registros duplicados** da liga "Brazilian Cup Matches" (IDs diferentes, mesmo nome) que precisam ser limpos.
 
-**Total: 6 funcoes, 6 chamadas de texto, 6 chamadas de imagem**
+### 2. Partidas Órfãs
+- **20 partidas** sem `liga_id` (sem liga associada).
 
-## Mudancas Tecnicas
+### 3. Times Duplicados por Slug `-1` (14 times com partidas)
+Times que possuem um equivalente canônico sem o sufixo `-1`:
 
-### Texto: Lovable AI Gateway -> OpenAI API direta
+| Duplicata (slug) | Partidas | Canônico |
+|---|---|---|
+| `abc---rn-1` | 59 | `abc---rn` |
+| `crb---al-1` | 32 | `crb---al` |
+| `asa---al-1` | 18 | `asa---al` |
+| `river-plate-uru-1` | 15 | `river-plate-uru` |
+| `godoy-cruz-1` | 14 | `godoy-cruz` |
+| `la-guaira-1` | 11 | `la-guaira` |
+| + 8 outros com 1-3 partidas cada |
 
-Todas as chamadas de geracao de texto serao migradas de:
+### 4. Times com Mesmo Slug (Duplicatas Exatas -- IDs Diferentes)
+**17 grupos** de times com slug idêntico mas IDs diferentes. Destaques:
+- `independiente-petrolero-1`: **3 registros** (+ 1 canônico)
+- `real-atletico`, `danubio`: **3 registros** cada
+- `godoy-cruz`, `colon-1`, `sport-boys`, `sporting-cristal`, `athletico-paranaense---pr`, etc: **2 registros** cada
 
-```text
-ANTES:
-URL: https://ai.gateway.lovable.dev/v1/chat/completions
-Header: Authorization: Bearer ${LOVABLE_API_KEY}
-Model: google/gemini-2.5-flash
+### 5. Times com Estado que Duplicam Base (30+ pares)
+Times no formato `nome---uf` que duplicam um time base sem estado. Exemplos: `brusque---sc` / `brusque`, `londrina---pr` / `londrina`, `mirassol---sp` / `mirassol`. Estes exigem decisão manual (podem ser times **diferentes** em estados diferentes, ex: `santa-cruz---rn` vs `santa-cruz` de Recife).
 
-DEPOIS:
-URL: https://api.openai.com/v1/chat/completions
-Header: Authorization: Bearer ${OPENAI_API_KEY}
-Model: gpt-4o-mini
-```
+### 6. Ligas com Problemas
+- **USL Championship** com slug `campeonato-paulista-1` (conflito com Campeonato Paulista)
+- **Premier League** duplicada (`premier-league` ativa + `premier-league-1` desativada com 129 partidas)
 
-O modelo `gpt-4o-mini` e o mesmo usado na validacao de fusao de times -- equilibrio entre custo, velocidade e qualidade para geracao de conteudo em portugues.
+### 7. Slugs de Partidas
+- Nenhuma partida sem slug. Sem slugs duplicados. OK.
 
-### Imagens: Lovable AI (Gemini Image) -> OpenAI DALL-E 3
+### 8. Cobertura Temporal das Ligas Canônicas
+| Liga | Período | Total |
+|---|---|---|
+| Brasileirão Série A | 2012--2026 | 7.020 |
+| Copa do Brasil | 2012--2023 | 1.513 |
+| Copa Libertadores | 2013--2022 | 1.373 |
 
-As chamadas de geracao de imagem usam uma API diferente no OpenAI:
+---
 
-```text
-ANTES:
-URL: https://ai.gateway.lovable.dev/v1/chat/completions
-Model: google/gemini-2.5-flash-image
-Format: chat completions com modalities: ["image", "text"]
+## Plano de Ação (4 etapas)
 
-DEPOIS:
-URL: https://api.openai.com/v1/images/generations
-Model: dall-e-3
-Format: API de imagens dedicada
-Size: 1792x1024 (equivalente 16:9)
-Quality: standard (para otimizar custo)
-```
+### Etapa 1 -- Migrar Partidas de Ligas Fantasma
+Criar uma migration SQL que:
+1. Mova as 1.335 partidas de `brazilian-cup-matches` para `copa-do-brasil`
+2. Mova as 1.254 partidas de `libertadores-matches` para `copa-libertadores`
+3. Mova as 552 partidas de `brasileirao-matches` para `campeonato-brasileiro-serie-a`
+4. Mova as 129 partidas de `premier-league-1` para `premier-league`
+5. Associe as 20 partidas órfãs (se possível, via times) ou marque para revisão
+6. Delete os registros duplicados das ligas fantasma
 
-### Tratamento de erros
+### Etapa 2 -- Fundir Times Duplicados por Slug
+Invocar `bulk-merge-teams` com a lista de 14 merges de slug `-1`:
+- `abc---rn-1` -> `abc---rn`
+- `crb---al-1` -> `crb---al`
+- `asa---al-1` -> `asa---al`
+- `river-plate-uru-1` -> `river-plate-uru`
+- `godoy-cruz-1` -> `godoy-cruz`
+- `la-guaira-1` -> `la-guaira`
+- `universidad-de-concepcion-1` -> `universidad-de-concepcion`
+- `vilhena---ro-1` -> `vilhena---ro`
+- `independiente-petrolero-1` -> `independiente-petrolero` (3 registros)
+- `noroeste---sp-1` -> `noroeste---sp`
+- `melgar-1` -> `melgar`
+- `estrela-do-norte---es-1` -> `estrela-do-norte---es`
+- `fortaleza-ce-1` -> `fortaleza` (se aplicável)
 
-Cada funcao tera tratamento para erros 429 (rate limit) e 402 (creditos insuficientes) da API OpenAI, alem de erros genericos.
+### Etapa 3 -- Deduplicar Times com Mesmo Slug
+Criar uma migration SQL para consolidar registros com slug idêntico:
+- Para cada grupo (ex: 3x `danubio`, 3x `real-atletico`, 2x `godoy-cruz`), manter o que tiver mais partidas e migrar referências dos outros via `merge_teams` RPC.
+- Tratar `colon-1` (2 registros com mesmo slug) e `athletico-paranaense---pr` (2 registros).
 
-## Detalhamento por Funcao
+### Etapa 4 -- Corrigir Slug da Liga USL
+- Atualizar o slug de USL Championship de `campeonato-paulista-1` para `usl-championship`.
 
-### 1. generate-retroactive-articles (572 linhas)
-- `generateArticleContent()`: trocar URL, header e modelo para OpenAI
-- `generateThumbnail()`: migrar de Gemini Image para DALL-E 3
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY` em todo o arquivo
+### Fora de Escopo (decisão manual necessária)
+Os 30+ pares de "time com estado vs time base" **não serão fundidos automaticamente** porque muitos são times **genuinamente diferentes** (ex: `santa-cruz---rn` é Santa Cruz do Rio Grande do Norte, diferente de `santa-cruz` que é Santa Cruz de Recife; `penarol---am` é diferente de `peñarol` do Uruguai). Esses serão listados para revisão manual na interface de duplicados.
 
-### 2. generate-match-analysis (576 linhas)
-- `generateLongFormContent()`: trocar para OpenAI
-- `generateThumbnail()`: migrar para DALL-E 3
-- `generateInternalImage()`: migrar para DALL-E 3
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY`
+---
 
-### 3. generate-validation-article (630 linhas)
-- `generateValidationContent()`: trocar para OpenAI
-- `generateValidationThumbnail()`: migrar para DALL-E 3
-- `generateValidationInternalImage()`: migrar para DALL-E 3
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY`
+## Resumo Técnico
 
-### 4. generate-weekly-validation (622 linhas)
-- `generateWeeklyContent()`: trocar para OpenAI
-- `generateWeeklyThumbnail()`: migrar para DALL-E 3
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY`
+**Arquivos a editar:**
+1. Nova migration SQL para migrar partidas entre ligas e limpar ligas fantasma
+2. Invocação do `bulk-merge-teams` para os 14+ merges de slug `-1`
+3. Nova migration SQL para deduplicar times com slug idêntico (via `merge_teams` RPC)
+4. Migration para corrigir slug da USL Championship
 
-### 5. generate-team-pillar (270 linhas)
-- `generatePillarContent()`: trocar para OpenAI
-- Somente texto, sem geracao de imagem
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY`
+**Impacto estimado:** ~3.141 partidas migradas para ligas corretas, ~30 times duplicados eliminados, 10+ ligas fantasma removidas.
 
-### 6. generate-league-pillar (~200 linhas)
-- `generatePillarContent()`: trocar para OpenAI
-- Somente texto, sem geracao de imagem
-- Trocar `LOVABLE_API_KEY` por `OPENAI_API_KEY`
-
-## Padrao de Migracao (texto)
-
-Cada chamada de texto segue este padrao:
-
-```text
-// Substituir fetch URL e headers
-const response = await fetch("https://api.openai.com/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${OPENAI_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "gpt-4o-mini",
-    messages: [...],
-    max_tokens: 8000,  // manter o valor existente
-    temperature: 0.7,  // manter o valor existente
-  }),
-});
-```
-
-## Padrao de Migracao (imagem)
-
-```text
-const response = await fetch("https://api.openai.com/v1/images/generations", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${OPENAI_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "dall-e-3",
-    prompt: prompt,
-    n: 1,
-    size: "1792x1024",
-    quality: "standard",
-    response_format: "b64_json",
-  }),
-});
-
-// Resposta DALL-E 3:
-const data = await response.json();
-const base64Image = data.data?.[0]?.b64_json;
-// Converter para data URL:
-const imageDataUrl = `data:image/png;base64,${base64Image}`;
-```
-
-## Custos Estimados
-
-- **gpt-4o-mini**: ~$0.15/1M input tokens, ~$0.60/1M output tokens (muito mais barato que GPT-4o)
-- **DALL-E 3 standard 1792x1024**: ~$0.08/imagem
-- Para 10 artigos retroativos: ~$0.80 texto + $0.80 imagens = ~$1.60 total
-
-## Nenhuma alteracao necessaria no frontend
-
-O hook `useRetroactiveArticles.ts` e todas as paginas admin continuam funcionando sem mudancas -- a interface com as edge functions permanece identica.
