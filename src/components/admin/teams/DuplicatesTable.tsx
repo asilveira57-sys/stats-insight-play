@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GitMerge, Eye, ArrowRight } from "lucide-react";
+import { GitMerge, Eye, ArrowRight, XCircle } from "lucide-react";
 import type { SuggestedDuplicate } from "@/hooks/useTeamCanonical";
 
 interface DuplicatesTableProps {
@@ -20,6 +20,8 @@ interface DuplicatesTableProps {
     teamB: { id: string; name: string }
   ) => void;
   onViewTeam: (id: string) => void;
+  onDismiss?: (teamAId: string, teamBId: string) => void;
+  isDismissing?: boolean;
 }
 
 export function DuplicatesTable({
@@ -27,6 +29,8 @@ export function DuplicatesTable({
   isLoading,
   onMerge,
   onViewTeam,
+  onDismiss,
+  isDismissing,
 }: DuplicatesTableProps) {
   if (isLoading) {
     return (
@@ -115,6 +119,17 @@ export function DuplicatesTable({
                     title="Ver Time B"
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onDismiss?.(dup.team_a_id, dup.team_b_id)}
+                    disabled={isDismissing}
+                    title="São times diferentes — remover da lista"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Diferente
                   </Button>
                   <Button
                     variant="secondary"

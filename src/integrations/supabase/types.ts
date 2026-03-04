@@ -960,6 +960,48 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_duplicates: {
+        Row: {
+          created_at: string
+          dismissed_by: string | null
+          id: string
+          reason: string | null
+          team_a_id: string
+          team_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          reason?: string | null
+          team_a_id: string
+          team_b_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          reason?: string | null
+          team_a_id?: string
+          team_b_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_duplicates_team_a_id_fkey"
+            columns: ["team_a_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissed_duplicates_team_b_id_fkey"
+            columns: ["team_b_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entitlement_ledger: {
         Row: {
           created_at: string
