@@ -153,17 +153,67 @@ export function useTeamAliases(teamId: string | null) {
   });
 }
 
-// Fetch suggested duplicates
-export function useSuggestedDuplicates() {
+// Fetch dismissed duplicate pairs
+function useDismissedDuplicates() {
   return useQuery({
-    queryKey: ["suggested-duplicates"],
+    queryKey: ["dismissed-duplicates"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("dismissed_duplicates" as any) as any)
+        .select("team_a_id, team_b_id");
+      if (error) throw error;
+      return (data || []) as { team_a_id: string; team_b_id: string }[];
+    },
+  });
+}
+
+// Fetch suggested duplicates (filtering out dismissed)
+export function useSuggestedDuplicates() {
+  const { data: dismissed } = useDismissedDuplicates();
+
+  return useQuery({
+    queryKey: ["suggested-duplicates", dismissed],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_suggested_duplicates", {
         p_limit: 10000,
       });
 
       if (error) throw error;
-      return (data || []) as SuggestedDuplicate[];
+      const all = (data || []) as SuggestedDuplicate[];
+
+      if (!dismissed || dismissed.length === 0) return all;
+
+      const dismissedSet = new Set(
+        dismissed.map((d) => [d.team_a_id, d.team_b_id].sort().join("|"))
+      );
+
+      return all.filter((dup) => {
+        const key = [dup.team_a_id, dup.team_b_id].sort().join("|");
+        return !dismissedSet.has(key);
+      });
+    },
+    enabled: dismissed !== undefined,
+  });
+}
+
+// Dismiss a duplicate pair as "different teams"
+export function useDismissDuplicate() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ teamAId, teamBId }: { teamAId: string; teamBId: string }) => {
+      const [a, b] = [teamAId, teamBId].sort();
+      const { error } = await supabase
+        .from("dismissed_duplicates" as any)
+        .upsert({ team_a_id: a, team_b_id: b, dismissed_by: user?.id } as any, {
+          onConflict: "team_a_id,team_b_id",
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dismissed-duplicates"] });
+      queryClient.invalidateQueries({ queryKey: ["suggested-duplicates"] });
     },
   });
 }

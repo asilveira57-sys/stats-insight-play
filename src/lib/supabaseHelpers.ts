@@ -71,8 +71,8 @@ export async function countAllRecords(
   table: TableNames,
   filters?: (query: any) => any
 ): Promise<number> {
-  let query = supabase
-    .from(table)
+  let query = (supabase
+    .from(table) as any)
     .select('*', { count: 'exact', head: true });
 
   if (filters) {

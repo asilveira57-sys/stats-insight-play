@@ -30,6 +30,7 @@ import {
   useSuggestedDuplicates,
   useMergeLogs,
   useConsolidateAliases,
+  useDismissDuplicate,
 } from "@/hooks/useTeamCanonical";
 import { TeamsTable } from "@/components/admin/teams/TeamsTable";
 import { DuplicatesTable } from "@/components/admin/teams/DuplicatesTable";
@@ -75,6 +76,7 @@ export default function AdminTeams() {
   const { data: mergeLogs, isLoading: loadingLogs } = useMergeLogs();
 
   const consolidateAliases = useConsolidateAliases();
+  const dismissDuplicate = useDismissDuplicate();
 
   const handleSearch = () => {
     setSearch(searchInput);
@@ -352,6 +354,16 @@ export default function AdminTeams() {
                   isLoading={loadingDuplicates}
                   onMerge={openMergeFromDuplicate}
                   onViewTeam={(id) => setSelectedTeamId(id)}
+                  onDismiss={(teamAId, teamBId) => {
+                    dismissDuplicate.mutate(
+                      { teamAId, teamBId },
+                      {
+                        onSuccess: () => toast.success("Par removido da lista de duplicados."),
+                        onError: () => toast.error("Erro ao descartar duplicado."),
+                      }
+                    );
+                  }}
+                  isDismissing={dismissDuplicate.isPending}
                 />
               </CardContent>
             </Card>
