@@ -201,19 +201,59 @@ Responda APENAS em formato JSON válido:
     throw new Error("No content in AI response");
   }
 
-  // Parse JSON from response - handle markdown code blocks
+  // Parse JSON from response - handle markdown code blocks and edge cases
   let jsonContent = content;
-  if (content.includes("```json")) {
-    jsonContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "");
-  } else if (content.includes("```")) {
-    jsonContent = content.replace(/```\n?/g, "");
+  
+  // Remove markdown code fences
+  if (jsonContent.includes("```")) {
+    jsonContent = jsonContent.replace(/```(?:json)?\s*\n?/g, "");
   }
+  
+  // Try to extract JSON object if surrounded by other text
+  const jsonMatch = jsonContent.match(/\{[\s\S]*"titulo"[\s\S]*"resumo"[\s\S]*"texto"[\s\S]*\}/);
+  if (jsonMatch) {
+    jsonContent = jsonMatch[0];
+  }
+  
+  // Remove control characters that break JSON.parse (except newlines/tabs inside strings)
+  jsonContent = jsonContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
   
   try {
     return JSON.parse(jsonContent.trim());
   } catch (e) {
-    console.error("Failed to parse AI response:", jsonContent);
-    throw new Error("Failed to parse AI response as JSON");
+    console.error("JSON parse attempt 1 failed, trying cleanup...");
+    
+    // Second attempt: fix common issues like unescaped newlines in HTML strings
+    try {
+      // Replace literal newlines inside JSON string values with escaped version
+      const cleaned = jsonContent.trim()
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+      return JSON.parse(cleaned);
+    } catch (e2) {
+      // Third attempt: manually extract fields with regex
+      console.error("JSON parse attempt 2 failed, trying regex extraction...");
+      try {
+        const tituloMatch = jsonContent.match(/"titulo"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        const resumoMatch = jsonContent.match(/"resumo"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        const textoMatch = jsonContent.match(/"texto"\s*:\s*"([\s\S]*)"[\s\n\r]*\}$/);
+        
+        if (tituloMatch && resumoMatch && textoMatch) {
+          return {
+            titulo: JSON.parse(`"${tituloMatch[1]}"`),
+            resumo: JSON.parse(`"${resumoMatch[1]}"`),
+            texto: textoMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'),
+          };
+        }
+      } catch (e3) {
+        // Fall through
+      }
+      
+      console.error("All parse attempts failed. Raw content length:", content.length);
+      console.error("First 500 chars:", content.substring(0, 500));
+      throw new Error("Failed to parse AI response as JSON after multiple attempts");
+    }
   }
 }
 
