@@ -303,8 +303,7 @@ async function getRelatedArticles(
     .from("noticias")
     .select("slug, titulo")
     .not("partida_id", "is", null)
-    .order("data_publicacao", { ascending: false })
-    .limit(3);
+    .order("data_publicacao", { ascending: false });
 
   if (casaMatches) {
     for (const article of casaMatches) {

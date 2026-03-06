@@ -156,8 +156,7 @@ Deno.serve(async (req) => {
               .select('gols_casa, gols_fora, time_casa_id, time_fora_id')
               .or(`time_casa_id.eq.${team.id},time_fora_id.eq.${team.id}`)
               .gte('data', thirtyDaysAgoStr)
-              .eq('status', 'finished')
-              .limit(10);
+               .eq('status', 'finished');
 
             let wins = 0, draws = 0, losses = 0;
             if (recentMatches) {

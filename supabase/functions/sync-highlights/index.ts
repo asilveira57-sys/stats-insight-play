@@ -100,8 +100,7 @@ serve(async (req) => {
             time_casa:times!partidas_time_casa_id_fkey(nome),
             time_fora:times!partidas_time_fora_id_fkey(nome)
           `)
-          .eq("data", matchDate)
-          .limit(50);
+          .eq("data", matchDate);
 
         let matchId: string | null = null;
         

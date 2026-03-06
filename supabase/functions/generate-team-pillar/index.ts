@@ -155,8 +155,7 @@ serve(async (req) => {
     } else {
       // Get teams without pillar content or with old content
       teamQuery = teamQuery
-        .or('pillar_content.is.null,pillar_updated_at.lt.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(5);
+        .or('pillar_content.is.null,pillar_updated_at.lt.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
     }
 
     const { data: teams, error: teamError } = await teamQuery;

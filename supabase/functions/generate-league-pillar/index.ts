@@ -134,8 +134,7 @@ serve(async (req) => {
       leagueQuery = leagueQuery.eq('slug', league_slug);
     } else {
       leagueQuery = leagueQuery
-        .or('pillar_content.is.null,pillar_updated_at.lt.' + new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(3);
+        .or('pillar_content.is.null,pillar_updated_at.lt.' + new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString());
     }
 
     const { data: leagues, error: leagueError } = await leagueQuery;
