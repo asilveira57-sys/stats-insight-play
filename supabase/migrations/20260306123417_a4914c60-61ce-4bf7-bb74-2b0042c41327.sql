@@ -1,0 +1,19 @@
+-- Add logo_url for all leagues missing logos
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/475.png' WHERE slug = 'campeonato-paulista' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/423.png' WHERE slug = 'campeonato-carioca' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/425.png' WHERE slug = 'campeonato-mineiro' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/442.png' WHERE slug = 'campeonato-gaucho' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/444.png' WHERE slug = 'campeonato-paranaense' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/422.png' WHERE slug = 'campeonato-pernambucano' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/441.png' WHERE slug = 'campeonato-cearense' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/440.png' WHERE slug = 'campeonato-baiano' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/519.png' WHERE slug = 'campeonato-catarinense' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/428.png' WHERE slug = 'campeonato-goiano' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/461.png' WHERE slug = 'copa-do-nordeste' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/71.png' WHERE slug = 'campeonato-brasileiro-serie-b' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/13.png' WHERE slug = 'copa-libertadores' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/11.png' WHERE slug = 'copa-sudamericana' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/73.png' WHERE slug = 'copa-do-brasil' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://media.api-sports.io/football/leagues/255.png' WHERE slug = 'usl-championship' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://crests.football-data.org/PD.png' WHERE slug = 'la-liga' AND logo_url IS NULL;
+UPDATE public.ligas SET logo_url = 'https://crests.football-data.org/EC.png' WHERE slug = 'eredivisie' AND logo_url IS NULL;

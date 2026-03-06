@@ -223,8 +223,7 @@ export default function HubSyncDetails() {
         .from('partidas')
         .select('id')
         .eq('status', 'finished')
-        .eq('detalhes_sincronizados', true)
-        .limit(500);
+        .eq('detalhes_sincronizados', true);
       
       if (error) throw error;
       if (!syncedPartidas || syncedPartidas.length === 0) return { count: 0, ids: [] };
@@ -359,8 +358,7 @@ export default function HubSyncDetails() {
         .eq('status', 'finished')
         .or('detalhes_sincronizados.is.null,detalhes_sincronizados.eq.false')
         .not('api_id', 'is', null)
-        .order('data', { ascending: false })
-        .limit(100);
+        .order('data', { ascending: false });
       
       if (selectedLeague !== 'all') {
         query = query.eq('liga_id', selectedLeague);

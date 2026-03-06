@@ -67,8 +67,7 @@ export default function ValidacaoSemanal() {
         .select('id, titulo, resumo, slug, imagem_url, data_publicacao')
         .like('slug', 'validacao-semana-%')
         .eq('publicada', true)
-        .order('data_publicacao', { ascending: false })
-        .limit(50);
+        .order('data_publicacao', { ascending: false });
 
       if (error) throw error;
       return data as WeeklyArticle[];
