@@ -374,7 +374,7 @@ serve(async (req) => {
       if (validLeagueIds.length > 0) {
         query = query.in('liga_id', validLeagueIds);
       }
-      query = query.limit(limit);
+      // No limit - fetch all pending matches
     }
 
     const { data: partidas, error: partidasError } = await query;

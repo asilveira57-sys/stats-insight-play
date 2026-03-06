@@ -227,8 +227,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
           .from('times')
           .select('*')
           .in('id', Array.from(teamIds))
-          .ilike('nome', `%${searchTerm}%`)
-          .limit(10);
+           .ilike('nome', `%${searchTerm}%`);
         
         if (error) throw error;
         return (data || []).map(mapToTime);
@@ -237,8 +236,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
       const { data, error } = await supabase
         .from('times')
         .select('*')
-        .ilike('nome', `%${searchTerm}%`)
-        .limit(10);
+        .ilike('nome', `%${searchTerm}%`);
       
       if (error) throw error;
       return (data || []).map(mapToTime);

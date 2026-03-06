@@ -97,8 +97,7 @@ export function useTeamBySlug(slug: string | null) {
         `)
         .eq("time_casa_id", team.id)
         .eq("status", "scheduled")
-        .order("data", { ascending: true })
-        .limit(5);
+        .order("data", { ascending: true });
 
       const { data: upcomingAway } = await supabase
         .from("partidas")
@@ -108,8 +107,7 @@ export function useTeamBySlug(slug: string | null) {
         `)
         .eq("time_fora_id", team.id)
         .eq("status", "scheduled")
-        .order("data", { ascending: true })
-        .limit(5);
+        .order("data", { ascending: true });
 
       // Calculate stats
       let vitorias = 0, empates = 0, derrotas = 0;
@@ -229,8 +227,7 @@ export function useTeamRelatedNews(teamName: string | null, limit: number = 5) {
         .select("id, titulo, slug, data_publicacao, imagem_url")
         .eq("publicada", true)
         .ilike("titulo", `%${teamName}%`)
-        .order("data_publicacao", { ascending: false })
-        .limit(limit);
+        .order("data_publicacao", { ascending: false });
 
       if (error) {
         console.error("Error fetching related news:", error);

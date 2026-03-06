@@ -135,8 +135,7 @@ export function useAdminUserDetails(userId: string) {
         .from('user_activity_logs')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
       // Roles
       const { data: roles } = await supabase

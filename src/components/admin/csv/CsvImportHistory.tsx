@@ -85,8 +85,7 @@ export function CsvImportHistory() {
         .from("partidas")
         .select("id, data, gols_casa, gols_fora, status, time_casa:times!partidas_time_casa_id_fkey(nome), time_fora:times!partidas_time_fora_id_fkey(nome), liga:ligas!partidas_liga_id_fkey(nome)")
         .eq("import_batch_id", importId)
-        .order("data", { ascending: false })
-        .limit(200);
+        .order("data", { ascending: false });
       if (error) throw error;
       setBatchMatches(data || []);
     } catch (error) {

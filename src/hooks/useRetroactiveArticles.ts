@@ -70,8 +70,7 @@ export function useRetroactiveArticles() {
         .from("sync_logs")
         .select("*")
         .eq("entity_type", "retroactive_articles")
-        .order("started_at", { ascending: false })
-        .limit(5);
+        .order("started_at", { ascending: false });
 
       return data || [];
     },

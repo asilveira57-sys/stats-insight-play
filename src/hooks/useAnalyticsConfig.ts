@@ -69,8 +69,7 @@ export function useAnalyticsConfigLogs() {
       const { data, error } = await supabase
         .from('analytics_config_logs')
         .select('*')
-        .order('changed_at', { ascending: false })
-        .limit(50);
+        .order('changed_at', { ascending: false });
       
       if (error) throw error;
       return data as AnalyticsConfigLog[];

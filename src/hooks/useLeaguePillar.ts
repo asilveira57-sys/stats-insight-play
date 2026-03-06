@@ -73,8 +73,7 @@ export function useLeagueBySlug(slug: string | null) {
           time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores)
         `)
         .eq("liga_id", league.id)
-        .order("data", { ascending: false })
-        .limit(100);
+        .order("data", { ascending: false });
 
       // Calculate stats
       const finishedMatches = (matches || []).filter(m => m.status === "finished");

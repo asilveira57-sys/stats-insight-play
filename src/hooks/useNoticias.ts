@@ -59,8 +59,7 @@ export function useNoticias(limit: number = 10) {
         .from("noticias")
         .select("*")
         .eq("publicada", true)
-        .order("data_publicacao", { ascending: false })
-        .limit(limit);
+        .order("data_publicacao", { ascending: false });
 
       if (error) {
         console.error("Error fetching noticias:", error);
@@ -129,8 +128,7 @@ export function useLatestNoticias(count: number = 3) {
         .from("noticias")
         .select("*")
         .eq("publicada", true)
-        .order("data_publicacao", { ascending: false })
-        .limit(count);
+        .order("data_publicacao", { ascending: false });
 
       if (error) {
         console.error("Error fetching latest noticias:", error);
