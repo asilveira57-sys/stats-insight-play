@@ -36,8 +36,7 @@ export default function HubHighlights() {
             time_fora:times!partidas_time_fora_id_fkey(nome)
           )
         `)
-        .order('published_at', { ascending: false })
-        .limit(50);
+        .order('published_at', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;

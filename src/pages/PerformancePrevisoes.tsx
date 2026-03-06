@@ -173,8 +173,7 @@ export default function PerformancePrevisoes() {
         .select('id, titulo, slug, data_publicacao')
         .ilike('slug', '%-validacao-palpites')
         .eq('publicada', true)
-        .order('data_publicacao', { ascending: false })
-        .limit(5);
+        .order('data_publicacao', { ascending: false });
 
       if (error) throw error;
       return data as ValidationArticle[];

@@ -43,8 +43,7 @@ export default function HubDashboard() {
       const { data, error } = await supabase
         .from('sync_logs')
         .select('*, data_sources(name)')
-        .order('started_at', { ascending: false })
-        .limit(50); // Dashboard shows recent, not all
+        .order('started_at', { ascending: false });
       if (error) throw error;
       return data;
     }

@@ -147,8 +147,7 @@ export function useSyncSources() {
       const { data: logs } = await supabase
         .from('sync_logs')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
       const logsBySource = new Map<string, SyncLog[]>();
       logs?.forEach(log => {

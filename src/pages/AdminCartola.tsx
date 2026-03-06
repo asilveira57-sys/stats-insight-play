@@ -41,7 +41,7 @@ export default function AdminCartola() {
     queryFn: async () => {
       let query = supabase.from("times").select("id, nome, slug").order("nome");
       if (teamSearch) query = query.ilike("nome", `%${teamSearch}%`);
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

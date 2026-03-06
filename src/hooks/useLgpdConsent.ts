@@ -236,8 +236,7 @@ export function useLgpdConfigLogs() {
       const { data, error } = await supabase
         .from('lgpd_config_logs')
         .select('*')
-        .order('changed_at', { ascending: false })
-        .limit(50);
+        .order('changed_at', { ascending: false });
       
       if (error) throw error;
       return data;
