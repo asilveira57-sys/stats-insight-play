@@ -46,8 +46,7 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
         .select("id, titulo, resumo, slug, data_publicacao, imagem_url")
         .eq("publicada", true)
         .neq("id", currentArticleId)
-        .order("data_publicacao", { ascending: false })
-        .limit(5);
+        .order("data_publicacao", { ascending: false });
 
       if (error) {
         console.error("Error fetching related articles:", error);
