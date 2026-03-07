@@ -321,13 +321,15 @@ export default function AdminControlCenter() {
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
+    validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
+    validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
   });
 
-  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false }))[0];
+  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false }))[0];
 
   const runPredictionsLoop = async () => {
     stopLoopRef.predictions = false;
@@ -418,6 +420,110 @@ export default function AdminControlCenter() {
     }
     if (stopLoopRef.retroPredictions) {
       setLoopState(prev => ({ ...prev, retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, '⏹ Parado.'] } }));
+    }
+  };
+
+  const runValidationsLoop = async () => {
+    stopLoopRef.validations = false;
+    setLoopState(prev => ({ ...prev, validations: { running: true, generated: 0, failed: 0, total: 0, pending: 0, log: ['⏳ Iniciando geração de artigos de validação (1 por vez, ~1/min)...'], articles: [] } }));
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let round = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 3000;
+
+    while (!stopLoopRef.validations) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-validation-article', { body: { limit: 1 } });
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 120000);
+            const waitSec = Math.round(backoffMs / 1000);
+            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
+            setLoopState(prev => ({ ...prev, validations: { ...prev.validations, log: [...prev.validations.log.slice(-49), msg] } }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 3000;
+
+        const results = data?.results || {};
+        const gen = results.created || 0;
+        const fail = results.errors?.length || 0;
+        const pending = results.stats?.pending || 0;
+        const total = results.stats?.totalWithComparativo || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        const newArticles = results.articles || [];
+
+        const msg = gen > 0
+          ? `✅ #${round}: ${newArticles[0]?.timeCasa || ''} x ${newArticles[0]?.timeFora || ''} — Pendentes: ${pending}`
+          : `⏭️ #${round}: ${results.skipped || 0} pulados, ${fail} falhas. Pendentes: ${pending}`;
+
+        setLoopState(prev => ({
+          ...prev,
+          validations: {
+            running: true,
+            generated: totalGenerated,
+            failed: totalFailed,
+            total,
+            pending,
+            log: [...prev.validations.log.slice(-49), msg],
+            articles: [...newArticles, ...prev.validations.articles].slice(0, 50),
+          },
+        }));
+
+        if (gen === 0 && fail === 0 && (results.skipped || 0) === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Concluído! ${totalGenerated} artigos gerados.`] },
+          }));
+          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos de validação gerados.` });
+          break;
+        }
+
+        if (pending === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Nenhum pendente restante. Total: ${totalGenerated}`] },
+          }));
+          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos gerados.` });
+          break;
+        }
+
+        // ~1 per minute cadence (minus processing time)
+        await new Promise(r => setTimeout(r, 5000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = String(e);
+
+        if (consecutiveErrors >= 5) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
+          }));
+          toast({ title: 'Interrompido por erros', description: `${totalGenerated} artigos gerados.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(10 * consecutiveErrors, 60);
+        setLoopState(prev => ({
+          ...prev,
+          validations: { ...prev.validations, log: [...prev.validations.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
+        }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+      }
+    }
+    if (stopLoopRef.validations) {
+      setLoopState(prev => ({ ...prev, validations: { ...prev.validations, running: false, log: [...prev.validations.log, `⏹ Parado. ${totalGenerated} artigos gerados.`] } }));
     }
   };
 
@@ -1137,6 +1243,108 @@ export default function AdminControlCenter() {
                     {loopState.analyses.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.analyses.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Artigos de Validação Pós-Jogo */}
+                <Card className="md:col-span-2 border-green-500/30 bg-green-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      Geração Automática de Artigos de Validação Pós-Jogo
+                    </CardTitle>
+                    <CardDescription>Gera artigos comparando palpite da IA x resultado real. 1 por vez com rate limit handling.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Com comparativo</p>
+                        <p className="text-lg font-bold">{loopState.validations.total || contentStats?.validationArticles || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Com artigo</p>
+                        <p className="text-lg font-bold text-green-600">{loopState.validations.generated > 0 ? (loopState.validations.total - loopState.validations.pending) : (contentStats?.validationArticles || '—')}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-yellow-600">{loopState.validations.pending || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={runValidationsLoop}
+                        disabled={loopState.validations.running}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {loopState.validations.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.validations.running ? 'Gerando...' : 'Gerar Artigos de Validação'}
+                      </Button>
+                      {loopState.validations.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.validations = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.validations.generated > 0 || loopState.validations.failed > 0) && (
+                        <Badge variant="outline">{loopState.validations.generated} gerados / {loopState.validations.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {loopState.validations.total > 0 && loopState.validations.generated > 0 && (
+                      <div className="space-y-1">
+                        <Progress value={((loopState.validations.total - loopState.validations.pending) / loopState.validations.total) * 100} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {loopState.validations.total - loopState.validations.pending} de {loopState.validations.total} ({Math.round(((loopState.validations.total - loopState.validations.pending) / loopState.validations.total) * 100)}%)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recently generated articles with clickable links */}
+                    {loopState.validations.articles.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium flex items-center gap-1">
+                          <Eye className="w-4 h-4" /> Últimos artigos gerados:
+                        </h4>
+                        <div className="border border-border rounded max-h-60 overflow-auto">
+                          {loopState.validations.articles.map((article, i) => (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-0 bg-green-500/5">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+                                <a
+                                  href={`/noticias/${article.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary underline hover:text-primary/80 truncate max-w-[300px]"
+                                >
+                                  {article.timeCasa} x {article.timeFora}
+                                </a>
+                                <span className="text-muted-foreground">
+                                  ({new Date(article.data).toLocaleDateString('pt-BR')})
+                                </span>
+                              </div>
+                              <a
+                                href={`/noticias/${article.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.validations.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.validations.log.map((l, i) => <div key={i}>{l}</div>)}
                       </div>
                     )}
                   </CardContent>
