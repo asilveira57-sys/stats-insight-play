@@ -423,6 +423,110 @@ export default function AdminControlCenter() {
     }
   };
 
+  const runValidationsLoop = async () => {
+    stopLoopRef.validations = false;
+    setLoopState(prev => ({ ...prev, validations: { running: true, generated: 0, failed: 0, total: 0, pending: 0, log: ['⏳ Iniciando geração de artigos de validação (1 por vez, ~1/min)...'], articles: [] } }));
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let round = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 3000;
+
+    while (!stopLoopRef.validations) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-validation-article', { body: { limit: 1 } });
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 120000);
+            const waitSec = Math.round(backoffMs / 1000);
+            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
+            setLoopState(prev => ({ ...prev, validations: { ...prev.validations, log: [...prev.validations.log.slice(-49), msg] } }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 3000;
+
+        const results = data?.results || {};
+        const gen = results.created || 0;
+        const fail = results.errors?.length || 0;
+        const pending = results.stats?.pending || 0;
+        const total = results.stats?.totalWithComparativo || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        const newArticles = results.articles || [];
+
+        const msg = gen > 0
+          ? `✅ #${round}: ${newArticles[0]?.timeCasa || ''} x ${newArticles[0]?.timeFora || ''} — Pendentes: ${pending}`
+          : `⏭️ #${round}: ${results.skipped || 0} pulados, ${fail} falhas. Pendentes: ${pending}`;
+
+        setLoopState(prev => ({
+          ...prev,
+          validations: {
+            running: true,
+            generated: totalGenerated,
+            failed: totalFailed,
+            total,
+            pending,
+            log: [...prev.validations.log.slice(-49), msg],
+            articles: [...newArticles, ...prev.validations.articles].slice(0, 50),
+          },
+        }));
+
+        if (gen === 0 && fail === 0 && (results.skipped || 0) === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Concluído! ${totalGenerated} artigos gerados.`] },
+          }));
+          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos de validação gerados.` });
+          break;
+        }
+
+        if (pending === 0) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Nenhum pendente restante. Total: ${totalGenerated}`] },
+          }));
+          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos gerados.` });
+          break;
+        }
+
+        // ~1 per minute cadence (minus processing time)
+        await new Promise(r => setTimeout(r, 5000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = String(e);
+
+        if (consecutiveErrors >= 5) {
+          setLoopState(prev => ({
+            ...prev,
+            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
+          }));
+          toast({ title: 'Interrompido por erros', description: `${totalGenerated} artigos gerados.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(10 * consecutiveErrors, 60);
+        setLoopState(prev => ({
+          ...prev,
+          validations: { ...prev.validations, log: [...prev.validations.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
+        }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+      }
+    }
+    if (stopLoopRef.validations) {
+      setLoopState(prev => ({ ...prev, validations: { ...prev.validations, running: false, log: [...prev.validations.log, `⏹ Parado. ${totalGenerated} artigos gerados.`] } }));
+    }
+  };
+
   const runAnalysesLoop = async () => {
     stopLoopRef.analyses = false;
     setLoopState(prev => ({ ...prev, analyses: { running: true, generated: 0, failed: 0, total: 0, log: ['⏳ Iniciando geração de análises (1 por vez)...'], tasks: [] } }));
