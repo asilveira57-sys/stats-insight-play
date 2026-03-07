@@ -329,7 +329,7 @@ export default function AdminControlCenter() {
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
   });
 
-  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false }))[0];
+  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false }))[0];
 
   const runPredictionsLoop = async () => {
     stopLoopRef.predictions = false;
