@@ -321,10 +321,12 @@ export default function AdminControlCenter() {
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
+    validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
+    validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
   });
 
   const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false }))[0];
