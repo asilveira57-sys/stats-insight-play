@@ -636,6 +636,17 @@ serve(async (req) => {
 
         console.log(`Validation article created: ${slug}`);
         results.created++;
+        results.articles.push({
+          slug,
+          titulo: textContent.titulo,
+          timeCasa: matchData.time_casa.nome,
+          timeFora: matchData.time_fora.nome,
+          data: matchData.data
+        });
+
+        // Update pending count
+        results.stats.pending = Math.max(0, results.stats.pending - 1);
+        results.stats.withValidation++;
 
       } catch (matchError) {
         const errorMessage = matchError instanceof Error ? matchError.message : String(matchError);
