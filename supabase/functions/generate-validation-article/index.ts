@@ -386,23 +386,43 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Get optional match_id from request body
+    // Get optional parameters from request body
     let targetMatchId: string | null = null;
-    let hoursAfterMatch = 3; // Default: generate 3 hours after match
+    let hoursAfterMatch = 3;
+    let batchLimit = 0; // 0 = no limit (legacy behavior)
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
       hoursAfterMatch = body?.hours_after || 3;
+      batchLimit = body?.limit || 0;
     } catch {
       // No body
     }
 
-    // Calculate time window: finished matches between 1-6 hours ago
-    const now = new Date();
-    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-    const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+    const startTime = Date.now();
+    const SAFETY_TIMEOUT_MS = 120_000; // 120s safety timer
+    function hasTimeLeft(): boolean {
+      return (Date.now() - startTime) < SAFETY_TIMEOUT_MS;
+    }
 
-    // Fetch finished matches with comparison data
+    // Get existing validation articles to avoid duplicates
+    const { data: existingNews } = await supabaseAdmin
+      .from('noticias')
+      .select('partida_id')
+      .not('partida_id', 'is', null)
+      .like('slug', '%validacao-palpites%');
+
+    const existingValidationMatchIds = new Set(existingNews?.map(n => n.partida_id) || []);
+
+    // Count total pending for stats
+    const { count: totalWithComparativo } = await supabaseAdmin
+      .from('comparativo_resultados')
+      .select('*', { count: 'exact', head: true });
+
+    const totalPending = (totalWithComparativo || 0) - existingValidationMatchIds.size;
+
+    // Fetch finished matches that DON'T have validation articles yet
+    // Use a smarter query: get comparativo_resultados that are NOT in existing articles
     let matchQuery = supabaseAdmin
       .from('partidas')
       .select(`
@@ -419,10 +439,16 @@ serve(async (req) => {
       `)
       .eq('status', 'finished')
       .not('gols_casa', 'is', null)
-      .not('gols_fora', 'is', null);
+      .not('gols_fora', 'is', null)
+      .order('data', { ascending: false });
 
     if (targetMatchId) {
       matchQuery = matchQuery.eq('id', targetMatchId);
+    }
+
+    // Apply limit for batch processing (fetch more than needed to filter)
+    if (batchLimit > 0) {
+      matchQuery = matchQuery.limit(batchLimit * 5); // Fetch extra to account for skips
     }
 
     const { data: matches, error: matchError } = await matchQuery;
@@ -432,25 +458,34 @@ serve(async (req) => {
       throw new Error(`Failed to fetch matches: ${matchError.message}`);
     }
 
-    console.log(`Found ${matches?.length || 0} finished matches`);
-
-    // Get existing validation articles to avoid duplicates
-    // Validation articles have "validacao-palpites" in their slug
-    const { data: existingNews } = await supabaseAdmin
-      .from('noticias')
-      .select('partida_id, slug')
-      .like('slug', '%validacao-palpites%');
-
-    const existingValidationMatchIds = new Set(existingNews?.map(n => n.partida_id) || []);
+    console.log(`Found ${matches?.length || 0} finished matches, ${totalPending} pending validation articles`);
 
     const results = {
       processed: 0,
       created: 0,
       skipped: 0,
-      errors: [] as string[]
+      errors: [] as string[],
+      articles: [] as { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[],
+      stats: {
+        totalWithComparativo: totalWithComparativo || 0,
+        withValidation: existingValidationMatchIds.size,
+        pending: totalPending
+      }
     };
 
     for (const match of (matches || [])) {
+      // Safety timer check
+      if (!hasTimeLeft()) {
+        console.log(`Safety timer reached after ${results.created} articles. Stopping.`);
+        break;
+      }
+
+      // Batch limit check
+      if (batchLimit > 0 && results.created >= batchLimit) {
+        console.log(`Batch limit of ${batchLimit} reached. Stopping.`);
+        break;
+      }
+
       results.processed++;
 
       // Skip if validation article already exists
