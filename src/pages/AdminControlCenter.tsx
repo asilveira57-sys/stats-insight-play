@@ -1248,6 +1248,108 @@ export default function AdminControlCenter() {
                   </CardContent>
                 </Card>
 
+                {/* Auto-Loop: Artigos de Validação Pós-Jogo */}
+                <Card className="md:col-span-2 border-green-500/30 bg-green-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      Geração Automática de Artigos de Validação Pós-Jogo
+                    </CardTitle>
+                    <CardDescription>Gera artigos comparando palpite da IA x resultado real. 1 por vez com rate limit handling.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Com comparativo</p>
+                        <p className="text-lg font-bold">{loopState.validations.total || contentStats?.validationArticles || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Com artigo</p>
+                        <p className="text-lg font-bold text-green-600">{loopState.validations.generated > 0 ? (loopState.validations.total - loopState.validations.pending) : (contentStats?.validationArticles || '—')}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-yellow-600">{loopState.validations.pending || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={runValidationsLoop}
+                        disabled={loopState.validations.running}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {loopState.validations.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.validations.running ? 'Gerando...' : 'Gerar Artigos de Validação'}
+                      </Button>
+                      {loopState.validations.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.validations = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.validations.generated > 0 || loopState.validations.failed > 0) && (
+                        <Badge variant="outline">{loopState.validations.generated} gerados / {loopState.validations.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {loopState.validations.total > 0 && loopState.validations.generated > 0 && (
+                      <div className="space-y-1">
+                        <Progress value={((loopState.validations.total - loopState.validations.pending) / loopState.validations.total) * 100} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {loopState.validations.total - loopState.validations.pending} de {loopState.validations.total} ({Math.round(((loopState.validations.total - loopState.validations.pending) / loopState.validations.total) * 100)}%)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recently generated articles with clickable links */}
+                    {loopState.validations.articles.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium flex items-center gap-1">
+                          <Eye className="w-4 h-4" /> Últimos artigos gerados:
+                        </h4>
+                        <div className="border border-border rounded max-h-60 overflow-auto">
+                          {loopState.validations.articles.map((article, i) => (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-0 bg-green-500/5">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+                                <a
+                                  href={`/noticias/${article.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary underline hover:text-primary/80 truncate max-w-[300px]"
+                                >
+                                  {article.timeCasa} x {article.timeFora}
+                                </a>
+                                <span className="text-muted-foreground">
+                                  ({new Date(article.data).toLocaleDateString('pt-BR')})
+                                </span>
+                              </div>
+                              <a
+                                href={`/noticias/${article.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.validations.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.validations.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Bulk CSV Import */}
                 <Card className="md:col-span-2 border-secondary/30">
                   <CardHeader className="pb-3">
