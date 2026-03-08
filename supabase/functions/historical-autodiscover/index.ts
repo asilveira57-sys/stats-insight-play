@@ -105,12 +105,21 @@ Deno.serve(async (req) => {
       resultLinks.push({ url: link, season_label: seasonLabel, url_type: urlType, country });
     }
 
-    // Get existing URLs for this source to avoid duplicates
-    const { data: existingUrls } = await supabase
-      .from('historical_source_urls')
-      .select('url')
-      .eq('source_id', source_id);
-    const existingSet = new Set((existingUrls || []).map((u: any) => u.url));
+    // Get ALL existing URLs for this source to avoid duplicates (paginated to bypass 1000 limit)
+    const existingSet = new Set<string>();
+    let offset = 0;
+    const batchSize = 1000;
+    while (true) {
+      const { data: batch } = await supabase
+        .from('historical_source_urls')
+        .select('url')
+        .eq('source_id', source_id)
+        .range(offset, offset + batchSize - 1);
+      if (!batch || batch.length === 0) break;
+      for (const u of batch) existingSet.add(u.url);
+      if (batch.length < batchSize) break;
+      offset += batchSize;
+    }
 
     // Filter out already-registered URLs
     const newLinks = resultLinks.filter(l => !existingSet.has(l.url));
