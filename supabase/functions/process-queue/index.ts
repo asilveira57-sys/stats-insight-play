@@ -100,6 +100,8 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
     retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1, skip_images: true } },
     validations: { fn: 'generate-validation-article', body: { limit: 3, skip_images: true } },
     image_fix: { fn: 'fix-article-thumbnails', body: { limit: 1 } },
+    dedup_matches: { fn: 'dedup-matches', body: { limit: 50, dry_run: false } },
+    fix_merges: { fn: 'fix-inverted-merges', body: { dry_run: false } },
   };
 
   const config = functionMap[job.job_type];
