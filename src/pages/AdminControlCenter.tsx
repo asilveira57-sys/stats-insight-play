@@ -935,7 +935,7 @@ export default function AdminControlCenter() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Button
-                        onClick={runRetroPredictionsLoop}
+                        onClick={() => startJob('retro_predictions')}
                         disabled={loopState.retroPredictions.running}
                         className="bg-primary"
                       >
