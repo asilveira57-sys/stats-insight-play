@@ -404,7 +404,7 @@ serve(async (req) => {
       targetMatchId = body?.match_id || null;
       hoursAfterMatch = body?.hours_after || 3;
       batchLimit = body?.limit || 0;
-      skipImages = body?.skip_images ?? (batchLimit > 0); // auto-skip images in batch mode
+      skipImages = body?.skip_images === true; // only skip if explicitly requested
     } catch {
       // No body
     }
