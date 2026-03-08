@@ -239,7 +239,7 @@ function DatabaseHealthTab() {
         invertedMerges,
         emptyLeagues: emptyLeagues.length,
         emptyLeagueNames: emptyLeagues.map(l => l.nome),
-        totalMatches: matches?.length || 0,
+        totalMatches: 0,
         totalTeams: (teams || []).filter(t => t.status === 'active').length,
         mergedTeams: (teams || []).filter(t => t.status === 'merged').length,
       });
