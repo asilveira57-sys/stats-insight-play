@@ -461,7 +461,12 @@ export default function AdminKaggle() {
                   <TableRow key={j.id}>
                     <TableCell className="text-xs max-w-32 truncate">{j.kaggle_datasets?.dataset_title || "—"}</TableCell>
                     <TableCell className="text-xs font-mono">{j.kaggle_dataset_files?.file_name || "—"}</TableCell>
-                    <TableCell><Badge className={statusColors[j.status] || "bg-muted"}>{j.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[j.status] || "bg-muted"}>{j.status}</Badge>
+                      {j.error_summary && (
+                        <p className="text-[10px] text-destructive mt-1 max-w-48 truncate" title={j.error_summary}>⚠️ {j.error_summary}</p>
+                      )}
+                    </TableCell>
                     <TableCell>{j.total_rows_read || 0}</TableCell>
                     <TableCell>{j.total_rows_staged || 0}</TableCell>
                     <TableCell>{j.total_promoted || 0}</TableCell>
