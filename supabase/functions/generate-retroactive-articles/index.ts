@@ -609,7 +609,7 @@ serve(async (req) => {
               message: "Adicione mais créditos e tente novamente",
               processed: results,
               progress: {
-                total: totalMatches || 0,
+                total: totalActionable || 0,
                 processed: alreadyProcessed + successCount,
                 remaining: Math.max((pendingMatches || 0) - successCount, 0),
               },
