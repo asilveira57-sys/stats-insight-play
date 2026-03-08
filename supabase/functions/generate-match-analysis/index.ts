@@ -477,12 +477,23 @@ serve(async (req) => {
     const existingMatchIds = new Set(existingNews?.map(n => n.partida_id) || []);
 
     // Filter matches that already have news
-    const matchesToProcess = (matches || []).filter(m => !existingMatchIds.has(m.id));
-    
-    // Apply processing limit to avoid timeouts
-    const limitedMatches = matchesToProcess.slice(0, processLimit);
+    const matchesWithoutAnalysis = (matches || []).filter(m => !existingMatchIds.has(m.id));
 
-    console.log(`Stats: ${matches?.length || 0} total matches in window, ${matchesToProcess.length} without analysis, processing ${limitedMatches.length} (limit: ${processLimit})`);
+    // For batch mode, process only actionable matches (with prediction + complete relations)
+    const actionableMatches = targetMatchId
+      ? matchesWithoutAnalysis
+      : matchesWithoutAnalysis.filter((match) => {
+          const palpite = Array.isArray(match.palpite) ? match.palpite[0] : match.palpite;
+          const timeCasa = Array.isArray(match.time_casa) ? match.time_casa[0] : match.time_casa;
+          const timeFora = Array.isArray(match.time_fora) ? match.time_fora[0] : match.time_fora;
+          const liga = Array.isArray(match.liga) ? match.liga[0] : match.liga;
+          return !!palpite && !!timeCasa && !!timeFora && !!liga;
+        });
+
+    // Apply processing limit to avoid timeouts
+    const limitedMatches = actionableMatches.slice(0, processLimit);
+
+    console.log(`Stats: ${matches?.length || 0} total matches in window, ${matchesWithoutAnalysis.length} without analysis, ${actionableMatches.length} actionable, processing ${limitedMatches.length} (limit: ${processLimit})`);
 
     const results = {
       processed: 0,
@@ -491,7 +502,8 @@ serve(async (req) => {
       errors: [] as string[],
       stats: {
         totalInWindow: matches?.length || 0,
-        withoutAnalysis: matchesToProcess.length,
+        withoutAnalysis: matchesWithoutAnalysis.length,
+        actionableWithoutAnalysis: actionableMatches.length,
         processingLimit: processLimit
       }
     };
