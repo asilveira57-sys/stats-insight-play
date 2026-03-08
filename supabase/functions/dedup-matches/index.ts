@@ -27,14 +27,34 @@ Deno.serve(async (req) => {
     } catch { /* defaults */ }
 
     // Step 1: Find exact duplicate groups (same time_casa_id + time_fora_id + data)
-    // We query all matches and group in-memory for flexibility
     const { data: dupsRaw, error: dupsErr } = await supabase.rpc('get_duplicate_match_groups', { p_limit: limit });
 
-    // If RPC doesn't exist, fall back to manual detection
-    let dupGroups: { time_casa_id: string; time_fora_id: string; data: string; liga_id: string; ids: string[] }[] = [];
+    type DupGroup = {
+      time_casa_id: string;
+      time_fora_id: string;
+      data: string;
+      liga_id: string;
+      ids: string[];
+    };
 
+    let dupGroups: DupGroup[] = [];
+
+    // Prefer RPC output when available
+    if (!dupsErr && Array.isArray(dupsRaw)) {
+      dupGroups = dupsRaw
+        .filter((g: any) => g?.time_casa_id && g?.time_fora_id && g?.data && Array.isArray(g?.ids))
+        .map((g: any) => ({
+          time_casa_id: g.time_casa_id,
+          time_fora_id: g.time_fora_id,
+          data: g.data,
+          liga_id: g.liga_id,
+          ids: g.ids,
+        }));
+    }
+
+    // If RPC doesn't exist or failed, fall back to manual detection
     if (dupsErr) {
-      console.log('RPC not found, using manual detection');
+      console.log('RPC not found/failed, using manual detection');
       // Fetch matches grouped by potential duplicates
       // We'll query matches ordered by data and look for same-day same-team combos
       const { data: matches, error: mErr } = await supabase
