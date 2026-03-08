@@ -93,6 +93,20 @@ export default function AdminKaggle() {
   const s = stats.data;
   const isLoading = registerDataset.isPending || createJob.isPending || profileFile.isPending || stageData.isPending || resolveJob.isPending || promoteJob.isPending || batchProcess.isPending;
 
+  const getInvokeErrorMessage = async (e: any, fallback = "Falha ao chamar a função") => {
+    try {
+      if (e?.context && typeof e.context.json === "function") {
+        const payload = await e.context.json();
+        if (payload?.error) return payload.error;
+        if (payload?.details) return payload.details;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    return e?.message || fallback;
+  };
+
   // Search Kaggle datasets
   const handleSearch = async (query?: string) => {
     const q = query || searchQuery;
@@ -102,12 +116,13 @@ export default function AdminKaggle() {
         body: { action: "search_datasets", query: q },
       });
       if (error) throw error;
+      if (data?.success === false) throw new Error(data?.error || "Busca falhou");
       if (data?.datasets) {
         setSearchResults(data.datasets);
         toast.success(`${data.datasets.length} datasets encontrados`);
       }
     } catch (e: any) {
-      toast.error(`Erro na busca: ${e.message}`);
+      toast.error(`Erro na busca: ${await getInvokeErrorMessage(e, "Falha ao buscar datasets")}`);
     } finally {
       setIsSearching(false);
     }
@@ -124,9 +139,10 @@ export default function AdminKaggle() {
         body: { action: "list_dataset_files", dataset_slug: datasetSlug },
       });
       if (error) throw error;
+      if (data?.success === false) throw new Error(data?.error || "Listagem de arquivos falhou");
       setDatasetFiles(data?.files || []);
     } catch (e: any) {
-      toast.error(`Erro ao listar arquivos: ${e.message}`);
+      toast.error(`Erro ao listar arquivos: ${await getInvokeErrorMessage(e, "Falha ao listar arquivos")}`);
     } finally {
       setIsLoadingFiles(false);
     }
@@ -155,17 +171,19 @@ export default function AdminKaggle() {
 
       // Step 2: Profile
       toast.info("📊 Profiling arquivo...");
-      const { error: profErr } = await supabase.functions.invoke("kaggle-process", {
+      const { data: profileData, error: profErr } = await supabase.functions.invoke("kaggle-process", {
         body: { action: "profile", job_id: jobId },
       });
       if (profErr) throw profErr;
+      if (profileData?.success === false) throw new Error(profileData?.error || "Profiling falhou");
 
       // Step 3: Stage
       toast.info("📦 Staging dados...");
-      const { error: stageErr } = await supabase.functions.invoke("kaggle-process", {
+      const { data: stageDataResp, error: stageErr } = await supabase.functions.invoke("kaggle-process", {
         body: { action: "stage", job_id: jobId },
       });
       if (stageErr) throw stageErr;
+      if (stageDataResp?.success === false) throw new Error(stageDataResp?.error || "Staging falhou");
 
       // Step 4: Resolve (auto-creates teams & leagues)
       toast.info("🔗 Resolvendo times, ligas e partidas...");
@@ -173,6 +191,7 @@ export default function AdminKaggle() {
         body: { job_id: jobId },
       });
       if (resolveErr) throw resolveErr;
+      if (resolveData?.success === false) throw new Error(resolveData?.error || "Resolução falhou");
 
       // Step 5: Promote
       toast.info("🚀 Promovendo para produção...");
@@ -180,6 +199,7 @@ export default function AdminKaggle() {
         body: { job_id: jobId, promote_mode: "all_resolved" },
       });
       if (promoteErr) throw promoteErr;
+      if (promoteData?.success === false) throw new Error(promoteData?.error || "Promoção falhou");
 
       const rTeams = resolveData?.teams;
       const promoted = promoteData?.promoted || 0;
@@ -194,7 +214,7 @@ export default function AdminKaggle() {
       datasets.refetch();
       stats.refetch();
     } catch (e: any) {
-      toast.error(`Erro: ${e.message}`);
+      toast.error(`Erro: ${await getInvokeErrorMessage(e, "Falha no pipeline Kaggle")}`);
     } finally {
       setIsImporting(null);
     }

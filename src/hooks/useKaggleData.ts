@@ -156,12 +156,26 @@ export function useKaggleData() {
     },
   });
 
-  // Mutations
+  const extractInvokeErrorMessage = async (error: any, fallback = "Falha na Edge Function") => {
+    try {
+      if (error?.context && typeof error.context.json === "function") {
+        const payload = await error.context.json();
+        if (payload?.error) return payload.error;
+        if (payload?.details) return payload.details;
+      }
+    } catch {
+      // ignore
+    }
+
+    return error?.message || fallback;
+  };
+
   const callKaggleImport = async (action: string, params: any) => {
     const { data, error } = await supabase.functions.invoke("kaggle-import", {
       body: { action, ...params },
     });
-    if (error) throw error;
+    if (error) throw new Error(await extractInvokeErrorMessage(error));
+    if (data?.success === false) throw new Error(data?.error || "Falha no kaggle-import");
     return data;
   };
 
@@ -169,7 +183,8 @@ export function useKaggleData() {
     const { data, error } = await supabase.functions.invoke("kaggle-process", {
       body: { action, ...params },
     });
-    if (error) throw error;
+    if (error) throw new Error(await extractInvokeErrorMessage(error));
+    if (data?.success === false) throw new Error(data?.error || "Falha no kaggle-process");
     return data;
   };
 
@@ -228,7 +243,12 @@ export function useKaggleData() {
   });
 
   const resolveJob = useMutation({
-    mutationFn: (jobId: string) => supabase.functions.invoke("kaggle-resolve", { body: { job_id: jobId } }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (jobId: string) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-resolve", { body: { job_id: jobId } });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha na resolução");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
@@ -238,7 +258,12 @@ export function useKaggleData() {
   });
 
   const promoteJob = useMutation({
-    mutationFn: (params: { job_id: string; promote_mode?: string }) => supabase.functions.invoke("kaggle-promote", { body: params }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (params: { job_id: string; promote_mode?: string }) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-promote", { body: params });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha na promoção");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
@@ -248,7 +273,12 @@ export function useKaggleData() {
   });
 
   const batchProcess = useMutation({
-    mutationFn: (params: { action: string; batch_size?: number }) => supabase.functions.invoke("kaggle-batch", { body: params }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (params: { action: string; batch_size?: number }) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-batch", { body: params });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha no processamento em lote");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
