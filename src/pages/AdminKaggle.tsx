@@ -171,10 +171,11 @@ export default function AdminKaggle() {
 
       // Step 2: Profile
       toast.info("📊 Profiling arquivo...");
-      const { error: profErr } = await supabase.functions.invoke("kaggle-process", {
+      const { data: profileData, error: profErr } = await supabase.functions.invoke("kaggle-process", {
         body: { action: "profile", job_id: jobId },
       });
       if (profErr) throw profErr;
+      if (profileData?.success === false) throw new Error(profileData?.error || "Profiling falhou");
 
       // Step 3: Stage
       toast.info("📦 Staging dados...");
