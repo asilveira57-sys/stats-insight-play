@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   GitMerge,
   BookOpen,
+  HardDrive,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const menuGroups = [
       { title: "CSV Import", url: "/admin/csv-import", icon: FileText },
       { title: "Cartola FC", url: "/admin/cartola", icon: Trophy },
       { title: "Fontes Históricas", url: "/admin/fontes-historicas", icon: BookOpen },
+      { title: "Kaggle Import", url: "/admin/kaggle", icon: HardDrive },
     ],
   },
   {
