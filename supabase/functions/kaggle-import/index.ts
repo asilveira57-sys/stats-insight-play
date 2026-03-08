@@ -95,17 +95,17 @@ Deno.serve(async (req) => {
       
       // Use the dataset files list endpoint directly
       const url = `https://www.kaggle.com/api/v1/datasets/list/${dataset_slug}`;
-      const resp = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
+      const resp = await fetchWithRetry(url, { headers: { Authorization: `Basic ${auth}` } });
       
       if (!resp.ok) {
         // Fallback: try the view endpoint
         const viewUrl = `https://www.kaggle.com/api/v1/datasets/view/${dataset_slug}`;
-        const viewResp = await fetch(viewUrl, { headers: { Authorization: `Basic ${auth}` } });
+        const viewResp = await fetchWithRetry(viewUrl, { headers: { Authorization: `Basic ${auth}` } });
         
         if (!viewResp.ok) {
           const errText = await viewResp.text();
           console.error("Kaggle list files error:", errText);
-          return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${viewResp.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ success: false, error: `Kaggle API list files falhou (${viewResp.status}): ${errText.slice(0, 300)}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         
         const meta = await viewResp.json();
