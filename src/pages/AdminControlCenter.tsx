@@ -1352,6 +1352,84 @@ export default function AdminControlCenter() {
                   </CardContent>
                 </Card>
 
+                {/* Auto-Loop: Correção Retroativa de Imagens */}
+                <Card className="md:col-span-2 border-orange-500/30 bg-orange-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Eye className="w-5 h-5 text-orange-600" />
+                      Correção Retroativa de Imagens (Thumbnails)
+                    </CardTitle>
+                    <CardDescription>
+                      Substitui a imagem padrão do Unsplash por imagens únicas geradas via Gemini para cada artigo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-orange-600">{loopState.imageFix.pending || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Corrigidas</p>
+                        <p className="text-lg font-bold text-green-600">{loopState.imageFix.fixed || 0}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Erros</p>
+                        <p className="text-lg font-bold text-red-600">{loopState.imageFix.failed || 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={runImageFixLoop}
+                        disabled={loopState.imageFix.running}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {loopState.imageFix.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.imageFix.running ? 'Corrigindo...' : 'Iniciar Correção de Imagens'}
+                      </Button>
+                      {loopState.imageFix.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.imageFix = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.imageFix.fixed > 0 || loopState.imageFix.failed > 0) && (
+                        <Badge variant="outline">{loopState.imageFix.fixed} corrigidas / {loopState.imageFix.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Recent results */}
+                    {loopState.imageFix.results.length > 0 && (
+                      <div className="border border-border rounded max-h-48 overflow-auto">
+                        {loopState.imageFix.results.slice(0, 30).map((r, i) => (
+                          <div key={i} className={`flex items-center justify-between px-3 py-1.5 text-xs border-b border-border last:border-0 ${r.success ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
+                            <div className="flex items-center gap-2">
+                              {r.success ? <CheckCircle className="w-3 h-3 text-green-500 shrink-0" /> : <XCircle className="w-3 h-3 text-red-500 shrink-0" />}
+                              {r.success && r.slug ? (
+                                <a href={`/noticias/${r.slug}`} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 truncate max-w-[300px]">
+                                  {r.titulo?.slice(0, 60)}
+                                </a>
+                              ) : (
+                                <span className="truncate max-w-[300px]">{r.titulo?.slice(0, 60)}</span>
+                              )}
+                            </div>
+                            {r.error && <span className="text-muted-foreground ml-2 truncate max-w-[200px]">{r.error}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.imageFix.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.imageFix.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Bulk CSV Import */}
                 <Card className="md:col-span-2 border-secondary/30">
                   <CardHeader className="pb-3">
