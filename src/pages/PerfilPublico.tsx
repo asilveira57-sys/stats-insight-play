@@ -172,9 +172,6 @@ export default function PerfilPublico() {
                 )}
                 {profile.favoriteTeam && (
                   <Badge variant="secondary" className="gap-1">
-                    {profile.favoriteTeam.escudo_url && (
-                      <img src={profile.favoriteTeam.escudo_url} alt="" className="w-4 h-4" />
-                    )}
                     {profile.favoriteTeam.nome}
                   </Badge>
                 )}
