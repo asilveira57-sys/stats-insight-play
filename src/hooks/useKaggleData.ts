@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 export function useKaggleData() {
   const queryClient = useQueryClient();
@@ -10,9 +10,12 @@ export function useKaggleData() {
   const datasets = useQuery({
     queryKey: ["kaggle-datasets"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_datasets").select("*").order("priority", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_datasets",
+        "*",
+        undefined,
+        { column: "priority", ascending: false },
+      );
     },
   });
 
@@ -20,11 +23,12 @@ export function useKaggleData() {
   const jobs = useQuery({
     queryKey: ["kaggle-jobs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_import_jobs")
-        .select("*, kaggle_datasets(dataset_title, dataset_slug), kaggle_dataset_files(file_name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_import_jobs",
+        "*, kaggle_datasets(dataset_title, dataset_slug), kaggle_dataset_files(file_name)",
+        undefined,
+        { column: "created_at", ascending: false },
+      );
     },
   });
 
@@ -33,10 +37,12 @@ export function useKaggleData() {
     queryKey: ["kaggle-files", datasetId],
     enabled: !!datasetId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_dataset_files")
-        .select("*").eq("dataset_id", datasetId!).order("file_name");
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_dataset_files",
+        "*",
+        (q: any) => q.eq("dataset_id", datasetId!),
+        { column: "file_name", ascending: true },
+      );
     },
   });
 
@@ -45,10 +51,12 @@ export function useKaggleData() {
     queryKey: ["kaggle-staging-matches", jobId],
     enabled: !!jobId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_staging_matches")
-        .select("*").eq("job_id", jobId!).order("parsed_date", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_staging_matches",
+        "*",
+        (q: any) => q.eq("job_id", jobId!),
+        { column: "parsed_date", ascending: false },
+      );
     },
   });
 
@@ -57,10 +65,12 @@ export function useKaggleData() {
     queryKey: ["kaggle-staging-teams", jobId],
     enabled: !!jobId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_staging_teams")
-        .select("*").eq("job_id", jobId!).order("resolution_status");
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_staging_teams",
+        "*",
+        (q: any) => q.eq("job_id", jobId!),
+        { column: "resolution_status", ascending: true },
+      );
     },
   });
 
@@ -68,10 +78,12 @@ export function useKaggleData() {
   const resolutionQueue = useQuery({
     queryKey: ["kaggle-resolution-queue"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_resolution_queue")
-        .select("*").eq("status", "pending").order("created_at");
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_resolution_queue",
+        "*",
+        (q: any) => q.eq("status", "pending"),
+        { column: "created_at", ascending: true },
+      );
     },
   });
 
@@ -80,10 +92,12 @@ export function useKaggleData() {
     queryKey: ["kaggle-logs", jobId],
     enabled: !!jobId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_import_logs")
-        .select("*").eq("job_id", jobId!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_import_logs",
+        "*",
+        (q: any) => q.eq("job_id", jobId!),
+        { column: "created_at", ascending: false },
+      );
     },
   });
 
@@ -92,10 +106,12 @@ export function useKaggleData() {
     queryKey: ["kaggle-column-mappings", fileId],
     enabled: !!fileId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("kaggle_column_mappings")
-        .select("*").eq("dataset_file_id", fileId!).order("mapping_confidence", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRecords<any>(
+        "kaggle_column_mappings",
+        "*",
+        (q: any) => q.eq("dataset_file_id", fileId!),
+        { column: "mapping_confidence", ascending: false },
+      );
     },
   });
 
