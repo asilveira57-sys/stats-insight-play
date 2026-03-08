@@ -26,15 +26,22 @@ export function NewsCard({ title, excerpt, image, date, featured }: NewsCardProp
     return (
       <article className="glass-card overflow-hidden group hover-glow block cursor-pointer">
         <div className="relative h-64 overflow-hidden">
-          <img
-            src={image}
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800";
-            }}
-          />
+          {image ? (
+            <img
+              src={image}
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).parentElement!.style.background = FALLBACK_GRADIENT;
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted/50" style={{ background: FALLBACK_GRADIENT }}>
+              <Newspaper className="w-12 h-12 text-muted-foreground/50" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <span className="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium mb-3">
