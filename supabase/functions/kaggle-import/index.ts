@@ -2,8 +2,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+function getKaggleAuth() {
+  const user = Deno.env.get("KAGGLE_USERNAME");
+  const key = Deno.env.get("KAGGLE_KEY");
+  if (!user || !key) throw new Error("KAGGLE_USERNAME ou KAGGLE_KEY não configurados nos secrets");
+  return btoa(`${user}:${key}`);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -24,6 +31,150 @@ Deno.serve(async (req) => {
         dataset_file_id: params.dataset_file_id || null,
       });
     };
+
+    // ========== SEARCH DATASETS ==========
+    if (action === "search_datasets") {
+      const { query } = params;
+      const auth = getKaggleAuth();
+      const searchUrl = `https://www.kaggle.com/api/v1/datasets/list?search=${encodeURIComponent(query || "football")}&sortBy=hottest&fileSizeRange=0%2C5242880&maxSize=52428800&group=public`;
+
+      const resp = await fetch(searchUrl, { headers: { Authorization: `Basic ${auth}` } });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${resp.status} - ${errText}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const datasets = await resp.json();
+      // Filter to football-related datasets
+      const filtered = (datasets || []).map((ds: any) => ({
+        ref: ds.ref,
+        title: ds.title,
+        subtitle: ds.subtitle,
+        creator: ds.creatorName,
+        totalBytes: ds.totalBytes,
+        lastUpdated: ds.lastUpdated,
+        downloadCount: ds.downloadCount,
+        voteCount: ds.voteCount,
+        usabilityRating: ds.usabilityRating,
+        url: ds.url ? `https://www.kaggle.com${ds.url}` : `https://www.kaggle.com/datasets/${ds.ref}`,
+      }));
+
+      return new Response(JSON.stringify({ success: true, datasets: filtered }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ========== LIST FILES OF A DATASET ==========
+    if (action === "list_dataset_files") {
+      const { dataset_slug } = params;
+      if (!dataset_slug) throw new Error("dataset_slug é obrigatório");
+      
+      const auth = getKaggleAuth();
+      const url = `https://www.kaggle.com/api/v1/datasets/view/${dataset_slug}`;
+      const resp = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
+      
+      if (!resp.ok) {
+        const errText = await resp.text();
+        return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${resp.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const meta = await resp.json();
+      const files = (meta.datasetFiles || []).map((f: any) => ({
+        name: f.name,
+        totalBytes: f.totalBytes,
+        columns: f.columns,
+        description: f.description,
+      }));
+
+      return new Response(JSON.stringify({ success: true, files, datasetInfo: { title: meta.title, subtitle: meta.subtitle, description: meta.description } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ========== QUICK IMPORT (register + download + process) ==========
+    if (action === "quick_import") {
+      const { dataset_slug, dataset_title, file_name } = params;
+      if (!dataset_slug || !file_name) throw new Error("dataset_slug e file_name são obrigatórios");
+
+      // 1. Register dataset
+      const { data: ds, error: dsErr } = await supabase.from("kaggle_datasets").upsert({
+        dataset_slug,
+        dataset_title: dataset_title || dataset_slug.split("/")[1],
+        dataset_owner: dataset_slug.split("/")[0],
+        dataset_url: `https://www.kaggle.com/datasets/${dataset_slug}`,
+        dataset_category: "football",
+        priority: 50,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "provider_slug,dataset_slug" }).select().single();
+
+      if (dsErr) throw dsErr;
+
+      // 2. Register file
+      const { data: fileRec, error: fileErr } = await supabase.from("kaggle_dataset_files").upsert({
+        dataset_id: ds.id,
+        file_name,
+        file_type: file_name.endsWith(".json") ? "json" : "csv",
+        inferred_entity_type: file_name.toLowerCase().includes("match") || file_name.toLowerCase().includes("result") ? "matches" :
+          file_name.toLowerCase().includes("team") ? "teams" :
+          file_name.toLowerCase().includes("goal") || file_name.toLowerCase().includes("scorer") ? "scorers" : "unknown",
+      }, { onConflict: "dataset_id,file_name" }).select().single();
+
+      if (fileErr) throw fileErr;
+
+      // 3. Create job
+      const { data: job, error: jobErr } = await supabase.from("kaggle_import_jobs").insert({
+        dataset_id: ds.id,
+        dataset_file_id: fileRec.id,
+        job_type: "full_import",
+        priority: 50,
+        status: "downloading",
+      }).select().single();
+
+      if (jobErr) throw jobErr;
+      await log(job.id, "quick_import", "info", `Quick import started: ${dataset_slug}/${file_name}`);
+
+      // 4. Download file from Kaggle
+      const auth = getKaggleAuth();
+      const apiUrl = `https://www.kaggle.com/api/v1/datasets/download/${dataset_slug}/${file_name}`;
+      const resp = await fetch(apiUrl, { headers: { Authorization: `Basic ${auth}` } });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        await log(job.id, "download", "error", `Download failed: ${resp.status}`, { error: errText });
+        await supabase.from("kaggle_import_jobs").update({ status: "failed", error_summary: `Download: ${resp.status}` }).eq("id", job.id);
+        return new Response(JSON.stringify({ success: false, error: errText, job_id: job.id }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const rawText = await resp.text();
+      const encoder = new TextEncoder();
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(rawText));
+      const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+      // 5. Store raw asset
+      const { error: rawErr } = await supabase.from("kaggle_raw_assets").insert({
+        job_id: job.id,
+        dataset_file_id: fileRec.id,
+        asset_type: file_name.endsWith(".json") ? "json" : "csv",
+        raw_text: rawText,
+        content_hash: hashHex,
+      });
+
+      if (rawErr) throw rawErr;
+
+      // 6. Update job
+      await supabase.from("kaggle_import_jobs").update({
+        status: "extracting",
+        started_at: new Date().toISOString(),
+        total_rows_read: rawText.split("\n").length - 1,
+      }).eq("id", job.id);
+
+      await log(job.id, "download", "info", `Downloaded ${rawText.length} bytes, ${rawText.split("\n").length - 1} rows, hash: ${hashHex.substring(0, 12)}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        job_id: job.id,
+        dataset_id: ds.id,
+        file_id: fileRec.id,
+        rows: rawText.split("\n").length - 1,
+        bytes: rawText.length,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // ========== REGISTER DATASET ==========
     if (action === "register_dataset") {
@@ -83,7 +234,6 @@ Deno.serve(async (req) => {
     if (action === "upload_raw") {
       const { job_id, dataset_file_id, raw_text, content_hash, asset_type } = params;
 
-      // Check hash to avoid reprocessing
       if (content_hash) {
         const { data: existing } = await supabase.from("kaggle_raw_assets")
           .select("id").eq("content_hash", content_hash).limit(1);
@@ -99,92 +249,10 @@ Deno.serve(async (req) => {
       }).select().single();
 
       if (error) throw error;
-
-      // Update job status
       await supabase.from("kaggle_import_jobs").update({ status: "extracting", started_at: new Date().toISOString() }).eq("id", job_id);
       await log(job_id, "upload", "info", `Raw asset stored, hash: ${content_hash}`);
 
       return new Response(JSON.stringify({ success: true, asset: data }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // ========== DOWNLOAD FROM KAGGLE API ==========
-    if (action === "download_kaggle") {
-      const { job_id, dataset_file_id, dataset_slug, file_name } = params;
-
-      await supabase.from("kaggle_import_jobs").update({ status: "downloading" }).eq("id", job_id);
-      await log(job_id, "download", "info", `Starting download: ${dataset_slug}/${file_name}`);
-
-      // Check rate limits
-      const { data: rl } = await supabase.from("kaggle_rate_limit_controls")
-        .select("*").eq("provider_slug", "kaggle").eq("is_active", true).limit(1);
-
-      if (rl?.length) {
-        const { data: activeJobs } = await supabase.from("kaggle_import_jobs")
-          .select("id").in("status", ["downloading", "extracting", "profiling"]);
-        if (activeJobs && activeJobs.length >= rl[0].max_concurrent_jobs) {
-          await supabase.from("kaggle_import_jobs").update({ status: "queued" }).eq("id", job_id);
-          await log(job_id, "download", "warn", "Queued: max concurrent jobs reached");
-          return new Response(JSON.stringify({ success: false, queued: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-      }
-
-      // Get Kaggle credentials
-      const { data: kaggleUser } = await supabase.from("kaggle_provider_configs")
-        .select("config_value").eq("config_key", "kaggle_username").limit(1).single();
-      const { data: kaggleKey } = await supabase.from("kaggle_provider_configs")
-        .select("config_value").eq("config_key", "kaggle_key").limit(1).single();
-
-      if (!kaggleUser?.config_value || !kaggleKey?.config_value) {
-        await log(job_id, "download", "error", "Kaggle API credentials not configured");
-        await supabase.from("kaggle_import_jobs").update({ status: "failed", error_summary: "Missing Kaggle credentials" }).eq("id", job_id);
-        return new Response(JSON.stringify({ success: false, error: "Missing Kaggle credentials" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      const auth = btoa(`${kaggleUser.config_value}:${kaggleKey.config_value}`);
-      const apiUrl = `https://www.kaggle.com/api/v1/datasets/download/${dataset_slug}/${file_name}`;
-
-      const resp = await fetch(apiUrl, { headers: { Authorization: `Basic ${auth}` } });
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        await log(job_id, "download", "error", `Download failed: ${resp.status}`, { error: errText });
-        await supabase.from("kaggle_import_jobs").update({ status: "failed", error_summary: `Download failed: ${resp.status}` }).eq("id", job_id);
-
-        // Queue retry
-        await supabase.from("kaggle_retry_queue").insert({
-          job_id, reason: `HTTP ${resp.status}`,
-          next_retry_at: new Date(Date.now() + 60000).toISOString(),
-        });
-
-        return new Response(JSON.stringify({ success: false, error: errText }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      const rawText = await resp.text();
-      const encoder = new TextEncoder();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(rawText));
-      const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-      // Check hash
-      const { data: existingAsset } = await supabase.from("kaggle_raw_assets")
-        .select("id").eq("content_hash", hashHex).limit(1);
-      if (existingAsset?.length) {
-        await log(job_id, "download", "info", `Skipped: hash match ${hashHex}`);
-        await supabase.from("kaggle_import_jobs").update({ status: "extracting" }).eq("id", job_id);
-        return new Response(JSON.stringify({ success: true, skipped: true, hash: hashHex }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      // Determine if ZIP
-      const isZip = file_name.endsWith(".zip") || resp.headers.get("content-type")?.includes("zip");
-
-      const { data: asset } = await supabase.from("kaggle_raw_assets").insert({
-        job_id, dataset_file_id, asset_type: isZip ? "zip" : "csv",
-        raw_text: isZip ? null : rawText, content_hash: hashHex,
-      }).select().single();
-
-      await supabase.from("kaggle_import_jobs").update({ status: "extracting" }).eq("id", job_id);
-      await log(job_id, "download", "info", `Downloaded ${rawText.length} bytes, hash: ${hashHex}`);
-
-      return new Response(JSON.stringify({ success: true, asset, hash: hashHex }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
