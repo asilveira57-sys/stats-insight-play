@@ -3513,6 +3513,13 @@ export type Database = {
           team_name: string
         }[]
       }
+      count_duplicate_matches: {
+        Args: never
+        Returns: {
+          dup_groups: number
+          dup_records: number
+        }[]
+      }
       count_teams_with_aliases: {
         Args: { p_search?: string; p_status?: string }
         Returns: number
