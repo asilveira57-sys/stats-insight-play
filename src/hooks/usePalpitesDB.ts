@@ -136,7 +136,6 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
   return {
     id: team.id,
     nome: team.nome,
-    escudo_url: team.escudo_url,
     cores: team.cores as { primary: string; secondary: string } | null,
     totalMatches: homeMatches.length + awayMatches.length,
     wins,
