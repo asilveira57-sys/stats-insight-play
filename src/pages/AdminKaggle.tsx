@@ -199,6 +199,7 @@ export default function AdminKaggle() {
         body: { job_id: jobId, promote_mode: "all_resolved" },
       });
       if (promoteErr) throw promoteErr;
+      if (promoteData?.success === false) throw new Error(promoteData?.error || "Promoção falhou");
 
       const rTeams = resolveData?.teams;
       const promoted = promoteData?.promoted || 0;
