@@ -148,6 +148,7 @@ export default function AdminKaggle() {
     setSelectedDatasetTitle(title);
     setIsLoadingFiles(true);
     setFilesDialogOpen(true);
+    setFileImportStatuses({});
     try {
       const { data, error } = await supabase.functions.invoke("kaggle-import", {
         body: { action: "list_dataset_files", dataset_slug: datasetSlug },
@@ -155,6 +156,28 @@ export default function AdminKaggle() {
       if (error) throw error;
       if (data?.success === false) throw new Error(data?.error || "Listagem de arquivos falhou");
       setDatasetFiles(data?.files || []);
+
+      // Fetch import statuses for this dataset's files
+      try {
+        const { data: statusData } = await supabase
+          .from("kaggle_import_jobs")
+          .select("status, created_at, kaggle_dataset_files!inner(file_name, kaggle_datasets!inner(dataset_slug))")
+          .eq("kaggle_dataset_files.kaggle_datasets.dataset_slug", datasetSlug)
+          .order("created_at", { ascending: false });
+
+        if (statusData && statusData.length > 0) {
+          const statusMap: Record<string, { status: string; created_at: string }> = {};
+          for (const row of statusData) {
+            const fileName = (row as any).kaggle_dataset_files?.file_name;
+            if (fileName && !statusMap[fileName]) {
+              statusMap[fileName] = { status: row.status, created_at: row.created_at };
+            }
+          }
+          setFileImportStatuses(statusMap);
+        }
+      } catch {
+        // Non-critical: just don't show statuses
+      }
     } catch (e: any) {
       toast.error(`Erro ao listar arquivos: ${await getInvokeErrorMessage(e, "Falha ao listar arquivos")}`);
     } finally {
