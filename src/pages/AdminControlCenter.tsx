@@ -979,7 +979,7 @@ export default function AdminControlCenter() {
                         {loopState.analyses.running ? 'Processando...' : 'Gerar Todas as Análises Pendentes'}
                       </Button>
                       {loopState.analyses.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.analyses = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('analyses')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
