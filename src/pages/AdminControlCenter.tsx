@@ -271,12 +271,17 @@ function DatabaseHealthTab() {
   const handleDedup = async () => {
     setDedupRunning(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dedup-matches', {
-        body: { dry_run: false, limit: 100 },
-      });
-      if (error) throw error;
-      toast({ title: 'Deduplicação executada!', description: `${data.records_deleted} registros removidos. Restam: ${data.remaining_duplicates}` });
-      fetchHealth();
+      // Use background job for large volumes
+      await (supabase as any).from('background_jobs')
+        .upsert({
+          id: '23aa9734-b0e7-425f-8d3e-675eaf453419',
+          job_type: 'dedup_matches',
+          status: 'running',
+          progress: {},
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      toast({ title: 'Dedup iniciada em background!', description: 'O cron vai processar lotes a cada minuto até acabar.' });
     } catch (e) {
       toast({ title: 'Erro', description: String(e), variant: 'destructive' });
     } finally {
