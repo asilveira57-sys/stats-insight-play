@@ -139,6 +139,12 @@ Deno.serve(async (req) => {
         awayteam: { entity: "match", field: "time_fora", conf: 90 },
         team_name: { entity: "team", field: "nome", conf: 90 },
         player_name: { entity: "player", field: "nome", conf: 90 },
+        // Additional aliases for common Kaggle datasets
+        scorer: { entity: "scorer", field: "jogador_nome", conf: 85 },
+        minute: { entity: "scorer", field: "minuto", conf: 85 },
+        own_goal: { entity: "scorer", field: "gol_contra", conf: 80 },
+        penalty: { entity: "scorer", field: "penalti", conf: 80 },
+        team: { entity: "scorer", field: "time", conf: 80 },
       };
 
       for (const col of headers) {
@@ -157,7 +163,19 @@ Deno.serve(async (req) => {
       }
 
       if (mappings.length && job.dataset_file_id) {
-        await supabase.from("kaggle_column_mappings").upsert(mappings, { onConflict: "dataset_file_id,source_column_name" });
+        // Use upsert with the new unique constraint
+        const { error: upsertErr } = await supabase.from("kaggle_column_mappings")
+          .upsert(mappings, { onConflict: "dataset_file_id,source_column_name" });
+        
+        if (upsertErr) {
+          await log("profile", "warn", `Upsert failed (${upsertErr.message}), trying individual inserts`);
+          // Fallback: insert one by one, ignoring conflicts
+          for (const m of mappings) {
+            await supabase.from("kaggle_column_mappings").insert(m);
+          }
+        }
+        
+        await log("profile", "info", `Persisted ${mappings.length} column mappings`);
       }
 
       await supabase.from("kaggle_import_jobs").update({ status: "mapping" }).eq("id", job_id);
