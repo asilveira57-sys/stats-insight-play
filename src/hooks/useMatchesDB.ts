@@ -41,7 +41,6 @@ interface Liga {
 interface Standing {
   position: number;
   team: string;
-  teamLogo: string | null;
   played: number;
   won: number;
   drawn: number;
