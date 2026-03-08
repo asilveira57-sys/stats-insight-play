@@ -21,7 +21,6 @@ interface Time {
   nome: string;
   slug: string | null;
   pais: string | null;
-  escudo_url: string | null;
   priority_score: number | null;
   cores: { primary?: string; secondary?: string } | null;
 }
