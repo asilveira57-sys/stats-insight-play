@@ -248,24 +248,27 @@ async function generateWeeklyThumbnail(weeklyData: WeeklyData, GEMINI_API_KEY: s
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE"] },
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
     if (!response.ok) {
-      console.log("Thumbnail generation failed, continuing without image");
+      const errorText = await response.text();
+      console.log("Thumbnail generation failed:", response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data);
+    const base64Image = imagePart?.inlineData?.data;
     return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating thumbnail:", error);

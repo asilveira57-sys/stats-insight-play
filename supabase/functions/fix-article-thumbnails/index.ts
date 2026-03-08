@@ -28,13 +28,13 @@ async function generateThumbnailForArticle(
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ["IMAGE"] },
+          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
         }),
       }
     );
@@ -47,7 +47,9 @@ async function generateThumbnailForArticle(
     }
 
     const data = await response.json();
-    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data);
+    const base64Image = imagePart?.inlineData?.data;
 
     if (!base64Image) {
       console.log("No image data in Gemini response");
