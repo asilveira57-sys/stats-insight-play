@@ -398,11 +398,13 @@ serve(async (req) => {
     let targetMatchId: string | null = null;
     let hoursAfterMatch = 3;
     let batchLimit = 0; // 0 = no limit (legacy behavior)
+    let skipImages = false; // skip image generation for speed in batch mode
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
       hoursAfterMatch = body?.hours_after || 3;
       batchLimit = body?.limit || 0;
+      skipImages = body?.skip_images ?? (batchLimit > 0); // auto-skip images in batch mode
     } catch {
       // No body
     }
