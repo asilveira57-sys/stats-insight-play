@@ -943,7 +943,7 @@ export default function AdminControlCenter() {
                         {loopState.retroPredictions.running ? 'Processando...' : 'Iniciar Loop'}
                       </Button>
                       {loopState.retroPredictions.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.retroPredictions = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('retro_predictions')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
