@@ -63,6 +63,7 @@ import HubCompetitions from "./pages/hub/Competitions";
 import HubTeams from "./pages/hub/Teams";
 import HubHighlights from "./pages/hub/Highlights";
 import HubLogs from "./pages/hub/Logs";
+import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 
 const queryClient = new QueryClient();
 
