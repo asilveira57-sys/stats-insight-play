@@ -258,7 +258,12 @@ export function useKaggleData() {
   });
 
   const promoteJob = useMutation({
-    mutationFn: (params: { job_id: string; promote_mode?: string }) => supabase.functions.invoke("kaggle-promote", { body: params }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (params: { job_id: string; promote_mode?: string }) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-promote", { body: params });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha na promoção");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
