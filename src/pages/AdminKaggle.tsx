@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -92,6 +92,19 @@ export default function AdminKaggle() {
 
   const s = stats.data;
   const isLoading = registerDataset.isPending || createJob.isPending || profileFile.isPending || stageData.isPending || resolveJob.isPending || promoteJob.isPending || batchProcess.isPending;
+
+  // Auto-polling: refresh jobs every 8s when there are active jobs
+  const hasActiveJobs = (jobs.data || []).some((j: any) => 
+    ["pending", "downloading", "extracting", "profiling", "mapping", "staging"].includes(j.status)
+  );
+  useEffect(() => {
+    if (!hasActiveJobs) return;
+    const interval = setInterval(() => {
+      jobs.refetch();
+      stats.refetch();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [hasActiveJobs]);
 
   const getInvokeErrorMessage = async (e: any, fallback = "Falha ao chamar a função") => {
     try {
@@ -448,7 +461,12 @@ export default function AdminKaggle() {
                   <TableRow key={j.id}>
                     <TableCell className="text-xs max-w-32 truncate">{j.kaggle_datasets?.dataset_title || "—"}</TableCell>
                     <TableCell className="text-xs font-mono">{j.kaggle_dataset_files?.file_name || "—"}</TableCell>
-                    <TableCell><Badge className={statusColors[j.status] || "bg-muted"}>{j.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[j.status] || "bg-muted"}>{j.status}</Badge>
+                      {j.error_summary && (
+                        <p className="text-[10px] text-destructive mt-1 max-w-48 truncate" title={j.error_summary}>⚠️ {j.error_summary}</p>
+                      )}
+                    </TableCell>
                     <TableCell>{j.total_rows_read || 0}</TableCell>
                     <TableCell>{j.total_rows_staged || 0}</TableCell>
                     <TableCell>{j.total_promoted || 0}</TableCell>

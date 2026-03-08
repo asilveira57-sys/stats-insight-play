@@ -119,13 +119,14 @@ Deno.serve(async (req) => {
         }).eq("id", st.id);
 
         // Create alias if new name variant
-        await supabase.from("team_aliases").insert({
+        // Insert alias, ignore duplicates
+        const { error: aliasErr } = await supabase.from("team_aliases").upsert({
           team_id: team.id,
           alias: st.raw_name,
           normalized_alias: normalizedName,
           source: "kaggle_import",
           confidence: confidence,
-        }).onConflict("team_id,normalized_alias").ignore();
+        }, { onConflict: "team_id,normalized_alias", ignoreDuplicates: true });
 
         // Create link
         await supabase.from("kaggle_team_links").insert({
@@ -152,13 +153,14 @@ Deno.serve(async (req) => {
           }).eq("id", st.id);
         } else {
           // Register alias
-          await supabase.from("team_aliases").insert({
+          // Insert alias, ignore duplicates
+          const { error: aliasErr2 } = await supabase.from("team_aliases").upsert({
             team_id: newTeam.id,
             alias: teamName,
             normalized_alias: normalizedName,
             source: "kaggle_import",
             confidence: 100,
-          }).onConflict("team_id,normalized_alias").ignore();
+          }, { onConflict: "team_id,normalized_alias", ignoreDuplicates: true });
 
           await supabase.from("kaggle_staging_teams").update({
             matched_team_id: newTeam.id, confidence_score: 100,
@@ -232,11 +234,12 @@ Deno.serve(async (req) => {
         }).eq("id", sc.id);
 
         // Register alias
-        await supabase.from("competition_aliases").insert({
+        // Insert alias, ignore duplicates
+        await supabase.from("competition_aliases").upsert({
           league_id: liga.id,
           alias: sc.raw_name,
           normalized_alias: normalizedName,
-        }).onConflict("league_id,normalized_alias").ignore();
+        }, { onConflict: "league_id,normalized_alias", ignoreDuplicates: true });
 
         await supabase.from("kaggle_competition_links").insert({
           staging_competition_id: sc.id, competition_id: liga.id,
@@ -289,11 +292,12 @@ Deno.serve(async (req) => {
           }).eq("id", sc.id);
         } else {
           // Register alias
-          await supabase.from("competition_aliases").insert({
+          // Insert alias, ignore duplicates
+          await supabase.from("competition_aliases").upsert({
             league_id: newLeague.id,
             alias: leagueName,
             normalized_alias: normalizedName,
-          }).onConflict("league_id,normalized_alias").ignore();
+          }, { onConflict: "league_id,normalized_alias", ignoreDuplicates: true });
 
           await supabase.from("kaggle_staging_competitions").update({
             matched_competition_id: newLeague.id, confidence_score: 100,
