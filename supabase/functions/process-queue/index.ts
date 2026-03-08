@@ -216,7 +216,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const pending = results.stats?.pending || 0;
       const newGenerated = (progress.generated || 0) + gen;
       const newFailed = (progress.failed || 0) + fail;
-      isDone = (gen === 0 && fail === 0 && (results.skipped || 0) === 0) || pending === 0;
+      isDone = pending === 0;
       const articles = results.articles || [];
       // Merge new articles with existing ones (keep last 10)
       const existingArticles = progress.last_articles || [];
@@ -281,21 +281,6 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
         total_matches_migrated: totalMatches,
         consecutive_errors: 0,
         last_log: `🏁 ${fixed} merges invertidos corrigidos, ${totalMatches} partidas migradas.`
-      };
-      break;
-    }
-      isDone = pending === 0 || (fixed === 0 && errors === 0);
-      const newResults = data?.results || [];
-      const existingResults = progress.last_results || [];
-      updated = {
-        fixed: newFixed, failed: newFailed, pending,
-        consecutive_errors: 0,
-        last_results: [...newResults, ...existingResults].slice(0, 10),
-        last_log: isDone
-          ? `🏁 Concluído! ${newFixed} imagens corrigidas.`
-          : fixed > 0
-            ? `✅ +${fixed} imagem (pendentes: ${pending})`
-            : `❌ Erro na imagem (pendentes: ${pending})`
       };
       break;
     }

@@ -427,26 +427,40 @@ export default function Admin() {
     setGeneratingValidation(true);
     
     try {
-      const response = await supabase.functions.invoke("generate-validation-article", {
-        body: {}
-      });
+      // Use background job system instead of direct call
+      const { data: existing } = await (supabase as any)
+        .from('background_jobs')
+        .select('id')
+        .eq('job_type', 'validations')
+        .maybeSingle();
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (existing) {
+        await (supabase as any).from('background_jobs')
+          .update({
+            status: 'running',
+            progress: {},
+            started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('job_type', 'validations');
+      } else {
+        await (supabase as any).from('background_jobs')
+          .insert({
+            job_type: 'validations',
+            status: 'running',
+            progress: {},
+            started_at: new Date().toISOString()
+          });
       }
 
-      const result = response.data;
-      
       toast({
-        title: "Artigos de validação gerados!",
-        description: `${result.results?.created || 0} artigos criados, ${result.results?.skipped || 0} ignorados.`,
+        title: "Job de validação iniciado!",
+        description: "Artigos serão gerados continuamente em background. Acompanhe no Control Center.",
       });
-
-      window.location.reload();
     } catch (error) {
-      console.error("Error generating validation articles:", error);
+      console.error("Error starting validation job:", error);
       toast({
-        title: "Erro ao gerar artigos de validação",
+        title: "Erro ao iniciar job",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
