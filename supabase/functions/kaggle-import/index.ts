@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     if (action === "search_datasets") {
       const { query } = params;
       const auth = getKaggleAuth();
-      const searchUrl = `https://www.kaggle.com/api/v1/datasets/list?search=${encodeURIComponent(query || "football")}&sortBy=hottest&fileSizeRange=0%2C5242880&maxSize=52428800&group=public`;
+      const searchUrl = `https://www.kaggle.com/api/v1/datasets/list?search=${encodeURIComponent(query || "football")}&sortBy=hottest&maxSize=52428800&group=public`;
 
       const resp = await fetch(searchUrl, { headers: { Authorization: `Basic ${auth}` } });
       if (!resp.ok) {
