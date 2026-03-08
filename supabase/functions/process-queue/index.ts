@@ -102,6 +102,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
     image_fix: { fn: 'fix-article-thumbnails', body: { limit: 1 } },
     dedup_matches: { fn: 'dedup-matches', body: { limit: 50, dry_run: false } },
     fix_merges: { fn: 'fix-inverted-merges', body: { dry_run: false } },
+    weekly_validations: { fn: 'generate-weekly-validation', body: { scan_mode: true, skip_images: true } },
   };
 
   const config = functionMap[job.job_type];
@@ -281,6 +282,31 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
         total_matches_migrated: totalMatches,
         consecutive_errors: 0,
         last_log: `🏁 ${fixed} merges invertidos corrigidos, ${totalMatches} partidas migradas.`
+      };
+      break;
+    }
+    case 'weekly_validations': {
+      const gen = data?.generated || 0;
+      const fail = data?.failed || 0;
+      const pending = data?.pending ?? 0;
+      const total = data?.total ?? progress.total ?? 0;
+      const newGenerated = (progress.generated || 0) + gen;
+      const newFailed = (progress.failed || 0) + fail;
+      isDone = pending === 0 || (gen === 0 && fail === 0);
+      const newArticles = (data?.articles || []).map((a: any) => ({
+        slug: a.slug, liga: a.liga, week: a.week, year: a.year,
+      }));
+      const existingArticles = progress.last_articles || [];
+      updated = {
+        generated: newGenerated, failed: newFailed,
+        pending, total,
+        consecutive_errors: 0,
+        last_articles: [...newArticles, ...existingArticles].slice(0, 10),
+        last_log: isDone
+          ? `🏁 Concluído! ${newGenerated} artigos semanais gerados.`
+          : gen > 0
+            ? `✅ +${gen} artigo semanal (pendentes: ${pending})`
+            : `⏭️ Nenhum novo (pendentes: ${pending})`
       };
       break;
     }

@@ -576,6 +576,7 @@ export default function AdminControlCenter() {
     retroArticles: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; data: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
     imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
+    weeklyValidations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; liga: string; week: number; year: number }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
@@ -583,6 +584,7 @@ export default function AdminControlCenter() {
     retroArticles: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
+    weeklyValidations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
   });
 
   // Sync background_jobs table → loopState via realtime
@@ -611,6 +613,9 @@ export default function AdminControlCenter() {
           break;
         case 'image_fix':
           setLoopState(prev => ({ ...prev, imageFix: { running, fixed: p.fixed || 0, failed: p.failed || 0, pending: p.pending || 0, log: logArr, results: p.last_results || [] } }));
+          break;
+        case 'weekly_validations':
+          setLoopState(prev => ({ ...prev, weeklyValidations: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
           break;
       }
     };
@@ -1561,6 +1566,108 @@ export default function AdminControlCenter() {
                     {loopState.imageFix.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.imageFix.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Artigos Semanais (Backfill Histórico) */}
+                <Card className="md:col-span-2 border-purple-500/30 bg-purple-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                      Artigos Semanais — Backfill Histórico
+                    </CardTitle>
+                    <CardDescription>
+                      Gera artigos de validação semanal para todas as combinações semana/ano/liga com comparativo.
+                      Detecta automaticamente novos dados importados.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Total pendente</p>
+                        <p className="text-lg font-bold">{loopState.weeklyValidations.total || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Gerados</p>
+                        <p className="text-lg font-bold text-purple-600">{loopState.weeklyValidations.generated || 0}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-yellow-600">{loopState.weeklyValidations.pending || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {loopState.weeklyValidations.total > 0 && loopState.weeklyValidations.generated > 0 && (
+                      <div className="space-y-1">
+                        <Progress value={((loopState.weeklyValidations.total - loopState.weeklyValidations.pending) / loopState.weeklyValidations.total) * 100} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {loopState.weeklyValidations.total - loopState.weeklyValidations.pending} de {loopState.weeklyValidations.total} ({Math.round(((loopState.weeklyValidations.total - loopState.weeklyValidations.pending) / loopState.weeklyValidations.total) * 100)}%)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={() => startJob('weekly_validations')}
+                        disabled={loopState.weeklyValidations.running}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {loopState.weeklyValidations.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.weeklyValidations.running ? 'Gerando...' : 'Iniciar Backfill Semanal'}
+                      </Button>
+                      {loopState.weeklyValidations.running && (
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('weekly_validations')}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.weeklyValidations.generated > 0 || loopState.weeklyValidations.failed > 0) && (
+                        <Badge variant="outline">{loopState.weeklyValidations.generated} gerados / {loopState.weeklyValidations.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Recent articles */}
+                    {loopState.weeklyValidations.articles.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium flex items-center gap-1">
+                          <Eye className="w-4 h-4" /> Últimos artigos gerados:
+                        </h4>
+                        <div className="border border-border rounded max-h-60 overflow-auto">
+                          {loopState.weeklyValidations.articles.map((article, i) => (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-0 bg-purple-500/5">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-purple-500 shrink-0" />
+                                <a
+                                  href={`/noticias/${article.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary underline hover:text-primary/80 truncate max-w-[300px]"
+                                >
+                                  {article.liga} — Semana {article.week}/{article.year}
+                                </a>
+                              </div>
+                              <a
+                                href={`/noticias/${article.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.weeklyValidations.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.weeklyValidations.log.map((l, i) => <div key={i}>{l}</div>)}
                       </div>
                     )}
                   </CardContent>

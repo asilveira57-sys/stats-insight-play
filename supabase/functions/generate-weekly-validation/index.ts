@@ -311,18 +311,12 @@ async function uploadImage(
 function addInternalLinks(texto: string, weeklyData: WeeklyData): string {
   let processedText = texto;
   
-  // Add link to performance pillar page
   const performanceLink = `<p class="internal-links"><strong>📊 Metodologia:</strong> <a href="/performance/previsoes">Entenda como validamos previsões no Statball</a></p>`;
-  
-  // Add link to historical ranking
   const rankingLink = `<p class="internal-links"><strong>🏆 Ranking Histórico:</strong> <a href="/ranking/ia-vs-humanos">Veja o ranking completo IA vs Humanos</a></p>`;
-  
-  // Add link to league pillar page
   const leagueLink = weeklyData.league.slug 
     ? `<p class="internal-links"><strong>⚽ Campeonato:</strong> <a href="/campeonatos/${weeklyData.league.slug}">Página do ${weeklyData.league.nome}</a></p>`
     : '';
   
-  // Insert internal links after introduction
   const introEndIndex = processedText.indexOf('</h2>', processedText.indexOf('<h2>Panorama'));
   if (introEndIndex > -1) {
     const insertPoint = processedText.indexOf('</p>', introEndIndex) + 4;
@@ -331,7 +325,6 @@ function addInternalLinks(texto: string, weeklyData: WeeklyData): string {
       processedText.slice(insertPoint);
   }
   
-  // Add AdSense placeholders
   processedText = processedText.replace(
     '<!-- INSERIR AD SLOT 1 -->',
     '<div class="ad-slot" data-position="article-intro"></div>'
@@ -341,7 +334,6 @@ function addInternalLinks(texto: string, weeklyData: WeeklyData): string {
     '<div class="ad-slot" data-position="article-mid"></div>'
   );
   
-  // Add related content block at the end
   const relatedContent = `
 <div class="related-content">
 <h3>Conteúdos Relacionados</h3>
@@ -353,7 +345,6 @@ ${weeklyData.league.slug ? `<li><a href="/campeonatos/${weeklyData.league.slug}"
 </ul>
 </div>`;
   
-  // Insert before the final CTA
   const finalCtaIndex = processedText.indexOf('<div class="premium-cta-final">');
   if (finalCtaIndex > -1) {
     processedText = processedText.slice(0, finalCtaIndex) + relatedContent + '\n' + processedText.slice(finalCtaIndex);
@@ -364,10 +355,230 @@ ${weeklyData.league.slug ? `<li><a href="/campeonatos/${weeklyData.league.slug}"
   return processedText;
 }
 
+// ========== SCAN MODE: find pending week/year/league combos ==========
+async function findPendingWeeklyCombos(supabaseAdmin: any): Promise<{ year: number; week: number; liga_id: string; liga_nome: string; liga_slug: string; match_count: number }[]> {
+  // Get all distinct (year, week_number, liga_id) from finished matches with comparativo
+  // We compute week from partidas.data
+  const { data: matchWeeks, error } = await supabaseAdmin.rpc('get_pending_weekly_validations');
+  
+  if (error) {
+    console.error('Error fetching pending combos via RPC:', error);
+    // Fallback: do it manually with a simpler query
+    return await findPendingWeeklyCombosFallback(supabaseAdmin);
+  }
+  
+  return matchWeeks || [];
+}
+
+async function findPendingWeeklyCombosFallback(supabaseAdmin: any): Promise<{ year: number; week: number; liga_id: string; liga_nome: string; liga_slug: string; match_count: number }[]> {
+  // Get all finished matches with comparativo, grouped by liga_id and date
+  // Then compute week/year and check against existing articles
+  
+  // Step 1: Get all existing weekly validation slugs
+  const { data: existingArticles } = await supabaseAdmin
+    .from('noticias')
+    .select('slug')
+    .like('slug', 'validacao-semana-%');
+  
+  const existingSlugs = new Set((existingArticles || []).map((a: any) => a.slug));
+  
+  // Step 2: Get distinct liga + date combos from finished matches with comparativo
+  const { data: matches } = await supabaseAdmin
+    .from('partidas')
+    .select('data, liga_id, ligas:ligas!partidas_liga_id_fkey(id, nome, slug)')
+    .eq('status', 'finished')
+    .not('liga_id', 'is', null)
+    .not('gols_casa', 'is', null);
+
+  if (!matches?.length) return [];
+  
+  // Step 3: Group by (year, week, liga_id)
+  const comboMap = new Map<string, { year: number; week: number; liga_id: string; liga_nome: string; liga_slug: string; match_count: number }>();
+  
+  for (const m of matches) {
+    if (!m.data || !m.liga_id) continue;
+    const d = new Date(m.data);
+    const year = d.getFullYear();
+    const week = getWeekNumber(d);
+    const liga = Array.isArray(m.ligas) ? m.ligas[0] : m.ligas;
+    if (!liga?.slug) continue;
+    
+    const key = `${year}-${week}-${m.liga_id}`;
+    const slug = generateWeeklySlug(week, year, liga.slug);
+    
+    // Skip if article already exists
+    if (existingSlugs.has(slug)) continue;
+    
+    const existing = comboMap.get(key);
+    if (existing) {
+      existing.match_count++;
+    } else {
+      comboMap.set(key, {
+        year, week,
+        liga_id: m.liga_id,
+        liga_nome: liga.nome || '',
+        liga_slug: liga.slug || '',
+        match_count: 1,
+      });
+    }
+  }
+  
+  // Sort by most recent first
+  const pending = Array.from(comboMap.values());
+  pending.sort((a, b) => b.year - a.year || b.week - a.week);
+  
+  return pending;
+}
+
+async function processOneWeeklyArticle(
+  supabaseAdmin: any,
+  combo: { year: number; week: number; liga_id: string; liga_nome: string; liga_slug: string },
+  GEMINI_API_KEY: string,
+  skipImages: boolean
+): Promise<{ success: boolean; slug: string; error?: string }> {
+  const weekDates = getWeekDates(combo.week, combo.year);
+  const startDateStr = weekDates.start.toISOString().split('T')[0];
+  const endDateStr = weekDates.end.toISOString().split('T')[0];
+  const weeklySlug = generateWeeklySlug(combo.week, combo.year, combo.liga_slug);
+  
+  // Check if already exists (race condition guard)
+  const { data: existing } = await supabaseAdmin
+    .from('noticias')
+    .select('id')
+    .eq('slug', weeklySlug)
+    .maybeSingle();
+  
+  if (existing) {
+    return { success: true, slug: weeklySlug, error: 'already_exists' };
+  }
+  
+  // Fetch matches
+  const { data: matches, error: matchError } = await supabaseAdmin
+    .from('partidas')
+    .select(`
+      id, data, gols_casa, gols_fora,
+      time_casa:times!partidas_time_casa_id_fkey(nome),
+      time_fora:times!partidas_time_fora_id_fkey(nome),
+      comparativo:comparativo_resultados(
+        sistema_acertou_resultado,
+        sistema_acertou_placar,
+        total_usuarios_palpitaram,
+        usuarios_acertaram_resultado,
+        usuarios_acertaram_placar
+      )
+    `)
+    .eq('liga_id', combo.liga_id)
+    .eq('status', 'finished')
+    .gte('data', startDateStr)
+    .lte('data', endDateStr)
+    .not('gols_casa', 'is', null);
+  
+  if (matchError) throw new Error(`Fetch matches: ${matchError.message}`);
+  
+  const validMatches = (matches || []).filter(m => {
+    const comp = Array.isArray(m.comparativo) ? m.comparativo[0] : m.comparativo;
+    return comp !== null;
+  });
+  
+  if (validMatches.length < 1) {
+    return { success: false, slug: weeklySlug, error: 'no_matches_with_comparativo' };
+  }
+  
+  // Calculate stats
+  let iaAcertosResultado = 0;
+  let iaAcertosPlacar = 0;
+  let totalUsuariosPalpites = 0;
+  let usuariosAcertosResultado = 0;
+  let usuariosAcertosPlacar = 0;
+  const keyMatches: WeeklyData['keyMatches'] = [];
+
+  for (const match of validMatches) {
+    const comp = Array.isArray(match.comparativo) ? match.comparativo[0] : match.comparativo;
+    const timeCasa = Array.isArray(match.time_casa) ? match.time_casa[0] : match.time_casa;
+    const timeFora = Array.isArray(match.time_fora) ? match.time_fora[0] : match.time_fora;
+
+    if (comp.sistema_acertou_resultado) iaAcertosResultado++;
+    if (comp.sistema_acertou_placar) iaAcertosPlacar++;
+    totalUsuariosPalpites += comp.total_usuarios_palpitaram || 0;
+    usuariosAcertosResultado += comp.usuarios_acertaram_resultado || 0;
+    usuariosAcertosPlacar += comp.usuarios_acertaram_placar || 0;
+
+    keyMatches.push({
+      timeCasa: timeCasa?.nome || 'Time A',
+      timeFora: timeFora?.nome || 'Time B',
+      placar: `${match.gols_casa} x ${match.gols_fora}`,
+      iaAcertou: comp.sistema_acertou_resultado,
+      validationSlug: null,
+    });
+  }
+
+  const league = { id: combo.liga_id, nome: combo.liga_nome, slug: combo.liga_slug };
+  
+  const weeklyData: WeeklyData = {
+    weekNumber: combo.week,
+    year: combo.year,
+    league,
+    totalMatches: validMatches.length,
+    iaStats: {
+      acertosResultado: iaAcertosResultado,
+      acertosPlacar: iaAcertosPlacar,
+      taxaResultado: (iaAcertosResultado / validMatches.length) * 100,
+      taxaPlacar: (iaAcertosPlacar / validMatches.length) * 100,
+    },
+    humanosStats: {
+      totalPalpites: totalUsuariosPalpites,
+      acertosResultado: usuariosAcertosResultado,
+      acertosPlacar: usuariosAcertosPlacar,
+      taxaResultado: totalUsuariosPalpites > 0 ? (usuariosAcertosResultado / totalUsuariosPalpites) * 100 : 0,
+      taxaPlacar: totalUsuariosPalpites > 0 ? (usuariosAcertosPlacar / totalUsuariosPalpites) * 100 : 0,
+    },
+    keyMatches: keyMatches.slice(0, 5),
+    startDate: startDateStr,
+    endDate: endDateStr,
+  };
+
+  // Generate content
+  const textContent = await generateWeeklyContent(weeklyData, GEMINI_API_KEY);
+  const processedText = addInternalLinks(textContent.texto, weeklyData);
+
+  // Generate thumbnail (skip in batch mode)
+  let thumbnailUrl: string | null = null;
+  if (!skipImages) {
+    const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, GEMINI_API_KEY);
+    if (thumbnailBase64) {
+      const thumbnailFileName = `weekly-validation-${weeklySlug}.png`;
+      thumbnailUrl = await uploadImage(supabaseAdmin, thumbnailBase64, thumbnailFileName);
+    }
+  }
+
+  // Save article
+  const { error: insertError } = await supabaseAdmin
+    .from('noticias')
+    .insert({
+      titulo: textContent.titulo,
+      resumo: textContent.resumo,
+      texto: processedText,
+      slug: weeklySlug,
+      imagem_url: thumbnailUrl,
+      publicada: true,
+      data_publicacao: new Date().toISOString(),
+      partida_id: null,
+    });
+
+  if (insertError) {
+    throw new Error(`Insert: ${insertError.message}`);
+  }
+
+  return { success: true, slug: weeklySlug };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const SAFETY_TIMEOUT = 110_000; // 110s safety for 120s platform limit
+  const startTime = Date.now();
 
   try {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -380,30 +591,90 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Get optional parameters from request body
     let targetLeagueId: string | null = null;
     let targetWeek: number | null = null;
     let targetYear: number | null = null;
+    let scanMode = false;
+    let skipImages = false;
     
     try {
       const body = await req.json();
       targetLeagueId = body?.league_id || null;
       targetWeek = body?.week || null;
       targetYear = body?.year || null;
+      scanMode = body?.scan_mode === true;
+      skipImages = body?.skip_images === true;
     } catch {
       // No body - use defaults
     }
 
-    // Default to current week and year
+    // ========== SCAN MODE ==========
+    if (scanMode) {
+      console.log('SCAN MODE: finding pending weekly validation combos...');
+      
+      const pending = await findPendingWeeklyCombosFallback(supabaseAdmin);
+      const total = pending.length;
+      
+      if (total === 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          scan_mode: true,
+          pending: 0,
+          generated: 0,
+          total: 0,
+          message: 'No pending weekly validations found',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log(`Found ${total} pending weekly validation combos. Processing...`);
+      
+      let generated = 0;
+      let failed = 0;
+      const articles: { slug: string; liga: string; week: number; year: number }[] = [];
+      
+      // Process one at a time until timeout
+      for (const combo of pending) {
+        if ((Date.now() - startTime) > SAFETY_TIMEOUT) break;
+        
+        try {
+          const result = await processOneWeeklyArticle(supabaseAdmin, combo, GEMINI_API_KEY, skipImages);
+          if (result.success && result.error !== 'already_exists') {
+            generated++;
+            articles.push({ slug: result.slug, liga: combo.liga_nome, week: combo.week, year: combo.year });
+          }
+          // Only process 1 per invocation in scan_mode to stay safe
+          break;
+        } catch (e) {
+          failed++;
+          console.error(`Error processing week ${combo.week}/${combo.year} for ${combo.liga_nome}:`, e);
+          break;
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        scan_mode: true,
+        pending: total - generated,
+        generated,
+        failed,
+        total,
+        articles,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ========== ORIGINAL MODE (single week) ==========
     const now = new Date();
-    const currentWeek = targetWeek || getWeekNumber(now) - 1; // Previous week by default
+    const currentWeek = targetWeek || getWeekNumber(now) - 1;
     const currentYear = targetYear || now.getFullYear();
     const weekDates = getWeekDates(currentWeek, currentYear);
 
     console.log(`Generating weekly validation for week ${currentWeek}, year ${currentYear}`);
     console.log(`Date range: ${weekDates.start.toISOString()} to ${weekDates.end.toISOString()}`);
 
-    // Get all active leagues or specific one
     let leaguesQuery = supabaseAdmin
       .from('ligas')
       .select('id, nome, slug')
@@ -419,13 +690,12 @@ serve(async (req) => {
       throw new Error(`Failed to fetch leagues: ${leaguesError.message}`);
     }
 
-    // Get existing weekly validation articles
     const { data: existingArticles } = await supabaseAdmin
       .from('noticias')
       .select('slug')
       .like('slug', `validacao-semana-${currentWeek}-temporada-${currentYear}%`);
 
-    const existingSlugs = new Set(existingArticles?.map(a => a.slug) || []);
+    const existingSlugs = new Set(existingArticles?.map((a: any) => a.slug) || []);
 
     const results = {
       processed: 0,
@@ -435,26 +705,25 @@ serve(async (req) => {
     };
 
     for (const league of (leagues || [])) {
+      if ((Date.now() - startTime) > SAFETY_TIMEOUT) {
+        console.log('Safety timeout reached, stopping.');
+        break;
+      }
+
       const weeklySlug = generateWeeklySlug(currentWeek, currentYear, league.slug || league.nome.toLowerCase().replace(/\s+/g, '-'));
       
-      // Skip if article already exists
       if (existingSlugs.has(weeklySlug)) {
-        console.log(`Skipping ${league.nome} - weekly article already exists`);
         results.skipped++;
         continue;
       }
 
-      // Fetch finished matches for this week and league
       const startDateStr = weekDates.start.toISOString().split('T')[0];
       const endDateStr = weekDates.end.toISOString().split('T')[0];
 
       const { data: matches, error: matchError } = await supabaseAdmin
         .from('partidas')
         .select(`
-          id,
-          data,
-          gols_casa,
-          gols_fora,
+          id, data, gols_casa, gols_fora,
           time_casa:times!partidas_time_casa_id_fkey(nome),
           time_fora:times!partidas_time_fora_id_fkey(nome),
           comparativo:comparativo_resultados(
@@ -472,33 +741,27 @@ serve(async (req) => {
         .not('gols_casa', 'is', null);
 
       if (matchError) {
-        console.error(`Error fetching matches for ${league.nome}:`, matchError);
         results.errors.push(`${league.nome}: ${matchError.message}`);
         continue;
       }
 
-      // Filter matches that have comparison data
       const validMatches = (matches || []).filter(m => {
         const comp = Array.isArray(m.comparativo) ? m.comparativo[0] : m.comparativo;
         return comp !== null;
       });
 
-      // Skip if no matches with comparison data
       if (validMatches.length < 1) {
-        console.log(`Skipping ${league.nome} - only ${validMatches.length} matches with comparison data`);
         results.skipped++;
         continue;
       }
 
       results.processed++;
 
-      // Calculate weekly stats
       let iaAcertosResultado = 0;
       let iaAcertosPlacar = 0;
       let totalUsuariosPalpites = 0;
       let usuariosAcertosResultado = 0;
       let usuariosAcertosPlacar = 0;
-
       const keyMatches: WeeklyData['keyMatches'] = [];
 
       for (const match of validMatches) {
@@ -512,20 +775,12 @@ serve(async (req) => {
         usuariosAcertosResultado += comp.usuarios_acertaram_resultado || 0;
         usuariosAcertosPlacar += comp.usuarios_acertaram_placar || 0;
 
-        // Check for existing validation article for this match
-        const { data: existingValidation } = await supabaseAdmin
-          .from('noticias')
-          .select('slug')
-          .eq('partida_id', match.id)
-          .like('slug', '%validacao-palpites%')
-          .single();
-
         keyMatches.push({
           timeCasa: timeCasa?.nome || 'Time A',
           timeFora: timeFora?.nome || 'Time B',
           placar: `${match.gols_casa} x ${match.gols_fora}`,
           iaAcertou: comp.sistema_acertou_resultado,
-          validationSlug: existingValidation?.slug || null
+          validationSlug: null,
         });
       }
 
@@ -555,24 +810,18 @@ serve(async (req) => {
       try {
         console.log(`Generating weekly validation for ${league.nome} (${validMatches.length} matches)`);
 
-        // Generate content
         const textContent = await generateWeeklyContent(weeklyData, GEMINI_API_KEY);
-        console.log(`Weekly content generated: ${textContent.titulo}`);
-
-        // Add internal links and ad slots
         const processedText = addInternalLinks(textContent.texto, weeklyData);
 
-        // Generate thumbnail
         let thumbnailUrl: string | null = null;
-        const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, GEMINI_API_KEY);
-        
-        if (thumbnailBase64) {
-          const thumbnailFileName = `weekly-validation-${weeklySlug}.png`;
-          thumbnailUrl = await uploadImage(supabaseAdmin, thumbnailBase64, thumbnailFileName);
-          console.log(`Thumbnail uploaded: ${thumbnailUrl ? 'success' : 'failed'}`);
+        if (!skipImages) {
+          const thumbnailBase64 = await generateWeeklyThumbnail(weeklyData, GEMINI_API_KEY);
+          if (thumbnailBase64) {
+            const thumbnailFileName = `weekly-validation-${weeklySlug}.png`;
+            thumbnailUrl = await uploadImage(supabaseAdmin, thumbnailBase64, thumbnailFileName);
+          }
         }
 
-        // Save article
         const { error: insertError } = await supabaseAdmin
           .from('noticias')
           .insert({
@@ -583,19 +832,16 @@ serve(async (req) => {
             imagem_url: thumbnailUrl,
             publicada: true,
             data_publicacao: new Date().toISOString(),
-            partida_id: null // Weekly articles don't link to a single match
+            partida_id: null,
           });
 
         if (insertError) {
-          console.error(`Error saving article for ${league.nome}:`, insertError);
           results.errors.push(`${league.nome}: ${insertError.message}`);
         } else {
-          console.log(`Weekly validation article created for ${league.nome}`);
           results.created++;
         }
       } catch (e) {
         const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-        console.error(`Error processing ${league.nome}:`, errorMessage);
         results.errors.push(`${league.nome}: ${errorMessage}`);
       }
     }
