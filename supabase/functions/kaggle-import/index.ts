@@ -183,13 +183,13 @@ Deno.serve(async (req) => {
       // 4. Download file from Kaggle
       const auth = getKaggleAuth();
       const apiUrl = `https://www.kaggle.com/api/v1/datasets/download/${dataset_slug}/${file_name}`;
-      const resp = await fetch(apiUrl, { headers: { Authorization: `Basic ${auth}` } });
+      const resp = await fetchWithRetry(apiUrl, { headers: { Authorization: `Basic ${auth}` } }, 3);
 
       if (!resp.ok) {
         const errText = await resp.text();
-        await log(job.id, "download", "error", `Download failed: ${resp.status}`, { error: errText });
-        await supabase.from("kaggle_import_jobs").update({ status: "failed", error_summary: `Download: ${resp.status}` }).eq("id", job.id);
-        return new Response(JSON.stringify({ success: false, error: errText, job_id: job.id }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        await log(job.id, "download", "error", `Download failed: ${resp.status}`, { error: errText.slice(0, 1000) });
+        await supabase.from("kaggle_import_jobs").update({ status: "failed", error_summary: `Download falhou (${resp.status})` }).eq("id", job.id);
+        return new Response(JSON.stringify({ success: false, error: `Download do Kaggle falhou (${resp.status})`, details: errText.slice(0, 500), job_id: job.id }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const rawText = await resp.text();
