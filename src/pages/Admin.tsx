@@ -724,29 +724,43 @@ export default function Admin() {
                   )}
                 </Button>
 
-                <Button 
-                  onClick={generateAllAnalyses}
-                  disabled={generatingAll}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  {generatingAll ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando partidas...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Gerar Todas as Análises Pendentes
-                    </>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={generateAllAnalyses}
+                    disabled={generatingAll}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    {generatingAll ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando ({analysisProgress.generated} geradas)...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Gerar Todas as Análises Pendentes
+                      </>
+                    )}
+                  </Button>
+                  {generatingAll && (
+                    <Button onClick={stopAllAnalyses} variant="destructive" size="icon">
+                      <Square className="h-4 w-4" />
+                    </Button>
                   )}
-                </Button>
+                </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Este processo pode levar alguns minutos dependendo do número de partidas.
-              </p>
+              {analysisProgress.log && (
+                <p className="text-xs text-muted-foreground">
+                  {analysisProgress.log}
+                </p>
+              )}
+              {!analysisProgress.log && (
+                <p className="text-xs text-muted-foreground">
+                  Processa uma análise por vez até finalizar todas as pendentes.
+                </p>
+              )}
             </CardContent>
           </Card>
 
