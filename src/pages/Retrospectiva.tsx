@@ -693,72 +693,101 @@ export default function Retrospectiva() {
                 ))}
               </div>
             ) : filteredMatches.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[60px]">Rod.</TableHead>
-                      <TableHead className="w-[80px]">Data</TableHead>
-                      <TableHead>Partida</TableHead>
-                      <TableHead className="text-center">Placar Real</TableHead>
-                      <TableHead className="text-center">Palpite Sistema</TableHead>
-                      <TableHead className="text-center">Confiança</TableHead>
-                      <TableHead className="text-center">Resultado</TableHead>
-                      <TableHead className="text-center">Placar</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMatches.map((match) => (
-                      <TableRow key={match.id}>
-                        <TableCell className="text-muted-foreground">
-                          {match.partidas?.rodada || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {match.partidas?.data ? formatDate(match.partidas.data) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <TeamBadge name={match.partidas?.time_casa?.nome || 'Casa'} primaryColor={match.partidas?.time_casa?.cores?.primary} secondaryColor={match.partidas?.time_casa?.cores?.secondary} size="sm" />
-                            <span className="text-sm">
-                              {match.partidas?.time_casa?.nome || 'Casa'}
-                            </span>
-                            <span className="text-muted-foreground mx-1">x</span>
-                            <TeamBadge name={match.partidas?.time_fora?.nome || 'Fora'} primaryColor={match.partidas?.time_fora?.cores?.primary} secondaryColor={match.partidas?.time_fora?.cores?.secondary} size="sm" />
-                            <span className="text-sm">
-                              {match.partidas?.time_fora?.nome || 'Fora'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-bold">
-                          {match.placar_oficial_casa ?? '-'} x {match.placar_oficial_fora ?? '-'}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {match.sistema_placar_casa ?? '-'} x {match.sistema_placar_fora ?? '-'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="text-xs">
-                            {match.sistema_prob_resultado?.toFixed(0) || '-'}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {match.sistema_acertou_resultado ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-red-500 mx-auto" />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {match.sistema_acertou_placar ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-muted-foreground/50 mx-auto" />
-                          )}
-                        </TableCell>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[60px]">Rod.</TableHead>
+                        <TableHead className="w-[80px]">Data</TableHead>
+                        <TableHead>Partida</TableHead>
+                        <TableHead className="text-center">Placar Real</TableHead>
+                        <TableHead className="text-center">Palpite Sistema</TableHead>
+                        <TableHead className="text-center">Confiança</TableHead>
+                        <TableHead className="text-center">Resultado</TableHead>
+                        <TableHead className="text-center">Placar</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedMatches.map((match) => (
+                        <TableRow key={match.id}>
+                          <TableCell className="text-muted-foreground">
+                            {match.partidas?.rodada || '-'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {match.partidas?.data ? formatDate(match.partidas.data) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <TeamBadge name={match.partidas?.time_casa?.nome || 'Casa'} primaryColor={match.partidas?.time_casa?.cores?.primary} secondaryColor={match.partidas?.time_casa?.cores?.secondary} size="sm" />
+                              <span className="text-sm">
+                                {match.partidas?.time_casa?.nome || 'Casa'}
+                              </span>
+                              <span className="text-muted-foreground mx-1">x</span>
+                              <TeamBadge name={match.partidas?.time_fora?.nome || 'Fora'} primaryColor={match.partidas?.time_fora?.cores?.primary} secondaryColor={match.partidas?.time_fora?.cores?.secondary} size="sm" />
+                              <span className="text-sm">
+                                {match.partidas?.time_fora?.nome || 'Fora'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-bold">
+                            {match.placar_oficial_casa ?? '-'} x {match.placar_oficial_fora ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {match.sistema_placar_casa ?? '-'} x {match.sistema_placar_fora ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="text-xs">
+                              {match.sistema_prob_resultado?.toFixed(0) || '-'}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {match.sistema_acertou_resultado ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-500 mx-auto" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {match.sistema_acertou_placar ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-muted-foreground/50 mx-auto" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                    <span className="text-sm text-muted-foreground">
+                      Mostrando {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, filteredMatches.length)} de {filteredMatches.length}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage === 0}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                      >
+                        Anterior
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage >= totalPages - 1}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                      >
+                        Próximo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 Nenhuma partida analisada encontrada.
