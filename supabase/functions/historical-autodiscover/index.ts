@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const html = await response.text();
 
     // Extract all .htm links from the page
-    const linkRegex = /href=["']([^"']+\\.htm)["']/gi;
+    const linkRegex = /href=["']([^"']+\.htm[l]?)["']/gi;
     const allLinks = new Set<string>();
     let match;
     while ((match = linkRegex.exec(html)) !== null) {
@@ -47,8 +47,7 @@ Deno.serve(async (req) => {
     // Filter: only keep links that look like season/results pages (contain year patterns or tables paths)
     // Exclude: index pages, misc, links, livros, etc.
     const excludePatterns = [
-      /historical\.htm$/i, /current\.htm$/i, /national\.htm$/i, /international\.htm$/i,
-      /misc\.htm$/i, /recent\.htm$/i, /livros\.htm$/i, /links\.htm$/i,
+      /misc\.htm$/i, /livros\.htm$/i, /links\.htm$/i,
       /rsssf\.com\/?$/i,
     ];
 
