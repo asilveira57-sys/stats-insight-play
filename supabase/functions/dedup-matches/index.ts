@@ -209,6 +209,16 @@ Deno.serve(async (req) => {
           .update({ matched_match_id: keeper.id })
           .in('matched_match_id', removeIds);
 
+        // tecnico_partida
+        await supabase.from('tecnico_partida' as any)
+          .update({ partida_id: keeper.id })
+          .in('partida_id', removeIds);
+
+        // xp_events
+        await supabase.from('xp_events' as any)
+          .update({ match_id: keeper.id })
+          .in('match_id', removeIds);
+
         // Delete duplicates
         const { error: delErr } = await supabase
           .from('partidas')
