@@ -181,8 +181,8 @@ interface PendingMatch {
   status: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { nome: string; escudo_url: string | null; cores: any } | null;
-  time_fora: { nome: string; escudo_url: string | null; cores: any } | null;
+  time_casa: { nome: string; cores: any } | null;
+  time_fora: { nome: string; cores: any } | null;
   liga: { nome: string; codigo_api: string | null } | null;
 }
 
