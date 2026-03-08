@@ -231,7 +231,7 @@ async function generatePrediction(match: any): Promise<Prediction | null> {
     palpiteId: existingPalpite?.id,
     homeTeam: {
       name: homeStats.nome,
-      logo: homeStats.escudo_url,
+      logo: null,
       probability: probs.homeWin,
       strength: homeStrength,
       primaryColor: homeStats.cores?.primary || '#6B7280',
