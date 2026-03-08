@@ -122,3 +122,18 @@ verify_jwt = false
 
 [functions.historical-batch-pipeline]
 verify_jwt = false
+
+[functions.kaggle-import]
+verify_jwt = false
+
+[functions.kaggle-process]
+verify_jwt = false
+
+[functions.kaggle-resolve]
+verify_jwt = false
+
+[functions.kaggle-promote]
+verify_jwt = false
+
+[functions.kaggle-batch]
+verify_jwt = false
