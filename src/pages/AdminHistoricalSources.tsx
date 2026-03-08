@@ -180,6 +180,9 @@ export default function AdminHistoricalSources() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const { data: urls = [] } = useSourceUrls(selectedSource);
   const { data: jobs = [] } = useJobs();
+  const { data: batchJobs = [] } = useBatchPipelineJobs(selectedSource);
+  const latestBatchJob = batchJobs[0];
+  const latestBatchProgress = latestBatchJob?.progress || {};
   const [viewLogsJobId, setViewLogsJobId] = useState<string | null>(null);
   const { data: logs = [] } = useLogs(viewLogsJobId);
   const [viewStagingUrlId, setViewStagingUrlId] = useState<string | null>(null);
