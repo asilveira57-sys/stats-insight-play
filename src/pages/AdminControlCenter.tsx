@@ -322,14 +322,16 @@ export default function AdminControlCenter() {
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
+    imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
+    imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
   });
 
-  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false }))[0];
+  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false, imageFix: false }))[0];
 
   const runPredictionsLoop = async () => {
     stopLoopRef.predictions = false;
