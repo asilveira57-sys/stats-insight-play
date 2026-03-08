@@ -264,7 +264,7 @@ async function generateThumbnailWithSeoName(
     // Extract base64 data and upload to storage
     const imageBuffer = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
     
-    const fileName = `${match.id}.png`;
+    const fileName = seoFileName;
     
     const { error: uploadError } = await supabase.storage
       .from("news-thumbnails")

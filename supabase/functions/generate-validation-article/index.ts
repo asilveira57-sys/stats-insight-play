@@ -51,6 +51,17 @@ interface MatchData {
   } | null;
 }
 
+function slugifyForFile(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
 function generateValidationSlug(timeCasa: string, timeFora: string, dataJogo: string, liga: string): string {
   const date = new Date(dataJogo);
   const dateStr = date.toISOString().split('T')[0];

@@ -143,7 +143,8 @@ serve(async (req) => {
 
         // Upload to storage
         const imageBytes = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
-        const fileName = `fix-${article.id}.png`;
+        // Use SEO-friendly filename based on article slug
+        const fileName = `fix-${article.slug || article.id}.png`;
 
         const { error: uploadError } = await supabase.storage
           .from("news-thumbnails")

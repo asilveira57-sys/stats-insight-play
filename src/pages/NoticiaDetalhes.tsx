@@ -212,7 +212,7 @@ export default function NoticiaDetalhes() {
         </div>
 
         {/* Hero Image */}
-        {noticia.imagem_url && (
+        {noticia.imagem_url ? (
           <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden">
             <img
               src={noticia.imagem_url}
@@ -220,10 +220,16 @@ export default function NoticiaDetalhes() {
               className="w-full h-full object-cover"
               itemProp="image"
               onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200";
+                const el = e.target as HTMLImageElement;
+                el.style.display = "none";
+                el.parentElement!.classList.add("bg-muted/50");
               }}
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          </div>
+        ) : (
+          <div className="relative w-full h-[200px] md:h-[250px] overflow-hidden bg-gradient-to-br from-primary/20 via-muted/30 to-background flex items-center justify-center">
+            <Newspaper className="w-16 h-16 text-muted-foreground/30" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           </div>
         )}
