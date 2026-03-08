@@ -93,6 +93,20 @@ export default function AdminKaggle() {
   const s = stats.data;
   const isLoading = registerDataset.isPending || createJob.isPending || profileFile.isPending || stageData.isPending || resolveJob.isPending || promoteJob.isPending || batchProcess.isPending;
 
+  const getInvokeErrorMessage = async (e: any, fallback = "Falha ao chamar a função") => {
+    try {
+      if (e?.context && typeof e.context.json === "function") {
+        const payload = await e.context.json();
+        if (payload?.error) return payload.error;
+        if (payload?.details) return payload.details;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    return e?.message || fallback;
+  };
+
   // Search Kaggle datasets
   const handleSearch = async (query?: string) => {
     const q = query || searchQuery;
