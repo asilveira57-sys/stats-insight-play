@@ -135,7 +135,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
             playerGoalsMap.set(playerName, {
               teamId: team?.id || '',
               teamName: team?.nome || 'Unknown',
-              teamLogo: team?.escudo_url || null,
               teamPrimaryColor: cores.primary || null,
               teamSecondaryColor: cores.secondary || null,
               goals: 0,
