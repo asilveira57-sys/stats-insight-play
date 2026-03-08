@@ -574,12 +574,13 @@ serve(async (req) => {
         }
         // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
-        // Generate and upload internal image
+        // Generate and upload internal image with SEO filename
         let internalImageUrl: string | null = null;
+        const internalSeoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
         const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
         
         if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `${match.id}-internal.png`);
+          internalImageUrl = await uploadImage(supabaseAdmin, internalSeoFileName, internalSeoFileName);
           console.log(`Internal image uploaded: ${internalImageUrl}`);
         }
 
