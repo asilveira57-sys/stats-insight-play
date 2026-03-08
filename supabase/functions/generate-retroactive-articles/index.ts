@@ -599,11 +599,13 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Processadas ${successCount} de ${results.length} partidas`,
+        created: successCount,
+        failed: results.length - successCount,
         processed: results,
         progress: {
           total: totalMatches || 0,
           processed: alreadyProcessed + successCount,
-          remaining: Math.max((pendingMatches || 0) - successCount, 0),
+          remaining: Math.max(pendingMatches - successCount, 0),
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
