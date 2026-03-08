@@ -483,7 +483,7 @@ serve(async (req) => {
           created: 0,
           failed: 0,
           progress: {
-            total: totalMatches || 0,
+            total: totalActionable || 0,
             processed: alreadyProcessed,
             remaining: pendingMatches,
           },
