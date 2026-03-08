@@ -12,6 +12,30 @@ function getKaggleAuth() {
   return btoa(`${user}:${key}`);
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(url, options);
+    if (response.ok) return response;
+
+    lastResponse = response;
+    const isRetryable = response.status === 429 || response.status >= 500;
+    if (!isRetryable || attempt === retries) break;
+
+    await sleep(500 * (attempt + 1));
+  }
+
+  if (!lastResponse) throw new Error("Falha de rede ao chamar Kaggle API");
+  return lastResponse;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
