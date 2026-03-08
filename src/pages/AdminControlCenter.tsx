@@ -1052,7 +1052,7 @@ export default function AdminControlCenter() {
                         {loopState.validations.running ? 'Gerando...' : 'Gerar Artigos de Validação'}
                       </Button>
                       {loopState.validations.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.validations = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('validations')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
