@@ -142,7 +142,7 @@ export function TournamentBracket({ roundGroups, teamFilter }: TournamentBracket
           <Card key={group.rodada}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                {idx === 0 && <Trophy className="w-4 h-4 text-primary" />}
                 {group.label}
                 <Badge variant="outline" className="ml-auto">
                   {group.matches.length} jogos

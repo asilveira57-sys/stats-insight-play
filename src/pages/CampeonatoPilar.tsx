@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useLeagueBySlug, useLeagueRelatedNews } from "@/hooks/useLeaguePillar";
@@ -8,6 +9,7 @@ import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SeasonDetailModal } from "@/components/league/SeasonDetailModal";
 import {
   Breadcrumb,
   BreadcrumbItem,
