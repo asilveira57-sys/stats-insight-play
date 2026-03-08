@@ -62,12 +62,12 @@ function useJobs() {
   return useQuery({
     queryKey: ["historical-import-jobs"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("historical_import_jobs")
-        .select("*, source_url:historical_source_urls(url)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return fetchAllRecords<any>(
+        "historical_import_jobs",
+        "*, source_url:historical_source_urls(url)",
+        undefined,
+        { column: "created_at", ascending: false }
+      );
     },
     refetchInterval: 5000,
   });
