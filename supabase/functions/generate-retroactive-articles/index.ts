@@ -431,17 +431,21 @@ serve(async (req) => {
       throw new Error(`Failed to fetch matches: ${matchError.message}`);
     }
 
-    const matchesToProcess = matches || [];
+    // Filter out matches that already have articles (in-memory filter since left join was unreliable)
+    const filteredMatches = (matches || []).filter((m: any) => !existingPartidaIds.has(m.id));
+    const matchesToProcess = filteredMatches.slice(0, limit);
 
     if (matchesToProcess.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
           message: "Nenhuma partida pendente para processar",
+          created: 0,
+          failed: 0,
           progress: {
             total: totalMatches || 0,
             processed: alreadyProcessed,
-            remaining: pendingMatches || 0,
+            remaining: pendingMatches,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -450,7 +454,7 @@ serve(async (req) => {
 
     const results: ProcessedArticle[] = [];
 
-    for (const match of matchesToProcess.slice(0, limit)) {
+    for (const match of matchesToProcess) {
       if (!hasTimeLeft()) {
         console.log(`Safety timer reached after ${results.length} partidas. Finalizando lote.`);
         break;
