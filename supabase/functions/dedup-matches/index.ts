@@ -194,6 +194,31 @@ Deno.serve(async (req) => {
           .update({ partida_statball_id: keeper.id })
           .in('partida_statball_id', removeIds);
 
+        // kaggle_staging_matches
+        await supabase.from('kaggle_staging_matches' as any)
+          .update({ matched_match_id: keeper.id })
+          .in('matched_match_id', removeIds);
+
+        // kaggle_match_links
+        await supabase.from('kaggle_match_links' as any)
+          .update({ partida_id: keeper.id })
+          .in('partida_id', removeIds);
+
+        // historical_staging_matches
+        await supabase.from('historical_staging_matches' as any)
+          .update({ matched_match_id: keeper.id })
+          .in('matched_match_id', removeIds);
+
+        // tecnico_partida
+        await supabase.from('tecnico_partida' as any)
+          .update({ partida_id: keeper.id })
+          .in('partida_id', removeIds);
+
+        // xp_events
+        await supabase.from('xp_events' as any)
+          .update({ match_id: keeper.id })
+          .in('match_id', removeIds);
+
         // Delete duplicates
         const { error: delErr } = await supabase
           .from('partidas')
