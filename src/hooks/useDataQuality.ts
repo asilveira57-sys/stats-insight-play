@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 export interface TeamWithoutMatches {
   id: string;
   nome: string;
-  total_partidas: number;
+  slug: string;
+  created_at: string;
+  has_aliases: boolean;
+  has_external_ids: boolean;
 }
 
 export interface DuplicateAlias {
@@ -17,54 +20,22 @@ export interface DuplicateAlias {
 export interface SimilarTeams {
   team_a_id: string;
   team_a_name: string;
+  team_a_slug: string;
   team_b_id: string;
   team_b_name: string;
+  team_b_slug: string;
   similarity_score: number;
+  reason: string;
 }
 
-// Fetch teams that have no matches (neither home nor away)
+// Fetch teams that have no matches using server-side RPC (fixes 1000-row limit bug)
 export function useTeamsWithoutMatches() {
   return useQuery({
     queryKey: ["data-quality", "teams-without-matches"],
     queryFn: async () => {
-      // Get all teams
-      const { data: teams, error: teamsError } = await supabase
-        .from("times")
-        .select("id, nome");
-
-      if (teamsError) throw teamsError;
-
-      // Get all unique team IDs that have matches
-      const { data: homeMatches, error: homeError } = await supabase
-        .from("partidas")
-        .select("time_casa_id");
-
-      if (homeError) throw homeError;
-
-      const { data: awayMatches, error: awayError } = await supabase
-        .from("partidas")
-        .select("time_fora_id");
-
-      if (awayError) throw awayError;
-
-      const teamsWithMatches = new Set<string>();
-      homeMatches?.forEach((m) => {
-        if (m.time_casa_id) teamsWithMatches.add(m.time_casa_id);
-      });
-      awayMatches?.forEach((m) => {
-        if (m.time_fora_id) teamsWithMatches.add(m.time_fora_id);
-      });
-
-      // Filter teams without matches
-      const teamsWithoutMatches: TeamWithoutMatches[] = (teams || [])
-        .filter((t) => !teamsWithMatches.has(t.id))
-        .map((t) => ({
-          id: t.id,
-          nome: t.nome,
-          total_partidas: 0,
-        }));
-
-      return teamsWithoutMatches;
+      const { data, error } = await supabase.rpc("get_teams_without_matches");
+      if (error) throw error;
+      return (data || []) as TeamWithoutMatches[];
     },
   });
 }
@@ -128,81 +99,26 @@ export function useDuplicateAliases() {
   });
 }
 
-// Simple string similarity calculation (Dice coefficient)
-function calculateSimilarity(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase().trim();
-  const s2 = str2.toLowerCase().trim();
-
-  if (s1 === s2) return 1;
-  if (s1.length < 2 || s2.length < 2) return 0;
-
-  const bigrams1 = new Set<string>();
-  for (let i = 0; i < s1.length - 1; i++) {
-    bigrams1.add(s1.substring(i, i + 2));
-  }
-
-  const bigrams2 = new Set<string>();
-  for (let i = 0; i < s2.length - 1; i++) {
-    bigrams2.add(s2.substring(i, i + 2));
-  }
-
-  let intersection = 0;
-  bigrams1.forEach((bigram) => {
-    if (bigrams2.has(bigram)) intersection++;
-  });
-
-  return (2 * intersection) / (bigrams1.size + bigrams2.size);
-}
-
-// Clean team name for comparison
-function cleanTeamName(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\b(fc|cf|sc|ac|rc|cd|ud|sd|ec|se|cr|ca|aa|clube|club|futebol|football|esporte|sport|atletico|athletic)\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Fetch teams with similar names (potential duplicates)
-export function useSimilarTeams(threshold: number = 0.7) {
+// Fetch similar teams using server-side RPC (replaces O(n²) client-side calculation)
+export function useSimilarTeams() {
   return useQuery({
-    queryKey: ["data-quality", "similar-teams", threshold],
+    queryKey: ["data-quality", "similar-teams"],
     queryFn: async () => {
-      const { data: teams, error } = await supabase
-        .from("times")
-        .select("id, nome")
-        .order("nome");
-
+      const { data, error } = await supabase.rpc("get_suggested_duplicates", {
+        p_limit: 200,
+      });
       if (error) throw error;
 
-      const similarPairs: SimilarTeams[] = [];
-
-      // Compare all pairs (O(n²) - intentionally not optimized as per requirements)
-      for (let i = 0; i < (teams?.length || 0); i++) {
-        for (let j = i + 1; j < (teams?.length || 0); j++) {
-          const teamA = teams![i];
-          const teamB = teams![j];
-
-          const cleanA = cleanTeamName(teamA.nome);
-          const cleanB = cleanTeamName(teamB.nome);
-
-          const score = calculateSimilarity(cleanA, cleanB);
-
-          if (score >= threshold) {
-            similarPairs.push({
-              team_a_id: teamA.id,
-              team_a_name: teamA.nome,
-              team_b_id: teamB.id,
-              team_b_name: teamB.nome,
-              similarity_score: Math.round(score * 100),
-            });
-          }
-        }
-      }
-
-      return similarPairs.sort((a, b) => b.similarity_score - a.similarity_score);
+      return ((data || []) as any[]).map((row) => ({
+        team_a_id: row.team_a_id,
+        team_a_name: row.team_a_name,
+        team_a_slug: row.team_a_slug,
+        team_b_id: row.team_b_id,
+        team_b_name: row.team_b_name,
+        team_b_slug: row.team_b_slug,
+        similarity_score: Number(row.similarity_score),
+        reason: row.reason,
+      })) as SimilarTeams[];
     },
   });
 }
