@@ -95,16 +95,31 @@ function useStagingMatches(sourceUrlId: string | null) {
     queryKey: ["historical-staging", sourceUrlId],
     queryFn: async () => {
       if (!sourceUrlId) return [];
-      const { data, error } = await supabase
-        .from("historical_staging_matches")
-        .select("*")
-        .eq("source_url_id", sourceUrlId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
+      return fetchAllRecords<any>(
+        "historical_staging_matches",
+        "*",
+        (q: any) => q.eq("source_url_id", sourceUrlId),
+        { column: "created_at", ascending: true }
+      );
     },
     enabled: !!sourceUrlId,
     refetchInterval: 10000,
+  });
+}
+
+function useBatchPipelineJobs(sourceId: string | null) {
+  return useQuery({
+    queryKey: ["historical-batch-jobs", sourceId],
+    enabled: !!sourceId,
+    queryFn: async () => {
+      return fetchAllRecords<any>(
+        "background_jobs",
+        "id, status, progress, created_at, updated_at",
+        (q: any) => q.eq("job_type", "historical_batch_pipeline").contains("progress", { source_id: sourceId }),
+        { column: "updated_at", ascending: false }
+      );
+    },
+    refetchInterval: 3000,
   });
 }
 
