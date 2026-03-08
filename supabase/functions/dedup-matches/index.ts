@@ -27,30 +27,58 @@ Deno.serve(async (req) => {
     } catch { /* defaults */ }
 
     // Step 1: Find exact duplicate groups (same time_casa_id + time_fora_id + data)
-    // We query all matches and group in-memory for flexibility
     const { data: dupsRaw, error: dupsErr } = await supabase.rpc('get_duplicate_match_groups', { p_limit: limit });
 
-    // If RPC doesn't exist, fall back to manual detection
-    let dupGroups: { time_casa_id: string; time_fora_id: string; data: string; liga_id: string; ids: string[] }[] = [];
+    type DupGroup = {
+      time_casa_id: string;
+      time_fora_id: string;
+      data: string;
+      liga_id: string;
+      ids: string[];
+    };
 
+    let dupGroups: DupGroup[] = [];
+
+    // Prefer RPC output when available
+    if (!dupsErr && Array.isArray(dupsRaw)) {
+      dupGroups = dupsRaw
+        .filter((g: any) => g?.time_casa_id && g?.time_fora_id && g?.data && Array.isArray(g?.ids))
+        .map((g: any) => ({
+          time_casa_id: g.time_casa_id,
+          time_fora_id: g.time_fora_id,
+          data: g.data,
+          liga_id: g.liga_id,
+          ids: g.ids,
+        }));
+    }
+
+    // If RPC doesn't exist or failed, fall back to manual detection
     if (dupsErr) {
-      console.log('RPC not found, using manual detection');
-      // Fetch matches grouped by potential duplicates
-      // We'll query matches ordered by data and look for same-day same-team combos
-      const { data: matches, error: mErr } = await supabase
-        .from('partidas')
-        .select('id, time_casa_id, time_fora_id, data, liga_id, gols_casa, gols_fora, api_id, status, rodada, hora, created_at')
-        .order('data', { ascending: true });
-
-      if (mErr) throw mErr;
-
-      // Group by (time_casa_id, time_fora_id, data)
+      console.log('RPC not found/failed, using manual detection');
+      // Fetch ALL matches using pagination (avoid default row cap)
+      const pageSize = 1000;
       const groupMap = new Map<string, any[]>();
-      for (const m of matches || []) {
-        const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-        const arr = groupMap.get(key) || [];
-        arr.push(m);
-        groupMap.set(key, arr);
+      let from = 0;
+
+      while (true) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from('partidas')
+          .select('id, time_casa_id, time_fora_id, data, liga_id, gols_casa, gols_fora, api_id, status, rodada, hora, created_at')
+          .order('data', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (chunkErr) throw chunkErr;
+        if (!chunk || chunk.length === 0) break;
+
+        for (const m of chunk) {
+          const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
+          const arr = groupMap.get(key) || [];
+          arr.push(m);
+          groupMap.set(key, arr);
+        }
+
+        if (chunk.length < pageSize) break;
+        from += pageSize;
       }
 
       // Filter groups with more than 1 match
@@ -241,20 +269,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Count remaining duplicates for progress tracking
-    const { data: remainingCheck } = await supabase
-      .from('partidas')
-      .select('time_casa_id, time_fora_id, data', { count: 'exact', head: false });
-
-    // Count remaining dups
-    const remainGroupMap = new Map<string, number>();
-    for (const m of remainingCheck || []) {
-      const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-      remainGroupMap.set(key, (remainGroupMap.get(key) || 0) + 1);
-    }
+    // Count remaining dups accurately (without the default row cap)
     let remainingDups = 0;
-    for (const count of remainGroupMap.values()) {
-      if (count > 1) remainingDups += count - 1;
+    const { data: remainingRpc, error: remainingErr } = await supabase.rpc('count_duplicate_matches');
+
+    if (!remainingErr && Array.isArray(remainingRpc) && remainingRpc[0]) {
+      remainingDups = Number(remainingRpc[0].dup_records || 0);
+    } else {
+      console.warn('count_duplicate_matches RPC unavailable, using paginated fallback');
+      const pageSize = 1000;
+      const remainGroupMap = new Map<string, number>();
+      let from = 0;
+
+      while (true) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from('partidas')
+          .select('time_casa_id, time_fora_id, data')
+          .range(from, from + pageSize - 1);
+
+        if (chunkErr) throw chunkErr;
+        if (!chunk || chunk.length === 0) break;
+
+        for (const m of chunk) {
+          const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
+          remainGroupMap.set(key, (remainGroupMap.get(key) || 0) + 1);
+        }
+
+        if (chunk.length < pageSize) break;
+        from += pageSize;
+      }
+
+      for (const count of remainGroupMap.values()) {
+        if (count > 1) remainingDups += count - 1;
+      }
     }
 
     return new Response(JSON.stringify({
