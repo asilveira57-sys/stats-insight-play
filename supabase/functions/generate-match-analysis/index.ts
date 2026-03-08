@@ -277,14 +277,14 @@ async function generateThumbnail(matchData: MatchData, GEMINI_API_KEY: string): 
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE"] },
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
@@ -295,10 +295,12 @@ async function generateThumbnail(matchData: MatchData, GEMINI_API_KEY: string): 
     }
 
     const data = await response.json();
-    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data);
+    const base64Image = imagePart?.inlineData?.data;
     
     if (!base64Image) {
-      console.log("No image in DALL-E response");
+      console.log("No image in Gemini response");
       return null;
     }
 
@@ -323,23 +325,27 @@ async function generateInternalImage(matchData: MatchData, GEMINI_API_KEY: strin
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE"] },
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Internal image generation error:", response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    const base64Image = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data);
+    const base64Image = imagePart?.inlineData?.data;
     return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating internal image:", error);
