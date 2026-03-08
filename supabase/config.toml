@@ -107,3 +107,12 @@ verify_jwt = false
 
 [functions.dedup-matches]
 verify_jwt = false
+
+[functions.historical-parse]
+verify_jwt = false
+
+[functions.historical-resolve]
+verify_jwt = false
+
+[functions.historical-promote]
+verify_jwt = false

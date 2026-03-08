@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Download, RefreshCw, Globe, Link2, Clock, CheckCircle, XCircle, AlertTriangle,
-  Loader2, FileText, Eye, Trash2,
+  Loader2, FileText, Eye, Trash2, Cpu, GitMerge, ArrowUpCircle, Zap, Database,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -89,6 +89,24 @@ function useLogs(jobId: string | null) {
   });
 }
 
+function useStagingMatches(sourceUrlId: string | null) {
+  return useQuery({
+    queryKey: ["historical-staging", sourceUrlId],
+    queryFn: async () => {
+      if (!sourceUrlId) return [];
+      const { data, error } = await supabase
+        .from("historical_staging_matches")
+        .select("*")
+        .eq("source_url_id", sourceUrlId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!sourceUrlId,
+    refetchInterval: 10000,
+  });
+}
+
 // ─── Status Badge ──────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
@@ -99,6 +117,13 @@ function StatusBadge({ status }: { status: string }) {
     pending: { variant: "outline", icon: Clock },
     failed: { variant: "destructive", icon: XCircle },
     error: { variant: "destructive", icon: XCircle },
+    parsed: { variant: "secondary", icon: Cpu },
+    resolved: { variant: "default", icon: GitMerge },
+    conflict: { variant: "destructive", icon: AlertTriangle },
+    promoted: { variant: "default", icon: ArrowUpCircle },
+    skipped: { variant: "secondary", icon: XCircle },
+    idle: { variant: "outline", icon: Clock },
+    conflicts: { variant: "destructive", icon: AlertTriangle },
   };
   const v = variants[status] || { variant: "secondary" as const, icon: AlertTriangle };
   const Icon = v.icon;
@@ -107,6 +132,28 @@ function StatusBadge({ status }: { status: string }) {
       <Icon className={`h-3 w-3 ${status === "running" ? "animate-spin" : ""}`} />
       {status}
     </Badge>
+  );
+}
+
+// ─── Pipeline Status ───────────────────────────────
+function PipelineStatus({ url }: { url: any }) {
+  const status = url.pipeline_status || 'idle';
+  const steps = [
+    { key: 'fetched', label: 'Coletado', done: !!url.last_fetched_at },
+    { key: 'parsed', label: 'Parseado', done: !!url.last_parsed_at },
+    { key: 'resolved', label: 'Resolvido', done: !!url.last_resolved_at },
+    { key: 'promoted', label: 'Promovido', done: !!url.last_promoted_at },
+  ];
+  return (
+    <div className="flex items-center gap-1">
+      {steps.map((s, i) => (
+        <div key={s.key} className="flex items-center gap-1">
+          <div className={`w-2 h-2 rounded-full ${s.done ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+          <span className={`text-[10px] ${s.done ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
+          {i < steps.length - 1 && <span className="text-muted-foreground/30 text-[10px]">→</span>}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -119,6 +166,9 @@ export default function AdminHistoricalSources() {
   const { data: jobs = [] } = useJobs();
   const [viewLogsJobId, setViewLogsJobId] = useState<string | null>(null);
   const { data: logs = [] } = useLogs(viewLogsJobId);
+  const [viewStagingUrlId, setViewStagingUrlId] = useState<string | null>(null);
+  const { data: stagingMatches = [] } = useStagingMatches(viewStagingUrlId);
+  const [activeTab, setActiveTab] = useState("sources");
 
   // ── Modals state ──
   const [showAddSource, setShowAddSource] = useState(false);
@@ -175,6 +225,98 @@ export default function AdminHistoricalSources() {
     onError: (e: any) => toast.error(`Falha na coleta: ${e.message}`),
   });
 
+  const parseUrl = useMutation({
+    mutationFn: async (sourceUrlId: string) => {
+      const { data, error } = await supabase.functions.invoke("historical-parse", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-import-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-staging"] });
+      toast.success(`Parse concluído: ${data?.matches_parsed} partidas extraídas`);
+    },
+    onError: (e: any) => toast.error(`Falha no parse: ${e.message}`),
+  });
+
+  const resolveUrl = useMutation({
+    mutationFn: async (sourceUrlId: string) => {
+      const { data, error } = await supabase.functions.invoke("historical-resolve", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-import-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-staging"] });
+      toast.success(`Resolução: ${data?.resolved} resolvidas, ${data?.conflicts} conflitos`);
+    },
+    onError: (e: any) => toast.error(`Falha na resolução: ${e.message}`),
+  });
+
+  const promoteUrl = useMutation({
+    mutationFn: async ({ sourceUrlId, dryRun = false }: { sourceUrlId: string; dryRun?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("historical-promote", {
+        body: { source_url_id: sourceUrlId, dry_run: dryRun },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-import-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-staging"] });
+      const prefix = data?.dry_run ? "[DRY RUN] " : "";
+      toast.success(`${prefix}Promoção: ${data?.promoted} promovidas, ${data?.duplicates} duplicatas, ${data?.skipped} ignoradas`);
+    },
+    onError: (e: any) => toast.error(`Falha na promoção: ${e.message}`),
+  });
+
+  const runFullPipeline = useMutation({
+    mutationFn: async (sourceUrlId: string) => {
+      toast.info("Pipeline completo iniciado: Fetch → Parse → Resolve → Promote");
+      
+      // Step 1: Fetch
+      const { data: fetchData, error: fetchErr } = await supabase.functions.invoke("historical-fetch", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (fetchErr) throw new Error(`Fetch: ${fetchErr.message}`);
+      
+      // Step 2: Parse
+      const { data: parseData, error: parseErr } = await supabase.functions.invoke("historical-parse", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (parseErr) throw new Error(`Parse: ${parseErr.message}`);
+      
+      // Step 3: Resolve
+      const { data: resolveData, error: resolveErr } = await supabase.functions.invoke("historical-resolve", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (resolveErr) throw new Error(`Resolve: ${resolveErr.message}`);
+      
+      // Step 4: Promote
+      const { data: promoteData, error: promoteErr } = await supabase.functions.invoke("historical-promote", {
+        body: { source_url_id: sourceUrlId },
+      });
+      if (promoteErr) throw new Error(`Promote: ${promoteErr.message}`);
+      
+      return { fetchData, parseData, resolveData, promoteData };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-import-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-staging"] });
+      const p = data.promoteData;
+      toast.success(`Pipeline completo! ${p?.promoted || 0} partidas importadas para produção`);
+    },
+    onError: (e: any) => toast.error(`Pipeline falhou: ${e.message}`),
+  });
+
   const toggleSource = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await supabase.from("historical_sources").update({ is_active: !is_active }).eq("id", id);
@@ -183,11 +325,23 @@ export default function AdminHistoricalSources() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["historical-sources"] }),
   });
 
+  const isAnyPending = fetchUrl.isPending || parseUrl.isPending || resolveUrl.isPending || promoteUrl.isPending || runFullPipeline.isPending;
+
   // ── KPIs ──
   const totalSources = sources.length;
   const activeSources = sources.filter((s: any) => s.is_active).length;
   const totalUrls = urls.length;
   const recentJobs = jobs.filter((j: any) => j.status === "completed").length;
+
+  // Staging stats
+  const stagingStats = {
+    total: stagingMatches.length,
+    parsed: stagingMatches.filter((m: any) => m.status === 'parsed').length,
+    resolved: stagingMatches.filter((m: any) => m.status === 'resolved').length,
+    conflict: stagingMatches.filter((m: any) => m.status === 'conflict').length,
+    promoted: stagingMatches.filter((m: any) => m.status === 'promoted').length,
+    skipped: stagingMatches.filter((m: any) => m.status === 'skipped').length,
+  };
 
   return (
     <AdminLayout>
@@ -195,7 +349,7 @@ export default function AdminHistoricalSources() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Fontes Históricas</h1>
-            <p className="text-muted-foreground">Motor de importação histórica — RSSSF e outras fontes</p>
+            <p className="text-muted-foreground">Motor de importação: Fetch → Parse → Resolve → Promote</p>
           </div>
         </div>
 
@@ -219,11 +373,12 @@ export default function AdminHistoricalSources() {
           </CardContent></Card>
         </div>
 
-        <Tabs defaultValue="sources">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="sources"><Globe className="h-4 w-4 mr-1" /> Fontes</TabsTrigger>
-            <TabsTrigger value="urls" disabled={!selectedSource}><Link2 className="h-4 w-4 mr-1" /> URLs</TabsTrigger>
-            <TabsTrigger value="jobs"><Clock className="h-4 w-4 mr-1" /> Fila de Jobs</TabsTrigger>
+            <TabsTrigger value="urls" disabled={!selectedSource}><Link2 className="h-4 w-4 mr-1" /> URLs & Pipeline</TabsTrigger>
+            <TabsTrigger value="staging" disabled={!viewStagingUrlId}><Database className="h-4 w-4 mr-1" /> Staging</TabsTrigger>
+            <TabsTrigger value="jobs"><Clock className="h-4 w-4 mr-1" /> Jobs</TabsTrigger>
           </TabsList>
 
           {/* ── FONTES TAB ── */}
@@ -302,7 +457,7 @@ export default function AdminHistoricalSources() {
                         </TableCell>
                         <TableCell>{s.priority}</TableCell>
                         <TableCell className="text-right space-x-1">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedSource(s.id)}>
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedSource(s.id); setActiveTab("urls"); }}>
                             <Eye className="h-3 w-3 mr-1" /> URLs
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => toggleSource.mutate({ id: s.id, is_active: s.is_active })}>
@@ -320,7 +475,7 @@ export default function AdminHistoricalSources() {
             )}
           </TabsContent>
 
-          {/* ── URLS TAB ── */}
+          {/* ── URLS & PIPELINE TAB ── */}
           <TabsContent value="urls" className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
@@ -363,43 +518,145 @@ export default function AdminHistoricalSources() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>URL</TableHead>
-                    <TableHead>Tipo</TableHead>
                     <TableHead>Temporada</TableHead>
-                    <TableHead>Último Fetch</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Pipeline</TableHead>
+                    <TableHead>Staging</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {urls.map((u: any) => (
                     <TableRow key={u.id}>
-                      <TableCell className="font-mono text-xs max-w-[300px] truncate">{u.url}</TableCell>
-                      <TableCell><Badge variant="outline">{u.url_type}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs max-w-[250px] truncate">{u.url}</TableCell>
                       <TableCell>{u.season_label || "—"}</TableCell>
+                      <TableCell><PipelineStatus url={u} /></TableCell>
                       <TableCell className="text-xs">
-                        {u.last_fetched_at ? format(new Date(u.last_fetched_at), "dd/MM/yy HH:mm", { locale: ptBR }) : "Nunca"}
-                      </TableCell>
-                      <TableCell>
-                        {u.last_status ? <StatusBadge status={u.last_status} /> : <Badge variant="secondary">—</Badge>}
+                        {u.staging_total ? (
+                          <span>{u.staging_promoted || 0}/{u.staging_total} promovidas</span>
+                        ) : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => fetchUrl.mutate(u.id)}
-                          disabled={fetchUrl.isPending}
-                        >
-                          {fetchUrl.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Download className="h-3 w-3 mr-1" />}
-                          Coletar
-                        </Button>
+                        <div className="flex items-center justify-end gap-1 flex-wrap">
+                          {/* Individual phase buttons */}
+                          <Button size="sm" variant="outline" onClick={() => fetchUrl.mutate(u.id)} disabled={isAnyPending} title="Fase 1: Coletar HTML">
+                            {fetchUrl.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => parseUrl.mutate(u.id)} disabled={isAnyPending || !u.last_fetched_at} title="Fase 2: Parsear com IA">
+                            {parseUrl.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Cpu className="h-3 w-3" />}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => resolveUrl.mutate(u.id)} disabled={isAnyPending || !u.last_parsed_at} title="Fase 3: Resolver entidades">
+                            {resolveUrl.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitMerge className="h-3 w-3" />}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => promoteUrl.mutate({ sourceUrlId: u.id })} disabled={isAnyPending || !u.last_resolved_at} title="Fase 4: Promover para produção">
+                            {promoteUrl.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
+                          </Button>
+                          
+                          {/* Full pipeline button */}
+                          <Button size="sm" variant="default" onClick={() => runFullPipeline.mutate(u.id)} disabled={isAnyPending} title="Pipeline completo (4 fases)">
+                            {runFullPipeline.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
+                            Full
+                          </Button>
+
+                          {/* View staging */}
+                          <Button size="sm" variant="ghost" onClick={() => { setViewStagingUrlId(u.id); setActiveTab("staging"); }} title="Ver staging">
+                            <Database className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {urls.length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma URL cadastrada</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma URL cadastrada</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
+            </Card>
+
+            {/* Pipeline Legend */}
+            <Card>
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Legenda do Pipeline:</p>
+                <div className="flex flex-wrap gap-4 text-xs">
+                  <span className="flex items-center gap-1"><Download className="h-3 w-3" /> Fetch: Coleta HTML bruto</span>
+                  <span className="flex items-center gap-1"><Cpu className="h-3 w-3" /> Parse: IA extrai partidas do texto</span>
+                  <span className="flex items-center gap-1"><GitMerge className="h-3 w-3" /> Resolve: Mapeia times/ligas canônicos</span>
+                  <span className="flex items-center gap-1"><ArrowUpCircle className="h-3 w-3" /> Promote: Insere em produção (com dedup)</span>
+                  <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> Full: Executa as 4 fases em sequência</span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── STAGING TAB ── */}
+          <TabsContent value="staging" className="space-y-4">
+            {/* Staging Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold">{stagingStats.total}</p>
+                <p className="text-[10px] text-muted-foreground">Total</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold text-muted-foreground">{stagingStats.parsed}</p>
+                <p className="text-[10px] text-muted-foreground">Parseadas</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold text-primary">{stagingStats.resolved}</p>
+                <p className="text-[10px] text-muted-foreground">Resolvidas</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold text-destructive">{stagingStats.conflict}</p>
+                <p className="text-[10px] text-muted-foreground">Conflitos</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold text-primary">{stagingStats.promoted}</p>
+                <p className="text-[10px] text-muted-foreground">Promovidas</p>
+              </CardContent></Card>
+              <Card><CardContent className="p-3 text-center">
+                <p className="text-lg font-bold text-muted-foreground">{stagingStats.skipped}</p>
+                <p className="text-[10px] text-muted-foreground">Ignoradas</p>
+              </CardContent></Card>
+            </div>
+
+            <Card>
+              <div className="max-h-[500px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Casa</TableHead>
+                      <TableHead>Placar</TableHead>
+                      <TableHead>Fora</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Rodada</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notas</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stagingMatches.map((m: any) => (
+                      <TableRow key={m.id} className={m.status === 'conflict' ? 'bg-destructive/5' : m.status === 'promoted' ? 'bg-primary/5' : ''}>
+                        <TableCell className="text-xs">
+                          <div>{m.home_team_raw}</div>
+                          {m.home_team_id && <Badge variant="outline" className="text-[9px] mt-0.5">{m.home_team_confidence}</Badge>}
+                        </TableCell>
+                        <TableCell className="text-center font-mono font-bold">
+                          {m.score_home !== null ? `${m.score_home}-${m.score_away}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div>{m.away_team_raw}</div>
+                          {m.away_team_id && <Badge variant="outline" className="text-[9px] mt-0.5">{m.away_team_confidence}</Badge>}
+                        </TableCell>
+                        <TableCell className="text-xs">{m.match_date || m.match_date_raw || "—"}</TableCell>
+                        <TableCell className="text-xs">{m.round_raw || "—"}</TableCell>
+                        <TableCell><StatusBadge status={m.status} /></TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate text-muted-foreground">{m.resolution_notes || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {stagingMatches.length === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum registro no staging</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           </TabsContent>
 
@@ -410,10 +667,10 @@ export default function AdminHistoricalSources() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>URL</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>URL</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Resultados</TableHead>
                     <TableHead>Duração</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -424,12 +681,25 @@ export default function AdminHistoricalSources() {
                       <TableCell className="text-xs">
                         {format(new Date(j.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
                       </TableCell>
-                      <TableCell><Badge variant="outline">{j.provider_name}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="gap-1">
+                          {j.job_type === 'fetch' && <Download className="h-3 w-3" />}
+                          {j.job_type === 'parse' && <Cpu className="h-3 w-3" />}
+                          {j.job_type === 'resolve' && <GitMerge className="h-3 w-3" />}
+                          {(j.job_type === 'promote' || j.job_type === 'promote_dry') && <ArrowUpCircle className="h-3 w-3" />}
+                          {j.job_type}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-mono text-xs max-w-[200px] truncate">
                         {(j.source_url as any)?.url || "—"}
                       </TableCell>
-                      <TableCell>{j.job_type}</TableCell>
                       <TableCell><StatusBadge status={j.status} /></TableCell>
+                      <TableCell className="text-xs">
+                        {j.total_matches_detected != null && <span>🎯 {j.total_matches_detected} </span>}
+                        {j.total_promoted != null && <span>✅ {j.total_promoted} </span>}
+                        {j.total_conflicts != null && j.total_conflicts > 0 && <span>⚠️ {j.total_conflicts} </span>}
+                        {j.total_ignored != null && j.total_ignored > 0 && <span>⏭️ {j.total_ignored}</span>}
+                      </TableCell>
                       <TableCell className="text-xs">
                         {j.duration_ms ? `${(j.duration_ms / 1000).toFixed(1)}s` : "—"}
                       </TableCell>
