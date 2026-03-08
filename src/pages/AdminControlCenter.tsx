@@ -666,8 +666,11 @@ export default function AdminControlCenter() {
           </div>
 
           {/* Main Tabs */}
-          <Tabs defaultValue="syncs" className="space-y-4">
-            <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+          <Tabs defaultValue="health" className="space-y-4">
+            <TabsList className="grid grid-cols-7 w-full max-w-4xl">
+              <TabsTrigger value="health" className="flex items-center gap-1">
+                <Activity className="w-4 h-4" /> Saúde
+              </TabsTrigger>
               <TabsTrigger value="syncs" className="flex items-center gap-1">
                 <RefreshCw className="w-4 h-4" /> Syncs
               </TabsTrigger>
@@ -687,6 +690,10 @@ export default function AdminControlCenter() {
                 <Target className="w-4 h-4" /> SEO
               </TabsTrigger>
             </TabsList>
+
+            {/* DB Health Tab */}
+            <TabsContent value="health">
+              <DatabaseHealthTab />
 
             {/* Syncs Tab */}
             <TabsContent value="syncs">
