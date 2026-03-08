@@ -292,11 +292,12 @@ Deno.serve(async (req) => {
           }).eq("id", sc.id);
         } else {
           // Register alias
-          await supabase.from("competition_aliases").insert({
+          // Insert alias, ignore duplicates
+          await supabase.from("competition_aliases").upsert({
             league_id: newLeague.id,
             alias: leagueName,
             normalized_alias: normalizedName,
-          }).onConflict("league_id,normalized_alias").ignore();
+          }, { onConflict: "league_id,normalized_alias", ignoreDuplicates: true });
 
           await supabase.from("kaggle_staging_competitions").update({
             matched_competition_id: newLeague.id, confidence_score: 100,

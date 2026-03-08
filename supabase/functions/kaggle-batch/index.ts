@@ -22,13 +22,22 @@ Deno.serve(async (req) => {
     const baseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const callFn = async (fnName: string, body: any) => {
+    const callFn = async (fnName: string, body: any): Promise<{ ok: boolean; data: any }> => {
       const resp = await fetch(`${baseUrl}/functions/v1/${fnName}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return resp.json();
+      const text = await resp.text();
+      let data: any;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!resp.ok) {
+        return { ok: false, data: { error: data?.error || `HTTP ${resp.status}: ${text.substring(0, 200)}` } };
+      }
+      if (data?.success === false) {
+        return { ok: false, data };
+      }
+      return { ok: true, data };
     };
 
     // ========== PROCESS PENDING JOBS ==========
@@ -51,44 +60,97 @@ Deno.serve(async (req) => {
           if (job.status === "pending" || job.status === "extracting") {
             // Profile
             const profileResult = await callFn("kaggle-process", { action: "profile", job_id: job.id });
-            results.push({ job_id: job.id, step: "profile", result: profileResult });
+            results.push({ job_id: job.id, step: "profile", ...profileResult });
+            if (!profileResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Profile failed: ${profileResult.data?.error}` 
+              }).eq("id", job.id);
+              await supabase.from("kaggle_import_logs").insert({
+                job_id: job.id, stage: "batch-profile", level: "error", message: profileResult.data?.error || "Profile failed",
+              });
+              continue;
+            }
 
             if (shouldStop()) break;
 
             // Stage
             const stageResult = await callFn("kaggle-process", { action: "stage", job_id: job.id });
-            results.push({ job_id: job.id, step: "stage", result: stageResult });
+            results.push({ job_id: job.id, step: "stage", ...stageResult });
+            if (!stageResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Stage failed: ${stageResult.data?.error}` 
+              }).eq("id", job.id);
+              await supabase.from("kaggle_import_logs").insert({
+                job_id: job.id, stage: "batch-stage", level: "error", message: stageResult.data?.error || "Stage failed",
+              });
+              continue;
+            }
 
             if (shouldStop()) break;
 
             // Resolve
             const resolveResult = await callFn("kaggle-resolve", { job_id: job.id });
-            results.push({ job_id: job.id, step: "resolve", result: resolveResult });
+            results.push({ job_id: job.id, step: "resolve", ...resolveResult });
+            if (!resolveResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Resolve failed: ${resolveResult.data?.error}` 
+              }).eq("id", job.id);
+              await supabase.from("kaggle_import_logs").insert({
+                job_id: job.id, stage: "batch-resolve", level: "error", message: resolveResult.data?.error || "Resolve failed",
+              });
+              continue;
+            }
 
           } else if (job.status === "mapping") {
-            // Stage then resolve
             const stageResult = await callFn("kaggle-process", { action: "stage", job_id: job.id });
-            results.push({ job_id: job.id, step: "stage", result: stageResult });
+            results.push({ job_id: job.id, step: "stage", ...stageResult });
+            if (!stageResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Stage failed: ${stageResult.data?.error}` 
+              }).eq("id", job.id);
+              continue;
+            }
 
             if (shouldStop()) break;
 
             const resolveResult = await callFn("kaggle-resolve", { job_id: job.id });
-            results.push({ job_id: job.id, step: "resolve", result: resolveResult });
+            results.push({ job_id: job.id, step: "resolve", ...resolveResult });
+            if (!resolveResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Resolve failed: ${resolveResult.data?.error}` 
+              }).eq("id", job.id);
+              continue;
+            }
 
           } else if (job.status === "awaiting_review") {
-            // Resolve only
             const resolveResult = await callFn("kaggle-resolve", { job_id: job.id });
-            results.push({ job_id: job.id, step: "resolve", result: resolveResult });
+            results.push({ job_id: job.id, step: "resolve", ...resolveResult });
+            if (!resolveResult.ok) {
+              await supabase.from("kaggle_import_jobs").update({ 
+                status: "failed", error_summary: `Resolve failed: ${resolveResult.data?.error}` 
+              }).eq("id", job.id);
+              continue;
+            }
           }
         } catch (err) {
-          results.push({ job_id: job.id, error: err.message });
+          const errMsg = err.message || "Unknown error";
+          results.push({ job_id: job.id, error: errMsg });
+          await supabase.from("kaggle_import_jobs").update({ 
+            status: "failed", error_summary: errMsg 
+          }).eq("id", job.id);
           await supabase.from("kaggle_import_logs").insert({
-            job_id: job.id, stage: "batch", level: "error", message: err.message,
+            job_id: job.id, stage: "batch", level: "error", message: errMsg,
           });
         }
       }
 
-      return new Response(JSON.stringify({ success: true, processed: results.length, results }), {
+      const hasErrors = results.some(r => !r.ok || r.error);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        processed: results.length, 
+        errors: results.filter(r => !r.ok || r.error).length,
+        results 
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -106,7 +168,12 @@ Deno.serve(async (req) => {
       for (const job of readyJobs || []) {
         if (shouldStop()) break;
         const result = await callFn("kaggle-promote", { job_id: job.id, promote_mode: "new_only" });
-        results.push({ job_id: job.id, result });
+        results.push({ job_id: job.id, ...result });
+        if (!result.ok) {
+          await supabase.from("kaggle_import_jobs").update({ 
+            status: "failed", error_summary: `Promote failed: ${result.data?.error}` 
+          }).eq("id", job.id);
+        }
       }
 
       return new Response(JSON.stringify({ success: true, promoted: results.length, results }), {

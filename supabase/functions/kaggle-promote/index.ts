@@ -85,14 +85,15 @@ Deno.serve(async (req) => {
           }
 
           // Register in external_id_map
-          await supabase.from("external_id_map").insert({
-            source_id: null, // Could link to kaggle data_source
+          // Register in external_id_map (upsert, ignore duplicates)
+          await supabase.from("external_id_map").upsert({
+            source_id: null,
             entity_type: "match",
             external_id: `kaggle:${datasetSlug}:${sm.source_row_reference || sm.id}`,
             internal_id: newMatch.id,
             confidence: "high",
             metadata: { kaggle_job_id: job_id, staging_id: sm.id },
-          }).onConflict("source_id,entity_type,external_id");
+          }, { onConflict: "source_id,entity_type,external_id", ignoreDuplicates: true });
 
           // Create link
           await supabase.from("kaggle_match_links").insert({
