@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Play, Eye, Target } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 interface Match {
   id: string;
