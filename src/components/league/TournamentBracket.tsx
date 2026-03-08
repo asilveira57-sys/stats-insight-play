@@ -63,7 +63,7 @@ function PhaseColumn({ group, isLast }: PhaseColumnProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 mb-2">
-        {isLast && <Trophy className="w-4 h-4 text-yellow-500" />}
+        {isLast && <Trophy className="w-4 h-4 text-primary" />}
         <h4 className="font-semibold text-sm">{group.label}</h4>
         <Badge variant="outline" className="text-xs">
           {group.matches.length}
