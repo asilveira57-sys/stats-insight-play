@@ -16,6 +16,7 @@ import {
   Shield,
   AlertTriangle,
   GitMerge,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
