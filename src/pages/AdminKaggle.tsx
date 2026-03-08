@@ -73,6 +73,7 @@ export default function AdminKaggle() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isImporting, setIsImporting] = useState<string | null>(null);
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [fileImportStatuses, setFileImportStatuses] = useState<Record<string, { status: string; created_at: string }>>({});
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -147,6 +148,7 @@ export default function AdminKaggle() {
     setSelectedDatasetTitle(title);
     setIsLoadingFiles(true);
     setFilesDialogOpen(true);
+    setFileImportStatuses({});
     try {
       const { data, error } = await supabase.functions.invoke("kaggle-import", {
         body: { action: "list_dataset_files", dataset_slug: datasetSlug },
@@ -154,6 +156,28 @@ export default function AdminKaggle() {
       if (error) throw error;
       if (data?.success === false) throw new Error(data?.error || "Listagem de arquivos falhou");
       setDatasetFiles(data?.files || []);
+
+      // Fetch import statuses for this dataset's files
+      try {
+        const { data: statusData } = await supabase
+          .from("kaggle_import_jobs")
+          .select("status, created_at, kaggle_dataset_files!inner(file_name, kaggle_datasets!inner(dataset_slug))")
+          .eq("kaggle_dataset_files.kaggle_datasets.dataset_slug", datasetSlug)
+          .order("created_at", { ascending: false });
+
+        if (statusData && statusData.length > 0) {
+          const statusMap: Record<string, { status: string; created_at: string }> = {};
+          for (const row of statusData) {
+            const fileName = (row as any).kaggle_dataset_files?.file_name;
+            if (fileName && !statusMap[fileName]) {
+              statusMap[fileName] = { status: row.status, created_at: row.created_at };
+            }
+          }
+          setFileImportStatuses(statusMap);
+        }
+      } catch {
+        // Non-critical: just don't show statuses
+      }
     } catch (e: any) {
       toast.error(`Erro ao listar arquivos: ${await getInvokeErrorMessage(e, "Falha ao listar arquivos")}`);
     } finally {
@@ -386,29 +410,65 @@ export default function AdminKaggle() {
                     {datasetFiles.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">Nenhum arquivo encontrado</p>
                     )}
-                    {datasetFiles.map(f => (
-                      <div key={f.name} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                        <div>
-                          <p className="font-mono text-sm font-medium">{f.name}</p>
-                          <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                            <span>{formatBytes(f.totalBytes)}</span>
-                            {f.columns > 0 && <span>{f.columns} colunas</span>}
+                    {datasetFiles.map(f => {
+                      const importStatus = fileImportStatuses[f.name];
+                      const isCompleted = importStatus?.status === 'completed' || importStatus?.status === 'completed_with_alerts';
+                      const isInProgress = importStatus && ['pending', 'queued', 'downloading', 'extracting', 'profiling', 'mapping', 'staging'].includes(importStatus.status);
+                      const isFailed = importStatus?.status === 'failed';
+                      const isAwaitingReview = importStatus?.status === 'awaiting_review';
+
+                      return (
+                        <div key={f.name} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-mono text-sm font-medium truncate">{f.name}</p>
+                              {isCompleted && (
+                                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] px-1.5 py-0">
+                                  <CheckCircle2 className="h-3 w-3 mr-0.5" />Importado
+                                </Badge>
+                              )}
+                              {isInProgress && (
+                                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px] px-1.5 py-0">
+                                  <Loader2 className="h-3 w-3 mr-0.5 animate-spin" />Em andamento
+                                </Badge>
+                              )}
+                              {isAwaitingReview && (
+                                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[10px] px-1.5 py-0">
+                                  <AlertTriangle className="h-3 w-3 mr-0.5" />Revisão
+                                </Badge>
+                              )}
+                              {isFailed && (
+                                <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] px-1.5 py-0">
+                                  <AlertTriangle className="h-3 w-3 mr-0.5" />Falhou
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                              <span>{formatBytes(f.totalBytes)}</span>
+                              {f.columns > 0 && <span>{f.columns} colunas</span>}
+                              {importStatus && (
+                                <span className="text-muted-foreground/60">
+                                  Último: {new Date(importStatus.created_at).toLocaleDateString("pt-BR")}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          <Button
+                            size="sm"
+                            variant={isCompleted ? "outline" : "default"}
+                            onClick={() => handleQuickImport(f.name)}
+                            disabled={isImporting === f.name || !!isInProgress}
+                          >
+                            {isImporting === f.name ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-1" />
+                            )}
+                            {isCompleted ? "Reimportar" : "Importar"}
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleQuickImport(f.name)}
-                          disabled={isImporting === f.name}
-                        >
-                          {isImporting === f.name ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                          ) : (
-                            <Download className="h-4 w-4 mr-1" />
-                          )}
-                          Importar
-                        </Button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </DialogContent>
