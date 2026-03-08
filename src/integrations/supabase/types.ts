@@ -1410,6 +1410,326 @@ export type Database = {
           },
         ]
       }
+      historical_import_jobs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_summary: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          parser_version_id: string | null
+          provider_name: string
+          requested_by: string | null
+          source_id: string | null
+          source_url_id: string | null
+          started_at: string | null
+          status: string
+          total_blocks_detected: number | null
+          total_conflicts: number | null
+          total_ignored: number | null
+          total_matches_detected: number | null
+          total_promoted: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          parser_version_id?: string | null
+          provider_name?: string
+          requested_by?: string | null
+          source_id?: string | null
+          source_url_id?: string | null
+          started_at?: string | null
+          status?: string
+          total_blocks_detected?: number | null
+          total_conflicts?: number | null
+          total_ignored?: number | null
+          total_matches_detected?: number | null
+          total_promoted?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          parser_version_id?: string | null
+          provider_name?: string
+          requested_by?: string | null
+          source_id?: string | null
+          source_url_id?: string | null
+          started_at?: string | null
+          status?: string
+          total_blocks_detected?: number | null
+          total_conflicts?: number | null
+          total_ignored?: number | null
+          total_matches_detected?: number | null
+          total_promoted?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_import_jobs_parser_version_id_fkey"
+            columns: ["parser_version_id"]
+            isOneToOne: false
+            referencedRelation: "historical_parser_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_import_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "historical_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_import_jobs_source_url_id_fkey"
+            columns: ["source_url_id"]
+            isOneToOne: false
+            referencedRelation: "historical_source_urls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_import_logs: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string | null
+          level: string
+          message: string
+          payload: Json | null
+          stage: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          level?: string
+          message: string
+          payload?: Json | null
+          stage: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          level?: string
+          message?: string
+          payload?: Json | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_import_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "historical_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_parser_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          parser_name: string
+          parser_version: string
+          provider_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          parser_name: string
+          parser_version: string
+          provider_name?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          parser_name?: string
+          parser_version?: string
+          provider_name?: string
+        }
+        Relationships: []
+      }
+      historical_raw_documents: {
+        Row: {
+          cleaned_text: string | null
+          collected_at: string
+          content_type: string | null
+          created_at: string
+          document_hash: string | null
+          http_status: number | null
+          id: string
+          job_id: string | null
+          normalized_text: string | null
+          raw_html: string | null
+          source_url: string
+          source_url_id: string | null
+        }
+        Insert: {
+          cleaned_text?: string | null
+          collected_at?: string
+          content_type?: string | null
+          created_at?: string
+          document_hash?: string | null
+          http_status?: number | null
+          id?: string
+          job_id?: string | null
+          normalized_text?: string | null
+          raw_html?: string | null
+          source_url: string
+          source_url_id?: string | null
+        }
+        Update: {
+          cleaned_text?: string | null
+          collected_at?: string
+          content_type?: string | null
+          created_at?: string
+          document_hash?: string | null
+          http_status?: number | null
+          id?: string
+          job_id?: string | null
+          normalized_text?: string | null
+          raw_html?: string | null
+          source_url?: string
+          source_url_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_raw_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "historical_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_raw_documents_source_url_id_fkey"
+            columns: ["source_url_id"]
+            isOneToOne: false
+            referencedRelation: "historical_source_urls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_source_urls: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          language: string | null
+          last_error: string | null
+          last_fetched_at: string | null
+          last_hash: string | null
+          last_status: string | null
+          season_label: string | null
+          source_id: string
+          updated_at: string
+          url: string
+          url_type: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_hash?: string | null
+          last_status?: string | null
+          season_label?: string | null
+          source_id: string
+          updated_at?: string
+          url: string
+          url_type?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_hash?: string | null
+          last_status?: string | null
+          season_label?: string | null
+          source_id?: string
+          updated_at?: string
+          url?: string
+          url_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_source_urls_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "historical_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_sources: {
+        Row: {
+          confederation: string | null
+          country: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          priority: number
+          provider_name: string
+          scope: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          confederation?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          priority?: number
+          provider_name?: string
+          scope?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Update: {
+          confederation?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          priority?: number
+          provider_name?: string
+          scope?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lgpd_config: {
         Row: {
           banner_enabled: boolean | null
