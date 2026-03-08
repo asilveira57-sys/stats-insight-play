@@ -181,8 +181,8 @@ interface PendingMatch {
   status: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { nome: string; escudo_url: string | null; cores: any } | null;
-  time_fora: { nome: string; escudo_url: string | null; cores: any } | null;
+  time_casa: { nome: string; cores: any } | null;
+  time_fora: { nome: string; cores: any } | null;
   liga: { nome: string; codigo_api: string | null } | null;
 }
 
@@ -351,8 +351,8 @@ export default function HubSyncDetails() {
         .from('partidas')
         .select(`
           id, data, hora, api_id, status, gols_casa, gols_fora,
-          time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
-          time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
+          time_casa:times!partidas_time_casa_id_fkey(nome, cores),
+          time_fora:times!partidas_time_fora_id_fkey(nome, cores),
           liga:ligas!partidas_liga_id_fkey(nome, codigo_api)
         `)
         .eq('status', 'finished')

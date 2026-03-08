@@ -57,7 +57,6 @@ import {
 
 interface TeamData {
   nome: string;
-  escudo_url: string | null;
   cores: { primary?: string; secondary?: string } | null;
 }
 
@@ -279,7 +278,6 @@ export default function Retrospectiva() {
     
     const teamStats: Record<string, { 
       nome: string; 
-      escudo_url: string | null;
       cores: { primary?: string; secondary?: string } | null;
       total: number; 
       acertos: number; 
@@ -293,7 +291,6 @@ export default function Retrospectiva() {
         if (!teamStats[timeCasa.nome]) {
           teamStats[timeCasa.nome] = { 
             nome: timeCasa.nome, 
-            escudo_url: timeCasa.escudo_url,
             cores: timeCasa.cores,
             total: 0, 
             acertos: 0, 
@@ -311,7 +308,6 @@ export default function Retrospectiva() {
         if (!teamStats[timeFora.nome]) {
           teamStats[timeFora.nome] = { 
             nome: timeFora.nome, 
-            escudo_url: timeFora.escudo_url,
             cores: timeFora.cores,
             total: 0, 
             acertos: 0, 

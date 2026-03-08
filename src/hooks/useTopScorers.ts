@@ -6,7 +6,6 @@ interface PlayerScorer {
   playerName: string;
   teamId: string;
   teamName: string;
-  teamLogo: string | null;
   teamPrimaryColor: string | null;
   teamSecondaryColor: string | null;
   goals: number;
@@ -120,7 +119,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
         const playerGoalsMap = new Map<string, {
           teamId: string;
           teamName: string;
-          teamLogo: string | null;
           teamPrimaryColor: string | null;
           teamSecondaryColor: string | null;
           goals: number;
@@ -136,7 +134,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
             playerGoalsMap.set(playerName, {
               teamId: team?.id || '',
               teamName: team?.nome || 'Unknown',
-              teamLogo: team?.escudo_url || null,
               teamPrimaryColor: cores.primary || null,
               teamSecondaryColor: cores.secondary || null,
               goals: 0,
@@ -154,7 +151,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
             playerName,
             teamId: stats.teamId,
             teamName: stats.teamName,
-            teamLogo: stats.teamLogo,
             teamPrimaryColor: stats.teamPrimaryColor,
             teamSecondaryColor: stats.teamSecondaryColor,
             goals: stats.goals,
@@ -210,7 +206,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           if (!existingCompetitionIds.has(ligaId)) {
             const ligaNome = (leagueMatches[0]?.ligas as any)?.nome || 'Unknown';
             
-            const teamGoals = new Map<string, { name: string; logo: string | null; primaryColor: string | null; secondaryColor: string | null; goals: number; matches: number }>();
+            const teamGoals = new Map<string, { name: string; primaryColor: string | null; secondaryColor: string | null; goals: number; matches: number }>();
             
             leagueMatches.forEach(match => {
               const homeTeam = match.time_casa as any;
@@ -219,7 +215,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               if (homeTeam?.id) {
                 if (!teamGoals.has(homeTeam.id)) {
                   const cores = homeTeam.cores || {};
-                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, logo: homeTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
+                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(homeTeam.id)!.goals += match.gols_casa || 0;
                 teamGoals.get(homeTeam.id)!.matches += 1;
@@ -228,7 +224,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               if (awayTeam?.id) {
                 if (!teamGoals.has(awayTeam.id)) {
                   const cores = awayTeam.cores || {};
-                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, logo: awayTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
+                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(awayTeam.id)!.goals += match.gols_fora || 0;
                 teamGoals.get(awayTeam.id)!.matches += 1;
@@ -240,7 +236,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
                 playerName: `${stats.name} (Time)`,
                 teamId,
                 teamName: stats.name,
-                teamLogo: stats.logo,
                 teamPrimaryColor: stats.primaryColor,
                 teamSecondaryColor: stats.secondaryColor,
                 goals: stats.goals,

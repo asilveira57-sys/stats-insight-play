@@ -24,7 +24,6 @@ import { useQueryClient } from "@tanstack/react-query";
 interface Team {
   id: string;
   name: string;
-  logo: string;
   score?: number;
   primaryColor?: string;
   secondaryColor?: string;

@@ -19,8 +19,8 @@ import { ptBR } from "date-fns/locale";
 
 interface SelectedMatch {
   id: string;
-  homeTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
-  awayTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
+  homeTeam: { id: string; name: string; score?: number; primaryColor?: string; secondaryColor?: string };
+  awayTeam: { id: string; name: string; score?: number; primaryColor?: string; secondaryColor?: string };
   date: string;
   league: string;
 }
@@ -329,7 +329,6 @@ export default function Resultados() {
                     homeTeam: { 
                       id: match.homeTeamId || '', 
                       name: match.homeTeam.name, 
-                      logo: match.homeTeam.logo,
                       score: match.homeTeam.score,
                       primaryColor: match.homeTeam.primaryColor,
                       secondaryColor: match.homeTeam.secondaryColor,
@@ -337,7 +336,6 @@ export default function Resultados() {
                     awayTeam: { 
                       id: match.awayTeamId || '', 
                       name: match.awayTeam.name, 
-                      logo: match.awayTeam.logo,
                       score: match.awayTeam.score,
                       primaryColor: match.awayTeam.primaryColor,
                       secondaryColor: match.awayTeam.secondaryColor,
@@ -366,8 +364,8 @@ export default function Resultados() {
         open={!!selectedMatch}
         onOpenChange={(open) => !open && setSelectedMatch(null)}
         matchId={selectedMatch?.id || null}
-        homeTeam={selectedMatch?.homeTeam || { id: '', name: '', logo: '' }}
-        awayTeam={selectedMatch?.awayTeam || { id: '', name: '', logo: '' }}
+        homeTeam={selectedMatch?.homeTeam || { id: '', name: '' }}
+        awayTeam={selectedMatch?.awayTeam || { id: '', name: '' }}
         date={selectedMatch?.date || ''}
         league={selectedMatch?.league || ''}
       />

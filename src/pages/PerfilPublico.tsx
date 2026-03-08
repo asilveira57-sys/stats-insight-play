@@ -74,7 +74,7 @@ export default function PerfilPublico() {
       if (prefs?.favorite_team_id) {
         const { data: team } = await supabase
           .from('times')
-          .select('nome, escudo_url, slug')
+          .select('nome, slug')
           .eq('id', prefs.favorite_team_id)
           .single();
         favoriteTeam = team;

@@ -4,7 +4,6 @@ import { TeamBadge } from "@/components/ui/TeamBadge";
 
 interface Team {
   name: string;
-  logo: string;
   score?: number;
   primaryColor?: string;
   secondaryColor?: string;
