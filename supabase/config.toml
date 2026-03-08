@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.bulk-merge-teams]
 verify_jwt = false
+
+[functions.fix-article-thumbnails]
+verify_jwt = false

@@ -322,14 +322,16 @@ export default function AdminControlCenter() {
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
+    imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
+    imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
   });
 
-  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false }))[0];
+  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false, imageFix: false }))[0];
 
   const runPredictionsLoop = async () => {
     stopLoopRef.predictions = false;
@@ -634,6 +636,99 @@ export default function AdminControlCenter() {
     }
     if (stopLoopRef.analyses) {
       setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `⏹ Parado pelo usuário. ${totalGenerated} análises geradas.`] } }));
+    }
+  };
+
+  const runImageFixLoop = async () => {
+    stopLoopRef.imageFix = false;
+    setLoopState(prev => ({ ...prev, imageFix: { running: true, fixed: 0, failed: 0, pending: 0, log: ['🖼️ Iniciando correção de imagens (1 por vez, ~8s entre chamadas)...'], results: [] } }));
+    let totalFixed = 0;
+    let totalFailed = 0;
+    let round = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 8000;
+
+    while (!stopLoopRef.imageFix) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('fix-article-thumbnails', { body: { limit: 1 } });
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 120000);
+            const waitSec = Math.round(backoffMs / 1000);
+            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
+            setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, log: [...prev.imageFix.log.slice(-49), msg] } }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 8000;
+
+        const fixed = data?.fixed || 0;
+        const errors = data?.errors || 0;
+        const pending = data?.pending || 0;
+        const newResults = data?.results || [];
+        totalFixed += fixed;
+        totalFailed += errors;
+
+        const msg = fixed > 0
+          ? `✅ #${round}: ${newResults[0]?.titulo?.slice(0, 50) || 'Artigo'} — Pendentes: ${pending}`
+          : errors > 0
+            ? `❌ #${round}: Erro — ${newResults[0]?.error?.slice(0, 50) || 'desconhecido'}`
+            : `🏁 Nenhum artigo pendente.`;
+
+        setLoopState(prev => ({
+          ...prev,
+          imageFix: {
+            running: true,
+            fixed: totalFixed,
+            failed: totalFailed,
+            pending,
+            log: [...prev.imageFix.log.slice(-49), msg],
+            results: [...newResults, ...prev.imageFix.results].slice(0, 50),
+          },
+        }));
+
+        if (pending === 0 || (fixed === 0 && errors === 0)) {
+          setLoopState(prev => ({
+            ...prev,
+            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `🏁 Concluído! ${totalFixed} imagens corrigidas.`] },
+          }));
+          toast({ title: 'Correção de imagens completa!', description: `${totalFixed} imagens substituídas.` });
+          break;
+        }
+
+        // ~8s between calls to respect rate limits
+        await new Promise(r => setTimeout(r, 8000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = String(e);
+
+        if (consecutiveErrors >= 5) {
+          setLoopState(prev => ({
+            ...prev,
+            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
+          }));
+          toast({ title: 'Interrompido por erros', description: `${totalFixed} imagens corrigidas.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(10 * consecutiveErrors, 60);
+        setLoopState(prev => ({
+          ...prev,
+          imageFix: { ...prev.imageFix, log: [...prev.imageFix.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
+        }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+      }
+    }
+    if (stopLoopRef.imageFix) {
+      setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `⏹ Parado. ${totalFixed} imagens corrigidas.`] } }));
     }
   };
 
@@ -1345,6 +1440,84 @@ export default function AdminControlCenter() {
                     {loopState.validations.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.validations.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Correção Retroativa de Imagens */}
+                <Card className="md:col-span-2 border-orange-500/30 bg-orange-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Eye className="w-5 h-5 text-orange-600" />
+                      Correção Retroativa de Imagens (Thumbnails)
+                    </CardTitle>
+                    <CardDescription>
+                      Substitui a imagem padrão do Unsplash por imagens únicas geradas via Gemini para cada artigo
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-orange-600">{loopState.imageFix.pending || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Corrigidas</p>
+                        <p className="text-lg font-bold text-green-600">{loopState.imageFix.fixed || 0}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Erros</p>
+                        <p className="text-lg font-bold text-red-600">{loopState.imageFix.failed || 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={runImageFixLoop}
+                        disabled={loopState.imageFix.running}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {loopState.imageFix.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.imageFix.running ? 'Corrigindo...' : 'Iniciar Correção de Imagens'}
+                      </Button>
+                      {loopState.imageFix.running && (
+                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.imageFix = true; }}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.imageFix.fixed > 0 || loopState.imageFix.failed > 0) && (
+                        <Badge variant="outline">{loopState.imageFix.fixed} corrigidas / {loopState.imageFix.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Recent results */}
+                    {loopState.imageFix.results.length > 0 && (
+                      <div className="border border-border rounded max-h-48 overflow-auto">
+                        {loopState.imageFix.results.slice(0, 30).map((r, i) => (
+                          <div key={i} className={`flex items-center justify-between px-3 py-1.5 text-xs border-b border-border last:border-0 ${r.success ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
+                            <div className="flex items-center gap-2">
+                              {r.success ? <CheckCircle className="w-3 h-3 text-green-500 shrink-0" /> : <XCircle className="w-3 h-3 text-red-500 shrink-0" />}
+                              {r.success && r.slug ? (
+                                <a href={`/noticias/${r.slug}`} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 truncate max-w-[300px]">
+                                  {r.titulo?.slice(0, 60)}
+                                </a>
+                              ) : (
+                                <span className="truncate max-w-[300px]">{r.titulo?.slice(0, 60)}</span>
+                              )}
+                            </div>
+                            {r.error && <span className="text-muted-foreground ml-2 truncate max-w-[200px]">{r.error}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.imageFix.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.imageFix.log.map((l, i) => <div key={i}>{l}</div>)}
                       </div>
                     )}
                   </CardContent>
