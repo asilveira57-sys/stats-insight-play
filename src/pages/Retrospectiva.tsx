@@ -278,7 +278,7 @@ export default function Retrospectiva() {
     
     const teamStats: Record<string, { 
       nome: string; 
-      escudo_url: string | null;
+      cores: { primary?: string; secondary?: string } | null;
       cores: { primary?: string; secondary?: string } | null;
       total: number; 
       acertos: number; 
