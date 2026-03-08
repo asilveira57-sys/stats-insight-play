@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2, CalendarDays } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2, CalendarDays, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
