@@ -62,10 +62,10 @@ Deno.serve(async (req) => {
       const auth = getKaggleAuth();
       const searchUrl = `https://www.kaggle.com/api/v1/datasets/list?search=${encodeURIComponent(query || "football")}&sortBy=hottest&maxSize=52428800&group=public`;
 
-      const resp = await fetch(searchUrl, { headers: { Authorization: `Basic ${auth}` } });
+      const resp = await fetchWithRetry(searchUrl, { headers: { Authorization: `Basic ${auth}` } });
       if (!resp.ok) {
         const errText = await resp.text();
-        return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${resp.status} - ${errText}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: `Kaggle API search falhou (${resp.status}): ${errText.slice(0, 300)}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const datasets = await resp.json();
