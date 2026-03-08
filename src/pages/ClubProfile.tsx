@@ -459,7 +459,7 @@ export default function ClubProfile() {
                           <TeamBadge
                             teamId={match.opponent_id}
                             teamName={match.opponent_name}
-                            size={24}
+                            size="sm"
                           />
                           <div>
                             <div className="font-medium">{match.opponent_name}</div>

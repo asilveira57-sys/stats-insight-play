@@ -83,12 +83,10 @@ export function useClubData(slug: string) {
           nome,
           slug,
           escudo_url,
-          apelidos,
           pais,
-          cidade,
-          ano_fundacao,
-          estadio,
+          estado,
           cores,
+          short_code,
           created_at
         `)
         .eq("slug", slug)
