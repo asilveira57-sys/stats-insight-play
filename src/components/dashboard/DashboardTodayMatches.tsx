@@ -98,9 +98,7 @@ export function DashboardTodayMatches({ matches }: { matches: Match[] }) {
 function TeamName({ team }: { team: Match['time_casa'] }) {
   return (
     <div className="flex items-center gap-1.5 min-w-0">
-      {team?.escudo_url && (
-        <img src={team.escudo_url} alt="" className="w-5 h-5 object-contain shrink-0" />
-      )}
+      <TeamBadge name={team?.nome || '?'} size="sm" />
       <span className="text-sm truncate">{team?.nome || '?'}</span>
     </div>
   );

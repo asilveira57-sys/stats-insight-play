@@ -45,7 +45,7 @@ export function DashboardLiveMatches({ matches }: { matches: LiveMatch[] }) {
           <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                {match.time_casa?.escudo_url && <img src={match.time_casa.escudo_url} alt="" className="w-5 h-5 object-contain shrink-0" />}
+                <TeamBadge name={match.time_casa?.nome || '?'} size="sm" />
                 <span className="text-sm truncate">{match.time_casa?.nome}</span>
               </div>
               <div className="text-lg font-bold font-display text-center shrink-0 min-w-[60px]">
@@ -53,7 +53,7 @@ export function DashboardLiveMatches({ matches }: { matches: LiveMatch[] }) {
               </div>
               <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
                 <span className="text-sm truncate text-right">{match.time_fora?.nome}</span>
-                {match.time_fora?.escudo_url && <img src={match.time_fora.escudo_url} alt="" className="w-5 h-5 object-contain shrink-0" />}
+                <TeamBadge name={match.time_fora?.nome || '?'} size="sm" />
               </div>
             </div>
           </div>
