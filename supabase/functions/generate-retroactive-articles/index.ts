@@ -415,20 +415,17 @@ serve(async (req) => {
     const pendingMatches = Math.max(totalActionable - existingPartidaIds.size, 0);
     const alreadyProcessed = existingPartidaIds.size;
 
-    // Build exclusion list for the query (Supabase .not('id','in',...) approach)
-    // Convert set to array for the filter
-    const excludeIds = Array.from(existingPartidaIds);
-
-    // Fetch matches in batches to find ones without articles
-    // We can't use .not('id','in',...) with huge arrays, so we fetch more and filter
-    const fetchBatchSize = Math.max(limit * 5, 50); // Fetch more to account for filtering
+    // Fetch matches progressively until we have enough actionable items
+    const fetchBatchSize = 200;
     let matchOffset = 0;
     let filteredMatches: any[] = [];
-    const maxAttempts = 20; // safety limit on pagination
-    let attempts = 0;
+    let scannedRows = 0;
+    let batchesScanned = 0;
+    const maxScanRows = 200_000;
 
-    while (filteredMatches.length < limit && attempts < maxAttempts) {
-      attempts++;
+    while (filteredMatches.length < limit && scannedRows < maxScanRows && hasTimeLeft()) {
+      batchesScanned++;
+
       let query = supabase
         .from("partidas")
         .select(`
@@ -466,16 +463,20 @@ serve(async (req) => {
 
       if (!batchMatches || batchMatches.length === 0) break;
 
+      scannedRows += batchMatches.length;
+
       // Filter out matches that already have articles
       const newFiltered = batchMatches.filter((m: any) => !existingPartidaIds.has(m.id));
-      filteredMatches = filteredMatches.concat(newFiltered);
+      if (newFiltered.length > 0) {
+        filteredMatches = filteredMatches.concat(newFiltered);
+      }
 
-      if (batchMatches.length < fetchBatchSize) break; // no more data
+      if (batchMatches.length < fetchBatchSize) break;
       matchOffset += fetchBatchSize;
     }
 
     const matchesToProcess = filteredMatches.slice(0, limit);
-    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${matchOffset + fetchBatchSize} rows (${attempts} batches)`);
+    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${scannedRows} rows (${batchesScanned} batches)`);
 
     if (matchesToProcess.length === 0) {
       return new Response(
