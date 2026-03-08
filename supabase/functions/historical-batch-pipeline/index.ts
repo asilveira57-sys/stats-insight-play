@@ -5,7 +5,88 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SAFETY_TIMEOUT_MS = 110_000; // 110s safety (platform limit ~150s)
+const SAFETY_TIMEOUT_MS = 100_000; // 100s safety (platform limit ~150s)
+
+async function fetchAllUrls(supabase: any, sourceId: string) {
+  const allUrls: any[] = [];
+  let from = 0;
+  const PAGE_SIZE = 500;
+  while (true) {
+    const { data: page, error } = await supabase
+      .from('historical_source_urls')
+      .select('id, url, pipeline_status, last_fetched_at, last_parsed_at, last_resolved_at, last_promoted_at')
+      .eq('source_id', sourceId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!page?.length) break;
+    allUrls.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return allUrls;
+}
+
+function getUrlsNeedingWork(allUrls: any[], phases: string[]) {
+  return allUrls
+    .filter((u: any) => {
+      if (u.pipeline_status === 'conflicts' || u.pipeline_status === 'promoted') return false;
+      if (phases.includes('fetch') && !u.last_fetched_at) return true;
+      if (phases.includes('parse') && u.last_fetched_at && !u.last_parsed_at) return true;
+      if (phases.includes('resolve') && u.last_parsed_at && !u.last_resolved_at) return true;
+      if (phases.includes('promote') && u.last_resolved_at && !u.last_promoted_at) return true;
+      if (['idle', 'fetched', 'parsed', 'resolved'].includes(u.pipeline_status)) return true;
+      return false;
+    })
+    .sort((a: any, b: any) => {
+      const priority: Record<string, number> = { idle: 0, fetched: 1, parsed: 2, resolved: 3 };
+      return (priority[a.pipeline_status] ?? 10) - (priority[b.pipeline_status] ?? 10);
+    });
+}
+
+async function processOneUrl(supabase: any, url: any, phases: string[]) {
+  const urlResult: any = { url: url.url, phases: {} };
+
+  // Phase 1: Fetch
+  if (phases.includes('fetch') && !url.last_fetched_at) {
+    const { data, error } = await supabase.functions.invoke('historical-fetch', {
+      body: { source_url_id: url.id },
+    });
+    urlResult.phases.fetch = error ? { error: error.message } : { status: data?.status };
+    if (error) return { ...urlResult, failed: true };
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // Phase 2: Parse
+  if (phases.includes('parse') && (url.last_fetched_at || urlResult.phases.fetch)) {
+    const { data, error } = await supabase.functions.invoke('historical-parse', {
+      body: { source_url_id: url.id },
+    });
+    urlResult.phases.parse = error ? { error: error.message } : { matches: data?.matches_parsed };
+    if (error) return { ...urlResult, failed: true };
+  }
+
+  // Phase 3: Resolve
+  if (phases.includes('resolve') && (url.last_parsed_at || urlResult.phases.parse)) {
+    const { data, error } = await supabase.functions.invoke('historical-resolve', {
+      body: { source_url_id: url.id },
+    });
+    urlResult.phases.resolve = error ? { error: error.message } : { resolved: data?.resolved, conflicts: data?.conflicts };
+    if (error) return { ...urlResult, failed: true };
+  }
+
+  // Phase 4: Promote
+  if (phases.includes('promote') && (url.last_resolved_at || urlResult.phases.resolve)) {
+    const { data, error } = await supabase.functions.invoke('historical-promote', {
+      body: { source_url_id: url.id },
+    });
+    urlResult.phases.promote = error ? { error: error.message } : { promoted: data?.promoted, duplicates: data?.duplicates };
+    if (error) return { ...urlResult, failed: true };
+  }
+
+  return urlResult;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,36 +116,18 @@ Deno.serve(async (req) => {
         job_type: 'historical_batch_pipeline',
         status: 'running',
         started_at: new Date().toISOString(),
-        progress: { source_id, batch_size, phases, processed: 0, errors: 0, total_processed: 0 },
+        progress: { source_id, batch_size, phases, processed: 0, errors: 0 },
       }).select().single();
       jobId = job?.id;
     } else {
-      // Mark as running again
       await supabase.from('background_jobs').update({
         status: 'running',
         progress: { source_id, batch_size, phases, message: 'Continuing batch...' },
       }).eq('id', jobId);
     }
 
-    // Fetch ALL pending URLs using pagination (no 1000 limit)
-    const allUrls: any[] = [];
-    let from = 0;
-    const PAGE_SIZE = 500;
-    while (true) {
-      const { data: page, error: pageErr } = await supabase
-        .from('historical_source_urls')
-        .select('id, url, pipeline_status, last_fetched_at, last_parsed_at, last_resolved_at, last_promoted_at')
-        .eq('source_id', source_id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (pageErr) throw pageErr;
-      if (!page?.length) break;
-      allUrls.push(...page);
-      if (page.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
+    // Fetch all URLs once
+    const allUrls = await fetchAllUrls(supabase, source_id);
 
     if (!allUrls.length) {
       await supabase.from('background_jobs').update({
@@ -75,151 +138,106 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Determine which URLs need work based on their pipeline status
-    const needsWork = allUrls
-      .filter((u: any) => {
-        if (phases.includes('fetch') && !u.last_fetched_at) return true;
-        if (phases.includes('parse') && u.last_fetched_at && !u.last_parsed_at) return true;
-        if (phases.includes('resolve') && u.last_parsed_at && !u.last_resolved_at) return true;
-        if (phases.includes('promote') && u.last_resolved_at && !u.last_promoted_at && u.pipeline_status !== 'conflicts') return true;
-        if (u.pipeline_status === 'idle' || u.pipeline_status === 'fetched' || u.pipeline_status === 'parsed' || u.pipeline_status === 'resolved') return true;
-        return false;
-      })
-      .sort((a: any, b: any) => {
-        const priority = (s: string) => ({ idle: 0, fetched: 1, parsed: 2, resolved: 3, conflicts: 99 }[s] ?? 10);
-        return priority(a.pipeline_status) - priority(b.pipeline_status);
-      });
-
-    const batch = needsWork.slice(0, batch_size);
-
-    let processed = 0;
-    let errors = 0;
+    let totalProcessed = 0;
+    let totalErrors = 0;
     const results: any[] = [];
 
-    for (const url of batch) {
-      if (Date.now() - startTime > SAFETY_TIMEOUT_MS) {
-        results.push({ url: url.url, status: 'timeout', message: 'Safety timeout reached' });
-        break;
+    // ─── MAIN LOOP: process multiple batches within one invocation ───
+    while (Date.now() - startTime < SAFETY_TIMEOUT_MS) {
+      const needsWork = getUrlsNeedingWork(allUrls, phases);
+      if (!needsWork.length) break;
+
+      const batch = needsWork.slice(0, batch_size);
+
+      for (const url of batch) {
+        if (Date.now() - startTime > SAFETY_TIMEOUT_MS) break;
+
+        try {
+          const result = await processOneUrl(supabase, url, phases);
+          results.push(result);
+          if (result.failed) {
+            totalErrors++;
+          } else {
+            totalProcessed++;
+            // Update the in-memory URL so the next loop iteration knows it's done
+            url.last_fetched_at = url.last_fetched_at || (result.phases.fetch ? new Date().toISOString() : null);
+            url.last_parsed_at = url.last_parsed_at || (result.phases.parse ? new Date().toISOString() : null);
+            url.last_resolved_at = url.last_resolved_at || (result.phases.resolve ? new Date().toISOString() : null);
+            url.last_promoted_at = url.last_promoted_at || (result.phases.promote ? new Date().toISOString() : null);
+            if (result.phases.promote) url.pipeline_status = 'promoted';
+            else if (result.phases.resolve) url.pipeline_status = 'resolved';
+            else if (result.phases.parse) url.pipeline_status = 'parsed';
+            else if (result.phases.fetch) url.pipeline_status = 'fetched';
+          }
+        } catch (urlError: any) {
+          totalErrors++;
+          results.push({ url: url.url, error: urlError.message });
+        }
       }
 
-      try {
-        const urlResult: any = { url: url.url, phases: {} };
-
-        // Phase 1: Fetch
-        if (phases.includes('fetch') && !url.last_fetched_at) {
-          const { data, error } = await supabase.functions.invoke('historical-fetch', {
-            body: { source_url_id: url.id },
-          });
-          urlResult.phases.fetch = error ? { error: error.message } : { status: data?.status };
-          if (error) { errors++; results.push(urlResult); continue; }
-          await new Promise(r => setTimeout(r, 500));
-        }
-
-        // Phase 2: Parse
-        if (phases.includes('parse') && (url.last_fetched_at || urlResult.phases.fetch)) {
-          const { data, error } = await supabase.functions.invoke('historical-parse', {
-            body: { source_url_id: url.id },
-          });
-          urlResult.phases.parse = error ? { error: error.message } : { matches: data?.matches_parsed };
-          if (error) { errors++; results.push(urlResult); continue; }
-        }
-
-        // Phase 3: Resolve
-        if (phases.includes('resolve') && (url.last_parsed_at || urlResult.phases.parse)) {
-          const { data, error } = await supabase.functions.invoke('historical-resolve', {
-            body: { source_url_id: url.id },
-          });
-          urlResult.phases.resolve = error ? { error: error.message } : { resolved: data?.resolved, conflicts: data?.conflicts };
-          if (error) { errors++; results.push(urlResult); continue; }
-        }
-
-        // Phase 4: Promote
-        if (phases.includes('promote') && (url.last_resolved_at || urlResult.phases.resolve)) {
-          const { data, error } = await supabase.functions.invoke('historical-promote', {
-            body: { source_url_id: url.id },
-          });
-          urlResult.phases.promote = error ? { error: error.message } : { promoted: data?.promoted, duplicates: data?.duplicates };
-          if (error) { errors++; results.push(urlResult); continue; }
-        }
-
-        processed++;
-        results.push(urlResult);
-
-        await supabase.from('background_jobs').update({
-          progress: { source_id, processed, errors, total: batch.length, needs_work_total: needsWork.length, current_url: url.url },
-        }).eq('id', jobId);
-
-      } catch (urlError: any) {
-        errors++;
-        results.push({ url: url.url, error: urlError.message });
-      }
-    }
-
-    const durationMs = Date.now() - startTime;
-    const remainingWork = needsWork.length - processed;
-
-    // If there's still work to do, auto-schedule the next batch
-    if (remainingWork > 0) {
-      // Create a new background_jobs entry that process-queue will pick up
-      // OR directly re-invoke ourselves
+      // Update progress
+      const remaining = getUrlsNeedingWork(allUrls, phases).length;
       await supabase.from('background_jobs').update({
-        status: 'running',
         progress: {
-          source_id,
-          batch_size,
-          phases,
-          last_batch_processed: processed,
-          last_batch_errors: errors,
-          remaining: remainingWork,
-          total_urls: allUrls.length,
-          needs_work: needsWork.length,
-          duration_ms: durationMs,
-          auto_continue: true,
-          message: `Processed ${processed}/${batch.length}, ${remainingWork} remaining. Auto-continuing...`,
+          source_id, processed: totalProcessed, errors: totalErrors,
+          remaining, total_urls: allUrls.length,
+          duration_ms: Date.now() - startTime,
+          message: `Processando... ${totalProcessed} concluídas, ${remaining} restantes`,
         },
       }).eq('id', jobId);
 
-      // Auto-invoke next batch after a small delay (non-blocking)
+      if (remaining === 0) break;
+    }
+
+    const durationMs = Date.now() - startTime;
+    const finalRemaining = getUrlsNeedingWork(allUrls, phases).length;
+
+    if (finalRemaining > 0) {
+      // Self-invoke for next round — AWAIT to ensure it fires before response
+      await supabase.from('background_jobs').update({
+        status: 'running',
+        progress: {
+          source_id, batch_size, phases,
+          processed: totalProcessed, errors: totalErrors,
+          remaining: finalRemaining, total_urls: allUrls.length,
+          duration_ms: durationMs, auto_continue: true,
+          message: `Lote concluído: ${totalProcessed} processadas. ${finalRemaining} restantes. Auto-continuando...`,
+        },
+      }).eq('id', jobId);
+
       const selfUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/historical-batch-pipeline`;
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      
-      // Use EdgeRuntime.waitUntil-style: fire and forget next batch
-      fetch(selfUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${serviceKey}`,
-        },
-        body: JSON.stringify({ source_id, batch_size, phases, job_id: jobId }),
-      }).catch(err => console.error('Auto-continue failed:', err));
 
+      // Await the fetch to ensure it's dispatched before function exits
+      try {
+        await fetch(selfUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ source_id, batch_size, phases, job_id: jobId }),
+        });
+      } catch (err) {
+        console.error('Auto-continue dispatch failed:', err);
+      }
     } else {
-      // All done
       await supabase.from('background_jobs').update({
         status: 'completed',
         progress: {
-          source_id,
-          processed,
-          errors,
-          total_urls: allUrls.length,
-          needs_work: needsWork.length,
+          source_id, processed: totalProcessed, errors: totalErrors,
+          total_urls: allUrls.length, remaining: 0,
           duration_ms: durationMs,
-          message: `Pipeline complete! ${allUrls.length - needsWork.length + processed} URLs fully processed.`,
+          message: `Pipeline completo! ${totalProcessed} URLs processadas nesta execução.`,
         },
       }).eq('id', jobId);
     }
 
     return new Response(JSON.stringify({
-      success: true,
-      job_id: jobId,
-      total_urls: allUrls.length,
-      needs_work: needsWork.length,
-      remaining: remainingWork,
-      processed,
-      errors,
-      duration_ms: durationMs,
-      auto_continue: remainingWork > 0,
-      results,
+      success: true, job_id: jobId,
+      total_urls: allUrls.length, remaining: finalRemaining,
+      processed: totalProcessed, errors: totalErrors,
+      duration_ms: durationMs, auto_continue: finalRemaining > 0,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (err: any) {
