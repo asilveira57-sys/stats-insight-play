@@ -76,14 +76,19 @@ Deno.serve(async (req) => {
     }
 
     // Determine which URLs need work based on their pipeline status
-    const needsWork = allUrls.filter((u: any) => {
-      if (phases.includes('fetch') && !u.last_fetched_at) return true;
-      if (phases.includes('parse') && u.last_fetched_at && !u.last_parsed_at) return true;
-      if (phases.includes('resolve') && u.last_parsed_at && !u.last_resolved_at) return true;
-      if (phases.includes('promote') && u.last_resolved_at && !u.last_promoted_at) return true;
-      if (u.pipeline_status === 'idle' || u.pipeline_status === 'fetched' || u.pipeline_status === 'parsed' || u.pipeline_status === 'resolved' || u.pipeline_status === 'conflicts') return true;
-      return false;
-    });
+    const needsWork = allUrls
+      .filter((u: any) => {
+        if (phases.includes('fetch') && !u.last_fetched_at) return true;
+        if (phases.includes('parse') && u.last_fetched_at && !u.last_parsed_at) return true;
+        if (phases.includes('resolve') && u.last_parsed_at && !u.last_resolved_at) return true;
+        if (phases.includes('promote') && u.last_resolved_at && !u.last_promoted_at && u.pipeline_status !== 'conflicts') return true;
+        if (u.pipeline_status === 'idle' || u.pipeline_status === 'fetched' || u.pipeline_status === 'parsed' || u.pipeline_status === 'resolved') return true;
+        return false;
+      })
+      .sort((a: any, b: any) => {
+        const priority = (s: string) => ({ idle: 0, fetched: 1, parsed: 2, resolved: 3, conflicts: 99 }[s] ?? 10);
+        return priority(a.pipeline_status) - priority(b.pipeline_status);
+      });
 
     const batch = needsWork.slice(0, batch_size);
 

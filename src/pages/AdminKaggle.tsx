@@ -216,7 +216,7 @@ export default function AdminKaggle() {
             <p className="text-sm text-muted-foreground">Busque e importe datasets de futebol do Kaggle com um clique</p>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => batchProcess.mutate({ action: "process_pending", batch_size: 3 })} disabled={isLoading}>
+            <Button size="sm" variant="outline" onClick={() => batchProcess.mutate({ action: "process_pending", batch_size: 5 })} disabled={isLoading}>
               {batchProcess.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
               Processar Pendentes
             </Button>
@@ -505,7 +505,7 @@ export default function AdminKaggle() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(stagingMatches.data || []).slice(0, 100).map((m: any) => (
+                        {(stagingMatches.data || []).map((m: any) => (
                           <TableRow key={m.id}>
                             <TableCell className="text-xs">{m.parsed_date || m.raw_date_text}</TableCell>
                             <TableCell className="text-xs">{m.raw_home_team}</TableCell>
