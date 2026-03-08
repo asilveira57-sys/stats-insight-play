@@ -17,6 +17,8 @@ function estimateReadingTime(excerpt: string): number {
   return Math.max(5, Math.ceil((words * 10) / 200));
 }
 
+const FALLBACK_GRADIENT = "linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--muted) / 0.8))";
+
 export function NewsCard({ title, excerpt, image, date, featured }: NewsCardProps) {
   const readingTime = estimateReadingTime(excerpt);
 
