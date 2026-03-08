@@ -216,7 +216,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const pending = results.stats?.pending || 0;
       const newGenerated = (progress.generated || 0) + gen;
       const newFailed = (progress.failed || 0) + fail;
-      isDone = (gen === 0 && fail === 0 && (results.skipped || 0) === 0) || pending === 0;
+      isDone = pending === 0;
       const articles = results.articles || [];
       // Merge new articles with existing ones (keep last 10)
       const existingArticles = progress.last_articles || [];
