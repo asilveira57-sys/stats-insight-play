@@ -377,20 +377,25 @@ serve(async (req) => {
       .select("*", { count: "exact", head: true })
       .eq("status", "finished");
 
-    let pendingCountQuery = supabase
-      .from("partidas")
-      .select("id, palpites!inner(id), noticias!left(partida_id)", { count: "exact", head: true })
-      .eq("status", "finished")
-      .is("noticias.partida_id", null);
+    // Use a simpler, more reliable approach: get finished matches that have predictions
+    // but DON'T have a linked news article (via left join + null check)
+    // Also exclude matches whose IDs already appear in noticias.partida_id
+    const { data: existingArticleIds } = await supabase
+      .from("noticias")
+      .select("partida_id")
+      .not("partida_id", "is", null);
 
-    if (leagueId) {
-      pendingCountQuery = pendingCountQuery.eq("liga_id", leagueId);
-    }
+    const existingPartidaIds = new Set((existingArticleIds || []).map((n: any) => n.partida_id));
 
-    const { count: pendingMatches } = await pendingCountQuery;
-    const alreadyProcessed = Math.max((totalMatches || 0) - (pendingMatches || 0), 0);
+    // Count pending
+    const { count: totalPredictions } = await supabase
+      .from("palpites")
+      .select("partida_id", { count: "exact", head: true });
 
-    // Get pending matches (without linked article), with predictions, ordered by date ASC
+    const pendingMatches = Math.max((totalPredictions || 0) - existingPartidaIds.size, 0);
+    const alreadyProcessed = existingPartidaIds.size;
+
+    // Get pending matches (with palpite, without article)
     let query = supabase
       .from("partidas")
       .select(`
@@ -410,13 +415,11 @@ serve(async (req) => {
           forca_time_casa,
           forca_time_fora,
           confianca
-        ),
-        noticias:noticias!left(partida_id)
+        )
       `)
       .eq("status", "finished")
-      .is("noticias.partida_id", null)
       .order("data", { ascending: true })
-      .limit(limit);
+      .limit(limit * 3); // fetch more to filter
 
     if (leagueId) {
       query = query.eq("liga_id", leagueId);
