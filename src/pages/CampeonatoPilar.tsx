@@ -38,6 +38,14 @@ export default function CampeonatoPilar() {
   const { slug } = useParams<{ slug: string }>();
   const { data: league, isLoading } = useLeagueBySlug(slug || null);
   const { data: relatedNews } = useLeagueRelatedNews(league?.nome || null);
+  
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleSeasonClick = (year: number) => {
+    setSelectedSeason(year);
+    setModalOpen(true);
+  };
 
   if (isLoading) {
     return (
