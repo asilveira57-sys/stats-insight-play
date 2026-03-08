@@ -273,7 +273,12 @@ export function useKaggleData() {
   });
 
   const batchProcess = useMutation({
-    mutationFn: (params: { action: string; batch_size?: number }) => supabase.functions.invoke("kaggle-batch", { body: params }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (params: { action: string; batch_size?: number }) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-batch", { body: params });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha no processamento em lote");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
