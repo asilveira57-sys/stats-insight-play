@@ -191,6 +191,7 @@ export default function AdminKaggle() {
         body: { job_id: jobId },
       });
       if (resolveErr) throw resolveErr;
+      if (resolveData?.success === false) throw new Error(resolveData?.error || "Resolução falhou");
 
       // Step 5: Promote
       toast.info("🚀 Promovendo para produção...");
