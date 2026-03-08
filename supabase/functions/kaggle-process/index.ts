@@ -2,8 +2,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Simple fast hash (no crypto API needed)
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -116,11 +127,14 @@ Deno.serve(async (req) => {
         season: { entity: "match", field: "temporada", conf: 85 },
         league: { entity: "match", field: "competicao", conf: 85 },
         competition: { entity: "match", field: "competicao", conf: 85 },
+        tournament: { entity: "match", field: "competicao", conf: 85 },
         div: { entity: "match", field: "competicao", conf: 75 },
         country: { entity: "match", field: "pais", conf: 70 },
         round: { entity: "match", field: "rodada", conf: 80 },
         referee: { entity: "match", field: "arbitro", conf: 80 },
         venue: { entity: "match", field: "estadio", conf: 80 },
+        city: { entity: "match", field: "cidade", conf: 70 },
+        neutral: { entity: "match", field: "campo_neutro", conf: 70 },
         hometeam: { entity: "match", field: "time_casa", conf: 90 },
         awayteam: { entity: "match", field: "time_fora", conf: 90 },
         team_name: { entity: "team", field: "nome", conf: 90 },
@@ -185,16 +199,10 @@ Deno.serve(async (req) => {
       let totalStaged = 0;
       let totalErrors = 0;
 
-      // Create staging table record
-      const { data: stagingTable } = await supabase.from("kaggle_staging_tables").insert({
-        job_id, table_name: job.kaggle_dataset_files?.file_name || "unknown",
-        inferred_entity_type: entityType, row_count: lines.length - 1,
-        schema_json: profile.inferred_schema,
-      }).select().single();
+      // Larger batch for performance
+      const BATCH_SIZE = 500;
 
-      const BATCH_SIZE = 200;
-
-      // Process matches
+      // Process matches - NO per-row crypto hashing (use simple hash instead)
       if (entityType === "matches" || entityType === "mixed" || entityType === "unknown") {
         const matchBatch: any[] = [];
 
@@ -215,11 +223,8 @@ Deno.serve(async (req) => {
             if (m) mapped[m.field] = val;
           });
 
-          // Compute row hash
-          const encoder = new TextEncoder();
-          const hashSource = `${mapped.data || ""}|${mapped.time_casa || ""}|${mapped.time_fora || ""}|${mapped.gols_casa || ""}|${mapped.gols_fora || ""}`;
-          const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(hashSource));
-          const rowHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("").substring(0, 32);
+          // Simple fast hash (no crypto)
+          const rowRef = `row:${i}:${simpleHash(lines[i])}`;
 
           // Parse date
           let parsedDate = null;
@@ -243,12 +248,12 @@ Deno.serve(async (req) => {
             raw_score_text: mapped.resultado || null,
             venue_text: mapped.estadio || null,
             referee_text: mapped.arbitro || null,
-            source_row_reference: `row:${i}:${rowHash}`,
+            source_row_reference: rowRef,
           });
 
           if (matchBatch.length >= BATCH_SIZE) {
             const { error } = await supabase.from("kaggle_staging_matches").insert(matchBatch);
-            if (error) { totalErrors += matchBatch.length; await log("stage", "error", `Batch error: ${error.message}`); }
+            if (error) { totalErrors += matchBatch.length; await log("stage", "error", `Batch error at row ${i}: ${error.message}`); }
             else totalStaged += matchBatch.length;
             matchBatch.length = 0;
           }
@@ -261,32 +266,48 @@ Deno.serve(async (req) => {
           else totalStaged += matchBatch.length;
         }
 
-        // Extract unique teams and competitions to staging
-        const { data: uniqueTeams } = await supabase.from("kaggle_staging_matches")
-          .select("raw_home_team, raw_away_team").eq("job_id", job_id);
+        await log("stage", "info", `Staged ${totalStaged} matches, extracting teams/competitions...`);
 
+        // Extract unique teams from staging (paginated)
         const teamSet = new Set<string>();
-        uniqueTeams?.forEach((m: any) => {
-          if (m.raw_home_team) teamSet.add(m.raw_home_team);
-          if (m.raw_away_team) teamSet.add(m.raw_away_team);
-        });
+        const compSet = new Set<string>();
+        const seasonSet = new Set<string>();
+        let from = 0;
+        const PAGE = 5000;
+        
+        while (true) {
+          const { data: batch } = await supabase.from("kaggle_staging_matches")
+            .select("raw_home_team, raw_away_team, raw_competition_name, raw_season_label")
+            .eq("job_id", job_id)
+            .range(from, from + PAGE - 1);
+          
+          if (!batch || batch.length === 0) break;
+          
+          batch.forEach((m: any) => {
+            if (m.raw_home_team) teamSet.add(m.raw_home_team);
+            if (m.raw_away_team) teamSet.add(m.raw_away_team);
+            if (m.raw_competition_name) compSet.add(m.raw_competition_name);
+            if (m.raw_season_label) seasonSet.add(m.raw_season_label);
+          });
+          
+          if (batch.length < PAGE) break;
+          from += PAGE;
+        }
 
+        // Insert staging teams
         const teamInserts = Array.from(teamSet).map(name => ({
           job_id, raw_name: name, normalized_name: name.toLowerCase().trim(),
           inferred_slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
         }));
 
         if (teamInserts.length) {
-          await supabase.from("kaggle_staging_teams").insert(teamInserts);
+          // Batch inserts for large sets
+          for (let b = 0; b < teamInserts.length; b += 500) {
+            await supabase.from("kaggle_staging_teams").insert(teamInserts.slice(b, b + 500));
+          }
         }
 
-        // Extract unique competitions
-        const { data: uniqueComps } = await supabase.from("kaggle_staging_matches")
-          .select("raw_competition_name").eq("job_id", job_id);
-
-        const compSet = new Set<string>();
-        uniqueComps?.forEach((m: any) => { if (m.raw_competition_name) compSet.add(m.raw_competition_name); });
-
+        // Insert staging competitions
         const compInserts = Array.from(compSet).map(name => ({
           job_id, raw_name: name, normalized_name: name.toLowerCase().trim(),
         }));
@@ -295,13 +316,7 @@ Deno.serve(async (req) => {
           await supabase.from("kaggle_staging_competitions").insert(compInserts);
         }
 
-        // Extract unique seasons
-        const { data: uniqueSeasons } = await supabase.from("kaggle_staging_matches")
-          .select("raw_season_label").eq("job_id", job_id);
-
-        const seasonSet = new Set<string>();
-        uniqueSeasons?.forEach((m: any) => { if (m.raw_season_label) seasonSet.add(m.raw_season_label); });
-
+        // Insert staging seasons
         const seasonInserts = Array.from(seasonSet).map(label => {
           const yearMatch = label.match(/(\d{4})/);
           return {
@@ -313,31 +328,12 @@ Deno.serve(async (req) => {
         if (seasonInserts.length) {
           await supabase.from("kaggle_staging_seasons").insert(seasonInserts);
         }
+
+        await log("stage", "info", `Extracted ${teamSet.size} teams, ${compSet.size} competitions, ${seasonSet.size} seasons`);
       }
 
-      // Also store raw rows in staging_rows (NO row limit)
-      const rowBatch: any[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (shouldStop()) break;
-        const vals = lines[i].split(delimiter).map((v: string) => v.trim().replace(/^["']|["']$/g, ""));
-        const row: Record<string, string> = {};
-        headers.forEach((h: string, idx: number) => { row[h] = vals[idx] || ""; });
-
-        const encoder = new TextEncoder();
-        const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(lines[i]));
-        const rowHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("").substring(0, 32);
-
-        rowBatch.push({
-          staging_table_id: stagingTable!.id,
-          row_number: i, raw_row_json: row, row_hash: rowHash,
-        });
-
-        if (rowBatch.length >= BATCH_SIZE) {
-          await supabase.from("kaggle_staging_rows").insert(rowBatch);
-          rowBatch.length = 0;
-        }
-      }
-      if (rowBatch.length) await supabase.from("kaggle_staging_rows").insert(rowBatch);
+      // Skip staging_rows entirely for large files - they're redundant with staging_matches
+      // staging_rows are only useful for non-match entity types
 
       await supabase.from("kaggle_import_jobs").update({
         status: "awaiting_review", total_rows_read: lines.length - 1,
@@ -345,7 +341,7 @@ Deno.serve(async (req) => {
         total_matches_detected: totalStaged,
       }).eq("id", job_id);
 
-      await log("stage", "info", `Staging complete: ${totalStaged} staged, ${totalErrors} errors`);
+      await log("stage", "info", `Staging complete: ${totalStaged} staged, ${totalErrors} errors, elapsed: ${Date.now() - startTime}ms`);
 
       return new Response(JSON.stringify({ success: true, staged: totalStaged, errors: totalErrors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
