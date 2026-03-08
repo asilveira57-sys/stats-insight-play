@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const SAFETY_TIMEOUT = 120_000; // 120s safety (platform limit is 150s)
+  const SAFETY_TIMEOUT = 25_000; // keep under pg_net HTTP timeout window
   const startTime = Date.now();
 
   // Get all running jobs
