@@ -119,13 +119,14 @@ Deno.serve(async (req) => {
         }).eq("id", st.id);
 
         // Create alias if new name variant
-        await supabase.from("team_aliases").insert({
+        // Insert alias, ignore duplicates
+        const { error: aliasErr } = await supabase.from("team_aliases").upsert({
           team_id: team.id,
           alias: st.raw_name,
           normalized_alias: normalizedName,
           source: "kaggle_import",
           confidence: confidence,
-        }).onConflict("team_id,normalized_alias").ignore();
+        }, { onConflict: "team_id,normalized_alias", ignoreDuplicates: true });
 
         // Create link
         await supabase.from("kaggle_team_links").insert({
