@@ -1,4 +1,4 @@
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Newspaper } from "lucide-react";
 
 interface NewsCardProps {
   id: string;
