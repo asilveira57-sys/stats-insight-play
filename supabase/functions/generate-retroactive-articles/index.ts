@@ -643,7 +643,7 @@ serve(async (req) => {
         failed: results.length - successCount,
         processed: results,
         progress: {
-          total: totalMatches || 0,
+          total: totalActionable || 0,
           processed: alreadyProcessed + successCount,
           remaining: Math.max(pendingMatches - successCount, 0),
         },
