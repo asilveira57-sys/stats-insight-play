@@ -254,6 +254,51 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       };
       break;
     }
+    case 'dedup_matches': {
+      const groupsProcessed = data?.groups_processed || 0;
+      const recordsDeleted = data?.records_deleted || 0;
+      const remaining = data?.remaining_duplicates || 0;
+      const newProcessed = (progress.groups_processed || 0) + groupsProcessed;
+      const newDeleted = (progress.records_deleted || 0) + recordsDeleted;
+      isDone = remaining === 0 || groupsProcessed === 0;
+      updated = {
+        groups_processed: newProcessed,
+        records_deleted: newDeleted,
+        remaining,
+        consecutive_errors: 0,
+        last_log: isDone
+          ? `🏁 Dedup concluída! ${newDeleted} registros removidos.`
+          : `✅ +${recordsDeleted} removidos (restam: ${remaining})`
+      };
+      break;
+    }
+    case 'fix_merges': {
+      const fixed = data?.fixed || 0;
+      const totalMatches = data?.total_matches_migrated || 0;
+      isDone = true; // Single-pass operation
+      updated = {
+        fixed,
+        total_matches_migrated: totalMatches,
+        consecutive_errors: 0,
+        last_log: `🏁 ${fixed} merges invertidos corrigidos, ${totalMatches} partidas migradas.`
+      };
+      break;
+    }
+      isDone = pending === 0 || (fixed === 0 && errors === 0);
+      const newResults = data?.results || [];
+      const existingResults = progress.last_results || [];
+      updated = {
+        fixed: newFixed, failed: newFailed, pending,
+        consecutive_errors: 0,
+        last_results: [...newResults, ...existingResults].slice(0, 10),
+        last_log: isDone
+          ? `🏁 Concluído! ${newFixed} imagens corrigidas.`
+          : fixed > 0
+            ? `✅ +${fixed} imagem (pendentes: ${pending})`
+            : `❌ Erro na imagem (pendentes: ${pending})`
+      };
+      break;
+    }
     default:
       throw new Error(`Unhandled job type: ${job.job_type}`);
   }
