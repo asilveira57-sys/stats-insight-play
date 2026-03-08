@@ -55,22 +55,30 @@ Deno.serve(async (req) => {
     // If RPC doesn't exist or failed, fall back to manual detection
     if (dupsErr) {
       console.log('RPC not found/failed, using manual detection');
-      // Fetch matches grouped by potential duplicates
-      // We'll query matches ordered by data and look for same-day same-team combos
-      const { data: matches, error: mErr } = await supabase
-        .from('partidas')
-        .select('id, time_casa_id, time_fora_id, data, liga_id, gols_casa, gols_fora, api_id, status, rodada, hora, created_at')
-        .order('data', { ascending: true });
-
-      if (mErr) throw mErr;
-
-      // Group by (time_casa_id, time_fora_id, data)
+      // Fetch ALL matches using pagination (avoid default row cap)
+      const pageSize = 1000;
       const groupMap = new Map<string, any[]>();
-      for (const m of matches || []) {
-        const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-        const arr = groupMap.get(key) || [];
-        arr.push(m);
-        groupMap.set(key, arr);
+      let from = 0;
+
+      while (true) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from('partidas')
+          .select('id, time_casa_id, time_fora_id, data, liga_id, gols_casa, gols_fora, api_id, status, rodada, hora, created_at')
+          .order('data', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (chunkErr) throw chunkErr;
+        if (!chunk || chunk.length === 0) break;
+
+        for (const m of chunk) {
+          const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
+          const arr = groupMap.get(key) || [];
+          arr.push(m);
+          groupMap.set(key, arr);
+        }
+
+        if (chunk.length < pageSize) break;
+        from += pageSize;
       }
 
       // Filter groups with more than 1 match
