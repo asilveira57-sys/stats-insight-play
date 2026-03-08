@@ -1148,7 +1148,7 @@ export default function AdminControlCenter() {
                     {/* Controls */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runImageFixLoop}
+                        onClick={() => startJob('image_fix')}
                         disabled={loopState.imageFix.running}
                         className="bg-orange-600 hover:bg-orange-700"
                       >
