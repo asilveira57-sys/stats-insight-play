@@ -68,23 +68,50 @@ Deno.serve(async (req) => {
       if (!dataset_slug) throw new Error("dataset_slug é obrigatório");
       
       const auth = getKaggleAuth();
-      const url = `https://www.kaggle.com/api/v1/datasets/view/${dataset_slug}`;
+      
+      // Use the dataset files list endpoint directly
+      const url = `https://www.kaggle.com/api/v1/datasets/list/${dataset_slug}`;
       const resp = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
       
       if (!resp.ok) {
-        const errText = await resp.text();
-        return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${resp.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        // Fallback: try the view endpoint
+        const viewUrl = `https://www.kaggle.com/api/v1/datasets/view/${dataset_slug}`;
+        const viewResp = await fetch(viewUrl, { headers: { Authorization: `Basic ${auth}` } });
+        
+        if (!viewResp.ok) {
+          const errText = await viewResp.text();
+          console.error("Kaggle list files error:", errText);
+          return new Response(JSON.stringify({ success: false, error: `Kaggle API: ${viewResp.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        
+        const meta = await viewResp.json();
+        console.log("Kaggle view keys:", Object.keys(meta));
+        
+        // Try multiple possible field names
+        const rawFiles = meta.datasetFiles || meta.files || meta.currentDatasetVersionFiles || [];
+        const files = rawFiles.map((f: any) => ({
+          name: f.name || f.fileName,
+          totalBytes: f.totalBytes || f.fileSize || 0,
+          columns: f.columns || 0,
+          description: f.description || "",
+        }));
+        
+        return new Response(JSON.stringify({ success: true, files, datasetInfo: { title: meta.title, subtitle: meta.subtitle, description: meta.description } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const meta = await resp.json();
-      const files = (meta.datasetFiles || []).map((f: any) => ({
-        name: f.name,
-        totalBytes: f.totalBytes,
-        columns: f.columns,
-        description: f.description,
+      const filesList = await resp.json();
+      console.log("Kaggle files list response type:", typeof filesList, Array.isArray(filesList) ? "array" : "object");
+      
+      // The list endpoint may return an array directly or an object
+      const rawFiles = Array.isArray(filesList) ? filesList : (filesList.datasetFiles || filesList.files || []);
+      const files = rawFiles.map((f: any) => ({
+        name: f.name || f.fileName || f.ref,
+        totalBytes: f.totalBytes || f.fileSize || 0,
+        columns: f.columns || 0,
+        description: f.description || "",
       }));
 
-      return new Response(JSON.stringify({ success: true, files, datasetInfo: { title: meta.title, subtitle: meta.subtitle, description: meta.description } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: true, files }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ========== QUICK IMPORT (register + download + process) ==========
