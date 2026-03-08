@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useLeagueBySlug, useLeagueRelatedNews } from "@/hooks/useLeaguePillar";
@@ -8,6 +9,7 @@ import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SeasonDetailModal } from "@/components/league/SeasonDetailModal";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -36,6 +38,14 @@ export default function CampeonatoPilar() {
   const { slug } = useParams<{ slug: string }>();
   const { data: league, isLoading } = useLeagueBySlug(slug || null);
   const { data: relatedNews } = useLeagueRelatedNews(league?.nome || null);
+  
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleSeasonClick = (year: number) => {
+    setSelectedSeason(year);
+    setModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -241,9 +251,13 @@ export default function CampeonatoPilar() {
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {league.seasons.map((season) => (
-                    <Card key={season.year} className="hover:border-primary/50 transition-colors">
+                    <Card 
+                      key={season.year} 
+                      className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
+                      onClick={() => handleSeasonClick(season.year)}
+                    >
                       <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-primary">{season.year}</div>
+                        <div className="text-2xl font-bold text-primary group-hover:scale-105 transition-transform">{season.year}</div>
                         <div className="text-sm text-muted-foreground mt-1">
                           {season.totalMatches} jogos
                         </div>
@@ -254,6 +268,18 @@ export default function CampeonatoPilar() {
                     </Card>
                   ))}
                 </div>
+                
+                {/* Season Detail Modal */}
+                {selectedSeason && (
+                  <SeasonDetailModal
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    leagueId={league.id}
+                    leagueName={league.nome}
+                    tipoPrincipal={league.tipo_principal}
+                    year={selectedSeason}
+                  />
+                )}
               </section>
             )}
 

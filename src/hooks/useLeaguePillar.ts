@@ -13,6 +13,7 @@ export interface LeaguePillarData {
   nome: string;
   slug: string;
   pais: string | null;
+  tipo_principal: string | null;
   logo_url: string | null;
   pillar_content: {
     visao_geral: string;
@@ -204,6 +205,7 @@ export function useLeagueBySlug(slug: string | null) {
         nome: league.nome,
         slug: league.slug || slug,
         pais: league.pais,
+        tipo_principal: league.tipo_principal || null,
         logo_url: league.logo_url,
         pillar_content: league.pillar_content as LeaguePillarData["pillar_content"],
         pillar_updated_at: league.pillar_updated_at,
