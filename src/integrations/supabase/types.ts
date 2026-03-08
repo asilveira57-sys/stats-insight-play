@@ -1888,6 +1888,1585 @@ export type Database = {
           },
         ]
       }
+      kaggle_column_mappings: {
+        Row: {
+          created_at: string
+          dataset_file_id: string
+          id: string
+          is_active: boolean
+          mapping_confidence: number | null
+          normalized_column_name: string | null
+          source_column_name: string
+          target_entity: string | null
+          target_field: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dataset_file_id: string
+          id?: string
+          is_active?: boolean
+          mapping_confidence?: number | null
+          normalized_column_name?: string | null
+          source_column_name: string
+          target_entity?: string | null
+          target_field?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dataset_file_id?: string
+          id?: string
+          is_active?: boolean
+          mapping_confidence?: number | null
+          normalized_column_name?: string | null
+          source_column_name?: string
+          target_entity?: string | null
+          target_field?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_column_mappings_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_competition_links: {
+        Row: {
+          competition_id: string
+          confidence_score: number | null
+          external_key: string | null
+          id: string
+          linked_at: string
+          provider_name: string
+          staging_competition_id: string
+        }
+        Insert: {
+          competition_id: string
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          staging_competition_id: string
+        }
+        Update: {
+          competition_id?: string
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          staging_competition_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_competition_links_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_competition_links_staging_competition_id_fkey"
+            columns: ["staging_competition_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_dataset_files: {
+        Row: {
+          content_format: string | null
+          created_at: string
+          dataset_id: string
+          file_hash: string | null
+          file_name: string
+          file_size_bytes: number | null
+          file_type: string
+          id: string
+          inferred_entity_type: string | null
+          is_active: boolean
+          last_processed_at: string | null
+          last_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          content_format?: string | null
+          created_at?: string
+          dataset_id: string
+          file_hash?: string | null
+          file_name: string
+          file_size_bytes?: number | null
+          file_type?: string
+          id?: string
+          inferred_entity_type?: string | null
+          is_active?: boolean
+          last_processed_at?: string | null
+          last_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content_format?: string | null
+          created_at?: string
+          dataset_id?: string
+          file_hash?: string | null
+          file_name?: string
+          file_size_bytes?: number | null
+          file_type?: string
+          id?: string
+          inferred_entity_type?: string | null
+          is_active?: boolean
+          last_processed_at?: string | null
+          last_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_dataset_files_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_datasets: {
+        Row: {
+          competition_scope: string | null
+          country_scope: string | null
+          created_at: string
+          data_scope: string | null
+          dataset_category: string | null
+          dataset_description: string | null
+          dataset_owner: string | null
+          dataset_slug: string
+          dataset_title: string
+          dataset_url: string | null
+          id: string
+          is_active: boolean
+          last_hash: string | null
+          last_synced_at: string | null
+          priority: number
+          provider_slug: string
+          source_status: string
+          updated_at: string
+        }
+        Insert: {
+          competition_scope?: string | null
+          country_scope?: string | null
+          created_at?: string
+          data_scope?: string | null
+          dataset_category?: string | null
+          dataset_description?: string | null
+          dataset_owner?: string | null
+          dataset_slug: string
+          dataset_title: string
+          dataset_url?: string | null
+          id?: string
+          is_active?: boolean
+          last_hash?: string | null
+          last_synced_at?: string | null
+          priority?: number
+          provider_slug?: string
+          source_status?: string
+          updated_at?: string
+        }
+        Update: {
+          competition_scope?: string | null
+          country_scope?: string | null
+          created_at?: string
+          data_scope?: string | null
+          dataset_category?: string | null
+          dataset_description?: string | null
+          dataset_owner?: string | null
+          dataset_slug?: string
+          dataset_title?: string
+          dataset_url?: string | null
+          id?: string
+          is_active?: boolean
+          last_hash?: string | null
+          last_synced_at?: string | null
+          priority?: number
+          provider_slug?: string
+          source_status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kaggle_file_profiles: {
+        Row: {
+          created_at: string
+          dataset_file_id: string | null
+          delimiter: string | null
+          detected_columns: Json | null
+          detected_row_count: number | null
+          encoding: string | null
+          id: string
+          inferred_schema: Json | null
+          job_id: string | null
+          sample_rows: Json | null
+        }
+        Insert: {
+          created_at?: string
+          dataset_file_id?: string | null
+          delimiter?: string | null
+          detected_columns?: Json | null
+          detected_row_count?: number | null
+          encoding?: string | null
+          id?: string
+          inferred_schema?: Json | null
+          job_id?: string | null
+          sample_rows?: Json | null
+        }
+        Update: {
+          created_at?: string
+          dataset_file_id?: string | null
+          delimiter?: string | null
+          detected_columns?: Json | null
+          detected_row_count?: number | null
+          encoding?: string | null
+          id?: string
+          inferred_schema?: Json | null
+          job_id?: string | null
+          sample_rows?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_file_profiles_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_file_profiles_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_import_job_items: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          item_reference: string | null
+          item_status: string
+          item_type: string
+          job_id: string
+          sequence_order: number | null
+          started_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          item_reference?: string | null
+          item_status?: string
+          item_type: string
+          job_id: string
+          sequence_order?: number | null
+          started_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          item_reference?: string | null
+          item_status?: string
+          item_type?: string
+          job_id?: string
+          sequence_order?: number | null
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_import_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_import_jobs: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          dataset_file_id: string | null
+          dataset_id: string
+          duration_ms: number | null
+          error_summary: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          lock_token: string | null
+          max_retries: number
+          parser_version_id: string | null
+          priority: number
+          requested_by: string | null
+          retry_count: number
+          started_at: string | null
+          status: string
+          total_conflicts: number | null
+          total_errors: number | null
+          total_ignored: number | null
+          total_matches_detected: number | null
+          total_promoted: number | null
+          total_rows_read: number | null
+          total_rows_staged: number | null
+          total_updated: number | null
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          dataset_file_id?: string | null
+          dataset_id: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          lock_token?: string | null
+          max_retries?: number
+          parser_version_id?: string | null
+          priority?: number
+          requested_by?: string | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          total_conflicts?: number | null
+          total_errors?: number | null
+          total_ignored?: number | null
+          total_matches_detected?: number | null
+          total_promoted?: number | null
+          total_rows_read?: number | null
+          total_rows_staged?: number | null
+          total_updated?: number | null
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          dataset_file_id?: string | null
+          dataset_id?: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          lock_token?: string | null
+          max_retries?: number
+          parser_version_id?: string | null
+          priority?: number
+          requested_by?: string | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          total_conflicts?: number | null
+          total_errors?: number | null
+          total_ignored?: number | null
+          total_matches_detected?: number | null
+          total_promoted?: number | null
+          total_rows_read?: number | null
+          total_rows_staged?: number | null
+          total_updated?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_import_jobs_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_import_jobs_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_datasets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_import_jobs_parser_version_id_fkey"
+            columns: ["parser_version_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_parser_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_import_logs: {
+        Row: {
+          created_at: string
+          dataset_file_id: string | null
+          id: string
+          job_id: string | null
+          level: string
+          message: string
+          payload: Json | null
+          stage: string
+        }
+        Insert: {
+          created_at?: string
+          dataset_file_id?: string | null
+          id?: string
+          job_id?: string | null
+          level?: string
+          message: string
+          payload?: Json | null
+          stage: string
+        }
+        Update: {
+          created_at?: string
+          dataset_file_id?: string | null
+          id?: string
+          job_id?: string | null
+          level?: string
+          message?: string
+          payload?: Json | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_import_logs_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_import_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_import_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          summary_json: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          summary_json?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          summary_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_import_snapshots_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_job_batches: {
+        Row: {
+          batch_name: string
+          batch_type: string
+          created_at: string
+          id: string
+          requested_by: string | null
+          status: string
+          total_completed: number | null
+          total_failed: number | null
+          total_jobs: number | null
+          updated_at: string
+        }
+        Insert: {
+          batch_name: string
+          batch_type?: string
+          created_at?: string
+          id?: string
+          requested_by?: string | null
+          status?: string
+          total_completed?: number | null
+          total_failed?: number | null
+          total_jobs?: number | null
+          updated_at?: string
+        }
+        Update: {
+          batch_name?: string
+          batch_type?: string
+          created_at?: string
+          id?: string
+          requested_by?: string | null
+          status?: string
+          total_completed?: number | null
+          total_failed?: number | null
+          total_jobs?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kaggle_job_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          metric_key: string
+          metric_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          metric_key: string
+          metric_value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          metric_key?: string
+          metric_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_job_metrics_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_manual_reviews: {
+        Row: {
+          created_at: string
+          entity_reference: string | null
+          entity_type: string
+          id: string
+          job_id: string | null
+          notes: string | null
+          review_action: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_reference?: string | null
+          entity_type: string
+          id?: string
+          job_id?: string | null
+          notes?: string | null
+          review_action?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_reference?: string | null
+          entity_type?: string
+          id?: string
+          job_id?: string | null
+          notes?: string | null
+          review_action?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_manual_reviews_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_match_links: {
+        Row: {
+          confidence_score: number | null
+          dataset_file_id: string | null
+          external_key: string | null
+          id: string
+          linked_at: string
+          partida_id: string
+          provider_name: string
+          staging_match_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          dataset_file_id?: string | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          partida_id: string
+          provider_name?: string
+          staging_match_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          dataset_file_id?: string | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          partida_id?: string
+          provider_name?: string
+          staging_match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_match_links_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_match_links_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_match_links_staging_match_id_fkey"
+            columns: ["staging_match_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_parser_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          parser_name: string
+          parser_version: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          parser_name: string
+          parser_version: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          parser_name?: string
+          parser_version?: string
+        }
+        Relationships: []
+      }
+      kaggle_player_links: {
+        Row: {
+          confidence_score: number | null
+          external_key: string | null
+          id: string
+          linked_at: string
+          player_id: string
+          provider_name: string
+          staging_player_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          player_id: string
+          provider_name?: string
+          staging_player_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          player_id?: string
+          provider_name?: string
+          staging_player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_player_links_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_player_links_staging_player_id_fkey"
+            columns: ["staging_player_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_provider_configs: {
+        Row: {
+          config_key: string
+          config_value: string | null
+          created_at: string
+          id: string
+          is_secret: boolean
+          provider_slug: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value?: string | null
+          created_at?: string
+          id?: string
+          is_secret?: boolean
+          provider_slug?: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: string | null
+          created_at?: string
+          id?: string
+          is_secret?: boolean
+          provider_slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kaggle_rate_limit_controls: {
+        Row: {
+          cooldown_seconds: number
+          created_at: string
+          host_name: string
+          id: string
+          is_active: boolean
+          max_concurrent_jobs: number
+          provider_slug: string
+          requests_per_minute: number
+          updated_at: string
+        }
+        Insert: {
+          cooldown_seconds?: number
+          created_at?: string
+          host_name?: string
+          id?: string
+          is_active?: boolean
+          max_concurrent_jobs?: number
+          provider_slug?: string
+          requests_per_minute?: number
+          updated_at?: string
+        }
+        Update: {
+          cooldown_seconds?: number
+          created_at?: string
+          host_name?: string
+          id?: string
+          is_active?: boolean
+          max_concurrent_jobs?: number
+          provider_slug?: string
+          requests_per_minute?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kaggle_raw_assets: {
+        Row: {
+          asset_type: string
+          collected_at: string
+          content_hash: string | null
+          created_at: string
+          dataset_file_id: string | null
+          id: string
+          job_id: string | null
+          raw_json: Json | null
+          raw_text: string | null
+          storage_path: string | null
+        }
+        Insert: {
+          asset_type?: string
+          collected_at?: string
+          content_hash?: string | null
+          created_at?: string
+          dataset_file_id?: string | null
+          id?: string
+          job_id?: string | null
+          raw_json?: Json | null
+          raw_text?: string | null
+          storage_path?: string | null
+        }
+        Update: {
+          asset_type?: string
+          collected_at?: string
+          content_hash?: string | null
+          created_at?: string
+          dataset_file_id?: string | null
+          id?: string
+          job_id?: string | null
+          raw_json?: Json | null
+          raw_text?: string | null
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_raw_assets_dataset_file_id_fkey"
+            columns: ["dataset_file_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_dataset_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_raw_assets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_reprocess_requests: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string | null
+          requested_by: string | null
+          status: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kaggle_resolution_queue: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          entity_type: string
+          id: string
+          issue_type: string
+          job_id: string | null
+          notes: string | null
+          resolved_at: string | null
+          staging_entity_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          entity_type: string
+          id?: string
+          issue_type: string
+          job_id?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          staging_entity_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          entity_type?: string
+          id?: string
+          issue_type?: string
+          job_id?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          staging_entity_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_resolution_queue_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_retry_queue: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          next_retry_at: string
+          reason: string | null
+          retry_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          next_retry_at: string
+          reason?: string | null
+          retry_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          next_retry_at?: string
+          reason?: string | null
+          retry_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_retry_queue_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_season_links: {
+        Row: {
+          confidence_score: number | null
+          external_key: string | null
+          id: string
+          linked_at: string
+          provider_name: string
+          season_id: string | null
+          staging_season_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          season_id?: string | null
+          staging_season_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          season_id?: string | null
+          staging_season_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_season_links_staging_season_id_fkey"
+            columns: ["staging_season_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_competitions: {
+        Row: {
+          confederation: string | null
+          confidence_score: number | null
+          country: string | null
+          created_at: string
+          id: string
+          job_id: string
+          matched_competition_id: string | null
+          normalized_name: string | null
+          raw_name: string
+          resolution_status: string
+        }
+        Insert: {
+          confederation?: string | null
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          matched_competition_id?: string | null
+          normalized_name?: string | null
+          raw_name: string
+          resolution_status?: string
+        }
+        Update: {
+          confederation?: string | null
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          matched_competition_id?: string | null
+          normalized_name?: string | null
+          raw_name?: string
+          resolution_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_competitions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_competitions_matched_competition_id_fkey"
+            columns: ["matched_competition_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_conflicts: {
+        Row: {
+          confidence_score: number | null
+          conflict_type: string
+          created_at: string
+          entity_type: string
+          id: string
+          job_id: string
+          notes: string | null
+          raw_value: string | null
+          status: string
+          suggested_value: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          conflict_type: string
+          created_at?: string
+          entity_type: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          raw_value?: string | null
+          status?: string
+          suggested_value?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          conflict_type?: string
+          created_at?: string
+          entity_type?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          raw_value?: string | null
+          status?: string
+          suggested_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_conflicts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_match_events: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          event_type: string
+          id: string
+          matched_team_id: string | null
+          minute: number | null
+          notes: string | null
+          player_name: string | null
+          raw_team_name: string | null
+          staging_match_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          event_type: string
+          id?: string
+          matched_team_id?: string | null
+          minute?: number | null
+          notes?: string | null
+          player_name?: string | null
+          raw_team_name?: string | null
+          staging_match_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          matched_team_id?: string | null
+          minute?: number | null
+          notes?: string | null
+          player_name?: string | null
+          raw_team_name?: string | null
+          staging_match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_match_events_matched_team_id_fkey"
+            columns: ["matched_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_match_events_staging_match_id_fkey"
+            columns: ["staging_match_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_matches: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          dedupe_status: string | null
+          id: string
+          job_id: string
+          matched_away_team_id: string | null
+          matched_competition_id: string | null
+          matched_home_team_id: string | null
+          matched_match_id: string | null
+          matched_season_id: string | null
+          notes_text: string | null
+          odds_json: Json | null
+          parsed_away_score: number | null
+          parsed_date: string | null
+          parsed_home_score: number | null
+          raw_away_team: string | null
+          raw_competition_name: string | null
+          raw_date_text: string | null
+          raw_home_team: string | null
+          raw_round_label: string | null
+          raw_score_text: string | null
+          raw_season_label: string | null
+          referee_text: string | null
+          resolution_status: string
+          source_row_reference: string | null
+          venue_text: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          dedupe_status?: string | null
+          id?: string
+          job_id: string
+          matched_away_team_id?: string | null
+          matched_competition_id?: string | null
+          matched_home_team_id?: string | null
+          matched_match_id?: string | null
+          matched_season_id?: string | null
+          notes_text?: string | null
+          odds_json?: Json | null
+          parsed_away_score?: number | null
+          parsed_date?: string | null
+          parsed_home_score?: number | null
+          raw_away_team?: string | null
+          raw_competition_name?: string | null
+          raw_date_text?: string | null
+          raw_home_team?: string | null
+          raw_round_label?: string | null
+          raw_score_text?: string | null
+          raw_season_label?: string | null
+          referee_text?: string | null
+          resolution_status?: string
+          source_row_reference?: string | null
+          venue_text?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          dedupe_status?: string | null
+          id?: string
+          job_id?: string
+          matched_away_team_id?: string | null
+          matched_competition_id?: string | null
+          matched_home_team_id?: string | null
+          matched_match_id?: string | null
+          matched_season_id?: string | null
+          notes_text?: string | null
+          odds_json?: Json | null
+          parsed_away_score?: number | null
+          parsed_date?: string | null
+          parsed_home_score?: number | null
+          raw_away_team?: string | null
+          raw_competition_name?: string | null
+          raw_date_text?: string | null
+          raw_home_team?: string | null
+          raw_round_label?: string | null
+          raw_score_text?: string | null
+          raw_season_label?: string | null
+          referee_text?: string | null
+          resolution_status?: string
+          source_row_reference?: string | null
+          venue_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_matches_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_matches_matched_away_team_id_fkey"
+            columns: ["matched_away_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_matches_matched_competition_id_fkey"
+            columns: ["matched_competition_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_matches_matched_home_team_id_fkey"
+            columns: ["matched_home_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_matches_matched_match_id_fkey"
+            columns: ["matched_match_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_players: {
+        Row: {
+          birth_date: string | null
+          confidence_score: number | null
+          created_at: string
+          current_team_raw: string | null
+          id: string
+          job_id: string
+          matched_player_id: string | null
+          nationality: string | null
+          normalized_name: string | null
+          position: string | null
+          raw_name: string
+          resolution_status: string
+        }
+        Insert: {
+          birth_date?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          current_team_raw?: string | null
+          id?: string
+          job_id: string
+          matched_player_id?: string | null
+          nationality?: string | null
+          normalized_name?: string | null
+          position?: string | null
+          raw_name: string
+          resolution_status?: string
+        }
+        Update: {
+          birth_date?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          current_team_raw?: string | null
+          id?: string
+          job_id?: string
+          matched_player_id?: string | null
+          nationality?: string | null
+          normalized_name?: string | null
+          position?: string | null
+          raw_name?: string
+          resolution_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_players_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_players_matched_player_id_fkey"
+            columns: ["matched_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_rows: {
+        Row: {
+          created_at: string
+          id: string
+          normalized_row_json: Json | null
+          processing_status: string
+          raw_row_json: Json
+          row_hash: string | null
+          row_number: number | null
+          staging_table_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          normalized_row_json?: Json | null
+          processing_status?: string
+          raw_row_json: Json
+          row_hash?: string | null
+          row_number?: number | null
+          staging_table_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          normalized_row_json?: Json | null
+          processing_status?: string
+          raw_row_json?: Json
+          row_hash?: string | null
+          row_number?: number | null
+          staging_table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_rows_staging_table_id_fkey"
+            columns: ["staging_table_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_seasons: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          inferred_year_end: number | null
+          inferred_year_start: number | null
+          job_id: string
+          matched_season_id: string | null
+          normalized_label: string | null
+          raw_label: string
+          resolution_status: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          inferred_year_end?: number | null
+          inferred_year_start?: number | null
+          job_id: string
+          matched_season_id?: string | null
+          normalized_label?: string | null
+          raw_label: string
+          resolution_status?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          inferred_year_end?: number | null
+          inferred_year_start?: number | null
+          job_id?: string
+          matched_season_id?: string | null
+          normalized_label?: string | null
+          raw_label?: string
+          resolution_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_seasons_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_tables: {
+        Row: {
+          created_at: string
+          id: string
+          inferred_entity_type: string | null
+          job_id: string
+          row_count: number | null
+          schema_json: Json | null
+          table_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inferred_entity_type?: string | null
+          job_id: string
+          row_count?: number | null
+          schema_json?: Json | null
+          table_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inferred_entity_type?: string | null
+          job_id?: string
+          row_count?: number | null
+          schema_json?: Json | null
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_tables_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_staging_teams: {
+        Row: {
+          confidence_score: number | null
+          country: string | null
+          created_at: string
+          id: string
+          inferred_slug: string | null
+          job_id: string
+          matched_team_id: string | null
+          normalized_name: string | null
+          raw_name: string
+          resolution_status: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          inferred_slug?: string | null
+          job_id: string
+          matched_team_id?: string | null
+          normalized_name?: string | null
+          raw_name: string
+          resolution_status?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          inferred_slug?: string | null
+          job_id?: string
+          matched_team_id?: string | null
+          normalized_name?: string | null
+          raw_name?: string
+          resolution_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_staging_teams_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_staging_teams_matched_team_id_fkey"
+            columns: ["matched_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kaggle_team_links: {
+        Row: {
+          confidence_score: number | null
+          external_key: string | null
+          id: string
+          linked_at: string
+          provider_name: string
+          staging_team_id: string
+          team_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          staging_team_id: string
+          team_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          external_key?: string | null
+          id?: string
+          linked_at?: string
+          provider_name?: string
+          staging_team_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaggle_team_links_staging_team_id_fkey"
+            columns: ["staging_team_id"]
+            isOneToOne: false
+            referencedRelation: "kaggle_staging_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kaggle_team_links_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lgpd_config: {
         Row: {
           banner_enabled: boolean | null
@@ -2835,6 +4414,33 @@ export type Database = {
           id?: string
           updated_at?: string | null
           valor?: string | null
+        }
+        Relationships: []
+      }
+      season_aliases: {
+        Row: {
+          canonical_year: number | null
+          created_at: string
+          id: string
+          normalized_label: string
+          raw_label: string
+          source: string | null
+        }
+        Insert: {
+          canonical_year?: number | null
+          created_at?: string
+          id?: string
+          normalized_label: string
+          raw_label: string
+          source?: string | null
+        }
+        Update: {
+          canonical_year?: number | null
+          created_at?: string
+          id?: string
+          normalized_label?: string
+          raw_label?: string
+          source?: string | null
         }
         Relationships: []
       }
