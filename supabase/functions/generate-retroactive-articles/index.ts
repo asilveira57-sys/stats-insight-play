@@ -398,9 +398,6 @@ serve(async (req) => {
         .not("partida_id", "is", null)
         .range(offset, offset + batchSize - 1);
 
-      if (leagueId) {
-        existingQuery = existingQuery.eq("partidas.liga_id", leagueId);
-      }
 
       const { data: batch } = await existingQuery;
 
