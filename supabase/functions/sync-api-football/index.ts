@@ -277,14 +277,25 @@ Deno.serve(async (req) => {
             .eq('id', internalLeagueId);
         }
 
-        // Fetch fixtures for this league
-        const fixturesData = await fetchFromApiFootball(
-          `/fixtures?league=${leagueId}&season=${season}`,
-          apiKey
-        );
-
-        const fixtures: ApiFootballFixture[] = fixturesData.response || [];
-        console.log(`Found ${fixtures.length} fixtures for ${leagueInfo.name}`);
+        // Fetch fixtures for this league with season fallback
+        let fixtures: ApiFootballFixture[] = [];
+        let usedSeason = season;
+        const seasonsToTry = seasonFallback ? [season, 2024, 2023, 2022] : [season];
+        
+        for (const trySeason of [...new Set(seasonsToTry)]) {
+          try {
+            const fixturesData = await fetchFromApiFootball(
+              `/fixtures?league=${leagueId}&season=${trySeason}`,
+              apiKey
+            );
+            fixtures = fixturesData.response || [];
+            usedSeason = trySeason;
+            if (fixtures.length > 0) break;
+          } catch (seasonErr) {
+            console.log(`Season ${trySeason} failed for league ${leagueId}: ${seasonErr}`);
+            continue;
+          }
+        }
 
         // Process each fixture
         for (const fixture of fixtures) {
