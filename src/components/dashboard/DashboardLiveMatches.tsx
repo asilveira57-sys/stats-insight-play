@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity } from "lucide-react";
+import { TeamBadge } from "@/components/ui/TeamBadge";
 
 interface LiveMatch {
   id: string;
