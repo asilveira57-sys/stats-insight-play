@@ -591,7 +591,7 @@ serve(async (req) => {
         const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
         
         if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalSeoFileName, internalSeoFileName);
+          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
           console.log(`Internal image uploaded: ${internalImageUrl}`);
         }
 
