@@ -1,108 +1,100 @@
 
+# Varredura Completa do Banco de Dados -- Diagnóstico e Plano de Ação
 
-# Varredura Geral de Qualidade de Dados -- Diagnóstico e Plano de Ação
+## Diagnóstico
 
-## Diagnóstico Completo
-
-### 1. Partidas em Ligas Fantasma (CRÍTICO)
-Três ligas informais criadas por importações antigas **ainda contêm partidas** que não foram migradas para as ligas canônicas:
-
-| Liga Fantasma | Partidas | Liga Canônica Correta |
+### Resumo Geral
+| Recurso | Total | Observação |
 |---|---|---|
-| `brazilian-cup-matches` (desativada) | 1.335 | Copa do Brasil (`copa-do-brasil`) |
-| `libertadores-matches` (desativada) | 1.254 | Copa Libertadores (`copa-libertadores`) |
-| `brasileirao-matches` (desativada) | 552 | Campeonato Brasileiro Série A (`campeonato-brasileiro-serie-a`) |
+| Ligas | 27 (26 ativas) | 4 ativas sem partidas, 1 inativa já migrada |
+| Times | 888 (759 ativos, 129 merged) | 28 duplicatas `-1` ativas com 1.429 partidas |
+| Partidas | 19.516 | **3.293 duplicatas** em 2.824 grupos |
+| Gols | 5.869 | Sem variações de nome de jogador |
+| Artilharia Agregada | 2.516 | Precisa ser reconstruída após dedup |
+| Notícias/Artigos | 469 | Em geração retroativa |
+| Palpites | 15.012 | OK |
 
-Adicionalmente, existem **10 registros duplicados** da liga "Brazilian Cup Matches" (IDs diferentes, mesmo nome) que precisam ser limpos.
+### 1. PARTIDAS DUPLICADAS (CRÍTICO -- 3.293 excedentes)
+A maior questão. **2.824 grupos** de partidas duplicadas (mesmo time_casa + time_fora + data), totalizando 3.293 registros excedentes:
 
-### 2. Partidas Órfãs
-- **20 partidas** sem `liga_id` (sem liga associada).
-
-### 3. Times Duplicados por Slug `-1` (14 times com partidas)
-Times que possuem um equivalente canônico sem o sufixo `-1`:
-
-| Duplicata (slug) | Partidas | Canônico |
+| Liga | Grupos Dup | Excedentes |
 |---|---|---|
-| `abc---rn-1` | 59 | `abc---rn` |
-| `crb---al-1` | 32 | `crb---al` |
-| `asa---al-1` | 18 | `asa---al` |
-| `river-plate-uru-1` | 15 | `river-plate-uru` |
-| `godoy-cruz-1` | 14 | `godoy-cruz` |
-| `la-guaira-1` | 11 | `la-guaira` |
-| + 8 outros com 1-3 partidas cada |
+| Brasileirão Série A | 1.136 | 1.511 |
+| Copa do Brasil | 777 | 817 |
+| Copa Libertadores | 581 | 635 |
+| Premier League | 149 | 149 |
 
-### 4. Times com Mesmo Slug (Duplicatas Exatas -- IDs Diferentes)
-**17 grupos** de times com slug idêntico mas IDs diferentes. Destaques:
-- `independiente-petrolero-1`: **3 registros** (+ 1 canônico)
-- `real-atletico`, `danubio`: **3 registros** cada
-- `godoy-cruz`, `colon-1`, `sport-boys`, `sporting-cristal`, `athletico-paranaense---pr`, etc: **2 registros** cada
+**Causa raiz**: Importações de fontes diferentes (Football-Data.org vs API-Football) criaram registros para a mesma partida com IDs de time diferentes (ex: "CR Flamengo" vs "Flamengo", "Fortaleza EC" vs "Fortaleza"). Apenas 717 dos 2.824 grupos têm placar idêntico; os 2.107 restantes envolvem IDs de times diferentes (cross-source dups).
 
-### 5. Times com Estado que Duplicam Base (30+ pares)
-Times no formato `nome---uf` que duplicam um time base sem estado. Exemplos: `brusque---sc` / `brusque`, `londrina---pr` / `londrina`, `mirassol---sp` / `mirassol`. Estes exigem decisão manual (podem ser times **diferentes** em estados diferentes, ex: `santa-cruz---rn` vs `santa-cruz` de Recife).
+### 2. TIMES DUPLICADOS COM SUFIXO `-1` (28 times, 1.429 partidas)
+Times ativos cujo slug termina em `-1` e cujo equivalente canônico já está marcado como `merged`. Exemplos:
 
-### 6. Ligas com Problemas
-- **USL Championship** com slug `campeonato-paulista-1` (conflito com Campeonato Paulista)
-- **Premier League** duplicada (`premier-league` ativa + `premier-league-1` desativada com 129 partidas)
-
-### 7. Slugs de Partidas
-- Nenhuma partida sem slug. Sem slugs duplicados. OK.
-
-### 8. Cobertura Temporal das Ligas Canônicas
-| Liga | Período | Total |
+| Time Dup (ativo) | Partidas | Canônico (merged) |
 |---|---|---|
-| Brasileirão Série A | 2012--2026 | 7.020 |
-| Copa do Brasil | 2012--2023 | 1.513 |
-| Copa Libertadores | 2013--2022 | 1.373 |
+| avai-sc-1 | 447 | avai-sc |
+| juventude-rs-1 | 191 | juventude-rs |
+| santa-cruz-pe-1 | 143 | santa-cruz-pe |
+| csa-al-1 | 134 | csa-al |
+| universidad-catolica-1 | 64 | universidad-catolica |
+| + 23 outros | ~450 | ... |
+
+**Problema**: O merge anterior inverteu a relação -- marcou o canônico como `merged` e deixou o `-1` como `active`. Precisa ser corrigido.
+
+### 3. LIGAS ATIVAS SEM PARTIDAS (4)
+Copa Sudamericana, Copa do Nordeste, Campeonato Gaúcho, Campeonato Paranaense -- todas do API-Football. A conta estava suspensa, **agora está ativa novamente**, mas o sync tenta acessar a temporada 2026 (fora do plano free que cobre 2022-2024).
+
+### 4. API-Football STATUS
+**A API NÃO está mais suspensa.** Respondeu com dados, mas o sync está configurado para a temporada atual (2026), que está fora do plano gratuito. Precisa ajustar para sincronizar temporadas 2022-2024.
+
+### 5. ARTILHARIA AGREGADA
+Com 2.516 registros cobrindo 645 jogadores e 10 competições, precisa ser reconstruída após a deduplicação de partidas para evitar contagem dupla de gols.
 
 ---
 
-## Plano de Ação (4 etapas)
+## Plano de Ação (5 etapas)
 
-### Etapa 1 -- Migrar Partidas de Ligas Fantasma
-Criar uma migration SQL que:
-1. Mova as 1.335 partidas de `brazilian-cup-matches` para `copa-do-brasil`
-2. Mova as 1.254 partidas de `libertadores-matches` para `copa-libertadores`
-3. Mova as 552 partidas de `brasileirao-matches` para `campeonato-brasileiro-serie-a`
-4. Mova as 129 partidas de `premier-league-1` para `premier-league`
-5. Associe as 20 partidas órfãs (se possível, via times) ou marque para revisão
-6. Delete os registros duplicados das ligas fantasma
+### Etapa 1 -- Corrigir Merge Invertido dos 28 Times `-1`
+Criar uma Edge Function `fix-inverted-merges` que:
+1. Para cada time com slug `-1` ativo cujo canônico está `merged`:
+   - Migra todas as partidas do `-1` para o canônico
+   - Migra aliases e external_id_map
+   - Marca o `-1` como `merged` e restaura o canônico como `active`
+2. Executa via botão no Admin Control Center
 
-### Etapa 2 -- Fundir Times Duplicados por Slug
-Invocar `bulk-merge-teams` com a lista de 14 merges de slug `-1`:
-- `abc---rn-1` -> `abc---rn`
-- `crb---al-1` -> `crb---al`
-- `asa---al-1` -> `asa---al`
-- `river-plate-uru-1` -> `river-plate-uru`
-- `godoy-cruz-1` -> `godoy-cruz`
-- `la-guaira-1` -> `la-guaira`
-- `universidad-de-concepcion-1` -> `universidad-de-concepcion`
-- `vilhena---ro-1` -> `vilhena---ro`
-- `independiente-petrolero-1` -> `independiente-petrolero` (3 registros)
-- `noroeste---sp-1` -> `noroeste---sp`
-- `melgar-1` -> `melgar`
-- `estrela-do-norte---es-1` -> `estrela-do-norte---es`
-- `fortaleza-ce-1` -> `fortaleza` (se aplicável)
+### Etapa 2 -- Deduplicar 3.293 Partidas Excedentes
+Criar uma Edge Function `dedup-matches` que:
+1. Identifica grupos de partidas duplicadas (mesmo time_casa + time_fora + data)
+2. Para cada grupo, mantém o registro com mais dados (api_id, gols, detalhes) e remove os excedentes
+3. Para duplicatas cross-source (IDs de time diferentes mas mesmo jogo), identifica via data + liga + placar e consolida
+4. Migra referências (palpites, comparativo_resultados, gols_partida, noticias) para o registro mantido antes de deletar
+5. Roda em background via process-queue (lotes de 50 por execução)
+6. Registra log detalhado em sync_logs
 
-### Etapa 3 -- Deduplicar Times com Mesmo Slug
-Criar uma migration SQL para consolidar registros com slug idêntico:
-- Para cada grupo (ex: 3x `danubio`, 3x `real-atletico`, 2x `godoy-cruz`), manter o que tiver mais partidas e migrar referências dos outros via `merge_teams` RPC.
-- Tratar `colon-1` (2 registros com mesmo slug) e `athletico-paranaense---pr` (2 registros).
+### Etapa 3 -- Corrigir Sync do API-Football (Temporada)
+Editar `sync-api-football/index.ts`:
+1. Alterar a lógica de seleção de temporada para usar 2024 (ou a mais recente disponível no plano free) em vez da temporada atual
+2. Adicionar fallback: se a temporada atual falhar com erro de plano, tentar 2024, 2023, 2022
+3. Isso vai popular as 4 ligas vazias (Sudamericana, Nordeste, Gaúcho, Paranaense)
 
-### Etapa 4 -- Corrigir Slug da Liga USL
-- Atualizar o slug de USL Championship de `campeonato-paulista-1` para `usl-championship`.
+### Etapa 4 -- Reconstruir Artilharia
+Após a deduplicação, executar `rebuild-artilharia` para reprocessar todos os gols com os dados limpos. Nenhuma mudança de código necessária -- apenas executar a função existente.
 
-### Fora de Escopo (decisão manual necessária)
-Os 30+ pares de "time com estado vs time base" **não serão fundidos automaticamente** porque muitos são times **genuinamente diferentes** (ex: `santa-cruz---rn` é Santa Cruz do Rio Grande do Norte, diferente de `santa-cruz` que é Santa Cruz de Recife; `penarol---am` é diferente de `peñarol` do Uruguai). Esses serão listados para revisão manual na interface de duplicados.
+### Etapa 5 -- Card de Diagnóstico no Admin Control Center
+Adicionar um card "Saúde do Banco de Dados" no Admin Control Center que mostra:
+- Partidas duplicadas pendentes
+- Times com merge invertido
+- Ligas sem partidas
+- Botões para executar cada correção
 
----
+### Arquivos a editar/criar:
+1. `supabase/functions/fix-inverted-merges/index.ts` (nova)
+2. `supabase/functions/dedup-matches/index.ts` (nova)
+3. `supabase/functions/sync-api-football/index.ts` (ajuste de temporada)
+4. `supabase/functions/process-queue/index.ts` (adicionar job dedup_matches)
+5. `src/pages/AdminControlCenter.tsx` (card de saúde do banco)
 
-## Resumo Técnico
-
-**Arquivos a editar:**
-1. Nova migration SQL para migrar partidas entre ligas e limpar ligas fantasma
-2. Invocação do `bulk-merge-teams` para os 14+ merges de slug `-1`
-3. Nova migration SQL para deduplicar times com slug idêntico (via `merge_teams` RPC)
-4. Migration para corrigir slug da USL Championship
-
-**Impacto estimado:** ~3.141 partidas migradas para ligas corretas, ~30 times duplicados eliminados, 10+ ligas fantasma removidas.
-
+### Impacto estimado:
+- ~3.293 partidas duplicadas removidas
+- ~28 times com merge invertido corrigidos (1.429 partidas migradas)
+- ~4 ligas populadas com dados históricos 2022-2024
+- Artilharia reconstruída com dados limpos
