@@ -261,20 +261,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Count remaining duplicates for progress tracking
-    const { data: remainingCheck } = await supabase
-      .from('partidas')
-      .select('time_casa_id, time_fora_id, data', { count: 'exact', head: false });
-
-    // Count remaining dups
-    const remainGroupMap = new Map<string, number>();
-    for (const m of remainingCheck || []) {
-      const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-      remainGroupMap.set(key, (remainGroupMap.get(key) || 0) + 1);
-    }
+    // Count remaining dups accurately (without the default row cap)
     let remainingDups = 0;
-    for (const count of remainGroupMap.values()) {
-      if (count > 1) remainingDups += count - 1;
+    const { data: remainingRpc, error: remainingErr } = await supabase.rpc('count_duplicate_matches');
+
+    if (!remainingErr && Array.isArray(remainingRpc) && remainingRpc[0]) {
+      remainingDups = Number(remainingRpc[0].dup_records || 0);
+    } else {
+      console.warn('count_duplicate_matches RPC unavailable, using paginated fallback');
+      const pageSize = 1000;
+      const remainGroupMap = new Map<string, number>();
+      let from = 0;
+
+      while (true) {
+        const { data: chunk, error: chunkErr } = await supabase
+          .from('partidas')
+          .select('time_casa_id, time_fora_id, data')
+          .range(from, from + pageSize - 1);
+
+        if (chunkErr) throw chunkErr;
+        if (!chunk || chunk.length === 0) break;
+
+        for (const m of chunk) {
+          const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
+          remainGroupMap.set(key, (remainGroupMap.get(key) || 0) + 1);
+        }
+
+        if (chunk.length < pageSize) break;
+        from += pageSize;
+      }
+
+      for (const count of remainGroupMap.values()) {
+        if (count > 1) remainingDups += count - 1;
+      }
     }
 
     return new Response(JSON.stringify({
