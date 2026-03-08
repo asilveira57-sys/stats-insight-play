@@ -88,24 +88,20 @@ serve(async (req) => {
       // defaults
     }
 
-    // Count total pending articles
+    // Count total pending articles — ONLY legacy Unsplash placeholders, NOT null
+    // Null images are intentional (failed generation) and handled by frontend CSS fallback
     const { count: totalPendingUnsplash } = await supabase
       .from("noticias")
       .select("*", { count: "exact", head: true })
       .like("imagem_url", `%${DEFAULT_UNSPLASH_PATTERN}%`);
 
-    const { count: totalPendingNull } = await supabase
-      .from("noticias")
-      .select("*", { count: "exact", head: true })
-      .is("imagem_url", null);
+    const totalPending = totalPendingUnsplash || 0;
 
-    const totalPending = (totalPendingUnsplash || 0) + (totalPendingNull || 0);
-
-    // Fetch articles with placeholder image
+    // Fetch ONLY articles with Unsplash placeholder (legacy), skip null images
     const { data: articles, error: fetchError } = await supabase
       .from("noticias")
       .select("id, titulo, resumo, slug, imagem_url")
-      .or(`imagem_url.like.%${DEFAULT_UNSPLASH_PATTERN}%,imagem_url.is.null`)
+      .like("imagem_url", `%${DEFAULT_UNSPLASH_PATTERN}%`)
       .order("data_publicacao", { ascending: false })
       .limit(limit);
 
@@ -147,7 +143,8 @@ serve(async (req) => {
 
         // Upload to storage
         const imageBytes = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
-        const fileName = `fix-${article.id}.png`;
+        // Use SEO-friendly filename based on article slug
+        const fileName = `fix-${article.slug || article.id}.png`;
 
         const { error: uploadError } = await supabase.storage
           .from("news-thumbnails")

@@ -51,6 +51,17 @@ interface MatchData {
   } | null;
 }
 
+function slugifyForFile(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
 function generateValidationSlug(timeCasa: string, timeFora: string, dataJogo: string, liga: string): string {
   const date = new Date(dataJogo);
   const dateStr = date.toISOString().split('T')[0];
@@ -404,7 +415,7 @@ serve(async (req) => {
       targetMatchId = body?.match_id || null;
       hoursAfterMatch = body?.hours_after || 3;
       batchLimit = body?.limit || 0;
-      skipImages = body?.skip_images ?? (batchLimit > 0); // auto-skip images in batch mode
+      skipImages = body?.skip_images === true; // only skip if explicitly requested
     } catch {
       // No body
     }
@@ -590,25 +601,36 @@ serve(async (req) => {
         const textContent = await generateValidationContent(matchData, GEMINI_API_KEY);
         console.log(`Validation text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail (skip in batch mode for speed)
+        // Generate and upload thumbnail with SEO filename
         let imageUrl: string | null = null;
         if (!skipImages) {
+          const seoFileName = `validation-${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}.png`;
           const thumbnailBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
           if (thumbnailBase64) {
-            imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `validation-${match.id}.png`);
+            imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, seoFileName);
             console.log(`Validation thumbnail uploaded: ${imageUrl}`);
+          } else {
+            // Retry once after 3s delay
+            console.log("Thumbnail generation failed, retrying in 3s...");
+            await new Promise(r => setTimeout(r, 3000));
+            const retryBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
+            if (retryBase64) {
+              imageUrl = await uploadImage(supabaseAdmin, retryBase64, seoFileName);
+              console.log(`Validation thumbnail uploaded on retry: ${imageUrl}`);
+            } else {
+              console.log("Thumbnail retry also failed, saving with null image");
+            }
           }
         }
-        if (!imageUrl) {
-          imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1280&h=720&fit=crop";
-        }
+        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
-        // Generate and upload internal image (skip in batch mode for speed)
+        // Generate and upload internal image with SEO filename
         let internalImageUrl: string | null = null;
         if (!skipImages) {
+          const internalSeoFileName = `validation-${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
           const internalImageBase64 = await generateValidationInternalImage(matchData, GEMINI_API_KEY);
           if (internalImageBase64) {
-            internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `validation-${match.id}-internal.png`);
+            internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
             console.log(`Validation internal image uploaded: ${internalImageUrl}`);
           }
         }

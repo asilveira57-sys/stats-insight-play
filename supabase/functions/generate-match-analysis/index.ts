@@ -35,6 +35,17 @@ interface MatchData {
   } | null;
 }
 
+function slugifyForFile(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
 function generateSlug(timeCasa: string, timeFora: string, dataJogo: string, liga: string): string {
   // Format date as YYYY-MM-DD
   const date = new Date(dataJogo);
@@ -552,24 +563,35 @@ serve(async (req) => {
         const textContent = await generateLongFormContent(matchData, GEMINI_API_KEY);
         console.log(`Text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail
+        // Generate and upload thumbnail with SEO filename + retry
         let imageUrl: string | null = null;
+        const seoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}.png`;
         const thumbnailBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
         
         if (thumbnailBase64) {
-          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `${match.id}.png`);
+          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, seoFileName);
           console.log(`Thumbnail uploaded: ${imageUrl}`);
         } else {
-          imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1280&h=720&fit=crop";
-          console.log("Using default thumbnail");
+          // Retry once after 3s
+          console.log("Thumbnail failed, retrying in 3s...");
+          await new Promise(r => setTimeout(r, 3000));
+          const retryBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
+          if (retryBase64) {
+            imageUrl = await uploadImage(supabaseAdmin, retryBase64, seoFileName);
+            console.log(`Thumbnail uploaded on retry: ${imageUrl}`);
+          } else {
+            console.log("Thumbnail retry also failed, saving with null image");
+          }
         }
+        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
-        // Generate and upload internal image
+        // Generate and upload internal image with SEO filename
         let internalImageUrl: string | null = null;
+        const internalSeoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
         const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
         
         if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `${match.id}-internal.png`);
+          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
           console.log(`Internal image uploaded: ${internalImageUrl}`);
         }
 

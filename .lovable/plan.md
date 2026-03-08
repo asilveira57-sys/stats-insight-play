@@ -1,46 +1,108 @@
 
-# Corrigir geração de imagens nos artigos — eliminar placeholder padrão
 
-## Problema
-Três edge functions geram artigos com a imagem padrão do Unsplash (`unsplash.com/photo-1574629810360-7efbbe195018`) como fallback. Depois, o job `fix-article-thumbnails` detecta essa URL e regenera a imagem via IA — duplicando o custo.
+# Varredura Geral de Qualidade de Dados -- Diagnóstico e Plano de Ação
 
-Causa raiz principal: `generate-retroactive-articles` e `generate-validation-article` têm `skipImages = true` por padrão no modo batch. E `generate-match-analysis` usa o placeholder quando a geração falha silenciosamente.
+## Diagnóstico Completo
 
-## Plano de correção
+### 1. Partidas em Ligas Fantasma (CRÍTICO)
+Três ligas informais criadas por importações antigas **ainda contêm partidas** que não foram migradas para as ligas canônicas:
 
-### 1. Remover skip automático de imagens no modo batch
-**Arquivos:** `generate-retroactive-articles/index.ts`, `generate-validation-article/index.ts`
+| Liga Fantasma | Partidas | Liga Canônica Correta |
+|---|---|---|
+| `brazilian-cup-matches` (desativada) | 1.335 | Copa do Brasil (`copa-do-brasil`) |
+| `libertadores-matches` (desativada) | 1.254 | Copa Libertadores (`copa-libertadores`) |
+| `brasileirao-matches` (desativada) | 552 | Campeonato Brasileiro Série A (`campeonato-brasileiro-serie-a`) |
 
-- Remover a lógica `skipImages = body?.skip_images ?? (batchLimit > 0)` — imagens devem ser sempre geradas.
-- Manter o parâmetro `skip_images` como opt-in explícito (só se o caller enviar `skip_images: true` de propósito), mas nunca como default.
+Adicionalmente, existem **10 registros duplicados** da liga "Brazilian Cup Matches" (IDs diferentes, mesmo nome) que precisam ser limpos.
 
-### 2. Tornar a geração de imagem obrigatória com retry
-**Arquivos:** Todas as 3 functions de geração
+### 2. Partidas Órfãs
+- **20 partidas** sem `liga_id` (sem liga associada).
 
-- Se `generateThumbnail` retornar `null`, fazer **1 retry** com delay de 3s antes de desistir.
-- Se após retry ainda falhar, **não** inserir placeholder Unsplash. Em vez disso, usar uma URL marcada que não dispare o `fix-article-thumbnails` (ex: `null` no campo, e tratar `null` no frontend com fallback visual local).
-- Alternativa mais simples: gerar a imagem **antes** do texto e, se falhar, registrar o artigo com `imagem_url = null` para que o frontend exiba um fallback genérico do lado do cliente sem que o job de correção o detecte.
+### 3. Times Duplicados por Slug `-1` (14 times com partidas)
+Times que possuem um equivalente canônico sem o sufixo `-1`:
 
-### 3. Atualizar o frontend para tratar `imagem_url = null`
-**Arquivos:** `src/components/cards/NewsCard.tsx`, `src/pages/NoticiaDetalhes.tsx`
+| Duplicata (slug) | Partidas | Canônico |
+|---|---|---|
+| `abc---rn-1` | 59 | `abc---rn` |
+| `crb---al-1` | 32 | `crb---al` |
+| `asa---al-1` | 18 | `asa---al` |
+| `river-plate-uru-1` | 15 | `river-plate-uru` |
+| `godoy-cruz-1` | 14 | `godoy-cruz` |
+| `la-guaira-1` | 11 | `la-guaira` |
+| + 8 outros com 1-3 partidas cada |
 
-- Se `imagem_url` for `null`, exibir um fallback visual CSS (gradiente com ícone) em vez de depender de URL externa.
-- Isso já existe parcialmente via `onError` handler no `NewsCard`, mas precisa cobrir o caso `null` também.
+### 4. Times com Mesmo Slug (Duplicatas Exatas -- IDs Diferentes)
+**17 grupos** de times com slug idêntico mas IDs diferentes. Destaques:
+- `independiente-petrolero-1`: **3 registros** (+ 1 canônico)
+- `real-atletico`, `danubio`: **3 registros** cada
+- `godoy-cruz`, `colon-1`, `sport-boys`, `sporting-cristal`, `athletico-paranaense---pr`, etc: **2 registros** cada
 
-### 4. Melhorar o atributo `alt` das imagens
-**Arquivos:** Todas as 3 functions de geração + `fix-article-thumbnails`
+### 5. Times com Estado que Duplicam Base (30+ pares)
+Times no formato `nome---uf` que duplicam um time base sem estado. Exemplos: `brusque---sc` / `brusque`, `londrina---pr` / `londrina`, `mirassol---sp` / `mirassol`. Estes exigem decisão manual (podem ser times **diferentes** em estados diferentes, ex: `santa-cruz---rn` vs `santa-cruz` de Recife).
 
-- No upload da imagem, usar o nome do arquivo como `{time_casa}-vs-{time_fora}-{liga}-{data}.png` (slugificado) para SEO.
-- No HTML do artigo, garantir que o `alt` siga o padrão: `"Análise {Time Casa} x {Time Fora} - {Liga}"`.
-- No `<img>` do `NewsCard`, usar o título do artigo como `alt` text.
+### 6. Ligas com Problemas
+- **USL Championship** com slug `campeonato-paulista-1` (conflito com Campeonato Paulista)
+- **Premier League** duplicada (`premier-league` ativa + `premier-league-1` desativada com 129 partidas)
 
-### 5. Ajustar `fix-article-thumbnails` para não reprocessar artigos novos
-**Arquivo:** `fix-article-thumbnails/index.ts`
+### 7. Slugs de Partidas
+- Nenhuma partida sem slug. Sem slugs duplicados. OK.
 
-- Alterar o filtro para ignorar artigos com `imagem_url IS NULL` (estes são artigos que falharam na geração e podem ser reprocessados sob demanda, não automaticamente).
-- Manter a detecção do padrão Unsplash apenas para artigos legados.
+### 8. Cobertura Temporal das Ligas Canônicas
+| Liga | Período | Total |
+|---|---|---|
+| Brasileirão Série A | 2012--2026 | 7.020 |
+| Copa do Brasil | 2012--2023 | 1.513 |
+| Copa Libertadores | 2013--2022 | 1.373 |
 
-### Resumo de impacto
-- **Custo IA:** Eliminação do loop duplo (gerar placeholder → detectar → regenerar).
-- **SEO:** Alt text e nomes de arquivo otimizados para indexação.
-- **Cobertura:** 100% dos artigos novos terão imagem única ou `null` (sem placeholder genérico).
+---
+
+## Plano de Ação (4 etapas)
+
+### Etapa 1 -- Migrar Partidas de Ligas Fantasma
+Criar uma migration SQL que:
+1. Mova as 1.335 partidas de `brazilian-cup-matches` para `copa-do-brasil`
+2. Mova as 1.254 partidas de `libertadores-matches` para `copa-libertadores`
+3. Mova as 552 partidas de `brasileirao-matches` para `campeonato-brasileiro-serie-a`
+4. Mova as 129 partidas de `premier-league-1` para `premier-league`
+5. Associe as 20 partidas órfãs (se possível, via times) ou marque para revisão
+6. Delete os registros duplicados das ligas fantasma
+
+### Etapa 2 -- Fundir Times Duplicados por Slug
+Invocar `bulk-merge-teams` com a lista de 14 merges de slug `-1`:
+- `abc---rn-1` -> `abc---rn`
+- `crb---al-1` -> `crb---al`
+- `asa---al-1` -> `asa---al`
+- `river-plate-uru-1` -> `river-plate-uru`
+- `godoy-cruz-1` -> `godoy-cruz`
+- `la-guaira-1` -> `la-guaira`
+- `universidad-de-concepcion-1` -> `universidad-de-concepcion`
+- `vilhena---ro-1` -> `vilhena---ro`
+- `independiente-petrolero-1` -> `independiente-petrolero` (3 registros)
+- `noroeste---sp-1` -> `noroeste---sp`
+- `melgar-1` -> `melgar`
+- `estrela-do-norte---es-1` -> `estrela-do-norte---es`
+- `fortaleza-ce-1` -> `fortaleza` (se aplicável)
+
+### Etapa 3 -- Deduplicar Times com Mesmo Slug
+Criar uma migration SQL para consolidar registros com slug idêntico:
+- Para cada grupo (ex: 3x `danubio`, 3x `real-atletico`, 2x `godoy-cruz`), manter o que tiver mais partidas e migrar referências dos outros via `merge_teams` RPC.
+- Tratar `colon-1` (2 registros com mesmo slug) e `athletico-paranaense---pr` (2 registros).
+
+### Etapa 4 -- Corrigir Slug da Liga USL
+- Atualizar o slug de USL Championship de `campeonato-paulista-1` para `usl-championship`.
+
+### Fora de Escopo (decisão manual necessária)
+Os 30+ pares de "time com estado vs time base" **não serão fundidos automaticamente** porque muitos são times **genuinamente diferentes** (ex: `santa-cruz---rn` é Santa Cruz do Rio Grande do Norte, diferente de `santa-cruz` que é Santa Cruz de Recife; `penarol---am` é diferente de `peñarol` do Uruguai). Esses serão listados para revisão manual na interface de duplicados.
+
+---
+
+## Resumo Técnico
+
+**Arquivos a editar:**
+1. Nova migration SQL para migrar partidas entre ligas e limpar ligas fantasma
+2. Invocação do `bulk-merge-teams` para os 14+ merges de slug `-1`
+3. Nova migration SQL para deduplicar times com slug idêntico (via `merge_teams` RPC)
+4. Migration para corrigir slug da USL Championship
+
+**Impacto estimado:** ~3.141 partidas migradas para ligas corretas, ~30 times duplicados eliminados, 10+ ligas fantasma removidas.
+
