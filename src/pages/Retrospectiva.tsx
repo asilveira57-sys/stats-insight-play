@@ -198,7 +198,7 @@ export default function Retrospectiva() {
   }, [filteredMatches, currentPage]);
 
   // Reset to first page on filter change
-  useMemo(() => { setCurrentPage(0); }, [selectedSeason, selectedRodada]);
+  useEffect(() => { setCurrentPage(0); }, [selectedSeason, selectedRodada]);
 
   // Calculate stats based on filtered matches
   const stats = filteredMatches.length > 0 ? {
