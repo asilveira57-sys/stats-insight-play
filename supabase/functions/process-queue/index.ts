@@ -182,6 +182,31 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       };
       break;
     }
+    case 'retro_articles': {
+      const gen = data?.created || 0;
+      const fail = data?.failed || 0;
+      const pending = data?.progress?.remaining ?? 0;
+      const total = data?.progress?.total ?? progress.total ?? 0;
+      const newGenerated = (progress.generated || 0) + gen;
+      const newFailed = (progress.failed || 0) + fail;
+      isDone = pending === 0 || (gen === 0 && fail === 0);
+      const newArticles = (data?.processed || []).filter((a: any) => a.success).map((a: any) => ({
+        slug: a.slug, titulo: `${a.time_casa} x ${a.time_fora}`, data: a.data,
+      }));
+      const existingArticles = progress.last_articles || [];
+      updated = {
+        generated: newGenerated, failed: newFailed,
+        pending, total,
+        consecutive_errors: 0,
+        last_articles: [...newArticles, ...existingArticles].slice(0, 10),
+        last_log: isDone
+          ? `🏁 Concluído! ${newGenerated} artigos retroativos gerados.`
+          : gen > 0
+            ? `✅ +${gen} artigo (pendentes: ${pending})`
+            : `⏭️ Nenhum novo (pendentes: ${pending})`
+      };
+      break;
+    }
     case 'validations': {
       const results = data?.results || {};
       const gen = results.created || 0;
