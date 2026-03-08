@@ -5,7 +5,6 @@ import { TeamBadge } from "@/components/ui/TeamBadge";
 interface PredictionCardProps {
   homeTeam: {
     name: string;
-    logo: string | null;
     probability: number;
     strength: number;
     primaryColor?: string;
@@ -13,7 +12,6 @@ interface PredictionCardProps {
   };
   awayTeam: {
     name: string;
-    logo: string | null;
     probability: number;
     strength: number;
     primaryColor?: string;

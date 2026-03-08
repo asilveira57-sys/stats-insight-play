@@ -129,7 +129,7 @@ export default function Times() {
       // Buscar TODOS os times sem limite usando paginação
       const data = await fetchAllRecords<Time>(
         'times',
-        'id, nome, slug, pais, escudo_url, priority_score, cores',
+        'id, nome, slug, pais, priority_score, cores',
         undefined,
         { column: 'priority_score', ascending: false }
       );

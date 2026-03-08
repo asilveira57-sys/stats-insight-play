@@ -364,8 +364,8 @@ export default function Resultados() {
         open={!!selectedMatch}
         onOpenChange={(open) => !open && setSelectedMatch(null)}
         matchId={selectedMatch?.id || null}
-        homeTeam={selectedMatch?.homeTeam || { id: '', name: '', logo: '' }}
-        awayTeam={selectedMatch?.awayTeam || { id: '', name: '', logo: '' }}
+        homeTeam={selectedMatch?.homeTeam || { id: '', name: '' }}
+        awayTeam={selectedMatch?.awayTeam || { id: '', name: '' }}
         date={selectedMatch?.date || ''}
         league={selectedMatch?.league || ''}
       />

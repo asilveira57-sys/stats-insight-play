@@ -66,8 +66,8 @@ export default function HubMatches() {
         .from('partidas')
         .select(`
           *,
-          time_casa:times!partidas_time_casa_id_fkey(id, nome, escudo_url, cores),
-          time_fora:times!partidas_time_fora_id_fkey(id, nome, escudo_url, cores),
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, cores),
           liga:ligas!partidas_liga_id_fkey(id, nome, codigo_api)
         `, { count: 'exact' })
         .order('data', { ascending: false })

@@ -239,7 +239,7 @@ async function generatePrediction(match: any): Promise<Prediction | null> {
     },
     awayTeam: {
       name: awayStats.nome,
-      logo: awayStats.escudo_url,
+      logo: null,
       probability: probs.awayWin,
       strength: awayStrength,
       primaryColor: awayStats.cores?.primary || '#6B7280',

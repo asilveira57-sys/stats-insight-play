@@ -237,7 +237,6 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
                 playerName: `${stats.name} (Time)`,
                 teamId,
                 teamName: stats.name,
-                teamLogo: stats.logo,
                 teamPrimaryColor: stats.primaryColor,
                 teamSecondaryColor: stats.secondaryColor,
                 goals: stats.goals,

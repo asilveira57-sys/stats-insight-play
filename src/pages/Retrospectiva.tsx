@@ -57,7 +57,6 @@ import {
 
 interface TeamData {
   nome: string;
-  escudo_url: string | null;
   cores: { primary?: string; secondary?: string } | null;
 }
 

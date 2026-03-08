@@ -75,14 +75,12 @@ const transformMatch = (match: Partida) => ({
   awayTeamId: match.time_fora?.id,
   homeTeam: {
     name: match.time_casa?.nome || 'TBD',
-    logo: match.time_casa?.escudo_url || '/placeholder.svg',
     score: match.gols_casa,
     primaryColor: (match.time_casa?.cores as any)?.primary || '#6B7280',
     secondaryColor: (match.time_casa?.cores as any)?.secondary || '#FFFFFF',
   },
   awayTeam: {
     name: match.time_fora?.nome || 'TBD',
-    logo: match.time_fora?.escudo_url || '/placeholder.svg',
     score: match.gols_fora,
     primaryColor: (match.time_fora?.cores as any)?.primary || '#6B7280',
     secondaryColor: (match.time_fora?.cores as any)?.secondary || '#FFFFFF',

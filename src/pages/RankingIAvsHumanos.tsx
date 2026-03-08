@@ -89,8 +89,8 @@ interface ComparisonData {
   partidas: {
     data: string;
     rodada: number | null;
-    time_casa: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
-    time_fora: { nome: string; escudo_url: string | null; cores: { primary?: string; secondary?: string } | null } | null;
+    time_casa: { nome: string; cores: { primary?: string; secondary?: string } | null } | null;
+    time_fora: { nome: string; cores: { primary?: string; secondary?: string } | null } | null;
     ligas: { nome: string; slug: string | null } | null;
   } | null;
 }

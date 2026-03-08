@@ -184,7 +184,6 @@ export function useStandings(competitionCode: string) {
       return totalTable.table.map((standing: Standing) => ({
         position: standing.position,
         team: standing.team.shortName || standing.team.name,
-        teamLogo: standing.team.crest,
         played: standing.playedGames,
         won: standing.won,
         drawn: standing.draw,
