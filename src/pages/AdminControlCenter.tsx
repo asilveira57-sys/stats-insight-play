@@ -1044,7 +1044,7 @@ export default function AdminControlCenter() {
                     {/* Controls */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runValidationsLoop}
+                        onClick={() => startJob('validations')}
                         disabled={loopState.validations.running}
                         className="bg-green-600 hover:bg-green-700"
                       >
