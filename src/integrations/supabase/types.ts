@@ -1636,9 +1636,16 @@ export type Database = {
           last_error: string | null
           last_fetched_at: string | null
           last_hash: string | null
+          last_parsed_at: string | null
+          last_promoted_at: string | null
+          last_resolved_at: string | null
           last_status: string | null
+          pipeline_status: string | null
           season_label: string | null
           source_id: string
+          staging_promoted: number | null
+          staging_resolved: number | null
+          staging_total: number | null
           updated_at: string
           url: string
           url_type: string
@@ -1652,9 +1659,16 @@ export type Database = {
           last_error?: string | null
           last_fetched_at?: string | null
           last_hash?: string | null
+          last_parsed_at?: string | null
+          last_promoted_at?: string | null
+          last_resolved_at?: string | null
           last_status?: string | null
+          pipeline_status?: string | null
           season_label?: string | null
           source_id: string
+          staging_promoted?: number | null
+          staging_resolved?: number | null
+          staging_total?: number | null
           updated_at?: string
           url: string
           url_type?: string
@@ -1668,9 +1682,16 @@ export type Database = {
           last_error?: string | null
           last_fetched_at?: string | null
           last_hash?: string | null
+          last_parsed_at?: string | null
+          last_promoted_at?: string | null
+          last_resolved_at?: string | null
           last_status?: string | null
+          pipeline_status?: string | null
           season_label?: string | null
           source_id?: string
+          staging_promoted?: number | null
+          staging_resolved?: number | null
+          staging_total?: number | null
           updated_at?: string
           url?: string
           url_type?: string
@@ -1729,6 +1750,143 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      historical_staging_matches: {
+        Row: {
+          away_team_confidence: string | null
+          away_team_id: string | null
+          away_team_raw: string
+          competition_raw: string | null
+          created_at: string
+          document_id: string | null
+          extra_data: Json | null
+          home_team_confidence: string | null
+          home_team_id: string | null
+          home_team_raw: string
+          id: string
+          job_id: string | null
+          liga_confidence: string | null
+          liga_id: string | null
+          match_date: string | null
+          match_date_raw: string | null
+          promoted_match_id: string | null
+          resolution_notes: string | null
+          round_raw: string | null
+          score_away: number | null
+          score_home: number | null
+          season_raw: string | null
+          source_url_id: string | null
+          status: string
+          updated_at: string
+          venue_raw: string | null
+        }
+        Insert: {
+          away_team_confidence?: string | null
+          away_team_id?: string | null
+          away_team_raw: string
+          competition_raw?: string | null
+          created_at?: string
+          document_id?: string | null
+          extra_data?: Json | null
+          home_team_confidence?: string | null
+          home_team_id?: string | null
+          home_team_raw: string
+          id?: string
+          job_id?: string | null
+          liga_confidence?: string | null
+          liga_id?: string | null
+          match_date?: string | null
+          match_date_raw?: string | null
+          promoted_match_id?: string | null
+          resolution_notes?: string | null
+          round_raw?: string | null
+          score_away?: number | null
+          score_home?: number | null
+          season_raw?: string | null
+          source_url_id?: string | null
+          status?: string
+          updated_at?: string
+          venue_raw?: string | null
+        }
+        Update: {
+          away_team_confidence?: string | null
+          away_team_id?: string | null
+          away_team_raw?: string
+          competition_raw?: string | null
+          created_at?: string
+          document_id?: string | null
+          extra_data?: Json | null
+          home_team_confidence?: string | null
+          home_team_id?: string | null
+          home_team_raw?: string
+          id?: string
+          job_id?: string | null
+          liga_confidence?: string | null
+          liga_id?: string | null
+          match_date?: string | null
+          match_date_raw?: string | null
+          promoted_match_id?: string | null
+          resolution_notes?: string | null
+          round_raw?: string | null
+          score_away?: number | null
+          score_home?: number | null
+          season_raw?: string | null
+          source_url_id?: string | null
+          status?: string
+          updated_at?: string
+          venue_raw?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_staging_matches_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "historical_raw_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "historical_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_liga_id_fkey"
+            columns: ["liga_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_promoted_match_id_fkey"
+            columns: ["promoted_match_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historical_staging_matches_source_url_id_fkey"
+            columns: ["source_url_id"]
+            isOneToOne: false
+            referencedRelation: "historical_source_urls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lgpd_config: {
         Row: {
