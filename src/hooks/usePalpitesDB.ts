@@ -80,7 +80,7 @@ async function getTeamStats(teamId: string): Promise<TeamStats | null> {
   // Get team info
   const { data: team } = await supabase
     .from('times')
-    .select('id, nome, escudo_url, cores')
+    .select('id, nome, cores')
     .eq('id', teamId)
     .maybeSingle();
 
