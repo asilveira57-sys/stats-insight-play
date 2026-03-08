@@ -93,6 +93,19 @@ export default function AdminKaggle() {
   const s = stats.data;
   const isLoading = registerDataset.isPending || createJob.isPending || profileFile.isPending || stageData.isPending || resolveJob.isPending || promoteJob.isPending || batchProcess.isPending;
 
+  // Auto-polling: refresh jobs every 8s when there are active jobs
+  const hasActiveJobs = (jobs.data || []).some((j: any) => 
+    ["pending", "downloading", "extracting", "profiling", "mapping", "staging"].includes(j.status)
+  );
+  useEffect(() => {
+    if (!hasActiveJobs) return;
+    const interval = setInterval(() => {
+      jobs.refetch();
+      stats.refetch();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [hasActiveJobs]);
+
   const getInvokeErrorMessage = async (e: any, fallback = "Falha ao chamar a função") => {
     try {
       if (e?.context && typeof e.context.json === "function") {
