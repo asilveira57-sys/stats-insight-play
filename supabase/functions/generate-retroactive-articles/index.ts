@@ -227,14 +227,14 @@ async function generateThumbnail(
 - Use abstract shapes, stadium architecture, and atmospheric effects only`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1 },
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
     });
 
@@ -244,10 +244,9 @@ async function generateThumbnail(
     }
 
     const data = await response.json();
-    const base64Image =
-      data?.predictions?.[0]?.bytesBase64Encoded ||
-      data?.predictions?.[0]?.image?.bytesBase64Encoded ||
-      null;
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data);
+    const base64Image = imagePart?.inlineData?.data;
 
     if (!base64Image) {
       console.error("No valid image in Gemini response");
