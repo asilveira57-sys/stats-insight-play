@@ -116,3 +116,9 @@ verify_jwt = false
 
 [functions.historical-promote]
 verify_jwt = false
+
+[functions.historical-autodiscover]
+verify_jwt = false
+
+[functions.historical-batch-pipeline]
+verify_jwt = false
