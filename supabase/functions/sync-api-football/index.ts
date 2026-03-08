@@ -162,8 +162,9 @@ Deno.serve(async (req) => {
 
     // Parse request body for optional parameters
     let leaguesToSync = Object.keys(API_FOOTBALL_LEAGUES).map(Number);
-    let season = new Date().getFullYear();
-    let syncGoals = true; // Default to syncing goals for finished matches
+    let season = 2024; // Default to 2024 (latest available on free plan)
+    let syncGoals = true;
+    let seasonFallback = true; // Try older seasons if current fails
     
     try {
       const body = await req.json();
@@ -172,9 +173,13 @@ Deno.serve(async (req) => {
       }
       if (body.season) {
         season = body.season;
+        seasonFallback = false; // User explicitly chose season
       }
       if (body.syncGoals !== undefined) {
         syncGoals = body.syncGoals;
+      }
+      if (body.seasonFallback !== undefined) {
+        seasonFallback = body.seasonFallback;
       }
     } catch {
       // No body provided, use defaults
@@ -272,14 +277,27 @@ Deno.serve(async (req) => {
             .eq('id', internalLeagueId);
         }
 
-        // Fetch fixtures for this league
-        const fixturesData = await fetchFromApiFootball(
-          `/fixtures?league=${leagueId}&season=${season}`,
-          apiKey
-        );
+        // Fetch fixtures for this league with season fallback
+        let fixtures: ApiFootballFixture[] = [];
+        let usedSeason = season;
+        const seasonsToTry = seasonFallback ? [season, 2024, 2023, 2022] : [season];
+        
+        for (const trySeason of [...new Set(seasonsToTry)]) {
+          try {
+            const fixturesData = await fetchFromApiFootball(
+              `/fixtures?league=${leagueId}&season=${trySeason}`,
+              apiKey
+            );
+            fixtures = fixturesData.response || [];
+            usedSeason = trySeason;
+            if (fixtures.length > 0) break;
+          } catch (seasonErr) {
+            console.log(`Season ${trySeason} failed for league ${leagueId}: ${seasonErr}`);
+            continue;
+          }
+        }
 
-        const fixtures: ApiFootballFixture[] = fixturesData.response || [];
-        console.log(`Found ${fixtures.length} fixtures for ${leagueInfo.name}`);
+        console.log(`Found ${fixtures.length} fixtures for ${leagueInfo.name} (season ${usedSeason})`);
 
         // Process each fixture
         for (const fixture of fixtures) {

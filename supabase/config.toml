@@ -101,3 +101,9 @@ verify_jwt = false
 
 [functions.process-queue]
 verify_jwt = false
+
+[functions.fix-inverted-merges]
+verify_jwt = false
+
+[functions.dedup-matches]
+verify_jwt = false

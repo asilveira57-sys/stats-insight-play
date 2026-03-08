@@ -184,6 +184,264 @@ function LogEntry({ log, onReprocess }: { log: any; onReprocess: () => void }) {
   );
 }
 
+// Database Health Tab Component
+function DatabaseHealthTab() {
+  const { toast } = useToast();
+  const [healthData, setHealthData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [fixingMerges, setFixingMerges] = useState(false);
+  const [dedupRunning, setDedupRunning] = useState(false);
+  const [rebuildingArt, setRebuildingArt] = useState(false);
+
+  const fetchHealth = async () => {
+    setLoading(true);
+    try {
+      // Get duplicate match count
+      const { data: matches } = await supabase
+        .from('partidas')
+        .select('time_casa_id, time_fora_id, data');
+
+      const groupMap = new Map<string, number>();
+      for (const m of matches || []) {
+        const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
+        groupMap.set(key, (groupMap.get(key) || 0) + 1);
+      }
+      let dupMatches = 0;
+      let dupGroups = 0;
+      for (const count of groupMap.values()) {
+        if (count > 1) { dupMatches += count - 1; dupGroups++; }
+      }
+
+      // Get inverted merges count
+      const { data: teams } = await supabase
+        .from('times')
+        .select('id, slug, status');
+
+      let invertedMerges = 0;
+      const teamsBySlug = new Map<string, any[]>();
+      for (const t of teams || []) {
+        if (!t.slug) continue;
+        const arr = teamsBySlug.get(t.slug) || [];
+        arr.push(t);
+        teamsBySlug.set(t.slug, arr);
+      }
+      for (const t of teams || []) {
+        if (!t.slug?.endsWith('-1') || t.status !== 'active') continue;
+        const canonical = teamsBySlug.get(t.slug.replace(/-1$/, ''));
+        if (canonical?.find((c: any) => c.status === 'merged')) invertedMerges++;
+      }
+
+      // Get leagues without matches
+      const { data: leagues } = await supabase
+        .from('ligas')
+        .select('id, nome, ativa');
+
+      const activeLeagues = (leagues || []).filter(l => l.ativa);
+      const { data: leagueMatchCounts } = await supabase
+        .from('partidas')
+        .select('liga_id');
+
+      const leaguesWithMatches = new Set((leagueMatchCounts || []).map(m => m.liga_id));
+      const emptyLeagues = activeLeagues.filter(l => !leaguesWithMatches.has(l.id));
+
+      setHealthData({
+        dupMatches,
+        dupGroups,
+        invertedMerges,
+        emptyLeagues: emptyLeagues.length,
+        emptyLeagueNames: emptyLeagues.map(l => l.nome),
+        totalMatches: matches?.length || 0,
+        totalTeams: (teams || []).filter(t => t.status === 'active').length,
+        mergedTeams: (teams || []).filter(t => t.status === 'merged').length,
+      });
+    } catch (e) {
+      console.error('Health check error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchHealth(); }, []);
+
+  const handleFixMerges = async () => {
+    setFixingMerges(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-inverted-merges', {
+        body: { dry_run: false },
+      });
+      if (error) throw error;
+      toast({ title: 'Merges corrigidos!', description: `${data.fixed} times corrigidos, ${data.total_matches_migrated} partidas migradas.` });
+      fetchHealth();
+    } catch (e) {
+      toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+    } finally {
+      setFixingMerges(false);
+    }
+  };
+
+  const handleDedup = async () => {
+    setDedupRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dedup-matches', {
+        body: { dry_run: false, limit: 100 },
+      });
+      if (error) throw error;
+      toast({ title: 'Deduplicação executada!', description: `${data.records_deleted} registros removidos. Restam: ${data.remaining_duplicates}` });
+      fetchHealth();
+    } catch (e) {
+      toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+    } finally {
+      setDedupRunning(false);
+    }
+  };
+
+  const handleRebuildArt = async () => {
+    setRebuildingArt(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('rebuild-artilharia');
+      if (error) throw error;
+      toast({ title: 'Artilharia reconstruída!', description: `${data.goals_processed} gols, ${data.aggregations_created} agregações.` });
+    } catch (e) {
+      toast({ title: 'Erro', description: String(e), variant: 'destructive' });
+    } finally {
+      setRebuildingArt(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <HealthCard
+          title="Partidas Duplicadas"
+          value={healthData?.dupMatches || 0}
+          subtitle={`${healthData?.dupGroups || 0} grupos`}
+          status={healthData?.dupMatches > 0 ? 'error' : 'ok'}
+          icon={AlertTriangle}
+        />
+        <HealthCard
+          title="Merges Invertidos"
+          value={healthData?.invertedMerges || 0}
+          subtitle="Times -1 ativos"
+          status={healthData?.invertedMerges > 0 ? 'warning' : 'ok'}
+          icon={RotateCcw}
+        />
+        <HealthCard
+          title="Ligas Sem Partidas"
+          value={healthData?.emptyLeagues || 0}
+          subtitle={healthData?.emptyLeagueNames?.slice(0, 2).join(', ') || 'Nenhuma'}
+          status={healthData?.emptyLeagues > 0 ? 'warning' : 'ok'}
+          icon={Trophy}
+        />
+        <HealthCard
+          title="Times Ativos / Merged"
+          value={`${healthData?.totalTeams || 0} / ${healthData?.mergedTeams || 0}`}
+          subtitle={`${healthData?.totalMatches || 0} partidas`}
+          status="ok"
+          icon={Database}
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" /> Corrigir Merges Invertidos
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {healthData?.invertedMerges || 0} times com slug -1 ativos cujo canônico está merged.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleFixMerges}
+              disabled={fixingMerges || (healthData?.invertedMerges || 0) === 0}
+              className="w-full"
+              variant={healthData?.invertedMerges > 0 ? 'default' : 'outline'}
+            >
+              {fixingMerges ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+              {healthData?.invertedMerges > 0 ? `Corrigir ${healthData.invertedMerges} Times` : 'Nenhum para corrigir'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <XCircle className="w-4 h-4" /> Deduplicar Partidas
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {healthData?.dupMatches || 0} registros excedentes em {healthData?.dupGroups || 0} grupos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleDedup}
+              disabled={dedupRunning || (healthData?.dupMatches || 0) === 0}
+              className="w-full"
+              variant={healthData?.dupMatches > 0 ? 'destructive' : 'outline'}
+            >
+              {dedupRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+              {healthData?.dupMatches > 0 ? `Remover ${healthData.dupMatches} Duplicatas` : 'Sem duplicatas'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="w-4 h-4" /> Reconstruir Artilharia
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Reprocessar todos os gols após limpeza do banco.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleRebuildArt}
+              disabled={rebuildingArt}
+              className="w-full"
+              variant="outline"
+            >
+              {rebuildingArt ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              Reconstruir Artilharia
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Background dedup job */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Settings className="w-4 h-4" /> Jobs de Limpeza em Background
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Para grandes volumes, execute via background job (roda automaticamente a cada minuto).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={async () => {
+            await (supabase as any).from('background_jobs').upsert({
+              job_type: 'dedup_matches', status: 'running', progress: {},
+              started_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+            }, { onConflict: 'job_type' });
+            toast({ title: 'Job de dedup iniciado em background!' });
+          }}>
+            <Play className="w-3 h-3 mr-1" /> Dedup Background
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fetchHealth()}>
+            <RefreshCw className="w-3 h-3 mr-1" /> Atualizar
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminControlCenter() {
   const { isAdmin, isLoading } = useAdminAccess();
   const { toast } = useToast();
@@ -666,8 +924,11 @@ export default function AdminControlCenter() {
           </div>
 
           {/* Main Tabs */}
-          <Tabs defaultValue="syncs" className="space-y-4">
-            <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+          <Tabs defaultValue="health" className="space-y-4">
+            <TabsList className="grid grid-cols-7 w-full max-w-4xl">
+              <TabsTrigger value="health" className="flex items-center gap-1">
+                <Activity className="w-4 h-4" /> Saúde
+              </TabsTrigger>
               <TabsTrigger value="syncs" className="flex items-center gap-1">
                 <RefreshCw className="w-4 h-4" /> Syncs
               </TabsTrigger>
@@ -688,7 +949,12 @@ export default function AdminControlCenter() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Syncs Tab */}
+            {/* DB Health Tab */}
+            <TabsContent value="health">
+              <DatabaseHealthTab />
+            </TabsContent>
+
+
             <TabsContent value="syncs">
               <Card>
                 <CardHeader>
