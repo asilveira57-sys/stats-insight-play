@@ -505,7 +505,7 @@ export default function AdminKaggle() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(stagingMatches.data || []).slice(0, 100).map((m: any) => (
+                        {(stagingMatches.data || []).map((m: any) => (
                           <TableRow key={m.id}>
                             <TableCell className="text-xs">{m.parsed_date || m.raw_date_text}</TableCell>
                             <TableCell className="text-xs">{m.raw_home_team}</TableCell>
