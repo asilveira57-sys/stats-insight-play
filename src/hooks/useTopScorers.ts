@@ -207,7 +207,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
           if (!existingCompetitionIds.has(ligaId)) {
             const ligaNome = (leagueMatches[0]?.ligas as any)?.nome || 'Unknown';
             
-            const teamGoals = new Map<string, { name: string; logo: string | null; primaryColor: string | null; secondaryColor: string | null; goals: number; matches: number }>();
+            const teamGoals = new Map<string, { name: string; primaryColor: string | null; secondaryColor: string | null; goals: number; matches: number }>();
             
             leagueMatches.forEach(match => {
               const homeTeam = match.time_casa as any;
