@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 // ─── Hooks ─────────────────────────────────────────
 function useSources() {
@@ -46,13 +47,12 @@ function useSourceUrls(sourceId: string | null) {
     queryKey: ["historical-source-urls", sourceId],
     queryFn: async () => {
       if (!sourceId) return [];
-      const { data, error } = await supabase
-        .from("historical_source_urls")
-        .select("*")
-        .eq("source_id", sourceId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return fetchAllRecords(
+        "historical_source_urls",
+        "*",
+        (q: any) => q.eq("source_id", sourceId),
+        { column: "created_at", ascending: false }
+      );
     },
     enabled: !!sourceId,
   });
