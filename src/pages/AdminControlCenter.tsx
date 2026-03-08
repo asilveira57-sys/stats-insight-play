@@ -639,6 +639,99 @@ export default function AdminControlCenter() {
     }
   };
 
+  const runImageFixLoop = async () => {
+    stopLoopRef.imageFix = false;
+    setLoopState(prev => ({ ...prev, imageFix: { running: true, fixed: 0, failed: 0, pending: 0, log: ['🖼️ Iniciando correção de imagens (1 por vez, ~8s entre chamadas)...'], results: [] } }));
+    let totalFixed = 0;
+    let totalFailed = 0;
+    let round = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 8000;
+
+    while (!stopLoopRef.imageFix) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke('fix-article-thumbnails', { body: { limit: 1 } });
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 120000);
+            const waitSec = Math.round(backoffMs / 1000);
+            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
+            setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, log: [...prev.imageFix.log.slice(-49), msg] } }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 8000;
+
+        const fixed = data?.fixed || 0;
+        const errors = data?.errors || 0;
+        const pending = data?.pending || 0;
+        const newResults = data?.results || [];
+        totalFixed += fixed;
+        totalFailed += errors;
+
+        const msg = fixed > 0
+          ? `✅ #${round}: ${newResults[0]?.titulo?.slice(0, 50) || 'Artigo'} — Pendentes: ${pending}`
+          : errors > 0
+            ? `❌ #${round}: Erro — ${newResults[0]?.error?.slice(0, 50) || 'desconhecido'}`
+            : `🏁 Nenhum artigo pendente.`;
+
+        setLoopState(prev => ({
+          ...prev,
+          imageFix: {
+            running: true,
+            fixed: totalFixed,
+            failed: totalFailed,
+            pending,
+            log: [...prev.imageFix.log.slice(-49), msg],
+            results: [...newResults, ...prev.imageFix.results].slice(0, 50),
+          },
+        }));
+
+        if (pending === 0 || (fixed === 0 && errors === 0)) {
+          setLoopState(prev => ({
+            ...prev,
+            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `🏁 Concluído! ${totalFixed} imagens corrigidas.`] },
+          }));
+          toast({ title: 'Correção de imagens completa!', description: `${totalFixed} imagens substituídas.` });
+          break;
+        }
+
+        // ~8s between calls to respect rate limits
+        await new Promise(r => setTimeout(r, 8000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = String(e);
+
+        if (consecutiveErrors >= 5) {
+          setLoopState(prev => ({
+            ...prev,
+            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
+          }));
+          toast({ title: 'Interrompido por erros', description: `${totalFixed} imagens corrigidas.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(10 * consecutiveErrors, 60);
+        setLoopState(prev => ({
+          ...prev,
+          imageFix: { ...prev.imageFix, log: [...prev.imageFix.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
+        }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+      }
+    }
+    if (stopLoopRef.imageFix) {
+      setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `⏹ Parado. ${totalFixed} imagens corrigidas.`] } }));
+    }
+  };
+
   // Sync handlers
   const handleSyncAll = async () => {
     setSyncingAll(true);
