@@ -42,7 +42,6 @@ export default function Admin() {
   const [generating, setGenerating] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState({ generated: 0, failed: 0, pending: 0, log: '' });
-  const stopAnalysisRef = useRef(false);
   const [generatingPalpites, setGeneratingPalpites] = useState(false);
   const [generatingRetroactive, setGeneratingRetroactive] = useState(false);
   const [syncingFootballData, setSyncingFootballData] = useState(false);
