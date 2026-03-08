@@ -413,60 +413,105 @@ serve(async (req) => {
       return (Date.now() - startTime) < SAFETY_TIMEOUT_MS;
     }
 
-    // Get existing validation articles to avoid duplicates
-    const { data: existingNews } = await supabaseAdmin
-      .from('noticias')
-      .select('partida_id')
-      .not('partida_id', 'is', null)
-      .like('slug', '%validacao-palpites%');
+    // === PAGINATED FETCH: Get ALL existing validation article partida_ids ===
+    const existingValidationMatchIds = new Set<string>();
+    {
+      let offset = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: batch } = await supabaseAdmin
+          .from('noticias')
+          .select('partida_id')
+          .not('partida_id', 'is', null)
+          .like('slug', '%validacao-palpites%')
+          .range(offset, offset + pageSize - 1);
 
-    const existingValidationMatchIds = new Set(existingNews?.map(n => n.partida_id) || []);
+        if (batch && batch.length > 0) {
+          for (const n of batch) existingValidationMatchIds.add(n.partida_id);
+          offset += pageSize;
+          if (batch.length < pageSize) hasMore = false;
+        } else {
+          hasMore = false;
+        }
+      }
+    }
+    console.log(`Found ${existingValidationMatchIds.size} existing validation articles`);
 
-    // Count total pending for stats
+    // Count total comparativos for stats
     const { count: totalWithComparativo } = await supabaseAdmin
       .from('comparativo_resultados')
       .select('*', { count: 'exact', head: true });
 
     const totalPending = (totalWithComparativo || 0) - existingValidationMatchIds.size;
 
-    // Fetch finished matches that DON'T have validation articles yet
-    // Use a smarter query: get comparativo_resultados that are NOT in existing articles
-    let matchQuery = supabaseAdmin
-      .from('partidas')
-      .select(`
-        id,
-        data,
-        hora,
-        gols_casa,
-        gols_fora,
-        time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
-        time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
-        liga:ligas(id, nome, slug),
-        palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca, analise),
-        comparativo:comparativo_resultados(sistema_acertou_resultado, sistema_acertou_placar, resultado_oficial, sistema_resultado_previsto, total_usuarios_palpitaram, usuarios_acertaram_resultado, usuarios_acertaram_placar)
-      `)
-      .eq('status', 'finished')
-      .not('gols_casa', 'is', null)
-      .not('gols_fora', 'is', null)
-      .order('data', { ascending: false });
+    // === PROGRESSIVE SCANNING: Find matches that need validation articles ===
+    let matches: any[] = [];
 
     if (targetMatchId) {
-      matchQuery = matchQuery.eq('id', targetMatchId);
+      // Single match mode
+      const { data, error } = await supabaseAdmin
+        .from('partidas')
+        .select(`
+          id, data, hora, gols_casa, gols_fora,
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
+          liga:ligas(id, nome, slug),
+          palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca, analise),
+          comparativo:comparativo_resultados(sistema_acertou_resultado, sistema_acertou_placar, resultado_oficial, sistema_resultado_previsto, total_usuarios_palpitaram, usuarios_acertaram_resultado, usuarios_acertaram_placar)
+        `)
+        .eq('id', targetMatchId);
+      if (error) throw new Error(`Failed to fetch match: ${error.message}`);
+      matches = data || [];
+    } else {
+      // Progressive scan: fetch comparativo_resultados in batches, skip already-covered
+      const needed = batchLimit > 0 ? batchLimit : 10;
+      let scanOffset = 0;
+      const scanBatch = 500;
+      const maxScanRows = 50000;
+
+      while (matches.length < needed && scanOffset < maxScanRows && hasTimeLeft()) {
+        const { data: compBatch, error: compErr } = await supabaseAdmin
+          .from('comparativo_resultados')
+          .select('partida_id')
+          .range(scanOffset, scanOffset + scanBatch - 1);
+
+        if (compErr || !compBatch || compBatch.length === 0) break;
+
+        // Filter to IDs not yet covered
+        const pendingIds = compBatch
+          .map(c => c.partida_id)
+          .filter(id => !existingValidationMatchIds.has(id));
+
+        if (pendingIds.length > 0) {
+          // Fetch only the needed amount of full match data
+          const idsToFetch = pendingIds.slice(0, needed - matches.length);
+          const { data: matchBatch, error: matchErr } = await supabaseAdmin
+            .from('partidas')
+            .select(`
+              id, data, hora, gols_casa, gols_fora,
+              time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
+              time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
+              liga:ligas(id, nome, slug),
+              palpite:palpites(prob_casa, prob_empate, prob_fora, placar_casa_estimado, placar_fora_estimado, forca_time_casa, forca_time_fora, confianca, analise),
+              comparativo:comparativo_resultados(sistema_acertou_resultado, sistema_acertou_placar, resultado_oficial, sistema_resultado_previsto, total_usuarios_palpitaram, usuarios_acertaram_resultado, usuarios_acertaram_placar)
+            `)
+            .in('id', idsToFetch)
+            .eq('status', 'finished')
+            .not('gols_casa', 'is', null)
+            .not('gols_fora', 'is', null);
+
+          if (!matchErr && matchBatch) {
+            matches.push(...matchBatch);
+          }
+        }
+
+        scanOffset += scanBatch;
+        if (compBatch.length < scanBatch) break;
+      }
     }
 
-    // Apply limit for batch processing (fetch more than needed to filter)
-    if (batchLimit > 0) {
-      matchQuery = matchQuery.limit(batchLimit * 5); // Fetch extra to account for skips
-    }
-
-    const { data: matches, error: matchError } = await matchQuery;
-
-    if (matchError) {
-      console.error("Error fetching matches:", matchError);
-      throw new Error(`Failed to fetch matches: ${matchError.message}`);
-    }
-
-    console.log(`Found ${matches?.length || 0} finished matches, ${totalPending} pending validation articles`);
+    console.log(`Progressive scan found ${matches.length} actionable matches, ${totalPending} pending total`);
 
     const results = {
       processed: 0,
