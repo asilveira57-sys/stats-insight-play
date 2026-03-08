@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2, CalendarDays } from "lucide-react";
+import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshCw, TrendingUp, Trophy, Users, CheckCircle2, CalendarDays, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
@@ -41,6 +41,8 @@ export default function Admin() {
   const [selectedMatch, setSelectedMatch] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState({ generated: 0, failed: 0, pending: 0, log: '' });
+  const stopAnalysisRef = useRef(false);
   const [generatingPalpites, setGeneratingPalpites] = useState(false);
   const [generatingRetroactive, setGeneratingRetroactive] = useState(false);
   const [syncingFootballData, setSyncingFootballData] = useState(false);
@@ -254,36 +256,80 @@ export default function Admin() {
   };
 
   const generateAllAnalyses = async () => {
+    stopAnalysisRef.current = false;
     setGeneratingAll(true);
+    setAnalysisProgress({ generated: 0, failed: 0, pending: 0, log: 'Iniciando...' });
     
-    try {
-      const response = await supabase.functions.invoke("generate-match-analysis", {
-        body: {}
-      });
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 2000;
+    let round = 0;
 
-      if (response.error) {
-        throw new Error(response.error.message);
+    while (!stopAnalysisRef.current) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-match-analysis", {
+          body: { limit: 1 }
+        });
+
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 60000);
+            const waitSec = Math.round(backoffMs / 1000);
+            setAnalysisProgress(prev => ({ ...prev, log: `⚠️ Rate limit. Aguardando ${waitSec}s...` }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 2000;
+
+        const results = data?.results || {};
+        const gen = results.created || 0;
+        const fail = results.errors?.length || 0;
+        const pending = results.stats?.withoutAnalysis || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        setAnalysisProgress({ generated: totalGenerated, failed: totalFailed, pending, log: gen > 0 ? `✅ #${round} gerada. Pendentes: ${pending}` : `⏭️ #${round}: ${results.skipped || 0} puladas` });
+
+        if ((gen === 0 && fail === 0) || pending === 0) {
+          setAnalysisProgress(prev => ({ ...prev, log: `🏁 Concluído! ${totalGenerated} análises geradas.` }));
+          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
+          break;
+        }
+
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = e instanceof Error ? e.message : String(e);
+
+        if (consecutiveErrors >= 5) {
+          setAnalysisProgress(prev => ({ ...prev, log: `❌ Parado após 5 erros: ${errMsg}` }));
+          toast({ title: 'Interrompido por erros', description: `${totalGenerated} análises geradas.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(5 * consecutiveErrors, 30);
+        setAnalysisProgress(prev => ({ ...prev, log: `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...` }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
       }
-
-      const result = response.data;
-      
-      toast({
-        title: "Processo concluído",
-        description: `${result.results.created} análises criadas, ${result.results.skipped} ignoradas.`,
-      });
-
-      // Refresh matches list
-      window.location.reload();
-    } catch (error) {
-      console.error("Error generating analyses:", error);
-      toast({
-        title: "Erro ao gerar análises",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive"
-      });
-    } finally {
-      setGeneratingAll(false);
     }
+
+    if (stopAnalysisRef.current) {
+      setAnalysisProgress(prev => ({ ...prev, log: `⏹ Parado. ${totalGenerated} análises geradas.` }));
+    }
+    setGeneratingAll(false);
+  };
+
+  const stopAllAnalyses = () => {
+    stopAnalysisRef.current = true;
   };
 
   const generateMissingPalpites = async () => {
@@ -678,29 +724,43 @@ export default function Admin() {
                   )}
                 </Button>
 
-                <Button 
-                  onClick={generateAllAnalyses}
-                  disabled={generatingAll}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  {generatingAll ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando partidas...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Gerar Todas as Análises Pendentes
-                    </>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={generateAllAnalyses}
+                    disabled={generatingAll}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    {generatingAll ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando ({analysisProgress.generated} geradas)...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Gerar Todas as Análises Pendentes
+                      </>
+                    )}
+                  </Button>
+                  {generatingAll && (
+                    <Button onClick={stopAllAnalyses} variant="destructive" size="icon">
+                      <Square className="h-4 w-4" />
+                    </Button>
                   )}
-                </Button>
+                </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Este processo pode levar alguns minutos dependendo do número de partidas.
-              </p>
+              {analysisProgress.log && (
+                <p className="text-xs text-muted-foreground">
+                  {analysisProgress.log}
+                </p>
+              )}
+              {!analysisProgress.log && (
+                <p className="text-xs text-muted-foreground">
+                  Processa uma análise por vez até finalizar todas as pendentes.
+                </p>
+              )}
             </CardContent>
           </Card>
 
