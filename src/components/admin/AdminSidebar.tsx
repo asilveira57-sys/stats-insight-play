@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   GitMerge,
   BookOpen,
+  HardDrive,
 } from "lucide-react";
 import {
   Sidebar,
