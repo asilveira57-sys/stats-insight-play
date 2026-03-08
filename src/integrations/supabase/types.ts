@@ -276,6 +276,36 @@ export type Database = {
           },
         ]
       }
+      background_jobs: {
+        Row: {
+          created_at: string | null
+          id: string
+          job_type: string
+          progress: Json
+          started_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          job_type: string
+          progress?: Json
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          job_type?: string
+          progress?: Json
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           badge_key: string

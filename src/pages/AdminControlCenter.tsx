@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
@@ -316,7 +316,7 @@ export default function AdminControlCenter() {
     toast({ title: 'Importação CSV concluída!', description: 'Os 3 arquivos foram processados.' });
   };
 
-  // Auto-loop batch processing state
+  // Background jobs state (synced from database via realtime)
   const [loopState, setLoopState] = useState<{
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
@@ -331,404 +331,76 @@ export default function AdminControlCenter() {
     imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
   });
 
-  const stopLoopRef = useState(() => ({ predictions: false, retroPredictions: false, analyses: false, validations: false, imageFix: false }))[0];
+  // Sync background_jobs table → loopState via realtime
+  useEffect(() => {
+    const syncJob = (job: any) => {
+      if (!job) return;
+      const p = job.progress || {};
+      const running = job.status === 'running';
+      const logArr = p.last_log ? [p.last_log] : [];
 
-  const runPredictionsLoop = async () => {
-    stopLoopRef.predictions = false;
-    setLoopState(prev => ({ ...prev, predictions: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando geração de palpites...'] } }));
-    let totalGenerated = 0;
-    let totalFailed = 0;
-    let round = 0;
-
-    while (!stopLoopRef.predictions) {
-      round++;
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-predictions');
-        if (error) throw error;
-
-        const gen = data?.generated || 0;
-        const fail = data?.failed || 0;
-        totalGenerated += gen;
-        totalFailed += fail;
-
-        const msg = `Lote ${round}: ${gen} gerados, ${fail} falhas (total: ${totalGenerated})`;
-        setLoopState(prev => ({
-          ...prev,
-          predictions: { running: true, generated: totalGenerated, failed: totalFailed, total: data?.totalScheduled || 0, log: [...prev.predictions.log.slice(-19), msg] },
-        }));
-
-        if (gen === 0 && fail === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, '✅ Todos os palpites foram gerados!'] },
-          }));
-          toast({ title: 'Palpites completos!', description: `${totalGenerated} palpites gerados.` });
+      switch (job.job_type) {
+        case 'predictions':
+          setLoopState(prev => ({ ...prev, predictions: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, log: logArr } }));
           break;
-        }
-      } catch (e) {
-        setLoopState(prev => ({
-          ...prev,
-          predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, `Erro: ${String(e)}`] },
-        }));
-        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
-        break;
+        case 'retro_predictions':
+          setLoopState(prev => ({ ...prev, retroPredictions: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, log: logArr } }));
+          break;
+        case 'analyses':
+          setLoopState(prev => ({ ...prev, analyses: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, log: logArr, tasks: [] } }));
+          break;
+        case 'validations':
+          setLoopState(prev => ({ ...prev, validations: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
+          break;
+        case 'image_fix':
+          setLoopState(prev => ({ ...prev, imageFix: { running, fixed: p.fixed || 0, failed: p.failed || 0, pending: p.pending || 0, log: logArr, results: p.last_results || [] } }));
+          break;
       }
-    }
-    if (stopLoopRef.predictions) {
-      setLoopState(prev => ({ ...prev, predictions: { ...prev.predictions, running: false, log: [...prev.predictions.log, '⏹ Parado pelo usuário.'] } }));
+    };
+
+    // Initial fetch
+    (supabase as any).from('background_jobs').select('*').then(({ data }: any) => {
+      (data || []).forEach(syncJob);
+    });
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('bg-jobs-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'background_jobs' }, (payload) => {
+        syncJob(payload.new);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const startJob = async (jobType: string) => {
+    const { error } = await (supabase as any).from('background_jobs')
+      .update({
+        status: 'running',
+        progress: {},
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('job_type', jobType);
+
+    if (error) {
+      toast({ title: 'Erro ao iniciar job', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Job iniciado!', description: 'O processamento roda em background. Você pode navegar livremente.' });
     }
   };
 
-  const runRetroPredictionsLoop = async () => {
-    stopLoopRef.retroPredictions = false;
-    setLoopState(prev => ({ ...prev, retroPredictions: { running: true, generated: 0, failed: 0, total: 0, log: ['Iniciando palpites retroativos...'] } }));
-    let totalGenerated = 0;
-    let totalFailed = 0;
-    let round = 0;
+  const stopJob = async (jobType: string) => {
+    const { error } = await (supabase as any).from('background_jobs')
+      .update({
+        status: 'stopped',
+        updated_at: new Date().toISOString()
+      })
+      .eq('job_type', jobType);
 
-    while (!stopLoopRef.retroPredictions) {
-      round++;
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-retroactive-predictions', { body: { limit: 100 } });
-        if (error) throw error;
-
-        const gen = data?.generated || 0;
-        const fail = data?.failed || 0;
-        totalGenerated += gen;
-        totalFailed += fail;
-
-        const msg = `Lote ${round}: ${gen} gerados, ${fail} falhas (total: ${totalGenerated})`;
-        setLoopState(prev => ({
-          ...prev,
-          retroPredictions: { running: true, generated: totalGenerated, failed: totalFailed, total: data?.totalFinished || 0, log: [...prev.retroPredictions.log.slice(-19), msg] },
-        }));
-
-        if (gen === 0 && fail === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, '✅ Completo!'] },
-          }));
-          toast({ title: 'Palpites retroativos completos!', description: `${totalGenerated} gerados.` });
-          break;
-        }
-      } catch (e) {
-        setLoopState(prev => ({
-          ...prev,
-          retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, `Erro: ${String(e)}`] },
-        }));
-        toast({ title: 'Erro', description: String(e), variant: 'destructive' });
-        break;
-      }
-    }
-    if (stopLoopRef.retroPredictions) {
-      setLoopState(prev => ({ ...prev, retroPredictions: { ...prev.retroPredictions, running: false, log: [...prev.retroPredictions.log, '⏹ Parado.'] } }));
-    }
-  };
-
-  const runValidationsLoop = async () => {
-    stopLoopRef.validations = false;
-    setLoopState(prev => ({ ...prev, validations: { running: true, generated: 0, failed: 0, total: 0, pending: 0, log: ['⏳ Iniciando geração de artigos de validação (1 por vez, ~1/min)...'], articles: [] } }));
-    let totalGenerated = 0;
-    let totalFailed = 0;
-    let round = 0;
-    let consecutiveErrors = 0;
-    let backoffMs = 3000;
-
-    while (!stopLoopRef.validations) {
-      round++;
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-validation-article', { body: { limit: 1 } });
-        if (error) {
-          const errMsg = String(error);
-          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
-            consecutiveErrors++;
-            backoffMs = Math.min(backoffMs * 2, 120000);
-            const waitSec = Math.round(backoffMs / 1000);
-            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
-            setLoopState(prev => ({ ...prev, validations: { ...prev.validations, log: [...prev.validations.log.slice(-49), msg] } }));
-            await new Promise(r => setTimeout(r, backoffMs));
-            continue;
-          }
-          throw error;
-        }
-
-        consecutiveErrors = 0;
-        backoffMs = 3000;
-
-        const results = data?.results || {};
-        const gen = results.created || 0;
-        const fail = results.errors?.length || 0;
-        const pending = results.stats?.pending || 0;
-        const total = results.stats?.totalWithComparativo || 0;
-        totalGenerated += gen;
-        totalFailed += fail;
-
-        const newArticles = results.articles || [];
-
-        const msg = gen > 0
-          ? `✅ #${round}: ${newArticles[0]?.timeCasa || ''} x ${newArticles[0]?.timeFora || ''} — Pendentes: ${pending}`
-          : `⏭️ #${round}: ${results.skipped || 0} pulados, ${fail} falhas. Pendentes: ${pending}`;
-
-        setLoopState(prev => ({
-          ...prev,
-          validations: {
-            running: true,
-            generated: totalGenerated,
-            failed: totalFailed,
-            total,
-            pending,
-            log: [...prev.validations.log.slice(-49), msg],
-            articles: [...newArticles, ...prev.validations.articles].slice(0, 50),
-          },
-        }));
-
-        if (gen === 0 && fail === 0 && (results.skipped || 0) === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Concluído! ${totalGenerated} artigos gerados.`] },
-          }));
-          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos de validação gerados.` });
-          break;
-        }
-
-        if (pending === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `🏁 Nenhum pendente restante. Total: ${totalGenerated}`] },
-          }));
-          toast({ title: 'Validações completas!', description: `${totalGenerated} artigos gerados.` });
-          break;
-        }
-
-        // ~1 per minute cadence (minus processing time)
-        await new Promise(r => setTimeout(r, 5000));
-      } catch (e) {
-        consecutiveErrors++;
-        totalFailed++;
-        const errMsg = String(e);
-
-        if (consecutiveErrors >= 5) {
-          setLoopState(prev => ({
-            ...prev,
-            validations: { ...prev.validations, running: false, log: [...prev.validations.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
-          }));
-          toast({ title: 'Interrompido por erros', description: `${totalGenerated} artigos gerados.`, variant: 'destructive' });
-          break;
-        }
-
-        const waitSec = Math.min(10 * consecutiveErrors, 60);
-        setLoopState(prev => ({
-          ...prev,
-          validations: { ...prev.validations, log: [...prev.validations.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
-        }));
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-      }
-    }
-    if (stopLoopRef.validations) {
-      setLoopState(prev => ({ ...prev, validations: { ...prev.validations, running: false, log: [...prev.validations.log, `⏹ Parado. ${totalGenerated} artigos gerados.`] } }));
-    }
-  };
-
-  const runAnalysesLoop = async () => {
-    stopLoopRef.analyses = false;
-    setLoopState(prev => ({ ...prev, analyses: { running: true, generated: 0, failed: 0, total: 0, log: ['⏳ Iniciando geração de análises (1 por vez)...'], tasks: [] } }));
-    let totalGenerated = 0;
-    let totalFailed = 0;
-    let round = 0;
-    let consecutiveErrors = 0;
-    let backoffMs = 2000;
-
-    while (!stopLoopRef.analyses) {
-      round++;
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-match-analysis', { body: { limit: 1 } });
-        if (error) {
-          const errMsg = String(error);
-          // Rate limit detection
-          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
-            consecutiveErrors++;
-            backoffMs = Math.min(backoffMs * 2, 60000);
-            const waitSec = Math.round(backoffMs / 1000);
-            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s antes de tentar novamente...`;
-            setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, log: [...prev.analyses.log.slice(-49), msg] } }));
-            await new Promise(r => setTimeout(r, backoffMs));
-            continue;
-          }
-          throw error;
-        }
-
-        consecutiveErrors = 0;
-        backoffMs = 2000;
-
-        const results = data?.results || {};
-        const gen = results.created || 0;
-        const fail = (results.errors?.length) || 0;
-        const pending = results.stats?.withoutAnalysis || 0;
-        const totalInWindow = results.stats?.totalInWindow || 0;
-        totalGenerated += gen;
-        totalFailed += fail;
-
-        // Build task entries from errors
-        const newTasks: { match: string; status: 'ok' | 'fail'; error?: string }[] = [];
-        if (gen > 0) {
-          newTasks.push({ match: `Análise #${totalGenerated}`, status: 'ok' });
-        }
-        if (results.errors) {
-          for (const err of results.errors) {
-            newTasks.push({ match: err, status: 'fail', error: err });
-          }
-        }
-
-        const msg = `✅ Lote ${round}: ${gen} gerada(s), ${fail} falha(s). Pendentes: ${pending}`;
-        setLoopState(prev => ({
-          ...prev,
-          analyses: {
-            running: true,
-            generated: totalGenerated,
-            failed: totalFailed,
-            total: totalInWindow,
-            log: [...prev.analyses.log.slice(-49), msg],
-            tasks: [...prev.analyses.tasks, ...newTasks],
-          },
-        }));
-
-        if (gen === 0 && fail === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `🏁 Concluído! ${totalGenerated} análises geradas no total.`] },
-          }));
-          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
-          break;
-        }
-
-        if (pending === 0) {
-          setLoopState(prev => ({
-            ...prev,
-            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `🏁 Nenhuma análise pendente restante. Total: ${totalGenerated}`] },
-          }));
-          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
-          break;
-        }
-
-        // Small delay between calls to be gentle on the API
-        await new Promise(r => setTimeout(r, 3000));
-      } catch (e) {
-        consecutiveErrors++;
-        totalFailed++;
-        const errMsg = String(e);
-        
-        if (consecutiveErrors >= 5) {
-          setLoopState(prev => ({
-            ...prev,
-            analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `❌ Parado após ${consecutiveErrors} erros consecutivos: ${errMsg}`], tasks: [...prev.analyses.tasks, { match: `Erro #${totalFailed}`, status: 'fail', error: errMsg }] },
-          }));
-          toast({ title: 'Interrompido por erros', description: `${consecutiveErrors} erros seguidos. ${totalGenerated} análises geradas.`, variant: 'destructive' });
-          break;
-        }
-
-        const waitSec = Math.min(5 * consecutiveErrors, 30);
-        setLoopState(prev => ({
-          ...prev,
-          analyses: { ...prev.analyses, log: [...prev.analyses.log, `⚠️ Erro (tentativa ${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`], tasks: [...prev.analyses.tasks, { match: `Erro #${totalFailed}`, status: 'fail', error: errMsg }] },
-        }));
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-      }
-    }
-    if (stopLoopRef.analyses) {
-      setLoopState(prev => ({ ...prev, analyses: { ...prev.analyses, running: false, log: [...prev.analyses.log, `⏹ Parado pelo usuário. ${totalGenerated} análises geradas.`] } }));
-    }
-  };
-
-  const runImageFixLoop = async () => {
-    stopLoopRef.imageFix = false;
-    setLoopState(prev => ({ ...prev, imageFix: { running: true, fixed: 0, failed: 0, pending: 0, log: ['🖼️ Iniciando correção de imagens (1 por vez, ~8s entre chamadas)...'], results: [] } }));
-    let totalFixed = 0;
-    let totalFailed = 0;
-    let round = 0;
-    let consecutiveErrors = 0;
-    let backoffMs = 8000;
-
-    while (!stopLoopRef.imageFix) {
-      round++;
-      try {
-        const { data, error } = await supabase.functions.invoke('fix-article-thumbnails', { body: { limit: 1 } });
-        if (error) {
-          const errMsg = String(error);
-          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
-            consecutiveErrors++;
-            backoffMs = Math.min(backoffMs * 2, 120000);
-            const waitSec = Math.round(backoffMs / 1000);
-            const msg = `⚠️ Rate limit detectado. Aguardando ${waitSec}s...`;
-            setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, log: [...prev.imageFix.log.slice(-49), msg] } }));
-            await new Promise(r => setTimeout(r, backoffMs));
-            continue;
-          }
-          throw error;
-        }
-
-        consecutiveErrors = 0;
-        backoffMs = 8000;
-
-        const fixed = data?.fixed || 0;
-        const errors = data?.errors || 0;
-        const pending = data?.pending || 0;
-        const newResults = data?.results || [];
-        totalFixed += fixed;
-        totalFailed += errors;
-
-        const msg = fixed > 0
-          ? `✅ #${round}: ${newResults[0]?.titulo?.slice(0, 50) || 'Artigo'} — Pendentes: ${pending}`
-          : errors > 0
-            ? `❌ #${round}: Erro — ${newResults[0]?.error?.slice(0, 50) || 'desconhecido'}`
-            : `🏁 Nenhum artigo pendente.`;
-
-        setLoopState(prev => ({
-          ...prev,
-          imageFix: {
-            running: true,
-            fixed: totalFixed,
-            failed: totalFailed,
-            pending,
-            log: [...prev.imageFix.log.slice(-49), msg],
-            results: [...newResults, ...prev.imageFix.results].slice(0, 50),
-          },
-        }));
-
-        if (pending === 0 || (fixed === 0 && errors === 0)) {
-          setLoopState(prev => ({
-            ...prev,
-            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `🏁 Concluído! ${totalFixed} imagens corrigidas.`] },
-          }));
-          toast({ title: 'Correção de imagens completa!', description: `${totalFixed} imagens substituídas.` });
-          break;
-        }
-
-        // ~8s between calls to respect rate limits
-        await new Promise(r => setTimeout(r, 8000));
-      } catch (e) {
-        consecutiveErrors++;
-        totalFailed++;
-        const errMsg = String(e);
-
-        if (consecutiveErrors >= 5) {
-          setLoopState(prev => ({
-            ...prev,
-            imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `❌ Parado após ${consecutiveErrors} erros: ${errMsg}`] },
-          }));
-          toast({ title: 'Interrompido por erros', description: `${totalFixed} imagens corrigidas.`, variant: 'destructive' });
-          break;
-        }
-
-        const waitSec = Math.min(10 * consecutiveErrors, 60);
-        setLoopState(prev => ({
-          ...prev,
-          imageFix: { ...prev.imageFix, log: [...prev.imageFix.log, `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...`] },
-        }));
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-      }
-    }
-    if (stopLoopRef.imageFix) {
-      setLoopState(prev => ({ ...prev, imageFix: { ...prev.imageFix, running: false, log: [...prev.imageFix.log, `⏹ Parado. ${totalFixed} imagens corrigidas.`] } }));
+    if (error) {
+      toast({ title: 'Erro ao parar job', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -1227,7 +899,7 @@ export default function AdminControlCenter() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Button
-                        onClick={runPredictionsLoop}
+                        onClick={() => startJob('predictions')}
                         disabled={loopState.predictions.running}
                         className="bg-primary"
                       >
@@ -1235,7 +907,7 @@ export default function AdminControlCenter() {
                         {loopState.predictions.running ? 'Processando...' : 'Iniciar Loop'}
                       </Button>
                       {loopState.predictions.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.predictions = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('predictions')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
@@ -1263,7 +935,7 @@ export default function AdminControlCenter() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Button
-                        onClick={runRetroPredictionsLoop}
+                        onClick={() => startJob('retro_predictions')}
                         disabled={loopState.retroPredictions.running}
                         className="bg-primary"
                       >
@@ -1271,7 +943,7 @@ export default function AdminControlCenter() {
                         {loopState.retroPredictions.running ? 'Processando...' : 'Iniciar Loop'}
                       </Button>
                       {loopState.retroPredictions.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.retroPredictions = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('retro_predictions')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
@@ -1299,7 +971,7 @@ export default function AdminControlCenter() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runAnalysesLoop}
+                        onClick={() => startJob('analyses')}
                         disabled={loopState.analyses.running}
                         className="bg-primary"
                       >
@@ -1307,7 +979,7 @@ export default function AdminControlCenter() {
                         {loopState.analyses.running ? 'Processando...' : 'Gerar Todas as Análises Pendentes'}
                       </Button>
                       {loopState.analyses.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.analyses = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('analyses')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
@@ -1372,7 +1044,7 @@ export default function AdminControlCenter() {
                     {/* Controls */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runValidationsLoop}
+                        onClick={() => startJob('validations')}
                         disabled={loopState.validations.running}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -1380,7 +1052,7 @@ export default function AdminControlCenter() {
                         {loopState.validations.running ? 'Gerando...' : 'Gerar Artigos de Validação'}
                       </Button>
                       {loopState.validations.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.validations = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('validations')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
@@ -1476,7 +1148,7 @@ export default function AdminControlCenter() {
                     {/* Controls */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runImageFixLoop}
+                        onClick={() => startJob('image_fix')}
                         disabled={loopState.imageFix.running}
                         className="bg-orange-600 hover:bg-orange-700"
                       >
@@ -1484,7 +1156,7 @@ export default function AdminControlCenter() {
                         {loopState.imageFix.running ? 'Corrigindo...' : 'Iniciar Correção de Imagens'}
                       </Button>
                       {loopState.imageFix.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.imageFix = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('image_fix')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
