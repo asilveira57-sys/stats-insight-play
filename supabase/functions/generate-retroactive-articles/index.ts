@@ -498,10 +498,11 @@ serve(async (req) => {
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
 
-        // Create slug (include match id suffix to guarantee uniqueness)
-        const slug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo-${matchData.id.slice(0, 8)}`;
+        // Create slug with full match ID to guarantee uniqueness
+        const baseSlug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo`;
+        const slug = `${baseSlug}-${matchData.id.slice(0, 12)}`;
 
-        // Insert news article
+        // Insert news article — use slug as unique key, skip on conflict
         const { error: insertError } = await supabase.from("noticias").insert({
           titulo: title,
           resumo: summary,
@@ -514,6 +515,21 @@ serve(async (req) => {
         });
 
         if (insertError) {
+          // If duplicate slug/partida_id, skip gracefully instead of throwing
+          if (insertError.message.includes("duplicate key")) {
+            console.log(`Skipping match ${matchData.id} - article already exists (duplicate key)`);
+            results.push({
+              partida_id: matchData.id,
+              time_casa: timeCasa,
+              time_fora: timeFora,
+              data: matchData.data,
+              word_count: 0,
+              slug,
+              success: false,
+              error: `Skipped: duplicate key`,
+            });
+            continue;
+          }
           throw new Error(`Insert failed: ${insertError.message}`);
         }
 
