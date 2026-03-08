@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
       const { data: pendingJobs } = await supabase.from("kaggle_import_jobs")
         .select("id, dataset_id, dataset_file_id, status")
-        .in("status", ["pending", "extracting", "mapping", "awaiting_review"])
+        .in("status", ["pending", "downloading", "extracting", "mapping", "awaiting_review"])
         .order("priority", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(limit);
