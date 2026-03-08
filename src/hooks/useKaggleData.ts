@@ -243,7 +243,12 @@ export function useKaggleData() {
   });
 
   const resolveJob = useMutation({
-    mutationFn: (jobId: string) => supabase.functions.invoke("kaggle-resolve", { body: { job_id: jobId } }).then(r => { if (r.error) throw r.error; return r.data; }),
+    mutationFn: async (jobId: string) => {
+      const { data, error } = await supabase.functions.invoke("kaggle-resolve", { body: { job_id: jobId } });
+      if (error) throw new Error(await extractInvokeErrorMessage(error));
+      if (data?.success === false) throw new Error(data?.error || "Falha na resolução");
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kaggle-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["kaggle-stats"] });
