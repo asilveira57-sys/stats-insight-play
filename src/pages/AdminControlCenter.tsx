@@ -1156,7 +1156,7 @@ export default function AdminControlCenter() {
                         {loopState.imageFix.running ? 'Corrigindo...' : 'Iniciar Correção de Imagens'}
                       </Button>
                       {loopState.imageFix.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.imageFix = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('image_fix')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
