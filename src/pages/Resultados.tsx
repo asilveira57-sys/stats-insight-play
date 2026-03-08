@@ -329,7 +329,6 @@ export default function Resultados() {
                     homeTeam: { 
                       id: match.homeTeamId || '', 
                       name: match.homeTeam.name, 
-                      logo: match.homeTeam.logo,
                       score: match.homeTeam.score,
                       primaryColor: match.homeTeam.primaryColor,
                       secondaryColor: match.homeTeam.secondaryColor,
@@ -337,7 +336,6 @@ export default function Resultados() {
                     awayTeam: { 
                       id: match.awayTeamId || '', 
                       name: match.awayTeam.name, 
-                      logo: match.awayTeam.logo,
                       score: match.awayTeam.score,
                       primaryColor: match.awayTeam.primaryColor,
                       secondaryColor: match.awayTeam.secondaryColor,
