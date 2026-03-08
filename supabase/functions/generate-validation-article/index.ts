@@ -659,13 +659,14 @@ serve(async (req) => {
         // Insert before final CTA
         finalText = finalText.replace('<div class="premium-cta-final">', linksSection + '<div class="premium-cta-final">');
 
-        // Generate slug for validation article
-        const slug = generateValidationSlug(
+        // Generate slug for validation article (with match ID suffix for uniqueness)
+        const baseSlug = generateValidationSlug(
           matchData.time_casa.nome,
           matchData.time_fora.nome,
           matchData.data,
           matchData.liga.nome
         );
+        const slug = `${baseSlug}-${match.id.slice(0, 8)}`;
 
         // Insert validation article
         const { error: insertError } = await supabaseAdmin
@@ -682,6 +683,12 @@ serve(async (req) => {
           });
 
         if (insertError) {
+          // Handle duplicate slug gracefully
+          if (insertError.message?.includes('duplicate key') || insertError.code === '23505') {
+            console.log(`Skipping match ${match.id} - duplicate slug: ${slug}`);
+            results.skipped++;
+            continue;
+          }
           console.error(`Error inserting validation article for match ${match.id}:`, insertError);
           results.errors.push(`Match ${match.id}: ${insertError.message}`);
           continue;
