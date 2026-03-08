@@ -196,21 +196,10 @@ function DatabaseHealthTab() {
   const fetchHealth = async () => {
     setLoading(true);
     try {
-      // Get duplicate match count
-      const { data: matches } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id, data');
-
-      const groupMap = new Map<string, number>();
-      for (const m of matches || []) {
-        const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-        groupMap.set(key, (groupMap.get(key) || 0) + 1);
-      }
-      let dupMatches = 0;
-      let dupGroups = 0;
-      for (const count of groupMap.values()) {
-        if (count > 1) { dupMatches += count - 1; dupGroups++; }
-      }
+      // Get duplicate match count via server-side RPC
+      const { data: dupData } = await supabase.rpc('count_duplicate_matches' as any);
+      const dupMatches = dupData?.[0]?.dup_records || 0;
+      const dupGroups = dupData?.[0]?.dup_groups || 0;
 
       // Get inverted merges count
       const { data: teams } = await supabase
@@ -250,7 +239,7 @@ function DatabaseHealthTab() {
         invertedMerges,
         emptyLeagues: emptyLeagues.length,
         emptyLeagueNames: emptyLeagues.map(l => l.nome),
-        totalMatches: matches?.length || 0,
+        totalMatches: 0,
         totalTeams: (teams || []).filter(t => t.status === 'active').length,
         mergedTeams: (teams || []).filter(t => t.status === 'merged').length,
       });
@@ -282,12 +271,17 @@ function DatabaseHealthTab() {
   const handleDedup = async () => {
     setDedupRunning(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dedup-matches', {
-        body: { dry_run: false, limit: 100 },
-      });
-      if (error) throw error;
-      toast({ title: 'Deduplicação executada!', description: `${data.records_deleted} registros removidos. Restam: ${data.remaining_duplicates}` });
-      fetchHealth();
+      // Use background job for large volumes
+      await (supabase as any).from('background_jobs')
+        .upsert({
+          id: '23aa9734-b0e7-425f-8d3e-675eaf453419',
+          job_type: 'dedup_matches',
+          status: 'running',
+          progress: {},
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      toast({ title: 'Dedup iniciada em background!', description: 'O cron vai processar lotes a cada minuto até acabar.' });
     } catch (e) {
       toast({ title: 'Erro', description: String(e), variant: 'destructive' });
     } finally {
