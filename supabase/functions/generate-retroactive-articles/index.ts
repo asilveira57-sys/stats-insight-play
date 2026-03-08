@@ -201,10 +201,11 @@ LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivess
   return { content, title, summary };
 }
 
-async function generateThumbnail(
+async function generateThumbnailWithSeoName(
   match: MatchData,
   supabase: any,
-  apiKey: string
+  apiKey: string,
+  seoFileName: string
 ): Promise<string | null> {
   const timeCasa = match.time_casa?.nome || "Time Casa";
   const timeFora = match.time_fora?.nome || "Time Fora";
