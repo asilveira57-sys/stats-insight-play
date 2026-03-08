@@ -907,7 +907,7 @@ export default function AdminControlCenter() {
                         {loopState.predictions.running ? 'Processando...' : 'Iniciar Loop'}
                       </Button>
                       {loopState.predictions.running && (
-                        <Button variant="destructive" size="sm" onClick={() => { stopLoopRef.predictions = true; }}>
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('predictions')}>
                           <Pause className="w-4 h-4 mr-1" /> Parar
                         </Button>
                       )}
