@@ -19,7 +19,7 @@ import {
 import { 
   Loader2, Home, ChevronRight, TrendingUp, Target, 
   Calendar, MapPin, Trophy, Users, ArrowRight, Newspaper,
-  BarChart3
+  BarChart3, History
 } from "lucide-react";
 
 function StatBox({ label, value, sublabel }: { label: string; value: string | number; sublabel?: string }) {
