@@ -326,7 +326,47 @@ export default function AdminHistoricalSources() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["historical-sources"] }),
   });
 
-  const isAnyPending = fetchUrl.isPending || parseUrl.isPending || resolveUrl.isPending || promoteUrl.isPending || runFullPipeline.isPending;
+  // ── Auto-discover URLs ──
+  const [autodiscoverUrl, setAutodiscoverUrl] = useState("");
+  const [showAutodiscover, setShowAutodiscover] = useState(false);
+  const autodiscover = useMutation({
+    mutationFn: async () => {
+      if (!selectedSource || !autodiscoverUrl) throw new Error("Selecione uma fonte e informe a URL índice");
+      const { data, error } = await supabase.functions.invoke("historical-autodiscover", {
+        body: { source_id: selectedSource, index_url: autodiscoverUrl },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      toast.success(`Auto-descoberta: ${data?.inserted} URLs novas inseridas (${data?.already_registered} já existiam)`);
+      setShowAutodiscover(false);
+    },
+    onError: (e: any) => toast.error(`Falha na auto-descoberta: ${e.message}`),
+  });
+
+  // ── Batch Pipeline ──
+  const [batchSize, setBatchSize] = useState(5);
+  const batchPipeline = useMutation({
+    mutationFn: async () => {
+      if (!selectedSource) throw new Error("Selecione uma fonte");
+      const { data, error } = await supabase.functions.invoke("historical-batch-pipeline", {
+        body: { source_id: selectedSource, batch_size: batchSize },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["historical-source-urls"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-import-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["historical-staging"] });
+      toast.success(`Pipeline em lote: ${data?.processed}/${data?.needs_work} processadas, ${data?.errors} erros (${(data?.duration_ms / 1000).toFixed(1)}s)`);
+    },
+    onError: (e: any) => toast.error(`Pipeline em lote falhou: ${e.message}`),
+  });
+
+  const isAnyPending = fetchUrl.isPending || parseUrl.isPending || resolveUrl.isPending || promoteUrl.isPending || runFullPipeline.isPending || autodiscover.isPending || batchPipeline.isPending;
 
   // ── KPIs ──
   const totalSources = sources.length;
