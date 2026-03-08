@@ -377,68 +377,106 @@ serve(async (req) => {
       .select("*", { count: "exact", head: true })
       .eq("status", "finished");
 
-    let pendingCountQuery = supabase
-      .from("partidas")
-      .select("id, palpites!inner(id), noticias!left(partida_id)", { count: "exact", head: true })
-      .eq("status", "finished")
-      .is("noticias.partida_id", null);
+    // Get ALL existing article partida_ids using pagination (avoids 1000-row limit)
+    const existingPartidaIds = new Set<string>();
+    let offset = 0;
+    const batchSize = 1000;
+    while (true) {
+      const { data: batch } = await supabase
+        .from("noticias")
+        .select("partida_id")
+        .not("partida_id", "is", null)
+        .range(offset, offset + batchSize - 1);
 
-    if (leagueId) {
-      pendingCountQuery = pendingCountQuery.eq("liga_id", leagueId);
+      if (!batch || batch.length === 0) break;
+      batch.forEach((n: any) => existingPartidaIds.add(n.partida_id));
+      if (batch.length < batchSize) break;
+      offset += batchSize;
     }
 
-    const { count: pendingMatches } = await pendingCountQuery;
-    const alreadyProcessed = Math.max((totalMatches || 0) - (pendingMatches || 0), 0);
+    console.log(`Found ${existingPartidaIds.size} existing articles with partida_id`);
 
-    // Get pending matches (without linked article), with predictions, ordered by date ASC
-    let query = supabase
-      .from("partidas")
-      .select(`
-        id,
-        data,
-        hora,
-        rodada,
-        time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
-        time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
-        liga:ligas!partidas_liga_id_fkey(id, nome, slug, pais),
-        palpite:palpites!inner(
-          prob_casa,
-          prob_empate,
-          prob_fora,
-          placar_casa_estimado,
-          placar_fora_estimado,
-          forca_time_casa,
-          forca_time_fora,
-          confianca
-        ),
-        noticias:noticias!left(partida_id)
-      `)
-      .eq("status", "finished")
-      .is("noticias.partida_id", null)
-      .order("data", { ascending: true })
-      .limit(limit);
+    // Count pending: finished matches with palpite but without article
+    const { count: totalWithPalpite } = await supabase
+      .from("palpites")
+      .select("partida_id", { count: "exact", head: true });
 
-    if (leagueId) {
-      query = query.eq("liga_id", leagueId);
+    const pendingMatches = Math.max((totalWithPalpite || 0) - existingPartidaIds.size, 0);
+    const alreadyProcessed = existingPartidaIds.size;
+
+    // Build exclusion list for the query (Supabase .not('id','in',...) approach)
+    // Convert set to array for the filter
+    const excludeIds = Array.from(existingPartidaIds);
+
+    // Fetch matches in batches to find ones without articles
+    // We can't use .not('id','in',...) with huge arrays, so we fetch more and filter
+    const fetchBatchSize = Math.max(limit * 5, 50); // Fetch more to account for filtering
+    let matchOffset = 0;
+    let filteredMatches: any[] = [];
+    const maxAttempts = 20; // safety limit on pagination
+    let attempts = 0;
+
+    while (filteredMatches.length < limit && attempts < maxAttempts) {
+      attempts++;
+      let query = supabase
+        .from("partidas")
+        .select(`
+          id,
+          data,
+          hora,
+          rodada,
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
+          liga:ligas!partidas_liga_id_fkey(id, nome, slug, pais),
+          palpite:palpites!inner(
+            prob_casa,
+            prob_empate,
+            prob_fora,
+            placar_casa_estimado,
+            placar_fora_estimado,
+            forca_time_casa,
+            forca_time_fora,
+            confianca
+          )
+        `)
+        .eq("status", "finished")
+        .order("data", { ascending: true })
+        .range(matchOffset, matchOffset + fetchBatchSize - 1);
+
+      if (leagueId) {
+        query = query.eq("liga_id", leagueId);
+      }
+
+      const { data: batchMatches, error: matchError } = await query;
+
+      if (matchError) {
+        throw new Error(`Failed to fetch matches: ${matchError.message}`);
+      }
+
+      if (!batchMatches || batchMatches.length === 0) break;
+
+      // Filter out matches that already have articles
+      const newFiltered = batchMatches.filter((m: any) => !existingPartidaIds.has(m.id));
+      filteredMatches = filteredMatches.concat(newFiltered);
+
+      if (batchMatches.length < fetchBatchSize) break; // no more data
+      matchOffset += fetchBatchSize;
     }
 
-    const { data: matches, error: matchError } = await query;
-
-    if (matchError) {
-      throw new Error(`Failed to fetch matches: ${matchError.message}`);
-    }
-
-    const matchesToProcess = matches || [];
+    const matchesToProcess = filteredMatches.slice(0, limit);
+    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${matchOffset + fetchBatchSize} rows (${attempts} batches)`);
 
     if (matchesToProcess.length === 0) {
       return new Response(
         JSON.stringify({
           success: true,
           message: "Nenhuma partida pendente para processar",
+          created: 0,
+          failed: 0,
           progress: {
             total: totalMatches || 0,
             processed: alreadyProcessed,
-            remaining: pendingMatches || 0,
+            remaining: pendingMatches,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -447,7 +485,7 @@ serve(async (req) => {
 
     const results: ProcessedArticle[] = [];
 
-    for (const match of matchesToProcess.slice(0, limit)) {
+    for (const match of matchesToProcess) {
       if (!hasTimeLeft()) {
         console.log(`Safety timer reached after ${results.length} partidas. Finalizando lote.`);
         break;
@@ -491,10 +529,11 @@ serve(async (req) => {
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
 
-        // Create slug (include match id suffix to guarantee uniqueness)
-        const slug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo-${matchData.id.slice(0, 8)}`;
+        // Create slug with full match ID to guarantee uniqueness
+        const baseSlug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}-analise-pre-jogo`;
+        const slug = `${baseSlug}-${matchData.id.slice(0, 12)}`;
 
-        // Insert news article
+        // Insert news article — use slug as unique key, skip on conflict
         const { error: insertError } = await supabase.from("noticias").insert({
           titulo: title,
           resumo: summary,
@@ -507,6 +546,21 @@ serve(async (req) => {
         });
 
         if (insertError) {
+          // If duplicate slug/partida_id, skip gracefully instead of throwing
+          if (insertError.message.includes("duplicate key")) {
+            console.log(`Skipping match ${matchData.id} - article already exists (duplicate key)`);
+            results.push({
+              partida_id: matchData.id,
+              time_casa: timeCasa,
+              time_fora: timeFora,
+              data: matchData.data,
+              word_count: 0,
+              slug,
+              success: false,
+              error: `Skipped: duplicate key`,
+            });
+            continue;
+          }
           throw new Error(`Insert failed: ${insertError.message}`);
         }
 
@@ -576,11 +630,13 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Processadas ${successCount} de ${results.length} partidas`,
+        created: successCount,
+        failed: results.length - successCount,
         processed: results,
         progress: {
           total: totalMatches || 0,
           processed: alreadyProcessed + successCount,
-          remaining: Math.max((pendingMatches || 0) - successCount, 0),
+          remaining: Math.max(pendingMatches - successCount, 0),
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

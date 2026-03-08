@@ -321,12 +321,14 @@ export default function AdminControlCenter() {
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
+    retroArticles: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; data: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
     imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
+    retroArticles: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
   });
@@ -348,6 +350,9 @@ export default function AdminControlCenter() {
           break;
         case 'analyses':
           setLoopState(prev => ({ ...prev, analyses: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, log: logArr, tasks: [] } }));
+          break;
+        case 'retro_articles':
+          setLoopState(prev => ({ ...prev, retroArticles: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
           break;
         case 'validations':
           setLoopState(prev => ({ ...prev, validations: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
@@ -1010,6 +1015,112 @@ export default function AdminControlCenter() {
                     {loopState.analyses.log.length > 0 && (
                       <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
                         {loopState.analyses.log.map((l, i) => <div key={i}>{l}</div>)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto-Loop: Geração Retroativa de Análises SEO */}
+                <Card className="md:col-span-2 border-blue-500/30 bg-blue-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      Geração Retroativa de Análises SEO
+                    </CardTitle>
+                    <CardDescription>Gerar artigos de análise pré-jogo para partidas finalizadas sem notícia. Roda em background.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-lg font-bold">{loopState.retroArticles.total || retroactiveProgress?.total || '—'}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Gerados</p>
+                        <p className="text-lg font-bold text-blue-600">{loopState.retroArticles.generated || retroactiveProgress?.processed || 0}</p>
+                      </div>
+                      <div className="p-3 rounded bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">Pendentes</p>
+                        <p className="text-lg font-bold text-yellow-600">{loopState.retroArticles.pending || retroactiveProgress?.remaining || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {(loopState.retroArticles.total > 0 || retroactiveProgress) && (
+                      <div className="space-y-1">
+                        <Progress value={
+                          loopState.retroArticles.total > 0
+                            ? ((loopState.retroArticles.total - loopState.retroArticles.pending) / loopState.retroArticles.total) * 100
+                            : progressPercentage
+                        } className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Partidas sem análise: {loopState.retroArticles.pending || retroactiveProgress?.remaining || '—'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        onClick={() => startJob('retro_articles')}
+                        disabled={loopState.retroArticles.running}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {loopState.retroArticles.running ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                        {loopState.retroArticles.running ? 'Gerando...' : 'Iniciar Geração Retroativa'}
+                      </Button>
+                      {loopState.retroArticles.running && (
+                        <Button variant="destructive" size="sm" onClick={() => stopJob('retro_articles')}>
+                          <Pause className="w-4 h-4 mr-1" /> Parar
+                        </Button>
+                      )}
+                      {(loopState.retroArticles.generated > 0 || loopState.retroArticles.failed > 0) && (
+                        <Badge variant="outline">{loopState.retroArticles.generated} gerados / {loopState.retroArticles.failed} falhas</Badge>
+                      )}
+                    </div>
+
+                    {/* Recent articles */}
+                    {loopState.retroArticles.articles.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium flex items-center gap-1">
+                          <Eye className="w-4 h-4" /> Últimos artigos gerados:
+                        </h4>
+                        <div className="border border-border rounded max-h-60 overflow-auto">
+                          {loopState.retroArticles.articles.map((article, i) => (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-0 bg-blue-500/5">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-blue-500 shrink-0" />
+                                <a
+                                  href={`/noticias/${article.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary underline hover:text-primary/80 truncate max-w-[300px]"
+                                >
+                                  {article.titulo}
+                                </a>
+                                <span className="text-muted-foreground">
+                                  ({new Date(article.data).toLocaleDateString('pt-BR')})
+                                </span>
+                              </div>
+                              <a
+                                href={`/noticias/${article.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Console log */}
+                    {loopState.retroArticles.log.length > 0 && (
+                      <div className="bg-muted/50 rounded p-3 max-h-32 overflow-auto text-xs font-mono space-y-1">
+                        {loopState.retroArticles.log.map((l, i) => <div key={i}>{l}</div>)}
                       </div>
                     )}
                   </CardContent>
