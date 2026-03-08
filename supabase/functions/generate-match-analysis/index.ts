@@ -277,14 +277,14 @@ async function generateThumbnail(matchData: MatchData, GEMINI_API_KEY: string): 
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 },
       }),
     });
 
@@ -295,9 +295,10 @@ async function generateThumbnail(matchData: MatchData, GEMINI_API_KEY: string): 
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
+    const base64Image =
+      data?.predictions?.[0]?.bytesBase64Encoded ||
+      data?.predictions?.[0]?.image?.bytesBase64Encoded ||
+      null;
     
     if (!base64Image) {
       console.log("No image in Gemini response");
@@ -325,14 +326,14 @@ async function generateInternalImage(matchData: MatchData, GEMINI_API_KEY: strin
 - CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1 },
       }),
     });
 
@@ -343,9 +344,10 @@ async function generateInternalImage(matchData: MatchData, GEMINI_API_KEY: strin
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
+    const base64Image =
+      data?.predictions?.[0]?.bytesBase64Encoded ||
+      data?.predictions?.[0]?.image?.bytesBase64Encoded ||
+      null;
     return base64Image ? `data:image/png;base64,${base64Image}` : null;
   } catch (error) {
     console.error("Error generating internal image:", error);
