@@ -518,41 +518,100 @@ export default function AdminHistoricalSources() {
 
           {/* ── URLS & PIPELINE TAB ── */}
           <TabsContent value="urls" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <p className="text-sm text-muted-foreground">
                 URLs da fonte: <strong>{sources.find((s: any) => s.id === selectedSource)?.name || "—"}</strong>
+                {urls.length > 0 && <span className="ml-2 text-xs">({urls.length} URLs)</span>}
               </p>
-              <Dialog open={showAddUrl} onOpenChange={setShowAddUrl}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Adicionar URL</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Adicionar URL</DialogTitle></DialogHeader>
-                  <div className="space-y-3">
-                    <Input placeholder="https://rsssf.org/tablesbr/..." value={newUrl.url} onChange={(e) => setNewUrl({ ...newUrl, url: e.target.value })} />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Select value={newUrl.url_type} onValueChange={(v) => setNewUrl({ ...newUrl, url_type: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="results">Resultados</SelectItem>
-                          <SelectItem value="standings">Classificação</SelectItem>
-                          <SelectItem value="scorers">Artilheiros</SelectItem>
-                          <SelectItem value="squads">Elencos</SelectItem>
-                          <SelectItem value="index">Índice</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input placeholder="Temporada (ex: 2012)" value={newUrl.season_label} onChange={(e) => setNewUrl({ ...newUrl, season_label: e.target.value })} />
-                    </div>
-                    <Input placeholder="País" value={newUrl.country} onChange={(e) => setNewUrl({ ...newUrl, country: e.target.value })} />
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={() => createUrl.mutate()} disabled={!newUrl.url || createUrl.isPending}>
-                      Adicionar
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Auto-discover button */}
+                <Dialog open={showAutodiscover} onOpenChange={setShowAutodiscover}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      <Search className="h-4 w-4" /> Auto-descobrir URLs
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Auto-descobrir URLs do RSSSF</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Cole a URL da página-índice (ex: https://rsssfbrasil.com/historical.htm). 
+                        O sistema vai extrair automaticamente todos os links de temporadas e competições.
+                      </p>
+                      <Input 
+                        placeholder="https://rsssfbrasil.com/historical.htm" 
+                        value={autodiscoverUrl} 
+                        onChange={(e) => setAutodiscoverUrl(e.target.value)} 
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => autodiscover.mutate()} disabled={!autodiscoverUrl || autodiscover.isPending}>
+                        {autodiscover.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+                        Descobrir e Cadastrar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Batch pipeline button */}
+                <Button 
+                  size="sm" 
+                  variant="default" 
+                  className="gap-1"
+                  onClick={() => batchPipeline.mutate()} 
+                  disabled={isAnyPending || urls.length === 0}
+                  title={`Processar ${batchSize} URLs pendentes pelo pipeline completo`}
+                >
+                  {batchPipeline.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  Pipeline em Lote ({batchSize})
+                </Button>
+
+                {/* Add URL manually */}
+                <Dialog open={showAddUrl} onOpenChange={setShowAddUrl}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" /> Adicionar URL</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Adicionar URL</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <Input placeholder="https://rsssf.org/tablesbr/..." value={newUrl.url} onChange={(e) => setNewUrl({ ...newUrl, url: e.target.value })} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select value={newUrl.url_type} onValueChange={(v) => setNewUrl({ ...newUrl, url_type: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="results">Resultados</SelectItem>
+                            <SelectItem value="standings">Classificação</SelectItem>
+                            <SelectItem value="scorers">Artilheiros</SelectItem>
+                            <SelectItem value="squads">Elencos</SelectItem>
+                            <SelectItem value="index">Índice</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input placeholder="Temporada (ex: 2012)" value={newUrl.season_label} onChange={(e) => setNewUrl({ ...newUrl, season_label: e.target.value })} />
+                      </div>
+                      <Input placeholder="País" value={newUrl.country} onChange={(e) => setNewUrl({ ...newUrl, country: e.target.value })} />
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => createUrl.mutate()} disabled={!newUrl.url || createUrl.isPending}>
+                        Adicionar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
+
+            {/* Batch pipeline progress */}
+            {batchPipeline.isPending && (
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Pipeline em lote executando...</p>
+                    <p className="text-xs text-muted-foreground">Processando {batchSize} URLs pelo pipeline completo (Fetch → Parse → Resolve → Promote)</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <Table>
