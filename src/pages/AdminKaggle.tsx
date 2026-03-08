@@ -214,7 +214,7 @@ export default function AdminKaggle() {
       datasets.refetch();
       stats.refetch();
     } catch (e: any) {
-      toast.error(`Erro: ${e.message}`);
+      toast.error(`Erro: ${await getInvokeErrorMessage(e, "Falha no pipeline Kaggle")}`);
     } finally {
       setIsImporting(null);
     }
