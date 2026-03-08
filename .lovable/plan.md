@@ -1,108 +1,56 @@
 
 
-# Varredura Geral de Qualidade de Dados -- Diagnóstico e Plano de Ação
+# Diagnóstico da Qualidade de Dados — Resultados e Plano de Ação
 
-## Diagnóstico Completo
+## Descobertas Críticas
 
-### 1. Partidas em Ligas Fantasma (CRÍTICO)
-Três ligas informais criadas por importações antigas **ainda contêm partidas** que não foram migradas para as ligas canônicas:
+### Bug no hook `useDataQuality.ts` — números inflados
+O número **655 "times sem partidas"** está **errado**. O real é **62**. O bug: o hook busca partidas com `.select("time_casa_id")` que retorna no máximo 1000 linhas (limite padrão do banco), mas existem **16.718 partidas**. Então ele só vê ~1000 IDs de time e conclui que os outros 655 não têm jogo. O mesmo afeta o cálculo de "Nomes Similares" (378) — ele carrega todos os 858 times e faz O(n²) no cliente, mas isso em si funciona; o problema é que inclui times merged/inativos.
 
-| Liga Fantasma | Partidas | Liga Canônica Correta |
-|---|---|---|
-| `brazilian-cup-matches` (desativada) | 1.335 | Copa do Brasil (`copa-do-brasil`) |
-| `libertadores-matches` (desativada) | 1.254 | Copa Libertadores (`copa-libertadores`) |
-| `brasileirao-matches` (desativada) | 552 | Campeonato Brasileiro Série A (`campeonato-brasileiro-serie-a`) |
+### Os 62 times órfãos reais
+São quase todos **seleções nacionais e regiões** (Algeria, Cambodia, Sealand, Basque Country, Catalonia, etc.) — importadas provavelmente pela sync de Copa do Mundo/seleções. Nenhum tem `api_id`, nenhum tem `pais` preenchido, todos criados em 08/03/2026. Apenas 1 tem alias e 0 têm external_id_map. São registros fantasmas, sem nenhuma referência.
 
-Adicionalmente, existem **10 registros duplicados** da liga "Brazilian Cup Matches" (IDs diferentes, mesmo nome) que precisam ser limpos.
+**Exceção importante**: Curaçao aparece **3 vezes** como active + 1 merged — duplicata real que precisa de fusão.
 
-### 2. Partidas Órfãs
-- **20 partidas** sem `liga_id` (sem liga associada).
+### Os 71 duplicados sugeridos
+- **5 pares com 95-100% de certeza**: Curaçao×3, Criciuma/Criciúma EC, Club Brugge KV×2 — fusões seguras
+- **66 pares com 70%**: Falsos positivos na maioria (Deportivo Cali ≠ Deportivo Táchira, Ferroviário-CE ≠ Ferroviária-SP), mas alguns são reais (Internacional = Internacional-RS, Fluminense-RJ pode ser o mesmo)
 
-### 3. Times Duplicados por Slug `-1` (14 times com partidas)
-Times que possuem um equivalente canônico sem o sufixo `-1`:
+## Plano de Correção
 
-| Duplicata (slug) | Partidas | Canônico |
-|---|---|---|
-| `abc---rn-1` | 59 | `abc---rn` |
-| `crb---al-1` | 32 | `crb---al` |
-| `asa---al-1` | 18 | `asa---al` |
-| `river-plate-uru-1` | 15 | `river-plate-uru` |
-| `godoy-cruz-1` | 14 | `godoy-cruz` |
-| `la-guaira-1` | 11 | `la-guaira` |
-| + 8 outros com 1-3 partidas cada |
+### 1. Corrigir o bug do hook (números inflados) — `useDataQuality.ts`
+Substituir as 3 queries client-side por queries SQL server-side que retornam os dados corretos sem limite de 1000 linhas:
+- **Times sem partidas**: Usar subquery `NOT EXISTS` direto no banco (via RPC ou query com filtro server-side), filtrando apenas times `active`
+- **Nomes similares**: Reutilizar a RPC `get_suggested_duplicates` que já existe no banco, em vez de calcular Dice coefficient O(n²) no cliente
 
-### 4. Times com Mesmo Slug (Duplicatas Exatas -- IDs Diferentes)
-**17 grupos** de times com slug idêntico mas IDs diferentes. Destaques:
-- `independiente-petrolero-1`: **3 registros** (+ 1 canônico)
-- `real-atletico`, `danubio`: **3 registros** cada
-- `godoy-cruz`, `colon-1`, `sport-boys`, `sporting-cristal`, `athletico-paranaense---pr`, etc: **2 registros** cada
+### 2. Adicionar ação "Limpar Órfãos" na página — `AdminDataQuality.tsx`
+- Botão "Limpar times sem partidas" que chama uma nova Edge Function
+- A Edge Function verifica cada time: se não tem partidas, aliases com referências, external_id_map, nem merge_logs → marca como `disabled` (soft delete, não exclui)
+- Mostrar preview antes de executar (lista dos 62 times que serão desativados)
+- Excluir da limpeza times que tenham qualquer rastro (aliases de merge, external IDs)
 
-### 5. Times com Estado que Duplicam Base (30+ pares)
-Times no formato `nome---uf` que duplicam um time base sem estado. Exemplos: `brusque---sc` / `brusque`, `londrina---pr` / `londrina`, `mirassol---sp` / `mirassol`. Estes exigem decisão manual (podem ser times **diferentes** em estados diferentes, ex: `santa-cruz---rn` vs `santa-cruz` de Recife).
+### 3. Fusão automática dos duplicados óbvios
+- Curaçao: fundir as 3 cópias active em uma só (a que tem matches, se houver; senão a primeira)
+- Criciuma/Criciúma EC e Club Brugge: fundir via `merge_teams` existente
+- Isso pode ser feito pela rotina "Resolver com IA" já implementada, ou diretamente
 
-### 6. Ligas com Problemas
-- **USL Championship** com slug `campeonato-paulista-1` (conflito com Campeonato Paulista)
-- **Premier League** duplicada (`premier-league` ativa + `premier-league-1` desativada com 129 partidas)
+### Arquivos modificados
 
-### 7. Slugs de Partidas
-- Nenhuma partida sem slug. Sem slugs duplicados. OK.
+**`src/hooks/useDataQuality.ts`** — Reescrever as 3 queries:
+1. `useTeamsWithoutMatches`: Usar `fetchAllRecords` (helper de paginação) para buscar partidas, OU melhor: criar uma query RPC que retorna times sem partidas diretamente no banco
+2. `useSimilarTeams`: Substituir pelo `get_suggested_duplicates` RPC existente
+3. `useDuplicateAliases`: Manter (já funciona, aliases não têm problema de volume)
 
-### 8. Cobertura Temporal das Ligas Canônicas
-| Liga | Período | Total |
-|---|---|---|
-| Brasileirão Série A | 2012--2026 | 7.020 |
-| Copa do Brasil | 2012--2023 | 1.513 |
-| Copa Libertadores | 2013--2022 | 1.373 |
+**`src/pages/AdminDataQuality.tsx`** — Adicionar:
+1. Botão "Desativar Órfãos" na seção "Times sem Partidas"
+2. Modal de confirmação mostrando a lista dos times que serão desativados
+3. Filtro para mostrar apenas times `active` (excluir merged da contagem)
 
----
+**Nova Edge Function `supabase/functions/cleanup-orphan-teams/index.ts`**:
+- Recebe auth admin
+- Busca times active sem partidas, sem external_id_map, sem aliases relevantes
+- Marca como `status = 'disabled'`
+- Retorna resumo: quantos desativados, quais nomes
 
-## Plano de Ação (4 etapas)
-
-### Etapa 1 -- Migrar Partidas de Ligas Fantasma
-Criar uma migration SQL que:
-1. Mova as 1.335 partidas de `brazilian-cup-matches` para `copa-do-brasil`
-2. Mova as 1.254 partidas de `libertadores-matches` para `copa-libertadores`
-3. Mova as 552 partidas de `brasileirao-matches` para `campeonato-brasileiro-serie-a`
-4. Mova as 129 partidas de `premier-league-1` para `premier-league`
-5. Associe as 20 partidas órfãs (se possível, via times) ou marque para revisão
-6. Delete os registros duplicados das ligas fantasma
-
-### Etapa 2 -- Fundir Times Duplicados por Slug
-Invocar `bulk-merge-teams` com a lista de 14 merges de slug `-1`:
-- `abc---rn-1` -> `abc---rn`
-- `crb---al-1` -> `crb---al`
-- `asa---al-1` -> `asa---al`
-- `river-plate-uru-1` -> `river-plate-uru`
-- `godoy-cruz-1` -> `godoy-cruz`
-- `la-guaira-1` -> `la-guaira`
-- `universidad-de-concepcion-1` -> `universidad-de-concepcion`
-- `vilhena---ro-1` -> `vilhena---ro`
-- `independiente-petrolero-1` -> `independiente-petrolero` (3 registros)
-- `noroeste---sp-1` -> `noroeste---sp`
-- `melgar-1` -> `melgar`
-- `estrela-do-norte---es-1` -> `estrela-do-norte---es`
-- `fortaleza-ce-1` -> `fortaleza` (se aplicável)
-
-### Etapa 3 -- Deduplicar Times com Mesmo Slug
-Criar uma migration SQL para consolidar registros com slug idêntico:
-- Para cada grupo (ex: 3x `danubio`, 3x `real-atletico`, 2x `godoy-cruz`), manter o que tiver mais partidas e migrar referências dos outros via `merge_teams` RPC.
-- Tratar `colon-1` (2 registros com mesmo slug) e `athletico-paranaense---pr` (2 registros).
-
-### Etapa 4 -- Corrigir Slug da Liga USL
-- Atualizar o slug de USL Championship de `campeonato-paulista-1` para `usl-championship`.
-
-### Fora de Escopo (decisão manual necessária)
-Os 30+ pares de "time com estado vs time base" **não serão fundidos automaticamente** porque muitos são times **genuinamente diferentes** (ex: `santa-cruz---rn` é Santa Cruz do Rio Grande do Norte, diferente de `santa-cruz` que é Santa Cruz de Recife; `penarol---am` é diferente de `peñarol` do Uruguai). Esses serão listados para revisão manual na interface de duplicados.
-
----
-
-## Resumo Técnico
-
-**Arquivos a editar:**
-1. Nova migration SQL para migrar partidas entre ligas e limpar ligas fantasma
-2. Invocação do `bulk-merge-teams` para os 14+ merges de slug `-1`
-3. Nova migration SQL para deduplicar times com slug idêntico (via `merge_teams` RPC)
-4. Migration para corrigir slug da USL Championship
-
-**Impacto estimado:** ~3.141 partidas migradas para ligas corretas, ~30 times duplicados eliminados, 10+ ligas fantasma removidas.
+**Nova migration**: Criar RPC `get_teams_without_matches()` que faz a query no servidor sem limite de linhas
 
