@@ -106,30 +106,28 @@ export default function ClubProfile() {
               />
               <div>
                 <h1 className="text-3xl font-bold font-display">{club.nome}</h1>
-                {club.apelidos && (
+                {club.short_code && (
                   <p className="text-muted-foreground mt-1">
-                    Conhecido como: {Array.isArray(club.apelidos) ? club.apelidos.join(", ") : club.apelidos}
+                    Código: {club.short_code}
                   </p>
                 )}
                 <div className="flex items-center justify-center gap-6 mt-3 text-sm text-muted-foreground">
-                  {club.cidade && club.pais && (
+                  {club.estado && club.pais && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
-                      {club.cidade} — {club.pais}
+                      {club.estado} — {club.pais}
                     </div>
                   )}
-                  {club.ano_fundacao && (
+                  {club.pais && !club.estado && (
                     <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      Fundado em {club.ano_fundacao}
+                      <MapPin className="w-4 h-4" />
+                      {club.pais}
                     </div>
                   )}
-                  {club.estadio && (
-                    <div className="flex items-center gap-1">
-                      <Stadium className="w-4 h-4" />
-                      Estádio: {club.estadio}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Building className="w-4 h-4" />
+                    Fundado em {new Date(club.created_at).getFullYear()}
+                  </div>
                 </div>
               </div>
             </div>
