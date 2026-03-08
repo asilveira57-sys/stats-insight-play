@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
+import { fetchAllRecords } from "@/lib/supabaseHelpers";
 
 // ─── Hooks ─────────────────────────────────────────
 function useSources() {
