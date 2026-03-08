@@ -398,11 +398,13 @@ serve(async (req) => {
     let targetMatchId: string | null = null;
     let hoursAfterMatch = 3;
     let batchLimit = 0; // 0 = no limit (legacy behavior)
+    let skipImages = false; // skip image generation for speed in batch mode
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
       hoursAfterMatch = body?.hours_after || 3;
       batchLimit = body?.limit || 0;
+      skipImages = body?.skip_images ?? (batchLimit > 0); // auto-skip images in batch mode
     } catch {
       // No body
     }
@@ -588,24 +590,27 @@ serve(async (req) => {
         const textContent = await generateValidationContent(matchData, GEMINI_API_KEY);
         console.log(`Validation text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail
+        // Generate and upload thumbnail (skip in batch mode for speed)
         let imageUrl: string | null = null;
-        const thumbnailBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
-        
-        if (thumbnailBase64) {
-          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `validation-${match.id}.png`);
-          console.log(`Validation thumbnail uploaded: ${imageUrl}`);
-        } else {
+        if (!skipImages) {
+          const thumbnailBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
+          if (thumbnailBase64) {
+            imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `validation-${match.id}.png`);
+            console.log(`Validation thumbnail uploaded: ${imageUrl}`);
+          }
+        }
+        if (!imageUrl) {
           imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1280&h=720&fit=crop";
         }
 
-        // Generate and upload internal image
+        // Generate and upload internal image (skip in batch mode for speed)
         let internalImageUrl: string | null = null;
-        const internalImageBase64 = await generateValidationInternalImage(matchData, GEMINI_API_KEY);
-        
-        if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `validation-${match.id}-internal.png`);
-          console.log(`Validation internal image uploaded: ${internalImageUrl}`);
+        if (!skipImages) {
+          const internalImageBase64 = await generateValidationInternalImage(matchData, GEMINI_API_KEY);
+          if (internalImageBase64) {
+            internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `validation-${match.id}-internal.png`);
+            console.log(`Validation internal image uploaded: ${internalImageUrl}`);
+          }
         }
 
         // Build internal links
