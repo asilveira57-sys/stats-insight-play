@@ -555,18 +555,33 @@ serve(async (req) => {
         });
 
         if (insertError) {
-          // If duplicate slug/partida_id, skip gracefully instead of throwing
-          if (insertError.message.includes("duplicate key")) {
-            console.log(`Skipping match ${matchData.id} - article already exists (duplicate key)`);
+          // If duplicate slug/partida_id, reconcile and move on (prevents infinite retries)
+          if (insertError.message.includes("duplicate key") || insertError.code === "23505") {
+            console.log(`Duplicate for match ${matchData.id}, reconciling existing article`);
+
+            const { data: existingBySlug } = await supabase
+              .from("noticias")
+              .select("id, partida_id")
+              .eq("slug", slug)
+              .maybeSingle();
+
+            if (existingBySlug?.id && !existingBySlug.partida_id) {
+              await supabase
+                .from("noticias")
+                .update({ partida_id: matchData.id })
+                .eq("id", existingBySlug.id);
+            }
+
+            existingPartidaIds.add(matchData.id);
+
             results.push({
               partida_id: matchData.id,
               time_casa: timeCasa,
               time_fora: timeFora,
               data: matchData.data,
-              word_count: 0,
+              word_count: wordCount,
               slug,
-              success: false,
-              error: `Skipped: duplicate key`,
+              success: true,
             });
             continue;
           }
