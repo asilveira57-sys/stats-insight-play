@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface SeasonSummary {
+  year: number;
+  totalMatches: number;
+  totalGoals: number;
+  avgGoals: number;
+}
+
 export interface LeaguePillarData {
   id: string;
   nome: string;
@@ -44,6 +51,8 @@ export interface LeaguePillarData {
     golsCasa: number;
     golsFora: number;
   }>;
+  // Seasons summary
+  seasons: SeasonSummary[];
 }
 
 export function useLeagueBySlug(slug: string | null) {
@@ -52,15 +61,33 @@ export function useLeagueBySlug(slug: string | null) {
     queryFn: async (): Promise<LeaguePillarData | null> => {
       if (!slug) return null;
 
-      // Fetch league by slug
-      const { data: league, error: leagueError } = await supabase
+      // Try direct slug match first
+      let { data: league, error: leagueError } = await supabase
         .from("ligas")
         .select("*")
         .eq("slug", slug)
         .single();
 
-      if (leagueError || !league) {
-        console.error("Error fetching league:", leagueError);
+      // Fallback: try alias table
+      if (!league) {
+        const { data: aliasData } = await supabase
+          .from("competition_aliases")
+          .select("league_id")
+          .eq("normalized_alias", slug)
+          .single();
+        
+        if (aliasData?.league_id) {
+          const { data: aliasLeague } = await supabase
+            .from("ligas")
+            .select("*")
+            .eq("id", aliasData.league_id)
+            .single();
+          league = aliasLeague;
+        }
+      }
+
+      if (!league) {
+        console.error("League not found for slug:", slug);
         return null;
       }
 
@@ -153,6 +180,25 @@ export function useLeagueBySlug(slug: string | null) {
           timeForaSlug: (m.time_fora as any)?.slug || null,
         }));
 
+      // Build seasons summary
+      const seasonMap = new Map<number, { matches: number; goals: number }>();
+      finishedMatches.forEach(m => {
+        const year = new Date(m.data).getFullYear();
+        const current = seasonMap.get(year) || { matches: 0, goals: 0 };
+        current.matches++;
+        current.goals += (m.gols_casa ?? 0) + (m.gols_fora ?? 0);
+        seasonMap.set(year, current);
+      });
+
+      const seasons: SeasonSummary[] = Array.from(seasonMap.entries())
+        .map(([year, data]) => ({
+          year,
+          totalMatches: data.matches,
+          totalGoals: data.goals,
+          avgGoals: data.matches > 0 ? Math.round((data.goals / data.matches) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.year - a.year);
+
       return {
         id: league.id,
         nome: league.nome,
@@ -172,6 +218,7 @@ export function useLeagueBySlug(slug: string | null) {
         teams,
         upcomingMatches,
         recentMatches,
+        seasons,
       };
     },
     enabled: !!slug,

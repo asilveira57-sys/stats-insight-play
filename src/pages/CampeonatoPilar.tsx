@@ -19,7 +19,7 @@ import {
 import { 
   Loader2, Home, ChevronRight, TrendingUp, Target, 
   Calendar, MapPin, Trophy, Users, ArrowRight, Newspaper,
-  BarChart3
+  BarChart3, History
 } from "lucide-react";
 
 function StatBox({ label, value, sublabel }: { label: string; value: string | number; sublabel?: string }) {
@@ -231,6 +231,31 @@ export default function CampeonatoPilar() {
                 )}
               </div>
             </section>
+
+            {/* Histórico por Temporada */}
+            {league.seasons && league.seasons.length > 0 && (
+              <section className="mb-12">
+                <h2 className="text-2xl font-display font-bold mb-4 flex items-center gap-2">
+                  <History className="w-6 h-6 text-primary" />
+                  Histórico por Temporada
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {league.seasons.map((season) => (
+                    <Card key={season.year} className="hover:border-primary/50 transition-colors">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-primary">{season.year}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {season.totalMatches} jogos
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {season.totalGoals} gols ({season.avgGoals}/jogo)
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Premium CTA */}
             <PremiumCTA variant="inline" />
