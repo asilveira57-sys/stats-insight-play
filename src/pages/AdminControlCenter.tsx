@@ -442,7 +442,7 @@ function DatabaseHealthTab() {
   );
 }
 
-
+export default function AdminControlCenter() {
   const { isAdmin, isLoading } = useAdminAccess();
   const { toast } = useToast();
   
