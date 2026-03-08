@@ -4997,6 +4997,50 @@ export type Database = {
         }
         Relationships: []
       }
+      team_profiles: {
+        Row: {
+          created_at: string
+          culture_text: string | null
+          history_text: string | null
+          id: string
+          legacy_text: string | null
+          rivalries_text: string | null
+          stadium_text: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          culture_text?: string | null
+          history_text?: string | null
+          id?: string
+          legacy_text?: string | null
+          rivalries_text?: string | null
+          stadium_text?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          culture_text?: string | null
+          history_text?: string | null
+          id?: string
+          legacy_text?: string | null
+          rivalries_text?: string | null
+          stadium_text?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_profiles_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tecnico_partida: {
         Row: {
           created_at: string | null
