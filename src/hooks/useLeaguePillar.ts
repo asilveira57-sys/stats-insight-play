@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface SeasonSummary {
+  year: number;
+  totalMatches: number;
+  totalGoals: number;
+  avgGoals: number;
+}
+
 export interface LeaguePillarData {
   id: string;
   nome: string;
@@ -44,6 +51,8 @@ export interface LeaguePillarData {
     golsCasa: number;
     golsFora: number;
   }>;
+  // Seasons summary
+  seasons: SeasonSummary[];
 }
 
 export function useLeagueBySlug(slug: string | null) {
