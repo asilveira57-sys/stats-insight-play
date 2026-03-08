@@ -360,12 +360,14 @@ serve(async (req) => {
 
   let limit = 2;
   let leagueId: string | null = null;
+  let skipImages = false;
 
   try {
     const body = await req.json();
     const requestedLimit = Number(body?.limit ?? 2);
     limit = Math.min(MAX_SAFE_LIMIT, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 2));
     leagueId = body?.league_id || null;
+    skipImages = body?.skip_images === true;
   } catch {
     // No body, use defaults
   }
