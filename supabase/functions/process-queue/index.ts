@@ -189,7 +189,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const total = data?.progress?.total ?? progress.total ?? 0;
       const newGenerated = (progress.generated || 0) + gen;
       const newFailed = (progress.failed || 0) + fail;
-      isDone = pending === 0 || (gen === 0 && fail === 0);
+      isDone = pending === 0;
       const newArticles = (data?.processed || []).filter((a: any) => a.success).map((a: any) => ({
         slug: a.slug, titulo: `${a.time_casa} x ${a.time_fora}`, data: a.data,
       }));
