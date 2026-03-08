@@ -971,7 +971,7 @@ export default function AdminControlCenter() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={runAnalysesLoop}
+                        onClick={() => startJob('analyses')}
                         disabled={loopState.analyses.running}
                         className="bg-primary"
                       >
