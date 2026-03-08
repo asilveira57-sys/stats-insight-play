@@ -20,10 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Download, RefreshCw, Globe, Link2, Clock, CheckCircle, XCircle, AlertTriangle,
-  Loader2, FileText, Eye, Trash2, Cpu, GitMerge, ArrowUpCircle, Zap, Database,
+  Loader2, FileText, Eye, Trash2, Cpu, GitMerge, ArrowUpCircle, Zap, Database, Search, Play,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Progress } from "@/components/ui/progress";
 
 // ─── Hooks ─────────────────────────────────────────
 function useSources() {
