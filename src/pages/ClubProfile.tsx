@@ -102,7 +102,7 @@ export default function ClubProfile() {
                 teamId={club.id}
                 teamName={club.nome}
                 colors={club.cores}
-                size={80}
+                size="xl"
               />
               <div>
                 <h1 className="text-3xl font-bold font-display">{club.nome}</h1>
