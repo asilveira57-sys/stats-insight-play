@@ -360,33 +360,48 @@ serve(async (req) => {
 
   let limit = 2;
   let leagueId: string | null = null;
+  let skipImages = false;
 
   try {
     const body = await req.json();
     const requestedLimit = Number(body?.limit ?? 2);
     limit = Math.min(MAX_SAFE_LIMIT, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 2));
     leagueId = body?.league_id || null;
+    skipImages = body?.skip_images === true;
   } catch {
     // No body, use defaults
   }
 
   try {
-    // Get total counts for progress
-    const { count: totalMatches } = await supabase
-      .from("partidas")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "finished");
+    // Count total actionable matches (finished + have prediction)
+    let totalActionable = 0;
+    {
+      let q = supabase
+        .from("partidas")
+        .select("id, palpites!inner(partida_id)", { count: "exact", head: true })
+        .eq("status", "finished");
+
+      if (leagueId) {
+        q = q.eq("liga_id", leagueId);
+      }
+
+      const { count } = await q;
+      totalActionable = count || 0;
+    }
 
     // Get ALL existing article partida_ids using pagination (avoids 1000-row limit)
     const existingPartidaIds = new Set<string>();
     let offset = 0;
     const batchSize = 1000;
     while (true) {
-      const { data: batch } = await supabase
+      let existingQuery = supabase
         .from("noticias")
         .select("partida_id")
         .not("partida_id", "is", null)
         .range(offset, offset + batchSize - 1);
+
+
+      const { data: batch } = await existingQuery;
 
       if (!batch || batch.length === 0) break;
       batch.forEach((n: any) => existingPartidaIds.add(n.partida_id));
@@ -396,28 +411,20 @@ serve(async (req) => {
 
     console.log(`Found ${existingPartidaIds.size} existing articles with partida_id`);
 
-    // Count pending: finished matches with palpite but without article
-    const { count: totalWithPalpite } = await supabase
-      .from("palpites")
-      .select("partida_id", { count: "exact", head: true });
-
-    const pendingMatches = Math.max((totalWithPalpite || 0) - existingPartidaIds.size, 0);
+    const pendingMatches = Math.max(totalActionable - existingPartidaIds.size, 0);
     const alreadyProcessed = existingPartidaIds.size;
 
-    // Build exclusion list for the query (Supabase .not('id','in',...) approach)
-    // Convert set to array for the filter
-    const excludeIds = Array.from(existingPartidaIds);
-
-    // Fetch matches in batches to find ones without articles
-    // We can't use .not('id','in',...) with huge arrays, so we fetch more and filter
-    const fetchBatchSize = Math.max(limit * 5, 50); // Fetch more to account for filtering
+    // Fetch matches progressively until we have enough actionable items
+    const fetchBatchSize = 200;
     let matchOffset = 0;
     let filteredMatches: any[] = [];
-    const maxAttempts = 20; // safety limit on pagination
-    let attempts = 0;
+    let scannedRows = 0;
+    let batchesScanned = 0;
+    const maxScanRows = 200_000;
 
-    while (filteredMatches.length < limit && attempts < maxAttempts) {
-      attempts++;
+    while (filteredMatches.length < limit && scannedRows < maxScanRows && hasTimeLeft()) {
+      batchesScanned++;
+
       let query = supabase
         .from("partidas")
         .select(`
@@ -455,16 +462,20 @@ serve(async (req) => {
 
       if (!batchMatches || batchMatches.length === 0) break;
 
+      scannedRows += batchMatches.length;
+
       // Filter out matches that already have articles
       const newFiltered = batchMatches.filter((m: any) => !existingPartidaIds.has(m.id));
-      filteredMatches = filteredMatches.concat(newFiltered);
+      if (newFiltered.length > 0) {
+        filteredMatches = filteredMatches.concat(newFiltered);
+      }
 
-      if (batchMatches.length < fetchBatchSize) break; // no more data
+      if (batchMatches.length < fetchBatchSize) break;
       matchOffset += fetchBatchSize;
     }
 
     const matchesToProcess = filteredMatches.slice(0, limit);
-    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${matchOffset + fetchBatchSize} rows (${attempts} batches)`);
+    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${scannedRows} rows (${batchesScanned} batches)`);
 
     if (matchesToProcess.length === 0) {
       return new Response(
@@ -474,7 +485,7 @@ serve(async (req) => {
           created: 0,
           failed: 0,
           progress: {
-            total: totalMatches || 0,
+            total: totalActionable || 0,
             processed: alreadyProcessed,
             remaining: pendingMatches,
           },
@@ -523,8 +534,8 @@ serve(async (req) => {
           // Could retry here, but for now we'll accept it with a warning
         }
 
-        // Generate thumbnail
-        const thumbnailUrl = await generateThumbnail(matchData, supabase, geminiApiKey);
+        // Generate thumbnail (optional in background mode to avoid timeouts)
+        const thumbnailUrl = skipImages ? null : await generateThumbnail(matchData, supabase, geminiApiKey);
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
@@ -546,18 +557,33 @@ serve(async (req) => {
         });
 
         if (insertError) {
-          // If duplicate slug/partida_id, skip gracefully instead of throwing
-          if (insertError.message.includes("duplicate key")) {
-            console.log(`Skipping match ${matchData.id} - article already exists (duplicate key)`);
+          // If duplicate slug/partida_id, reconcile and move on (prevents infinite retries)
+          if (insertError.message.includes("duplicate key") || insertError.code === "23505") {
+            console.log(`Duplicate for match ${matchData.id}, reconciling existing article`);
+
+            const { data: existingBySlug } = await supabase
+              .from("noticias")
+              .select("id, partida_id")
+              .eq("slug", slug)
+              .maybeSingle();
+
+            if (existingBySlug?.id && !existingBySlug.partida_id) {
+              await supabase
+                .from("noticias")
+                .update({ partida_id: matchData.id })
+                .eq("id", existingBySlug.id);
+            }
+
+            existingPartidaIds.add(matchData.id);
+
             results.push({
               partida_id: matchData.id,
               time_casa: timeCasa,
               time_fora: timeFora,
               data: matchData.data,
-              word_count: 0,
+              word_count: wordCount,
               slug,
-              success: false,
-              error: `Skipped: duplicate key`,
+              success: true,
             });
             continue;
           }
@@ -600,7 +626,7 @@ serve(async (req) => {
               message: "Adicione mais créditos e tente novamente",
               processed: results,
               progress: {
-                total: totalMatches || 0,
+                total: totalActionable || 0,
                 processed: alreadyProcessed + successCount,
                 remaining: Math.max((pendingMatches || 0) - successCount, 0),
               },
@@ -634,7 +660,7 @@ serve(async (req) => {
         failed: results.length - successCount,
         processed: results,
         progress: {
-          total: totalMatches || 0,
+          total: totalActionable || 0,
           processed: alreadyProcessed + successCount,
           remaining: Math.max(pendingMatches - successCount, 0),
         },

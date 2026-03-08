@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const SAFETY_TIMEOUT = 120_000; // 120s safety (platform limit is 150s)
+  const SAFETY_TIMEOUT = 25_000; // keep under pg_net HTTP timeout window
   const startTime = Date.now();
 
   // Get all running jobs
@@ -97,7 +97,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
     predictions: { fn: 'generate-predictions', body: {} },
     retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 100 } },
     analyses: { fn: 'generate-match-analysis', body: { limit: 1 } },
-    retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1 } },
+    retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1, skip_images: true } },
     validations: { fn: 'generate-validation-article', body: { limit: 3, skip_images: true } },
     image_fix: { fn: 'fix-article-thumbnails', body: { limit: 1 } },
   };
@@ -189,7 +189,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const total = data?.progress?.total ?? progress.total ?? 0;
       const newGenerated = (progress.generated || 0) + gen;
       const newFailed = (progress.failed || 0) + fail;
-      isDone = pending === 0 || (gen === 0 && fail === 0);
+      isDone = pending === 0;
       const newArticles = (data?.processed || []).filter((a: any) => a.success).map((a: any) => ({
         slug: a.slug, titulo: `${a.time_casa} x ${a.time_fora}`, data: a.data,
       }));
