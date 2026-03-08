@@ -397,22 +397,43 @@ Deno.serve(async (req) => {
       await supabase.from("kaggle_staging_matches").update(update).eq("id", sm.id);
     }
 
-    // Update job
+    // Count remaining pending
+    const { count: pendingTeamsLeft } = await supabase.from("kaggle_staging_teams")
+      .select("id", { count: "exact", head: true }).eq("job_id", job_id).eq("resolution_status", "pending");
+    const { count: pendingCompsLeft } = await supabase.from("kaggle_staging_competitions")
+      .select("id", { count: "exact", head: true }).eq("job_id", job_id).eq("resolution_status", "pending");
+    const { count: pendingMatchesLeft } = await supabase.from("kaggle_staging_matches")
+      .select("id", { count: "exact", head: true }).eq("job_id", job_id).eq("resolution_status", "pending");
+
+    const isComplete = (pendingTeamsLeft || 0) === 0 && (pendingCompsLeft || 0) === 0 && (pendingMatchesLeft || 0) === 0;
+
+    // Update job status
     await supabase.from("kaggle_import_jobs").update({
-      status: "awaiting_review",
+      status: isComplete ? "awaiting_review" : "resolving",
       total_conflicts: teamsConflict + matchesConflict,
     }).eq("id", job_id);
 
-    await log("resolve", "info", `Matches: ${matchesResolved} resolved, ${matchesConflict} probable`);
+    await log("resolve", "info", `Matches: ${matchesResolved} resolved, ${matchesConflict} probable. Remaining: ${pendingTeamsLeft || 0} teams, ${pendingCompsLeft || 0} comps, ${pendingMatchesLeft || 0} matches`);
 
     return new Response(JSON.stringify({
       success: true,
+      complete: isComplete,
+      pending: { teams: pendingTeamsLeft || 0, competitions: pendingCompsLeft || 0, matches: pendingMatchesLeft || 0 },
       teams: { resolved: teamsResolved, created: teamsCreated, conflicts: teamsConflict },
       competitions: { resolved: compsResolved, created: compsCreated },
       matches: { resolved: matchesResolved, conflicts: matchesConflict },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
+    // Update job status on error
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      if (body.job_id) {
+        await supabase.from("kaggle_import_jobs").update({
+          status: "failed", error_summary: e.message,
+        }).eq("id", body.job_id);
+      }
+    } catch {}
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -198,13 +198,31 @@ export default function AdminKaggle() {
       if (stageErr) throw stageErr;
       if (stageDataResp?.success === false) throw new Error(stageDataResp?.error || "Staging falhou");
 
-      // Step 4: Resolve (auto-creates teams & leagues)
+      // Step 4: Resolve (auto-creates teams & leagues) - loop until complete
       toast.info("🔗 Resolvendo times, ligas e partidas...");
-      const { data: resolveData, error: resolveErr } = await supabase.functions.invoke("kaggle-resolve", {
-        body: { job_id: jobId },
-      });
-      if (resolveErr) throw resolveErr;
-      if (resolveData?.success === false) throw new Error(resolveData?.error || "Resolução falhou");
+      let resolveData: any = null;
+      let resolvePass = 0;
+      const MAX_RESOLVE_PASSES = 20;
+      while (resolvePass < MAX_RESOLVE_PASSES) {
+        resolvePass++;
+        const { data: rd, error: resolveErr } = await supabase.functions.invoke("kaggle-resolve", {
+          body: { job_id: jobId },
+        });
+        if (resolveErr) throw resolveErr;
+        if (rd?.success === false) throw new Error(rd?.error || "Resolução falhou");
+        resolveData = rd;
+        
+        if (rd?.complete) {
+          toast.success(`✅ Resolução completa em ${resolvePass} passada(s)`);
+          break;
+        }
+        
+        const pending = rd?.pending;
+        toast.info(`🔄 Passada ${resolvePass}: ${pending?.teams || 0} times, ${pending?.competitions || 0} ligas, ${pending?.matches || 0} partidas pendentes...`);
+      }
+      if (!resolveData?.complete) {
+        toast.warning("⚠️ Resolução não completou em todas as passadas — promovendo o que foi resolvido");
+      }
 
       // Step 5: Promote
       toast.info("🚀 Promovendo para produção...");
