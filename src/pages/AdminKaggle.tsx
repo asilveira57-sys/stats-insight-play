@@ -179,10 +179,11 @@ export default function AdminKaggle() {
 
       // Step 3: Stage
       toast.info("📦 Staging dados...");
-      const { error: stageErr } = await supabase.functions.invoke("kaggle-process", {
+      const { data: stageDataResp, error: stageErr } = await supabase.functions.invoke("kaggle-process", {
         body: { action: "stage", job_id: jobId },
       });
       if (stageErr) throw stageErr;
+      if (stageDataResp?.success === false) throw new Error(stageDataResp?.error || "Staging falhou");
 
       // Step 4: Resolve (auto-creates teams & leagues)
       toast.info("🔗 Resolvendo times, ligas e partidas...");
