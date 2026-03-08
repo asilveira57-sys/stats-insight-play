@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const html = await response.text();
 
     // Extract all .htm links from the page
-    const linkRegex = /href=["']([^"']+\\.htm)["']/gi;
+    const linkRegex = /href=["']([^"']+\.htm[l]?)["']/gi;
     const allLinks = new Set<string>();
     let match;
     while ((match = linkRegex.exec(html)) !== null) {
