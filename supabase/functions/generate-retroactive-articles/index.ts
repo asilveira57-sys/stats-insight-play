@@ -404,45 +404,67 @@ serve(async (req) => {
     const pendingMatches = Math.max((totalWithPalpite || 0) - existingPartidaIds.size, 0);
     const alreadyProcessed = existingPartidaIds.size;
 
-    // Get pending matches (with palpite, without article)
-    let query = supabase
-      .from("partidas")
-      .select(`
-        id,
-        data,
-        hora,
-        rodada,
-        time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
-        time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
-        liga:ligas!partidas_liga_id_fkey(id, nome, slug, pais),
-        palpite:palpites!inner(
-          prob_casa,
-          prob_empate,
-          prob_fora,
-          placar_casa_estimado,
-          placar_fora_estimado,
-          forca_time_casa,
-          forca_time_fora,
-          confianca
-        )
-      `)
-      .eq("status", "finished")
-      .order("data", { ascending: true })
-      .limit(limit * 3); // fetch more to filter
+    // Build exclusion list for the query (Supabase .not('id','in',...) approach)
+    // Convert set to array for the filter
+    const excludeIds = Array.from(existingPartidaIds);
 
-    if (leagueId) {
-      query = query.eq("liga_id", leagueId);
+    // Fetch matches in batches to find ones without articles
+    // We can't use .not('id','in',...) with huge arrays, so we fetch more and filter
+    const fetchBatchSize = Math.max(limit * 5, 50); // Fetch more to account for filtering
+    let matchOffset = 0;
+    let filteredMatches: any[] = [];
+    const maxAttempts = 20; // safety limit on pagination
+    let attempts = 0;
+
+    while (filteredMatches.length < limit && attempts < maxAttempts) {
+      attempts++;
+      let query = supabase
+        .from("partidas")
+        .select(`
+          id,
+          data,
+          hora,
+          rodada,
+          time_casa:times!partidas_time_casa_id_fkey(id, nome, slug, cores),
+          time_fora:times!partidas_time_fora_id_fkey(id, nome, slug, cores),
+          liga:ligas!partidas_liga_id_fkey(id, nome, slug, pais),
+          palpite:palpites!inner(
+            prob_casa,
+            prob_empate,
+            prob_fora,
+            placar_casa_estimado,
+            placar_fora_estimado,
+            forca_time_casa,
+            forca_time_fora,
+            confianca
+          )
+        `)
+        .eq("status", "finished")
+        .order("data", { ascending: true })
+        .range(matchOffset, matchOffset + fetchBatchSize - 1);
+
+      if (leagueId) {
+        query = query.eq("liga_id", leagueId);
+      }
+
+      const { data: batchMatches, error: matchError } = await query;
+
+      if (matchError) {
+        throw new Error(`Failed to fetch matches: ${matchError.message}`);
+      }
+
+      if (!batchMatches || batchMatches.length === 0) break;
+
+      // Filter out matches that already have articles
+      const newFiltered = batchMatches.filter((m: any) => !existingPartidaIds.has(m.id));
+      filteredMatches = filteredMatches.concat(newFiltered);
+
+      if (batchMatches.length < fetchBatchSize) break; // no more data
+      matchOffset += fetchBatchSize;
     }
 
-    const { data: matches, error: matchError } = await query;
-
-    if (matchError) {
-      throw new Error(`Failed to fetch matches: ${matchError.message}`);
-    }
-
-    // Filter out matches that already have articles (in-memory filter since left join was unreliable)
-    const filteredMatches = (matches || []).filter((m: any) => !existingPartidaIds.has(m.id));
     const matchesToProcess = filteredMatches.slice(0, limit);
+    console.log(`Found ${filteredMatches.length} matches without articles after scanning ${matchOffset + fetchBatchSize} rows (${attempts} batches)`);
 
     if (matchesToProcess.length === 0) {
       return new Response(
