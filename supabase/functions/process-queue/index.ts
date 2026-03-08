@@ -171,7 +171,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       isDone = pending === 0 || (gen === 0 && fail === 0 && skipped === 0);
       updated = {
         generated: newGenerated, failed: newFailed,
-        pending, total: results.stats?.actionableWithoutAnalysis ?? results.stats?.totalInWindow ?? progress.total || 0,
+        pending, total: (results.stats?.actionableWithoutAnalysis ?? results.stats?.totalInWindow ?? progress.total ?? 0),
         consecutive_errors: 0,
         last_log: isDone
           ? `🏁 Concluído! ${newGenerated} análises geradas.`
