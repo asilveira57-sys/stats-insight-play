@@ -6,7 +6,6 @@ interface PlayerScorer {
   playerName: string;
   teamId: string;
   teamName: string;
-  teamLogo: string | null;
   teamPrimaryColor: string | null;
   teamSecondaryColor: string | null;
   goals: number;
