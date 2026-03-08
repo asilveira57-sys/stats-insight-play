@@ -12,7 +12,6 @@ import {
 interface TeamStats {
   id: string;
   nome: string;
-  escudo_url: string | null;
   cores: { primary: string; secondary: string } | null;
   totalMatches: number;
   wins: number;

@@ -309,7 +309,6 @@ export default function Retrospectiva() {
         if (!teamStats[timeFora.nome]) {
           teamStats[timeFora.nome] = { 
             nome: timeFora.nome, 
-            escudo_url: timeFora.escudo_url,
             cores: timeFora.cores,
             total: 0, 
             acertos: 0, 
