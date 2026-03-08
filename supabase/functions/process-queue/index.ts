@@ -97,6 +97,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
     predictions: { fn: 'generate-predictions', body: {} },
     retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 100 } },
     analyses: { fn: 'generate-match-analysis', body: { limit: 1 } },
+    retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1 } },
     validations: { fn: 'generate-validation-article', body: { limit: 1 } },
     image_fix: { fn: 'fix-article-thumbnails', body: { limit: 1 } },
   };
