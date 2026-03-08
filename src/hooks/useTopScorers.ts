@@ -216,7 +216,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               if (homeTeam?.id) {
                 if (!teamGoals.has(homeTeam.id)) {
                   const cores = homeTeam.cores || {};
-                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, logo: homeTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
+                  teamGoals.set(homeTeam.id, { name: homeTeam.nome, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(homeTeam.id)!.goals += match.gols_casa || 0;
                 teamGoals.get(homeTeam.id)!.matches += 1;
@@ -225,7 +225,7 @@ export function useTopScorers(options: UseTopScorersOptions = {}) {
               if (awayTeam?.id) {
                 if (!teamGoals.has(awayTeam.id)) {
                   const cores = awayTeam.cores || {};
-                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, logo: awayTeam.escudo_url, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
+                  teamGoals.set(awayTeam.id, { name: awayTeam.nome, primaryColor: cores.primary || null, secondaryColor: cores.secondary || null, goals: 0, matches: 0 });
                 }
                 teamGoals.get(awayTeam.id)!.goals += match.gols_fora || 0;
                 teamGoals.get(awayTeam.id)!.matches += 1;
