@@ -139,9 +139,10 @@ export default function AdminKaggle() {
         body: { action: "list_dataset_files", dataset_slug: datasetSlug },
       });
       if (error) throw error;
+      if (data?.success === false) throw new Error(data?.error || "Listagem de arquivos falhou");
       setDatasetFiles(data?.files || []);
     } catch (e: any) {
-      toast.error(`Erro ao listar arquivos: ${e.message}`);
+      toast.error(`Erro ao listar arquivos: ${await getInvokeErrorMessage(e, "Falha ao listar arquivos")}`);
     } finally {
       setIsLoadingFiles(false);
     }
