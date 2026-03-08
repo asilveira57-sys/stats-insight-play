@@ -613,12 +613,13 @@ serve(async (req) => {
         }
         // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
-        // Generate and upload internal image (skip in batch mode for speed)
+        // Generate and upload internal image with SEO filename
         let internalImageUrl: string | null = null;
         if (!skipImages) {
+          const internalSeoFileName = `validation-${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
           const internalImageBase64 = await generateValidationInternalImage(matchData, GEMINI_API_KEY);
           if (internalImageBase64) {
-            internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, `validation-${match.id}-internal.png`);
+            internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
             console.log(`Validation internal image uploaded: ${internalImageUrl}`);
           }
         }
