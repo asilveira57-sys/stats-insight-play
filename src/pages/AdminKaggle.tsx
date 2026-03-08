@@ -132,11 +132,13 @@ export default function AdminKaggle() {
     }
   };
 
-  // Quick import a file
+  // Quick import a file + auto-process full pipeline
   const handleQuickImport = async (fileName: string) => {
     if (!selectedDatasetSlug) return;
     setIsImporting(fileName);
     try {
+      // Step 1: Download
+      toast.info(`⬇️ Baixando ${fileName}...`);
       const { data, error } = await supabase.functions.invoke("kaggle-import", {
         body: {
           action: "quick_import",
@@ -146,16 +148,53 @@ export default function AdminKaggle() {
         },
       });
       if (error) throw error;
-      if (data?.success) {
-        toast.success(`✅ Importado! ${data.rows} linhas, ${formatBytes(data.bytes)}. Job: ${data.job_id?.substring(0, 8)}...`);
-        jobs.refetch();
-        datasets.refetch();
-        stats.refetch();
-      } else {
-        toast.error(`Falha: ${data?.error || "Erro desconhecido"}`);
-      }
+      if (!data?.success) throw new Error(data?.error || "Download falhou");
+
+      const jobId = data.job_id;
+      toast.success(`✅ Download OK: ${data.rows} linhas. Processando...`);
+
+      // Step 2: Profile
+      toast.info("📊 Profiling arquivo...");
+      const { error: profErr } = await supabase.functions.invoke("kaggle-process", {
+        body: { action: "profile", job_id: jobId },
+      });
+      if (profErr) throw profErr;
+
+      // Step 3: Stage
+      toast.info("📦 Staging dados...");
+      const { error: stageErr } = await supabase.functions.invoke("kaggle-process", {
+        body: { action: "stage", job_id: jobId },
+      });
+      if (stageErr) throw stageErr;
+
+      // Step 4: Resolve (auto-creates teams & leagues)
+      toast.info("🔗 Resolvendo times, ligas e partidas...");
+      const { data: resolveData, error: resolveErr } = await supabase.functions.invoke("kaggle-resolve", {
+        body: { job_id: jobId },
+      });
+      if (resolveErr) throw resolveErr;
+
+      // Step 5: Promote
+      toast.info("🚀 Promovendo para produção...");
+      const { data: promoteData, error: promoteErr } = await supabase.functions.invoke("kaggle-promote", {
+        body: { job_id: jobId, promote_mode: "all_resolved" },
+      });
+      if (promoteErr) throw promoteErr;
+
+      const rTeams = resolveData?.teams;
+      const promoted = promoteData?.promoted || 0;
+      const updated = promoteData?.updated || 0;
+      toast.success(
+        `✅ Pipeline completo! ${promoted} novas partidas, ${updated} atualizadas. ` +
+        `Times: ${rTeams?.resolved || 0} (${rTeams?.created || 0} novos). ` +
+        `Ligas: ${resolveData?.competitions?.created || 0} novas.`
+      );
+
+      jobs.refetch();
+      datasets.refetch();
+      stats.refetch();
     } catch (e: any) {
-      toast.error(`Erro na importação: ${e.message}`);
+      toast.error(`Erro: ${e.message}`);
     } finally {
       setIsImporting(null);
     }

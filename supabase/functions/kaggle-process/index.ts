@@ -315,9 +315,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Also store raw rows in staging_rows
+      // Also store raw rows in staging_rows (NO row limit)
       const rowBatch: any[] = [];
-      for (let i = 1; i < Math.min(lines.length, 10001); i++) {
+      for (let i = 1; i < lines.length; i++) {
         if (shouldStop()) break;
         const vals = lines[i].split(delimiter).map((v: string) => v.trim().replace(/^["']|["']$/g, ""));
         const row: Record<string, string> = {};

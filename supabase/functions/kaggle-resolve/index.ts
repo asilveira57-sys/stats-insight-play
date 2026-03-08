@@ -5,6 +5,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Paginated fetch - no 1000 row limits
+async function fetchAll(supabase: any, table: string, filters: Record<string, any>, select = "*") {
+  const PAGE_SIZE = 5000;
+  let all: any[] = [];
+  let from = 0;
+  while (true) {
+    let q = supabase.from(table).select(select).range(from, from + PAGE_SIZE - 1);
+    for (const [k, v] of Object.entries(filters)) {
+      q = q.eq(k, v);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -24,19 +44,20 @@ Deno.serve(async (req) => {
       await supabase.from("kaggle_import_logs").insert({ job_id, stage, level, message, payload: payload ? JSON.stringify(payload) : null });
     };
 
-    await log("resolve", "info", "Starting resolution");
+    await log("resolve", "info", "Starting resolution (auto-create mode)");
 
     // ========== RESOLVE TEAMS ==========
-    const { data: stagingTeams } = await supabase.from("kaggle_staging_teams")
-      .select("*").eq("job_id", job_id).eq("resolution_status", "pending");
+    const stagingTeams = await fetchAll(supabase, "kaggle_staging_teams", { job_id, resolution_status: "pending" });
 
     let teamsResolved = 0;
+    let teamsCreated = 0;
     let teamsConflict = 0;
 
-    for (const st of stagingTeams || []) {
+    for (const st of stagingTeams) {
       if (shouldStop()) break;
 
       const slug = st.inferred_slug || st.normalized_name?.replace(/[^a-z0-9]+/g, "-") || "";
+      const normalizedName = st.normalized_name || st.raw_name?.toLowerCase().trim() || "";
 
       // Level 1: slug exact match
       let { data: team } = await supabase.from("times")
@@ -49,7 +70,7 @@ Deno.serve(async (req) => {
       } else {
         // Level 2: alias match
         const { data: alias } = await supabase.from("team_aliases")
-          .select("team_id").eq("normalized_alias", st.normalized_name || "").limit(1).single();
+          .select("team_id").eq("normalized_alias", normalizedName).limit(1).single();
 
         if (alias) {
           const { data: t } = await supabase.from("times").select("id, nome").eq("id", alias.team_id).single();
@@ -60,25 +81,34 @@ Deno.serve(async (req) => {
 
       if (!team) {
         // Level 3: normalized name partial match
-        const { data: fuzzy } = await supabase.from("times")
-          .select("id, nome, name_normalized")
-          .eq("status", "active")
-          .ilike("name_normalized", `%${st.normalized_name?.substring(0, 6) || ""}%`)
-          .limit(5);
+        const prefix = normalizedName.substring(0, 8);
+        if (prefix.length >= 3) {
+          const { data: fuzzy } = await supabase.from("times")
+            .select("id, nome, name_normalized")
+            .eq("status", "active")
+            .ilike("name_normalized", `%${prefix}%`)
+            .limit(5);
 
-        if (fuzzy?.length === 1) {
-          team = fuzzy[0];
-          confidence = 70;
-        } else if (fuzzy && fuzzy.length > 1) {
-          confidence = 50;
-          // Register conflict
-          await supabase.from("kaggle_staging_conflicts").insert({
-            job_id, entity_type: "team", conflict_type: "ambiguous_match",
-            raw_value: st.raw_name,
-            suggested_value: fuzzy.map((f: any) => `${f.nome}(${f.id})`).join(" | "),
-            confidence_score: confidence,
-          });
-          teamsConflict++;
+          if (fuzzy?.length === 1) {
+            team = fuzzy[0];
+            confidence = 70;
+          } else if (fuzzy && fuzzy.length > 1) {
+            // Check for exact normalized match in the fuzzy results
+            const exactMatch = fuzzy.find((f: any) => f.name_normalized === normalizedName);
+            if (exactMatch) {
+              team = exactMatch;
+              confidence = 90;
+            } else {
+              confidence = 50;
+              await supabase.from("kaggle_staging_conflicts").insert({
+                job_id, entity_type: "team", conflict_type: "ambiguous_match",
+                raw_value: st.raw_name,
+                suggested_value: fuzzy.map((f: any) => `${f.nome}(${f.id})`).join(" | "),
+                confidence_score: confidence,
+              });
+              teamsConflict++;
+            }
+          }
         }
       }
 
@@ -88,6 +118,15 @@ Deno.serve(async (req) => {
           resolution_status: "resolved",
         }).eq("id", st.id);
 
+        // Create alias if new name variant
+        await supabase.from("team_aliases").insert({
+          team_id: team.id,
+          alias: st.raw_name,
+          normalized_alias: normalizedName,
+          source: "kaggle_import",
+          confidence: confidence,
+        }).onConflict("team_id,normalized_alias").ignore();
+
         // Create link
         await supabase.from("kaggle_team_links").insert({
           staging_team_id: st.id, team_id: team.id,
@@ -95,30 +134,62 @@ Deno.serve(async (req) => {
         });
 
         teamsResolved++;
-      } else if (!team) {
-        await supabase.from("kaggle_staging_teams").update({
-          resolution_status: "unmatched", confidence_score: 0,
-        }).eq("id", st.id);
+      } else if (!team && confidence < 70) {
+        // AUTO-CREATE new team (no escudo, colors generated by trigger)
+        const teamName = st.raw_name || normalizedName;
+        
+        const { data: newTeam, error: createErr } = await supabase.from("times").insert({
+          nome: teamName,
+          // No escudo_url - trigger will generate colors automatically
+          // slug is generated by trigger
+          status: "active",
+        }).select("id, nome, slug").single();
 
-        await supabase.from("kaggle_resolution_queue").insert({
-          job_id, entity_type: "team", staging_entity_id: st.id,
-          issue_type: "no_match",
-        });
+        if (createErr) {
+          await log("resolve", "error", `Failed to create team: ${teamName} - ${createErr.message}`);
+          await supabase.from("kaggle_staging_teams").update({
+            resolution_status: "unmatched", confidence_score: 0,
+          }).eq("id", st.id);
+        } else {
+          // Register alias
+          await supabase.from("team_aliases").insert({
+            team_id: newTeam.id,
+            alias: teamName,
+            normalized_alias: normalizedName,
+            source: "kaggle_import",
+            confidence: 100,
+          }).onConflict("team_id,normalized_alias").ignore();
+
+          await supabase.from("kaggle_staging_teams").update({
+            matched_team_id: newTeam.id, confidence_score: 100,
+            resolution_status: "resolved",
+          }).eq("id", st.id);
+
+          await supabase.from("kaggle_team_links").insert({
+            staging_team_id: st.id, team_id: newTeam.id,
+            external_key: st.raw_name, confidence_score: 100,
+          });
+
+          teamsCreated++;
+          teamsResolved++;
+          await log("resolve", "info", `Auto-created team: ${teamName} → ${newTeam.id}`);
+        }
       }
     }
 
-    await log("resolve", "info", `Teams: ${teamsResolved} resolved, ${teamsConflict} conflicts`);
+    await log("resolve", "info", `Teams: ${teamsResolved} resolved (${teamsCreated} new), ${teamsConflict} conflicts`);
 
     // ========== RESOLVE COMPETITIONS ==========
-    const { data: stagingComps } = await supabase.from("kaggle_staging_competitions")
-      .select("*").eq("job_id", job_id).eq("resolution_status", "pending");
+    const stagingComps = await fetchAll(supabase, "kaggle_staging_competitions", { job_id, resolution_status: "pending" });
 
     let compsResolved = 0;
+    let compsCreated = 0;
 
-    for (const sc of stagingComps || []) {
+    for (const sc of stagingComps) {
       if (shouldStop()) break;
 
-      const slug = sc.normalized_name?.replace(/[^a-z0-9]+/g, "-") || "";
+      const normalizedName = sc.normalized_name || sc.raw_name?.toLowerCase().trim() || "";
+      const slug = normalizedName.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
       let { data: liga } = await supabase.from("ligas")
         .select("id, nome").eq("slug", slug).limit(1).single();
@@ -128,12 +199,29 @@ Deno.serve(async (req) => {
       if (liga) {
         confidence = 95;
       } else {
+        // Check competition aliases
         const { data: alias } = await supabase.from("competition_aliases")
-          .select("league_id").eq("normalized_alias", sc.normalized_name || "").limit(1).single();
+          .select("league_id").eq("normalized_alias", normalizedName).limit(1).single();
         if (alias) {
           const { data: l } = await supabase.from("ligas").select("id, nome").eq("id", alias.league_id).single();
           liga = l;
           confidence = 85;
+        }
+      }
+
+      if (!liga) {
+        // Fuzzy match by slug prefix
+        const prefix = slug.substring(0, 10);
+        if (prefix.length >= 3) {
+          const { data: fuzzy } = await supabase.from("ligas")
+            .select("id, nome, slug")
+            .ilike("slug", `%${prefix}%`)
+            .limit(5);
+          
+          if (fuzzy?.length === 1) {
+            liga = fuzzy[0];
+            confidence = 70;
+          }
         }
       }
 
@@ -143,6 +231,13 @@ Deno.serve(async (req) => {
           resolution_status: "resolved",
         }).eq("id", sc.id);
 
+        // Register alias
+        await supabase.from("competition_aliases").insert({
+          league_id: liga.id,
+          alias: sc.raw_name,
+          normalized_alias: normalizedName,
+        }).onConflict("league_id,normalized_alias").ignore();
+
         await supabase.from("kaggle_competition_links").insert({
           staging_competition_id: sc.id, competition_id: liga.id,
           external_key: sc.raw_name, confidence_score: confidence,
@@ -150,42 +245,97 @@ Deno.serve(async (req) => {
 
         compsResolved++;
       } else {
-        await supabase.from("kaggle_staging_competitions").update({
-          resolution_status: "unmatched",
-        }).eq("id", sc.id);
+        // AUTO-CREATE new league
+        const leagueName = sc.raw_name || normalizedName;
+        
+        // Try to infer country from name
+        let inferredCountry = null;
+        const nameLower = leagueName.toLowerCase();
+        const countryHints: Record<string, string> = {
+          "brazil": "Brazil", "brasil": "Brazil", "brasileir": "Brazil",
+          "england": "England", "premier": "England", "championship": "England",
+          "spain": "Spain", "la liga": "Spain", "liga bbva": "Spain",
+          "italy": "Italy", "serie a": "Italy", "calcio": "Italy",
+          "germany": "Germany", "bundesliga": "Germany",
+          "france": "France", "ligue": "France",
+          "portugal": "Portugal", "primeira": "Portugal",
+          "argentina": "Argentina", "superliga": "Argentina",
+          "mexico": "Mexico", "liga mx": "Mexico",
+          "usa": "United States", "mls": "United States",
+          "world cup": "International", "copa america": "International",
+          "champions league": "International", "europa league": "International",
+          "libertadores": "International", "sudamericana": "International",
+          "friendly": "International", "international": "International",
+        };
 
-        await supabase.from("kaggle_resolution_queue").insert({
-          job_id, entity_type: "competition", staging_entity_id: sc.id,
-          issue_type: "no_match",
-        });
+        for (const [hint, country] of Object.entries(countryHints)) {
+          if (nameLower.includes(hint)) {
+            inferredCountry = country;
+            break;
+          }
+        }
+
+        const { data: newLeague, error: createErr } = await supabase.from("ligas").insert({
+          nome: leagueName,
+          pais: inferredCountry,
+          status: "active",
+          // slug generated by trigger
+        }).select("id, nome, slug").single();
+
+        if (createErr) {
+          await log("resolve", "error", `Failed to create league: ${leagueName} - ${createErr.message}`);
+          await supabase.from("kaggle_staging_competitions").update({
+            resolution_status: "unmatched",
+          }).eq("id", sc.id);
+        } else {
+          // Register alias
+          await supabase.from("competition_aliases").insert({
+            league_id: newLeague.id,
+            alias: leagueName,
+            normalized_alias: normalizedName,
+          }).onConflict("league_id,normalized_alias").ignore();
+
+          await supabase.from("kaggle_staging_competitions").update({
+            matched_competition_id: newLeague.id, confidence_score: 100,
+            resolution_status: "resolved",
+          }).eq("id", sc.id);
+
+          await supabase.from("kaggle_competition_links").insert({
+            staging_competition_id: sc.id, competition_id: newLeague.id,
+            external_key: sc.raw_name, confidence_score: 100,
+          });
+
+          compsCreated++;
+          compsResolved++;
+          await log("resolve", "info", `Auto-created league: ${leagueName} → ${newLeague.id} (country: ${inferredCountry || "unknown"})`);
+        }
       }
     }
 
-    await log("resolve", "info", `Competitions: ${compsResolved} resolved`);
+    await log("resolve", "info", `Competitions: ${compsResolved} resolved (${compsCreated} new)`);
 
     // ========== RESOLVE MATCHES (link staging teams to staging matches) ==========
-    const { data: resolvedTeams } = await supabase.from("kaggle_staging_teams")
-      .select("raw_name, matched_team_id").eq("job_id", job_id).eq("resolution_status", "resolved");
+    const resolvedTeams = await fetchAll(supabase, "kaggle_staging_teams", { job_id, resolution_status: "resolved" }, "raw_name, matched_team_id");
 
     const teamMap: Record<string, string> = {};
-    resolvedTeams?.forEach((t: any) => { if (t.matched_team_id) teamMap[t.raw_name] = t.matched_team_id; });
+    resolvedTeams.forEach((t: any) => { if (t.matched_team_id) teamMap[t.raw_name] = t.matched_team_id; });
 
-    const { data: resolvedComps } = await supabase.from("kaggle_staging_competitions")
-      .select("raw_name, matched_competition_id").eq("job_id", job_id).eq("resolution_status", "resolved");
+    const resolvedComps = await fetchAll(supabase, "kaggle_staging_competitions", { job_id, resolution_status: "resolved" }, "raw_name, matched_competition_id");
 
     const compMap: Record<string, string> = {};
-    resolvedComps?.forEach((c: any) => { if (c.matched_competition_id) compMap[c.raw_name] = c.matched_competition_id; });
+    resolvedComps.forEach((c: any) => { if (c.matched_competition_id) compMap[c.raw_name] = c.matched_competition_id; });
 
-    // Update staging matches with resolved IDs
-    const { data: stagingMatches } = await supabase.from("kaggle_staging_matches")
-      .select("id, raw_home_team, raw_away_team, raw_competition_name, parsed_date")
-      .eq("job_id", job_id).eq("resolution_status", "pending");
+    // Fetch staging matches in pages
+    const stagingMatches = await fetchAll(supabase, "kaggle_staging_matches", { job_id, resolution_status: "pending" }, "id, raw_home_team, raw_away_team, raw_competition_name, parsed_date");
 
     let matchesResolved = 0;
     let matchesConflict = 0;
 
-    for (const sm of stagingMatches || []) {
-      if (shouldStop()) break;
+    for (const sm of stagingMatches) {
+      if (shouldStop()) {
+        await log("resolve", "warn", `Safety timeout at ${matchesResolved} matches`);
+        break;
+      }
 
       const homeId = sm.raw_home_team ? teamMap[sm.raw_home_team] : null;
       const awayId = sm.raw_away_team ? teamMap[sm.raw_away_team] : null;
@@ -225,9 +375,12 @@ Deno.serve(async (req) => {
               matchesConflict++;
             } else {
               update.dedupe_status = "new_record";
-              update.confidence_score = homeId && awayId ? 85 : 50;
+              update.confidence_score = 85;
             }
           }
+        } else {
+          update.dedupe_status = "new_record";
+          update.confidence_score = 60;
         }
 
         update.resolution_status = "resolved";
@@ -242,6 +395,7 @@ Deno.serve(async (req) => {
 
     // Update job
     await supabase.from("kaggle_import_jobs").update({
+      status: "awaiting_review",
       total_conflicts: teamsConflict + matchesConflict,
     }).eq("id", job_id);
 
@@ -249,8 +403,8 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      teams: { resolved: teamsResolved, conflicts: teamsConflict },
-      competitions: { resolved: compsResolved },
+      teams: { resolved: teamsResolved, created: teamsCreated, conflicts: teamsConflict },
+      competitions: { resolved: compsResolved, created: compsCreated },
       matches: { resolved: matchesResolved, conflicts: matchesConflict },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
