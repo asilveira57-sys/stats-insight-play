@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+
 import { Layout } from "@/components/layout/Layout";
 import { useLeagueBySlug, useLeagueRelatedNews } from "@/hooks/useLeaguePillar";
 import { LeaguePillarSEO } from "@/components/league/LeaguePillarSEO";
