@@ -297,6 +297,8 @@ Deno.serve(async (req) => {
           }
         }
 
+        console.log(`Found ${fixtures.length} fixtures for ${leagueInfo.name} (season ${usedSeason})`);
+
         // Process each fixture
         for (const fixture of fixtures) {
           try {
