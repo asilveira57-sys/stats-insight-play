@@ -576,6 +576,7 @@ export default function AdminControlCenter() {
     retroArticles: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; data: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
     imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
+    weeklyValidations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; liga: string; week: number; year: number }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
@@ -583,6 +584,7 @@ export default function AdminControlCenter() {
     retroArticles: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
+    weeklyValidations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
   });
 
   // Sync background_jobs table → loopState via realtime
