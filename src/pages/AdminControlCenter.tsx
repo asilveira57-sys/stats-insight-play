@@ -321,12 +321,14 @@ export default function AdminControlCenter() {
     predictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     retroPredictions: { running: boolean; generated: number; failed: number; total: number; log: string[] };
     analyses: { running: boolean; generated: number; failed: number; total: number; log: string[]; tasks: { match: string; status: 'pending' | 'ok' | 'fail'; error?: string }[] };
+    retroArticles: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; data: string }[] };
     validations: { running: boolean; generated: number; failed: number; total: number; pending: number; log: string[]; articles: { slug: string; titulo: string; timeCasa: string; timeFora: string; data: string }[] };
     imageFix: { running: boolean; fixed: number; failed: number; pending: number; log: string[]; results: { id: string; titulo: string; slug: string; success: boolean; error?: string }[] };
   }>({
     predictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     retroPredictions: { running: false, generated: 0, failed: 0, total: 0, log: [] },
     analyses: { running: false, generated: 0, failed: 0, total: 0, log: [], tasks: [] },
+    retroArticles: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     validations: { running: false, generated: 0, failed: 0, total: 0, pending: 0, log: [], articles: [] },
     imageFix: { running: false, fixed: 0, failed: 0, pending: 0, log: [], results: [] },
   });
@@ -348,6 +350,9 @@ export default function AdminControlCenter() {
           break;
         case 'analyses':
           setLoopState(prev => ({ ...prev, analyses: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, log: logArr, tasks: [] } }));
+          break;
+        case 'retro_articles':
+          setLoopState(prev => ({ ...prev, retroArticles: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
           break;
         case 'validations':
           setLoopState(prev => ({ ...prev, validations: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
