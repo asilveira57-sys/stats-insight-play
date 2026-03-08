@@ -78,13 +78,12 @@ function useLogs(jobId: string | null) {
     queryKey: ["historical-import-logs", jobId],
     queryFn: async () => {
       if (!jobId) return [];
-      const { data, error } = await supabase
-        .from("historical_import_logs")
-        .select("*")
-        .eq("job_id", jobId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
+      return fetchAllRecords<any>(
+        "historical_import_logs",
+        "*",
+        (q: any) => q.eq("job_id", jobId),
+        { column: "created_at", ascending: true }
+      );
     },
     enabled: !!jobId,
   });
