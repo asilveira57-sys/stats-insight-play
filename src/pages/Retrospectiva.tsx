@@ -190,6 +190,16 @@ export default function Retrospectiva() {
     });
   }, [matches, selectedSeason, selectedRodada]);
 
+  // Reset page when filters change
+  const totalPages = Math.ceil(filteredMatches.length / PAGE_SIZE);
+  const paginatedMatches = useMemo(() => {
+    const start = currentPage * PAGE_SIZE;
+    return filteredMatches.slice(start, start + PAGE_SIZE);
+  }, [filteredMatches, currentPage]);
+
+  // Reset to first page on filter change
+  useMemo(() => { setCurrentPage(0); }, [selectedSeason, selectedRodada]);
+
   // Calculate stats based on filtered matches
   const stats = filteredMatches.length > 0 ? {
     total: filteredMatches.length,
