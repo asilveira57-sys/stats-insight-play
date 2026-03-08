@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useKaggleData } from "@/hooks/useKaggleData";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
-  Database, Upload, Play, RefreshCw, FileText, AlertTriangle, CheckCircle2,
-  Clock, XCircle, Eye, Zap, ArrowRight, Loader2, BarChart3, Search,
-  Plus, FolderOpen, GitMerge, List, Shield
+  Database, Play, RefreshCw, FileText, AlertTriangle, CheckCircle2,
+  Search, Loader2, BarChart3, Eye, Zap, ArrowRight, GitMerge,
+  List, Shield, Download, Globe, FolderOpen
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
@@ -31,16 +32,50 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-gray-500/20 text-gray-400",
 };
 
+const POPULAR_FOOTBALL_QUERIES = [
+  "football results",
+  "soccer matches",
+  "fifa world cup",
+  "football statistics",
+  "premier league",
+  "brasileirao",
+  "champions league",
+  "international football",
+];
+
+interface KaggleDataset {
+  ref: string;
+  title: string;
+  subtitle: string;
+  creator: string;
+  totalBytes: number;
+  lastUpdated: string;
+  downloadCount: number;
+  voteCount: number;
+  url: string;
+}
+
+interface KaggleFile {
+  name: string;
+  totalBytes: number;
+  columns: number;
+  description: string;
+}
+
 export default function AdminKaggle() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("search");
+  const [searchQuery, setSearchQuery] = useState("football results");
+  const [searchResults, setSearchResults] = useState<KaggleDataset[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedDatasetSlug, setSelectedDatasetSlug] = useState<string | null>(null);
+  const [selectedDatasetTitle, setSelectedDatasetTitle] = useState("");
+  const [datasetFiles, setDatasetFiles] = useState<KaggleFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isImporting, setIsImporting] = useState<string | null>(null);
+  const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [newDatasetOpen, setNewDatasetOpen] = useState(false);
-  const [newDatasetForm, setNewDatasetForm] = useState({ dataset_slug: "", dataset_title: "", dataset_url: "", dataset_description: "", dataset_category: "", country_scope: "", competition_scope: "" });
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFileContent, setUploadFileContent] = useState("");
-  const [uploadJobId, setUploadJobId] = useState("");
 
   const {
     datasets, jobs, stats, resolutionQueue,
@@ -58,27 +93,79 @@ export default function AdminKaggle() {
   const s = stats.data;
   const isLoading = registerDataset.isPending || createJob.isPending || profileFile.isPending || stageData.isPending || resolveJob.isPending || promoteJob.isPending || batchProcess.isPending;
 
-  const handleRegisterDataset = () => {
-    registerDataset.mutate(newDatasetForm);
-    setNewDatasetOpen(false);
-    setNewDatasetForm({ dataset_slug: "", dataset_title: "", dataset_url: "", dataset_description: "", dataset_category: "", country_scope: "", competition_scope: "" });
+  // Search Kaggle datasets
+  const handleSearch = async (query?: string) => {
+    const q = query || searchQuery;
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("kaggle-import", {
+        body: { action: "search_datasets", query: q },
+      });
+      if (error) throw error;
+      if (data?.datasets) {
+        setSearchResults(data.datasets);
+        toast.success(`${data.datasets.length} datasets encontrados`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro na busca: ${e.message}`);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    setUploadFileContent(text);
+  // List files of a dataset
+  const handleListFiles = async (datasetSlug: string, title: string) => {
+    setSelectedDatasetSlug(datasetSlug);
+    setSelectedDatasetTitle(title);
+    setIsLoadingFiles(true);
+    setFilesDialogOpen(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("kaggle-import", {
+        body: { action: "list_dataset_files", dataset_slug: datasetSlug },
+      });
+      if (error) throw error;
+      setDatasetFiles(data?.files || []);
+    } catch (e: any) {
+      toast.error(`Erro ao listar arquivos: ${e.message}`);
+    } finally {
+      setIsLoadingFiles(false);
+    }
   };
 
-  const handleUploadSubmit = async () => {
-    if (!uploadJobId || !uploadFileContent) return;
-    const encoder = new TextEncoder();
-    const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(uploadFileContent));
-    const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
-    uploadRaw.mutate({ job_id: uploadJobId, raw_text: uploadFileContent, content_hash: hash, asset_type: "csv" });
-    setUploadOpen(false);
-    setUploadFileContent("");
+  // Quick import a file
+  const handleQuickImport = async (fileName: string) => {
+    if (!selectedDatasetSlug) return;
+    setIsImporting(fileName);
+    try {
+      const { data, error } = await supabase.functions.invoke("kaggle-import", {
+        body: {
+          action: "quick_import",
+          dataset_slug: selectedDatasetSlug,
+          dataset_title: selectedDatasetTitle,
+          file_name: fileName,
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(`✅ Importado! ${data.rows} linhas, ${formatBytes(data.bytes)}. Job: ${data.job_id?.substring(0, 8)}...`);
+        jobs.refetch();
+        datasets.refetch();
+        stats.refetch();
+      } else {
+        toast.error(`Falha: ${data?.error || "Erro desconhecido"}`);
+      }
+    } catch (e: any) {
+      toast.error(`Erro na importação: ${e.message}`);
+    } finally {
+      setIsImporting(null);
+    }
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
   return (
@@ -87,7 +174,7 @@ export default function AdminKaggle() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Kaggle Import</h1>
-            <p className="text-sm text-muted-foreground">Integração com datasets do Kaggle</p>
+            <p className="text-sm text-muted-foreground">Busque e importe datasets de futebol do Kaggle com um clique</p>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => batchProcess.mutate({ action: "process_pending", batch_size: 3 })} disabled={isLoading}>
@@ -98,112 +185,155 @@ export default function AdminKaggle() {
               <ArrowRight className="h-4 w-4 mr-1" />
               Promover Batch
             </Button>
-            <Button size="sm" variant="outline" onClick={() => batchProcess.mutate({ action: "retry_failed", batch_size: 3 })} disabled={isLoading}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Retry Falhas
-            </Button>
           </div>
         </div>
 
+        {/* KPI cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: "Datasets", value: s?.totalDatasets || 0, icon: Database },
+            { label: "Arquivos", value: s?.totalFiles || 0, icon: FileText },
+            { label: "Staging", value: s?.totalStagingMatches || 0, icon: BarChart3 },
+            { label: "Conflitos", value: s?.pendingConflicts || 0, icon: AlertTriangle },
+            { label: "Revisão", value: s?.pendingResolution || 0, icon: Eye },
+          ].map(card => (
+            <Card key={card.label}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <card.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{card.label}</span>
+                </div>
+                <span className="text-2xl font-bold">{card.value}</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-7 w-full">
-            <TabsTrigger value="dashboard"><BarChart3 className="h-3 w-3 mr-1" />Dashboard</TabsTrigger>
-            <TabsTrigger value="datasets"><Database className="h-3 w-3 mr-1" />Datasets</TabsTrigger>
-            <TabsTrigger value="files"><FolderOpen className="h-3 w-3 mr-1" />Arquivos</TabsTrigger>
+          <TabsList className="grid grid-cols-6 w-full">
+            <TabsTrigger value="search"><Search className="h-3 w-3 mr-1" />Buscar</TabsTrigger>
+            <TabsTrigger value="imported"><Database className="h-3 w-3 mr-1" />Importados</TabsTrigger>
             <TabsTrigger value="jobs"><List className="h-3 w-3 mr-1" />Jobs</TabsTrigger>
-            <TabsTrigger value="staging"><Search className="h-3 w-3 mr-1" />Staging</TabsTrigger>
+            <TabsTrigger value="staging"><Eye className="h-3 w-3 mr-1" />Staging</TabsTrigger>
             <TabsTrigger value="resolution"><GitMerge className="h-3 w-3 mr-1" />Resolução</TabsTrigger>
-            <TabsTrigger value="logs"><Shield className="h-3 w-3 mr-1" />Auditoria</TabsTrigger>
+            <TabsTrigger value="logs"><Shield className="h-3 w-3 mr-1" />Logs</TabsTrigger>
           </TabsList>
 
-          {/* DASHBOARD */}
-          <TabsContent value="dashboard" className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {[
-                { label: "Datasets", value: s?.totalDatasets || 0, icon: Database },
-                { label: "Arquivos", value: s?.totalFiles || 0, icon: FileText },
-                { label: "Staging Matches", value: s?.totalStagingMatches || 0, icon: BarChart3 },
-                { label: "Conflitos", value: s?.pendingConflicts || 0, icon: AlertTriangle },
-                { label: "Revisão Manual", value: s?.pendingResolution || 0, icon: Eye },
-              ].map(card => (
-                <Card key={card.label}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <card.icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{card.label}</span>
-                    </div>
-                    <span className="text-2xl font-bold">{card.value}</span>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          {/* SEARCH TAB */}
+          <TabsContent value="search" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><Globe className="h-5 w-5" />Buscar Datasets no Kaggle</CardTitle>
+                <CardDescription>Busque datasets de futebol e importe arquivos diretamente com um clique</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Ex: football results, soccer matches..."
+                    onKeyDown={e => e.key === "Enter" && handleSearch()}
+                    className="flex-1"
+                  />
+                  <Button onClick={() => handleSearch()} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+                    Buscar
+                  </Button>
+                </div>
 
-            {s?.jobsByStatus && Object.keys(s.jobsByStatus).length > 0 && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Jobs por Status</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(s.jobsByStatus).map(([status, count]) => (
-                      <Badge key={status} className={statusColors[status] || "bg-muted"}>
-                        {status}: {count as number}
-                      </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {POPULAR_FOOTBALL_QUERIES.map(q => (
+                    <Button key={q} size="sm" variant="outline" onClick={() => { setSearchQuery(q); handleSearch(q); }} className="text-xs">
+                      {q}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {searchResults.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground">{searchResults.length} resultados</h3>
+                {searchResults.map(ds => (
+                  <Card key={ds.ref} className="hover:border-primary/50 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm truncate">{ds.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ds.subtitle}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span>👤 {ds.creator}</span>
+                            <span>📦 {formatBytes(ds.totalBytes)}</span>
+                            <span>⬇️ {ds.downloadCount?.toLocaleString()}</span>
+                            <span>👍 {ds.voteCount}</span>
+                          </div>
+                          <code className="text-xs text-muted-foreground/60 mt-1 block">{ds.ref}</code>
+                        </div>
+                        <Button size="sm" onClick={() => handleListFiles(ds.ref, ds.title)}>
+                          <FolderOpen className="h-4 w-4 mr-1" />
+                          Ver Arquivos
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Files Dialog */}
+            <Dialog open={filesDialogOpen} onOpenChange={setFilesDialogOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-base">Arquivos de: {selectedDatasetTitle}</DialogTitle>
+                </DialogHeader>
+                {isLoadingFiles ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Carregando arquivos...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {datasetFiles.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum arquivo encontrado</p>
+                    )}
+                    {datasetFiles.map(f => (
+                      <div key={f.name} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                        <div>
+                          <p className="font-mono text-sm font-medium">{f.name}</p>
+                          <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                            <span>{formatBytes(f.totalBytes)}</span>
+                            {f.columns > 0 && <span>{f.columns} colunas</span>}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleQuickImport(f.name)}
+                          disabled={isImporting === f.name}
+                        >
+                          {isImporting === f.name ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <Download className="h-4 w-4 mr-1" />
+                          )}
+                          Importar
+                        </Button>
+                      </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
-          {/* DATASETS */}
-          <TabsContent value="datasets" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Datasets Cadastrados</h2>
-              <Dialog open={newDatasetOpen} onOpenChange={setNewDatasetOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="h-4 w-4 mr-1" />Novo Dataset</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader><DialogTitle>Cadastrar Dataset Kaggle</DialogTitle></DialogHeader>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground">Slug (owner/dataset-name)</label>
-                      <Input value={newDatasetForm.dataset_slug} onChange={e => setNewDatasetForm(f => ({ ...f, dataset_slug: e.target.value }))} placeholder="martj42/international-football-results-from-1872-to-2017" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Título</label>
-                      <Input value={newDatasetForm.dataset_title} onChange={e => setNewDatasetForm(f => ({ ...f, dataset_title: e.target.value }))} placeholder="International Football Results" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">URL (opcional)</label>
-                      <Input value={newDatasetForm.dataset_url} onChange={e => setNewDatasetForm(f => ({ ...f, dataset_url: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Descrição</label>
-                      <Textarea value={newDatasetForm.dataset_description} onChange={e => setNewDatasetForm(f => ({ ...f, dataset_description: e.target.value }))} rows={2} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-muted-foreground">Categoria</label>
-                        <Input value={newDatasetForm.dataset_category} onChange={e => setNewDatasetForm(f => ({ ...f, dataset_category: e.target.value }))} placeholder="historical" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">País</label>
-                        <Input value={newDatasetForm.country_scope} onChange={e => setNewDatasetForm(f => ({ ...f, country_scope: e.target.value }))} placeholder="international" />
-                      </div>
-                    </div>
-                    <Button onClick={handleRegisterDataset} disabled={!newDatasetForm.dataset_slug || !newDatasetForm.dataset_title}>Cadastrar</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
+          {/* IMPORTED DATASETS */}
+          <TabsContent value="imported" className="space-y-4">
+            <h2 className="text-lg font-semibold">Datasets Importados</h2>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Título</TableHead>
                   <TableHead>Slug</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>País</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -214,148 +344,33 @@ export default function AdminKaggle() {
                     <TableCell className="font-medium">{ds.dataset_title}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-48 truncate">{ds.dataset_slug}</TableCell>
                     <TableCell><Badge variant="outline">{ds.dataset_category || "—"}</Badge></TableCell>
-                    <TableCell>{ds.country_scope || "—"}</TableCell>
                     <TableCell>
                       <Badge className={ds.is_active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}>
                         {ds.is_active ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedDataset(ds.id); setActiveTab("files"); }}>
-                        <FolderOpen className="h-3 w-3 mr-1" />Arquivos
+                      <Button size="sm" variant="ghost" onClick={() => { setSelectedDataset(ds.id); setActiveTab("jobs"); }}>
+                        <FolderOpen className="h-3 w-3 mr-1" />Jobs
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
                 {!datasets.data?.length && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum dataset cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum dataset importado ainda. Use a aba "Buscar" para começar.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
-          </TabsContent>
-
-          {/* FILES */}
-          <TabsContent value="files" className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Select value={selectedDataset || ""} onValueChange={setSelectedDataset}>
-                <SelectTrigger className="w-80"><SelectValue placeholder="Selecionar dataset..." /></SelectTrigger>
-                <SelectContent>
-                  {(datasets.data || []).map((ds: any) => (
-                    <SelectItem key={ds.id} value={ds.id}>{ds.dataset_title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedDataset && (
-              <>
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">Arquivos do Dataset</h3>
-                  <RegisterFilesDialog datasetId={selectedDataset} onRegister={(fileList: any[]) => registerFiles.mutate({ dataset_id: selectedDataset, files: fileList })} />
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Entidade</TableHead>
-                      <TableHead>Hash</TableHead>
-                      <TableHead>Último Status</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(files.data || []).map((f: any) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="font-mono text-sm">{f.file_name}</TableCell>
-                        <TableCell><Badge variant="outline">{f.file_type}</Badge></TableCell>
-                        <TableCell><Badge variant="secondary">{f.inferred_entity_type}</Badge></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{f.file_hash?.substring(0, 12) || "—"}</TableCell>
-                        <TableCell><Badge className={statusColors[f.last_status || ""] || "bg-muted"}>{f.last_status || "—"}</Badge></TableCell>
-                        <TableCell className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => {
-                            createJob.mutate({ dataset_id: selectedDataset, dataset_file_id: f.id });
-                          }}>
-                            <Play className="h-3 w-3 mr-1" />Job
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setSelectedFileId(f.id); }}>
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {selectedFileId && columnMappings.data && (
-                  <Card>
-                    <CardHeader><CardTitle className="text-sm">Mapeamento de Colunas</CardTitle></CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Coluna Origem</TableHead>
-                            <TableHead>Coluna Normalizada</TableHead>
-                            <TableHead>Entidade</TableHead>
-                            <TableHead>Campo</TableHead>
-                            <TableHead>Confiança</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {columnMappings.data.map((m: any) => (
-                            <TableRow key={m.id}>
-                              <TableCell className="font-mono text-xs">{m.source_column_name}</TableCell>
-                              <TableCell className="font-mono text-xs">{m.normalized_column_name}</TableCell>
-                              <TableCell><Badge variant="outline">{m.target_entity}</Badge></TableCell>
-                              <TableCell className="text-xs">{m.target_field}</TableCell>
-                              <TableCell>
-                                <Badge className={m.mapping_confidence >= 90 ? "bg-green-500/20 text-green-400" : m.mapping_confidence >= 70 ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}>
-                                  {m.mapping_confidence}%
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
           </TabsContent>
 
           {/* JOBS */}
           <TabsContent value="jobs" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Fila de Jobs</h2>
-              <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline"><Upload className="h-4 w-4 mr-1" />Upload Manual</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Upload Manual de Arquivo</DialogTitle></DialogHeader>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground">Job ID</label>
-                      <Select value={uploadJobId} onValueChange={setUploadJobId}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar job..." /></SelectTrigger>
-                        <SelectContent>
-                          {(jobs.data || []).filter((j: any) => ["pending", "extracting"].includes(j.status)).map((j: any) => (
-                            <SelectItem key={j.id} value={j.id}>{j.kaggle_datasets?.dataset_title} - {j.kaggle_dataset_files?.file_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Arquivo CSV/JSON</label>
-                      <Input type="file" accept=".csv,.json,.txt" onChange={handleFileUpload} />
-                    </div>
-                    <Button onClick={handleUploadSubmit} disabled={!uploadJobId || !uploadFileContent}>Enviar</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button size="sm" variant="outline" onClick={() => jobs.refetch()}>
+                <RefreshCw className="h-4 w-4 mr-1" />Atualizar
+              </Button>
             </div>
-
             <Table>
               <TableHeader>
                 <TableRow>
@@ -365,7 +380,6 @@ export default function AdminKaggle() {
                   <TableHead>Linhas</TableHead>
                   <TableHead>Staged</TableHead>
                   <TableHead>Promovidos</TableHead>
-                  <TableHead>Conflitos</TableHead>
                   <TableHead>Erros</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -379,40 +393,39 @@ export default function AdminKaggle() {
                     <TableCell>{j.total_rows_read || 0}</TableCell>
                     <TableCell>{j.total_rows_staged || 0}</TableCell>
                     <TableCell>{j.total_promoted || 0}</TableCell>
-                    <TableCell>{j.total_conflicts || 0}</TableCell>
                     <TableCell className={j.total_errors > 0 ? "text-destructive font-bold" : ""}>{j.total_errors || 0}</TableCell>
                     <TableCell className="flex gap-1 flex-wrap">
                       {["pending", "extracting"].includes(j.status) && (
-                        <Button size="sm" variant="ghost" onClick={() => profileFile.mutate(j.id)} disabled={isLoading}>
+                        <Button size="sm" variant="ghost" onClick={() => profileFile.mutate(j.id)} disabled={isLoading} title="Profile">
                           <FileText className="h-3 w-3" />
                         </Button>
                       )}
                       {["mapping", "profiling"].includes(j.status) && (
-                        <Button size="sm" variant="ghost" onClick={() => stageData.mutate(j.id)} disabled={isLoading}>
+                        <Button size="sm" variant="ghost" onClick={() => stageData.mutate(j.id)} disabled={isLoading} title="Stage">
                           <Database className="h-3 w-3" />
                         </Button>
                       )}
                       {["staging", "awaiting_review"].includes(j.status) && (
-                        <Button size="sm" variant="ghost" onClick={() => resolveJob.mutate(j.id)} disabled={isLoading}>
+                        <Button size="sm" variant="ghost" onClick={() => resolveJob.mutate(j.id)} disabled={isLoading} title="Resolve">
                           <GitMerge className="h-3 w-3" />
                         </Button>
                       )}
                       {j.status === "awaiting_review" && (
-                        <Button size="sm" variant="ghost" onClick={() => promoteJob.mutate({ job_id: j.id })} disabled={isLoading}>
+                        <Button size="sm" variant="ghost" onClick={() => promoteJob.mutate({ job_id: j.id })} disabled={isLoading} title="Promote">
                           <ArrowRight className="h-3 w-3" />
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedJob(j.id); setActiveTab("staging"); }}>
+                      <Button size="sm" variant="ghost" onClick={() => { setSelectedJob(j.id); setActiveTab("staging"); }} title="Ver staging">
                         <Eye className="h-3 w-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedJob(j.id); setActiveTab("logs"); }}>
+                      <Button size="sm" variant="ghost" onClick={() => { setSelectedJob(j.id); setActiveTab("logs"); }} title="Ver logs">
                         <Shield className="h-3 w-3" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
                 {!jobs.data?.length && (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum job</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum job. Importe um dataset pela aba "Buscar".</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -449,7 +462,6 @@ export default function AdminKaggle() {
                           <TableHead>Fora</TableHead>
                           <TableHead>Competição</TableHead>
                           <TableHead>Dedupe</TableHead>
-                          <TableHead>Conf.</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -470,7 +482,6 @@ export default function AdminKaggle() {
                                 {m.dedupe_status || "—"}
                               </Badge>
                             </TableCell>
-                            <TableCell>{m.confidence_score || 0}%</TableCell>
                             <TableCell><Badge className={statusColors[m.resolution_status] || "bg-muted"}>{m.resolution_status}</Badge></TableCell>
                           </TableRow>
                         ))}
@@ -486,8 +497,7 @@ export default function AdminKaggle() {
                         <TableHead>Nome Original</TableHead>
                         <TableHead>Normalizado</TableHead>
                         <TableHead>Slug</TableHead>
-                        <TableHead>Time Vinculado</TableHead>
-                        <TableHead>Confiança</TableHead>
+                        <TableHead>Vinculado</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -497,8 +507,7 @@ export default function AdminKaggle() {
                           <TableCell>{t.raw_name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{t.normalized_name}</TableCell>
                           <TableCell className="font-mono text-xs">{t.inferred_slug}</TableCell>
-                          <TableCell className="text-xs">{t.matched_team_id ? `✅ ${t.matched_team_id.substring(0, 8)}...` : "❌"}</TableCell>
-                          <TableCell>{t.confidence_score || 0}%</TableCell>
+                          <TableCell>{t.matched_team_id ? "✅" : "❌"}</TableCell>
                           <TableCell>
                             <Badge className={
                               t.resolution_status === "resolved" ? "bg-green-500/20 text-green-400" :
@@ -519,7 +528,7 @@ export default function AdminKaggle() {
 
           {/* RESOLUTION */}
           <TabsContent value="resolution" className="space-y-4">
-            <h2 className="text-lg font-semibold">Fila de Resolução Manual ({resolutionQueue.data?.length || 0})</h2>
+            <h2 className="text-lg font-semibold">Fila de Resolução ({resolutionQueue.data?.length || 0})</h2>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -527,7 +536,6 @@ export default function AdminKaggle() {
                   <TableHead>Problema</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
-                  <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -537,13 +545,10 @@ export default function AdminKaggle() {
                     <TableCell>{r.issue_type}</TableCell>
                     <TableCell><Badge className={statusColors[r.status] || "bg-muted"}>{r.status}</Badge></TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleString("pt-BR")}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="ghost"><Eye className="h-3 w-3" /></Button>
-                    </TableCell>
                   </TableRow>
                 ))}
                 {!resolutionQueue.data?.length && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma revisão pendente</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma revisão pendente</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -584,37 +589,5 @@ export default function AdminKaggle() {
         </Tabs>
       </div>
     </AdminLayout>
-  );
-}
-
-// Sub-component for registering files
-function RegisterFilesDialog({ datasetId, onRegister }: { datasetId: string; onRegister: (files: any[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const [filesText, setFilesText] = useState("");
-
-  const handleSubmit = () => {
-    const files = filesText.split("\n").filter(l => l.trim()).map(line => {
-      const parts = line.split(",").map(s => s.trim());
-      return { file_name: parts[0], file_type: parts[1] || "csv", inferred_entity_type: parts[2] || "unknown" };
-    });
-    onRegister(files);
-    setOpen(false);
-    setFilesText("");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" />Registrar Arquivos</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Registrar Arquivos</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">Um arquivo por linha: nome,tipo,entidade</p>
-          <Textarea value={filesText} onChange={e => setFilesText(e.target.value)} rows={5} placeholder={"results.csv,csv,matches\nteams.csv,csv,teams"} />
-          <Button onClick={handleSubmit} disabled={!filesText.trim()}>Registrar</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
