@@ -590,18 +590,28 @@ serve(async (req) => {
         const textContent = await generateValidationContent(matchData, GEMINI_API_KEY);
         console.log(`Validation text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail (skip in batch mode for speed)
+        // Generate and upload thumbnail with SEO filename
         let imageUrl: string | null = null;
         if (!skipImages) {
+          const seoFileName = `validation-${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}.png`;
           const thumbnailBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
           if (thumbnailBase64) {
-            imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, `validation-${match.id}.png`);
+            imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, seoFileName);
             console.log(`Validation thumbnail uploaded: ${imageUrl}`);
+          } else {
+            // Retry once after 3s delay
+            console.log("Thumbnail generation failed, retrying in 3s...");
+            await new Promise(r => setTimeout(r, 3000));
+            const retryBase64 = await generateValidationThumbnail(matchData, GEMINI_API_KEY);
+            if (retryBase64) {
+              imageUrl = await uploadImage(supabaseAdmin, retryBase64, seoFileName);
+              console.log(`Validation thumbnail uploaded on retry: ${imageUrl}`);
+            } else {
+              console.log("Thumbnail retry also failed, saving with null image");
+            }
           }
         }
-        if (!imageUrl) {
-          imageUrl = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1280&h=720&fit=crop";
-        }
+        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
         // Generate and upload internal image (skip in batch mode for speed)
         let internalImageUrl: string | null = null;
