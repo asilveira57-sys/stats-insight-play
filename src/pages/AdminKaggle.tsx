@@ -116,12 +116,13 @@ export default function AdminKaggle() {
         body: { action: "search_datasets", query: q },
       });
       if (error) throw error;
+      if (data?.success === false) throw new Error(data?.error || "Busca falhou");
       if (data?.datasets) {
         setSearchResults(data.datasets);
         toast.success(`${data.datasets.length} datasets encontrados`);
       }
     } catch (e: any) {
-      toast.error(`Erro na busca: ${e.message}`);
+      toast.error(`Erro na busca: ${await getInvokeErrorMessage(e, "Falha ao buscar datasets")}`);
     } finally {
       setIsSearching(false);
     }
