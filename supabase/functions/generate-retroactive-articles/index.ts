@@ -534,8 +534,22 @@ serve(async (req) => {
           // Could retry here, but for now we'll accept it with a warning
         }
 
-        // Generate thumbnail (optional in background mode to avoid timeouts)
-        const thumbnailUrl = skipImages ? null : await generateThumbnail(matchData, supabase, geminiApiKey);
+        // Generate thumbnail with SEO filename and retry
+        let thumbnailUrl: string | null = null;
+        if (!skipImages) {
+          const seoFileName = `${slugify(timeCasa)}-vs-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}.png`;
+          thumbnailUrl = await generateThumbnailWithSeoName(matchData, supabase, geminiApiKey, seoFileName);
+          if (!thumbnailUrl) {
+            // Retry once after 3s
+            console.log("Thumbnail failed, retrying in 3s...");
+            await new Promise(r => setTimeout(r, 3000));
+            thumbnailUrl = await generateThumbnailWithSeoName(matchData, supabase, geminiApiKey, seoFileName);
+            if (!thumbnailUrl) {
+              console.log("Thumbnail retry also failed, saving with null image");
+            }
+          }
+        }
+        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
@@ -549,7 +563,7 @@ serve(async (req) => {
           titulo: title,
           resumo: summary,
           texto: content,
-          imagem_url: thumbnailUrl || "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200",
+          imagem_url: thumbnailUrl,
           slug,
           data_publicacao: publicationDate,
           partida_id: matchData.id,
