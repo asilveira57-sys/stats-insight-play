@@ -614,6 +614,9 @@ export default function AdminControlCenter() {
         case 'image_fix':
           setLoopState(prev => ({ ...prev, imageFix: { running, fixed: p.fixed || 0, failed: p.failed || 0, pending: p.pending || 0, log: logArr, results: p.last_results || [] } }));
           break;
+        case 'weekly_validations':
+          setLoopState(prev => ({ ...prev, weeklyValidations: { running, generated: p.generated || 0, failed: p.failed || 0, total: p.total || 0, pending: p.pending || 0, log: logArr, articles: p.last_articles || [] } }));
+          break;
       }
     };
 
