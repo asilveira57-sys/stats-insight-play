@@ -196,21 +196,10 @@ function DatabaseHealthTab() {
   const fetchHealth = async () => {
     setLoading(true);
     try {
-      // Get duplicate match count
-      const { data: matches } = await supabase
-        .from('partidas')
-        .select('time_casa_id, time_fora_id, data');
-
-      const groupMap = new Map<string, number>();
-      for (const m of matches || []) {
-        const key = `${m.time_casa_id}|${m.time_fora_id}|${m.data}`;
-        groupMap.set(key, (groupMap.get(key) || 0) + 1);
-      }
-      let dupMatches = 0;
-      let dupGroups = 0;
-      for (const count of groupMap.values()) {
-        if (count > 1) { dupMatches += count - 1; dupGroups++; }
-      }
+      // Get duplicate match count via server-side RPC
+      const { data: dupData } = await supabase.rpc('count_duplicate_matches' as any);
+      const dupMatches = dupData?.[0]?.dup_records || 0;
+      const dupGroups = dupData?.[0]?.dup_groups || 0;
 
       // Get inverted merges count
       const { data: teams } = await supabase
