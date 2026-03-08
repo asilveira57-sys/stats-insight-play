@@ -156,12 +156,26 @@ export function useKaggleData() {
     },
   });
 
-  // Mutations
+  const extractInvokeErrorMessage = async (error: any, fallback = "Falha na Edge Function") => {
+    try {
+      if (error?.context && typeof error.context.json === "function") {
+        const payload = await error.context.json();
+        if (payload?.error) return payload.error;
+        if (payload?.details) return payload.details;
+      }
+    } catch {
+      // ignore
+    }
+
+    return error?.message || fallback;
+  };
+
   const callKaggleImport = async (action: string, params: any) => {
     const { data, error } = await supabase.functions.invoke("kaggle-import", {
       body: { action, ...params },
     });
-    if (error) throw error;
+    if (error) throw new Error(await extractInvokeErrorMessage(error));
+    if (data?.success === false) throw new Error(data?.error || "Falha no kaggle-import");
     return data;
   };
 
@@ -169,7 +183,8 @@ export function useKaggleData() {
     const { data, error } = await supabase.functions.invoke("kaggle-process", {
       body: { action, ...params },
     });
-    if (error) throw error;
+    if (error) throw new Error(await extractInvokeErrorMessage(error));
+    if (data?.success === false) throw new Error(data?.error || "Falha no kaggle-process");
     return data;
   };
 
