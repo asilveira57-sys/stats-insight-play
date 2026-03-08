@@ -52,15 +52,33 @@ export function useLeagueBySlug(slug: string | null) {
     queryFn: async (): Promise<LeaguePillarData | null> => {
       if (!slug) return null;
 
-      // Fetch league by slug
-      const { data: league, error: leagueError } = await supabase
+      // Try direct slug match first
+      let { data: league, error: leagueError } = await supabase
         .from("ligas")
         .select("*")
         .eq("slug", slug)
         .single();
 
-      if (leagueError || !league) {
-        console.error("Error fetching league:", leagueError);
+      // Fallback: try alias table
+      if (!league) {
+        const { data: aliasData } = await supabase
+          .from("competition_aliases")
+          .select("league_id")
+          .eq("normalized_alias", slug)
+          .single();
+        
+        if (aliasData?.league_id) {
+          const { data: aliasLeague } = await supabase
+            .from("ligas")
+            .select("*")
+            .eq("id", aliasData.league_id)
+            .single();
+          league = aliasLeague;
+        }
+      }
+
+      if (!league) {
+        console.error("League not found for slug:", slug);
         return null;
       }
 
