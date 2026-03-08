@@ -534,8 +534,8 @@ serve(async (req) => {
           // Could retry here, but for now we'll accept it with a warning
         }
 
-        // Generate thumbnail
-        const thumbnailUrl = await generateThumbnail(matchData, supabase, geminiApiKey);
+        // Generate thumbnail (optional in background mode to avoid timeouts)
+        const thumbnailUrl = skipImages ? null : await generateThumbnail(matchData, supabase, geminiApiKey);
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
