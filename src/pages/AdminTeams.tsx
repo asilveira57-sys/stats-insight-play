@@ -80,6 +80,7 @@ export default function AdminTeams() {
 
   const consolidateAliases = useConsolidateAliases();
   const dismissDuplicate = useDismissDuplicate();
+  const autoResolve = useAutoResolveDuplicates();
 
   const handleSearch = () => {
     setSearch(searchInput);
