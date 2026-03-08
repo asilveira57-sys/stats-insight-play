@@ -101,6 +101,8 @@ function getSeasonFromDate(dateStr: string): string {
 export default function Retrospectiva() {
   const [selectedSeason, setSelectedSeason] = useState<string>("all");
   const [selectedRodada, setSelectedRodada] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ['brasileirao-retrospective-details'],
