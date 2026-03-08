@@ -125,6 +125,7 @@ const App = () => (
             <Route path="/admin/csv-import" element={<AdminCsvImport />} />
             <Route path="/admin/cartola" element={<AdminCartola />} />
             <Route path="/admin/gamificacao" element={<AdminGamification />} />
+            <Route path="/admin/fontes-historicas" element={<AdminHistoricalSources />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />

@@ -54,6 +54,7 @@ const menuGroups = [
       { title: "Times / Aliases", url: "/admin/times", icon: GitMerge },
       { title: "CSV Import", url: "/admin/csv-import", icon: FileText },
       { title: "Cartola FC", url: "/admin/cartola", icon: Trophy },
+      { title: "Fontes Históricas", url: "/admin/fontes-historicas", icon: BookOpen },
     ],
   },
   {
