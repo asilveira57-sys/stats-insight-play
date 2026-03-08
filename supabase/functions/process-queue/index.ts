@@ -164,17 +164,20 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const results = data?.results || {};
       const gen = results.created || 0;
       const fail = results.errors?.length || 0;
-      const pending = results.stats?.withoutAnalysis || 0;
+      const skipped = results.skipped || 0;
+      const pending = results.stats?.actionableWithoutAnalysis ?? results.stats?.withoutAnalysis ?? 0;
       const newGenerated = (progress.generated || 0) + gen;
       const newFailed = (progress.failed || 0) + fail;
-      isDone = (gen === 0 && fail === 0) || pending === 0;
+      isDone = pending === 0 || (gen === 0 && fail === 0 && skipped === 0);
       updated = {
         generated: newGenerated, failed: newFailed,
-        pending, total: results.stats?.totalInWindow || progress.total || 0,
+        pending, total: results.stats?.actionableWithoutAnalysis ?? results.stats?.totalInWindow ?? progress.total || 0,
         consecutive_errors: 0,
         last_log: isDone
           ? `🏁 Concluído! ${newGenerated} análises geradas.`
-          : `✅ +${gen} análise (pendentes: ${pending})`
+          : skipped > 0
+            ? `⏭️ ${skipped} puladas (pendentes: ${pending})`
+            : `✅ +${gen} análise (pendentes: ${pending})`
       };
       break;
     }
