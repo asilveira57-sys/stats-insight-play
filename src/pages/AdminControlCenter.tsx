@@ -882,7 +882,7 @@ export default function AdminControlCenter() {
               </h1>
               <p className="text-muted-foreground text-sm">Controle centralizado do sistema</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" asChild>
                 <Link to="/admin/privacidade/lgpd">
                   <Shield className="w-4 h-4 mr-2" />
