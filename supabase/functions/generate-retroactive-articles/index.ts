@@ -371,22 +371,38 @@ serve(async (req) => {
   }
 
   try {
-    // Get total counts for progress
-    const { count: totalMatches } = await supabase
-      .from("partidas")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "finished");
+    // Count total actionable matches (finished + have prediction)
+    let totalActionable = 0;
+    {
+      let q = supabase
+        .from("partidas")
+        .select("id, palpites!inner(partida_id)", { count: "exact", head: true })
+        .eq("status", "finished");
+
+      if (leagueId) {
+        q = q.eq("liga_id", leagueId);
+      }
+
+      const { count } = await q;
+      totalActionable = count || 0;
+    }
 
     // Get ALL existing article partida_ids using pagination (avoids 1000-row limit)
     const existingPartidaIds = new Set<string>();
     let offset = 0;
     const batchSize = 1000;
     while (true) {
-      const { data: batch } = await supabase
+      let existingQuery = supabase
         .from("noticias")
         .select("partida_id")
         .not("partida_id", "is", null)
         .range(offset, offset + batchSize - 1);
+
+      if (leagueId) {
+        existingQuery = existingQuery.eq("partidas.liga_id", leagueId);
+      }
+
+      const { data: batch } = await existingQuery;
 
       if (!batch || batch.length === 0) break;
       batch.forEach((n: any) => existingPartidaIds.add(n.partida_id));
@@ -396,12 +412,7 @@ serve(async (req) => {
 
     console.log(`Found ${existingPartidaIds.size} existing articles with partida_id`);
 
-    // Count pending: finished matches with palpite but without article
-    const { count: totalWithPalpite } = await supabase
-      .from("palpites")
-      .select("partida_id", { count: "exact", head: true });
-
-    const pendingMatches = Math.max((totalWithPalpite || 0) - existingPartidaIds.size, 0);
+    const pendingMatches = Math.max(totalActionable - existingPartidaIds.size, 0);
     const alreadyProcessed = existingPartidaIds.size;
 
     // Build exclusion list for the query (Supabase .not('id','in',...) approach)
