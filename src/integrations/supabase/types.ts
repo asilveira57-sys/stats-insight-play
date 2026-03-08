@@ -5653,6 +5653,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_teams_without_matches: {
+        Args: never
+        Returns: {
+          created_at: string
+          has_aliases: boolean
+          has_external_ids: boolean
+          id: string
+          nome: string
+          slug: string
+        }[]
+      }
       grant_days_to_user: {
         Args: {
           p_days: number
