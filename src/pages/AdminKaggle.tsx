@@ -73,6 +73,7 @@ export default function AdminKaggle() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isImporting, setIsImporting] = useState<string | null>(null);
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [fileImportStatuses, setFileImportStatuses] = useState<Record<string, { status: string; created_at: string }>>({});
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
