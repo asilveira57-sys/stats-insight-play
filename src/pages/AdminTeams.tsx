@@ -38,6 +38,9 @@ import { MergeLogsTable } from "@/components/admin/teams/MergeLogsTable";
 import { TeamDetailModal } from "@/components/admin/teams/TeamDetailModal";
 import { MergeTeamsModal } from "@/components/admin/teams/MergeTeamsModal";
 import { toast } from "sonner";
+import { useAutoResolveDuplicates } from "@/hooks/useAutoResolveDuplicates";
+import { Progress } from "@/components/ui/progress";
+import { Bot, Square, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 
 export default function AdminTeams() {
   const { isAdmin, isLoading: loadingAuth } = useAdminAccess();
