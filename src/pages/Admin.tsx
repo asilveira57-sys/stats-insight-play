@@ -256,36 +256,80 @@ export default function Admin() {
   };
 
   const generateAllAnalyses = async () => {
+    stopAnalysisRef.current = false;
     setGeneratingAll(true);
+    setAnalysisProgress({ generated: 0, failed: 0, pending: 0, log: 'Iniciando...' });
     
-    try {
-      const response = await supabase.functions.invoke("generate-match-analysis", {
-        body: {}
-      });
+    let totalGenerated = 0;
+    let totalFailed = 0;
+    let consecutiveErrors = 0;
+    let backoffMs = 2000;
+    let round = 0;
 
-      if (response.error) {
-        throw new Error(response.error.message);
+    while (!stopAnalysisRef.current) {
+      round++;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-match-analysis", {
+          body: { limit: 1 }
+        });
+
+        if (error) {
+          const errMsg = String(error);
+          if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit')) {
+            consecutiveErrors++;
+            backoffMs = Math.min(backoffMs * 2, 60000);
+            const waitSec = Math.round(backoffMs / 1000);
+            setAnalysisProgress(prev => ({ ...prev, log: `⚠️ Rate limit. Aguardando ${waitSec}s...` }));
+            await new Promise(r => setTimeout(r, backoffMs));
+            continue;
+          }
+          throw error;
+        }
+
+        consecutiveErrors = 0;
+        backoffMs = 2000;
+
+        const results = data?.results || {};
+        const gen = results.created || 0;
+        const fail = results.errors?.length || 0;
+        const pending = results.stats?.withoutAnalysis || 0;
+        totalGenerated += gen;
+        totalFailed += fail;
+
+        setAnalysisProgress({ generated: totalGenerated, failed: totalFailed, pending, log: gen > 0 ? `✅ #${round} gerada. Pendentes: ${pending}` : `⏭️ #${round}: ${results.skipped || 0} puladas` });
+
+        if ((gen === 0 && fail === 0) || pending === 0) {
+          setAnalysisProgress(prev => ({ ...prev, log: `🏁 Concluído! ${totalGenerated} análises geradas.` }));
+          toast({ title: 'Análises completas!', description: `${totalGenerated} análises geradas.` });
+          break;
+        }
+
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (e) {
+        consecutiveErrors++;
+        totalFailed++;
+        const errMsg = e instanceof Error ? e.message : String(e);
+
+        if (consecutiveErrors >= 5) {
+          setAnalysisProgress(prev => ({ ...prev, log: `❌ Parado após 5 erros: ${errMsg}` }));
+          toast({ title: 'Interrompido por erros', description: `${totalGenerated} análises geradas.`, variant: 'destructive' });
+          break;
+        }
+
+        const waitSec = Math.min(5 * consecutiveErrors, 30);
+        setAnalysisProgress(prev => ({ ...prev, log: `⚠️ Erro (${consecutiveErrors}/5): ${errMsg}. Retry em ${waitSec}s...` }));
+        await new Promise(r => setTimeout(r, waitSec * 1000));
       }
-
-      const result = response.data;
-      
-      toast({
-        title: "Processo concluído",
-        description: `${result.results.created} análises criadas, ${result.results.skipped} ignoradas.`,
-      });
-
-      // Refresh matches list
-      window.location.reload();
-    } catch (error) {
-      console.error("Error generating analyses:", error);
-      toast({
-        title: "Erro ao gerar análises",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive"
-      });
-    } finally {
-      setGeneratingAll(false);
     }
+
+    if (stopAnalysisRef.current) {
+      setAnalysisProgress(prev => ({ ...prev, log: `⏹ Parado. ${totalGenerated} análises geradas.` }));
+    }
+    setGeneratingAll(false);
+  };
+
+  const stopAllAnalyses = () => {
+    stopAnalysisRef.current = true;
   };
 
   const generateMissingPalpites = async () => {
