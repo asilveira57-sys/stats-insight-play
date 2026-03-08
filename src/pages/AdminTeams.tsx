@@ -339,20 +339,119 @@ export default function AdminTeams() {
             )}
           </TabsContent>
 
-          {/* Duplicates Tab */}
           <TabsContent value="duplicates" className="space-y-4 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  Duplicados Sugeridos
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Times com alta similaridade detectados. Revise e funda
-                  manualmente.
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Duplicados Sugeridos
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Times com alta similaridade detectados. Revise manualmente ou use a IA.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {autoResolve.isRunning ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={autoResolve.stop}
+                      >
+                        <Square className="h-4 w-4 mr-2" />
+                        Parar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={autoResolve.start}
+                        disabled={(duplicates?.length || 0) === 0}
+                      >
+                        <Bot className="h-4 w-4 mr-2" />
+                        Resolver com IA
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* AI Progress Panel */}
+                {(autoResolve.isRunning || autoResolve.progress.processed > 0) && (
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          {autoResolve.isRunning ? "Resolvendo duplicados com IA..." : "Resolução concluída"}
+                        </p>
+                        {autoResolve.progress.total_pending > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {autoResolve.progress.processed} / {autoResolve.progress.total_pending}
+                          </span>
+                        )}
+                      </div>
+                      {autoResolve.progress.total_pending > 0 && (
+                        <Progress
+                          value={
+                            (autoResolve.progress.processed / autoResolve.progress.total_pending) * 100
+                          }
+                          className="h-2"
+                        />
+                      )}
+                      <div className="grid grid-cols-4 gap-3 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-1 text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span className="text-lg font-bold">{autoResolve.progress.merged}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">Fundidos</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-1 text-blue-600">
+                            <XCircle className="h-4 w-4" />
+                            <span className="text-lg font-bold">{autoResolve.progress.dismissed}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">Dispensados</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-1 text-amber-600">
+                            <HelpCircle className="h-4 w-4" />
+                            <span className="text-lg font-bold">{autoResolve.progress.inconclusive}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">Inconclusivos</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="flex items-center gap-1 text-destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-lg font-bold">{autoResolve.progress.errors}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">Erros</span>
+                        </div>
+                      </div>
+                      {/* Recent activity log */}
+                      {autoResolve.progress.details.length > 0 && (
+                        <div className="max-h-32 overflow-y-auto text-xs space-y-1 border-t pt-2 mt-2">
+                          {autoResolve.progress.details.slice(-10).reverse().map((d, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              {d.result === "merged" && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />}
+                              {d.result === "dismissed" && <XCircle className="h-3 w-3 text-blue-600 shrink-0" />}
+                              {d.result === "inconclusive" && <HelpCircle className="h-3 w-3 text-amber-600 shrink-0" />}
+                              {(d.result === "error" || d.result === "merge_failed" || d.result === "rate_limited") && (
+                                <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                              )}
+                              <span className="truncate">
+                                {d.team_a} ↔ {d.team_b}
+                                {d.confidence ? ` (${d.confidence}%)` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 <DuplicatesTable
                   duplicates={duplicates || []}
                   isLoading={loadingDuplicates}
