@@ -19,8 +19,8 @@ import { ptBR } from "date-fns/locale";
 
 interface SelectedMatch {
   id: string;
-  homeTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
-  awayTeam: { id: string; name: string; logo: string; score?: number; primaryColor?: string; secondaryColor?: string };
+  homeTeam: { id: string; name: string; score?: number; primaryColor?: string; secondaryColor?: string };
+  awayTeam: { id: string; name: string; score?: number; primaryColor?: string; secondaryColor?: string };
   date: string;
   league: string;
 }
