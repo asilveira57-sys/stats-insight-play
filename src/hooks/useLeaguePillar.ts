@@ -13,6 +13,7 @@ export interface LeaguePillarData {
   nome: string;
   slug: string;
   pais: string | null;
+  tipo_principal: string | null;
   logo_url: string | null;
   pillar_content: {
     visao_geral: string;
