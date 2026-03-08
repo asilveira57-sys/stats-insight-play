@@ -153,13 +153,14 @@ Deno.serve(async (req) => {
           }).eq("id", st.id);
         } else {
           // Register alias
-          await supabase.from("team_aliases").insert({
+          // Insert alias, ignore duplicates
+          const { error: aliasErr2 } = await supabase.from("team_aliases").upsert({
             team_id: newTeam.id,
             alias: teamName,
             normalized_alias: normalizedName,
             source: "kaggle_import",
             confidence: 100,
-          }).onConflict("team_id,normalized_alias").ignore();
+          }, { onConflict: "team_id,normalized_alias", ignoreDuplicates: true });
 
           await supabase.from("kaggle_staging_teams").update({
             matched_team_id: newTeam.id, confidence_score: 100,
