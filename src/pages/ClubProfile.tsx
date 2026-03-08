@@ -155,7 +155,7 @@ export default function ClubProfile() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Stadium className="w-5 h-5" />
+                      <Building className="w-5 h-5" />
                       Estádio
                     </CardTitle>
                   </CardHeader>
