@@ -694,8 +694,9 @@ export default function AdminControlCenter() {
             {/* DB Health Tab */}
             <TabsContent value="health">
               <DatabaseHealthTab />
+            </TabsContent>
 
-            {/* Syncs Tab */}
+
             <TabsContent value="syncs">
               <Card>
                 <CardHeader>
