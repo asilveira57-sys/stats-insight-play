@@ -111,6 +111,7 @@ const App = () => (
             <Route path="/times/:slug" element={<TimePilar />} />
             <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
+            <Route path="/clubes/:slug" element={<ClubProfile />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
