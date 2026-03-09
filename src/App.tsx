@@ -54,6 +54,7 @@ import TimePilar from "./pages/TimePilar";
 import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
+import ClubProfile from "./pages/ClubProfile";
 import HubDashboard from "./pages/hub/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import HubSources from "./pages/hub/Sources";
