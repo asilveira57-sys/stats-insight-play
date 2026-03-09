@@ -99,9 +99,9 @@ export default function ClubProfile() {
           <CardHeader className="text-center">
             <div className="flex flex-col items-center gap-4">
               <TeamBadge
-                teamId={club.id}
-                teamName={club.nome}
-                colors={club.cores}
+                name={club.nome}
+                primaryColor={typeof club.cores === 'object' && club.cores !== null ? (club.cores as Record<string, string>).primary : undefined}
+                secondaryColor={typeof club.cores === 'object' && club.cores !== null ? (club.cores as Record<string, string>).secondary : undefined}
                 size="xl"
               />
               <div>
