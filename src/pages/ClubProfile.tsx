@@ -355,8 +355,7 @@ export default function ClubProfile() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3">
                           <TeamBadge
-                            teamId={rival.team_id}
-                            teamName={rival.team_name}
+                            name={rival.team_name}
                             size="md"
                           />
                       <div>
