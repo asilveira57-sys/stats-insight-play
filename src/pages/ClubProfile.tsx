@@ -456,8 +456,7 @@ export default function ClubProfile() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <TeamBadge
-                            teamId={match.opponent_id}
-                            teamName={match.opponent_name}
+                            name={match.opponent_name}
                             size="sm"
                           />
                           <div>
