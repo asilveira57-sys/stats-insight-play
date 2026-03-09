@@ -54,6 +54,7 @@ import TimePilar from "./pages/TimePilar";
 import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
+import ClubProfile from "./pages/ClubProfile";
 import HubDashboard from "./pages/hub/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import HubSources from "./pages/hub/Sources";
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/times/:slug" element={<TimePilar />} />
             <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
+            <Route path="/clubes/:slug" element={<ClubProfile />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
