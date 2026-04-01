@@ -7,8 +7,8 @@ interface LiveMatch {
   id: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { nome: string; escudo_url: string | null } | null;
-  time_fora: { nome: string; escudo_url: string | null } | null;
+  time_casa: { nome: string; escudo_url: string | null; cores: string | null; short_code: string | null } | null;
+  time_fora: { nome: string; escudo_url: string | null; cores: string | null; short_code: string | null } | null;
   liga: { nome: string; logo_url: string | null } | null;
 }
 
