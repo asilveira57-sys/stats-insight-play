@@ -11,8 +11,8 @@ interface Match {
   status: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { id: string; nome: string; slug: string | null; pais: string | null } | null;
-  time_fora: { id: string; nome: string; slug: string | null; pais: string | null } | null;
+  time_casa: { id: string; nome: string; slug: string | null; pais: string | null; cores: string | null; short_code: string | null } | null;
+  time_fora: { id: string; nome: string; slug: string | null; pais: string | null; cores: string | null; short_code: string | null } | null;
   liga: { id: string; nome: string; logo_url: string | null; pais: string | null; slug: string | null } | null;
 }
 
