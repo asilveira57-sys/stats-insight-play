@@ -96,9 +96,10 @@ export function DashboardTodayMatches({ matches }: { matches: Match[] }) {
 }
 
 function TeamName({ team }: { team: Match['time_casa'] }) {
+  const cores = String(team?.cores || '');
   return (
     <div className="flex items-center gap-1.5 min-w-0">
-      <TeamBadge name={team?.short_code || team?.nome || '?'} size="sm" primaryColor={team?.cores?.split(',')[0]?.trim()} secondaryColor={team?.cores?.split(',')[1]?.trim()} />
+      <TeamBadge name={team?.short_code || team?.nome || '?'} size="sm" primaryColor={cores.split(',')[0]?.trim() || undefined} secondaryColor={cores.split(',')[1]?.trim() || undefined} />
       <span className="text-sm truncate">{team?.nome || '?'}</span>
     </div>
   );
