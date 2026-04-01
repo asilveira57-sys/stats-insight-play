@@ -63,7 +63,7 @@ export function useLiveMatches() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partidas')
-        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,slug)')
+        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug,cores,short_code), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug,cores,short_code), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,slug)')
         .eq('status', 'live');
       if (error) throw error;
       return data || [];
