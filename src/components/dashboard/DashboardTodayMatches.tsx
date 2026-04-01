@@ -11,8 +11,8 @@ interface Match {
   status: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { id: string; nome: string; slug: string | null; pais: string | null } | null;
-  time_fora: { id: string; nome: string; slug: string | null; pais: string | null } | null;
+  time_casa: { id: string; nome: string; slug: string | null; pais: string | null; cores: any; short_code: string | null } | null;
+  time_fora: { id: string; nome: string; slug: string | null; pais: string | null; cores: any; short_code: string | null } | null;
   liga: { id: string; nome: string; logo_url: string | null; pais: string | null; slug: string | null } | null;
 }
 
@@ -96,9 +96,10 @@ export function DashboardTodayMatches({ matches }: { matches: Match[] }) {
 }
 
 function TeamName({ team }: { team: Match['time_casa'] }) {
+  const cores = String(team?.cores || '');
   return (
     <div className="flex items-center gap-1.5 min-w-0">
-      <TeamBadge name={team?.nome || '?'} size="sm" />
+      <TeamBadge name={team?.short_code || team?.nome || '?'} size="sm" primaryColor={cores.split(',')[0]?.trim() || undefined} secondaryColor={cores.split(',')[1]?.trim() || undefined} />
       <span className="text-sm truncate">{team?.nome || '?'}</span>
     </div>
   );

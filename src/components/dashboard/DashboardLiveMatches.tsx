@@ -7,8 +7,8 @@ interface LiveMatch {
   id: string;
   gols_casa: number | null;
   gols_fora: number | null;
-  time_casa: { nome: string; escudo_url: string | null } | null;
-  time_fora: { nome: string; escudo_url: string | null } | null;
+  time_casa: { nome: string; escudo_url: string | null; cores: any; short_code: string | null } | null;
+  time_fora: { nome: string; escudo_url: string | null; cores: any; short_code: string | null } | null;
   liga: { nome: string; logo_url: string | null } | null;
 }
 
@@ -45,7 +45,7 @@ export function DashboardLiveMatches({ matches }: { matches: LiveMatch[] }) {
           <div key={match.id} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <TeamBadge name={match.time_casa?.nome || '?'} size="sm" />
+                <TeamBadge name={match.time_casa?.short_code || match.time_casa?.nome || '?'} size="sm" primaryColor={String(match.time_casa?.cores || '').split(',')[0]?.trim() || undefined} secondaryColor={String(match.time_casa?.cores || '').split(',')[1]?.trim() || undefined} />
                 <span className="text-sm truncate">{match.time_casa?.nome}</span>
               </div>
               <div className="text-lg font-bold font-display text-center shrink-0 min-w-[60px]">
@@ -53,7 +53,7 @@ export function DashboardLiveMatches({ matches }: { matches: LiveMatch[] }) {
               </div>
               <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
                 <span className="text-sm truncate text-right">{match.time_fora?.nome}</span>
-                <TeamBadge name={match.time_fora?.nome || '?'} size="sm" />
+                <TeamBadge name={match.time_fora?.short_code || match.time_fora?.nome || '?'} size="sm" primaryColor={String(match.time_fora?.cores || '').split(',')[0]?.trim() || undefined} secondaryColor={String(match.time_fora?.cores || '').split(',')[1]?.trim() || undefined} />
               </div>
             </div>
           </div>

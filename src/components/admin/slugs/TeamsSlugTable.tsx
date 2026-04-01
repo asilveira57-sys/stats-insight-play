@@ -97,7 +97,7 @@ export function TeamsSlugTable({ teams, isLoading }: TeamsSlugTableProps) {
               <TableRow key={team.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <TeamBadge name={team.nome} size="sm" />
+                    <TeamBadge name={(team as any).short_code || team.nome} size="sm" primaryColor={(team as any).cores?.split(',')[0]?.trim()} secondaryColor={(team as any).cores?.split(',')[1]?.trim()} />
                     <div className="flex flex-col">
                       <span className="font-medium">{team.nome}</span>
                       {team.pais && (

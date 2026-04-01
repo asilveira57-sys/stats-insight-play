@@ -31,7 +31,7 @@ export function useTodayMatches(focusRegion: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partidas')
-        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug,pais), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug,pais), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,pais,slug)')
+        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug,pais,cores,short_code), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug,pais,cores,short_code), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,pais,slug)')
         .eq('data', today)
         .order('hora', { ascending: true });
       if (error) throw error;
@@ -63,7 +63,7 @@ export function useLiveMatches() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partidas')
-        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,slug)')
+        .select('*, time_casa:times!partidas_time_casa_id_fkey(id,nome,escudo_url,slug,cores,short_code), time_fora:times!partidas_time_fora_id_fkey(id,nome,escudo_url,slug,cores,short_code), liga:ligas!partidas_liga_id_fkey(id,nome,logo_url,slug)')
         .eq('status', 'live');
       if (error) throw error;
       return data || [];
