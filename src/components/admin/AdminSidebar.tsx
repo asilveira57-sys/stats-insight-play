@@ -18,6 +18,7 @@ import {
   GitMerge,
   BookOpen,
   HardDrive,
+  Image,
 } from "lucide-react";
 import {
   Sidebar,
