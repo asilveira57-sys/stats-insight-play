@@ -66,6 +66,7 @@ import HubHighlights from "./pages/hub/Highlights";
 import HubLogs from "./pages/hub/Logs";
 import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
+import AdminImageManager from "./pages/AdminImageManager";
 
 const queryClient = new QueryClient();
 
