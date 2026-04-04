@@ -46,6 +46,7 @@ const menuGroups = [
     label: "Conteúdo",
     items: [
       { title: "Editorial", url: "/admin/editorial", icon: PenTool },
+      { title: "Imagens", url: "/admin/imagens", icon: Image },
     ],
   },
   {
