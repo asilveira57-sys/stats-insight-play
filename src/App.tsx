@@ -66,6 +66,7 @@ import HubHighlights from "./pages/hub/Highlights";
 import HubLogs from "./pages/hub/Logs";
 import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
+import AdminImageManager from "./pages/AdminImageManager";
 
 const queryClient = new QueryClient();
 
@@ -131,6 +132,7 @@ const App = () => (
             <Route path="/admin/fontes-historicas" element={<AdminHistoricalSources />} />
             <Route path="/admin/kaggle" element={<AdminKaggle />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
+            <Route path="/admin/imagens" element={<AdminImageManager />} />
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
             <Route path="/configuracoes/perfil" element={<Configuracoes />} />

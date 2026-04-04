@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.kaggle-batch]
 verify_jwt = false
+
+[functions.generate-svg-thumbnails]
+verify_jwt = false

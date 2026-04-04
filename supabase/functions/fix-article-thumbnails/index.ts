@@ -8,12 +8,11 @@ const corsHeaders = {
 
 const DEFAULT_UNSPLASH_PATTERN = 'unsplash.com/photo-1574629810360-7efbbe195018';
 
-async function generateThumbnailForArticle(
+async function generateThumbnailViaGateway(
   titulo: string,
   resumo: string,
-  GEMINI_API_KEY: string
+  LOVABLE_API_KEY: string
 ): Promise<string | null> {
-  // Extract key info from title for a contextual prompt
   const prompt = `Create a professional sports journalism thumbnail image:
 - Background: Modern football stadium at night with dramatic lighting
 - Dark semi-transparent overlay for readability
@@ -28,38 +27,48 @@ async function generateThumbnailForArticle(
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`,
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+          model: "google/gemini-3.1-flash-image-preview",
+          messages: [{ role: "user", content: prompt }],
+          modalities: ["image", "text"],
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Image generation error:", response.status, errorText);
+      console.error("Lovable AI Gateway error:", response.status, errorText);
       if (response.status === 429) throw new Error("RATE_LIMIT");
+      if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
       return null;
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
-
-    if (!base64Image) {
-      console.log("No image data in Gemini response");
+    const images = data.choices?.[0]?.message?.images;
+    if (!images || images.length === 0) {
+      console.log("No image in Lovable AI response");
       return null;
     }
 
+    // Extract base64 from data URL
+    const imageUrl = images[0]?.image_url?.url;
+    if (!imageUrl) return null;
+
+    // Remove data:image/png;base64, prefix if present
+    const base64Image = imageUrl.replace(/^data:image\/[a-z]+;base64,/, '');
     return base64Image;
   } catch (error) {
-    if (error instanceof Error && error.message === "RATE_LIMIT") throw error;
-    console.error("Error generating thumbnail:", error);
+    if (error instanceof Error && (error.message === "RATE_LIMIT" || error.message === "CREDITS_EXHAUSTED")) {
+      throw error;
+    }
+    console.error("Error generating thumbnail via gateway:", error);
     return null;
   }
 }
@@ -70,12 +79,12 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -89,7 +98,6 @@ serve(async (req) => {
     }
 
     // Count total pending articles — ONLY legacy Unsplash placeholders, NOT null
-    // Null images are intentional (failed generation) and handled by frontend CSS fallback
     const { count: totalPendingUnsplash } = await supabase
       .from("noticias")
       .select("*", { count: "exact", head: true })
@@ -97,7 +105,7 @@ serve(async (req) => {
 
     const totalPending = totalPendingUnsplash || 0;
 
-    // Fetch ONLY articles with Unsplash placeholder (legacy), skip null images
+    // Fetch ONLY articles with Unsplash placeholder (legacy)
     const { data: articles, error: fetchError } = await supabase
       .from("noticias")
       .select("id, titulo, resumo, slug, imagem_url")
@@ -114,10 +122,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           message: "Nenhum artigo pendente de correção",
-          processed: 0,
-          fixed: 0,
-          errors: 0,
-          pending: 0,
+          processed: 0, fixed: 0, errors: 0, pending: 0,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -129,11 +134,10 @@ serve(async (req) => {
       try {
         console.log(`Fixing thumbnail for: ${article.titulo} (${article.id})`);
 
-        // Generate new image
-        const base64Image = await generateThumbnailForArticle(
+        const base64Image = await generateThumbnailViaGateway(
           article.titulo || "Análise Esportiva",
           article.resumo || "",
-          GEMINI_API_KEY
+          LOVABLE_API_KEY
         );
 
         if (!base64Image) {
@@ -141,9 +145,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Upload to storage
         const imageBytes = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
-        // Use SEO-friendly filename based on article slug
         const fileName = `fix-${article.slug || article.id}.png`;
 
         const { error: uploadError } = await supabase.storage
@@ -158,22 +160,18 @@ serve(async (req) => {
           continue;
         }
 
-        // Get public URL
         const { data: urlData } = supabase.storage
           .from("news-thumbnails")
           .getPublicUrl(fileName);
 
-        const publicUrl = urlData?.publicUrl;
-
-        if (!publicUrl) {
+        if (!urlData?.publicUrl) {
           results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: "Failed to get public URL" });
           continue;
         }
 
-        // Update article
         const { error: updateError } = await supabase
           .from("noticias")
-          .update({ imagem_url: publicUrl })
+          .update({ imagem_url: urlData.publicUrl })
           .eq("id", article.id);
 
         if (updateError) {
@@ -181,18 +179,17 @@ serve(async (req) => {
           continue;
         }
 
-        console.log(`✅ Fixed: ${article.titulo} -> ${publicUrl}`);
+        console.log(`✅ Fixed: ${article.titulo} -> ${urlData.publicUrl}`);
         results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: true });
 
-        // Delay between requests
         if (articles.length > 1) {
           await new Promise((r) => setTimeout(r, 2000));
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
-        if (errMsg === "RATE_LIMIT") {
-          results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: "Rate limit - retry later" });
-          break; // Stop processing on rate limit
+        if (errMsg === "RATE_LIMIT" || errMsg === "CREDITS_EXHAUSTED") {
+          results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: errMsg === "RATE_LIMIT" ? "Rate limit - retry later" : "Credits exhausted - add funds" });
+          break;
         }
         results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: errMsg });
       }
@@ -205,9 +202,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `${fixed} imagens corrigidas, ${errors} erros`,
-        processed: results.length,
-        fixed,
-        errors,
+        processed: results.length, fixed, errors,
         pending: Math.max(totalPending - fixed, 0),
         results,
       }),

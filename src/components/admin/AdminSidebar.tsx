@@ -18,6 +18,7 @@ import {
   GitMerge,
   BookOpen,
   HardDrive,
+  Image,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ const menuGroups = [
     label: "Conteúdo",
     items: [
       { title: "Editorial", url: "/admin/editorial", icon: PenTool },
+      { title: "Imagens", url: "/admin/imagens", icon: Image },
     ],
   },
   {
