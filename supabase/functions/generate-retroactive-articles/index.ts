@@ -94,24 +94,24 @@ async function generateArticleContent(
     ? `\n\n<div class="related-matches">\n<h3>Outras Análises dos Times</h3>\n<ul>\n${relatedLinks.map(l => `<li>${l}</li>`).join("\n")}\n</ul>\n</div>`
     : "";
 
-  const systemPrompt = `Você é um analista esportivo profissional escrevendo em ${analysisDate}.
+  const systemPrompt = `Você é um analista esportivo profissional de elite escrevendo em ${analysisDate}.
 
 CONTEXTO TEMPORAL CRÍTICO:
 - Estamos em ${analysisDate}, ANTES do jogo acontecer
 - NÃO mencione NADA que aconteceu após esta data
 - NÃO revele o resultado do jogo sob nenhuma circunstância
-- Analise baseado APENAS nos dados que existiriam até ${analysisDate}
 - Use verbos no futuro ao se referir à partida
 
 REGRAS ABSOLUTAS:
 - Escreva no MÍNIMO 1200 palavras, idealmente 1500-1800
 - Linguagem jornalística profissional em português brasileiro
 - NÃO fazer referência a apostas, odds ou casas de apostas
-- NÃO usar clichês excessivos
-- Seja analítico e técnico, baseado em dados estatísticos
+- Conteúdo deve parecer escrito por especialista humano, NUNCA genérico ou automático
+- Interprete os dados — NÃO apenas repita números
+- PROIBIDO frases genéricas: "jogo promete ser equilibrado", "duas equipes fortes", "qualquer coisa pode acontecer"
 - Use estrutura HTML com H2 para seções principais`;
 
-  const userPrompt = `Escreva uma análise pré-jogo completa para:
+  const userPrompt = `Escreva uma análise pré-jogo completa e diferenciada para o Statball:
 
 DADOS DO CONFRONTO:
 - ${timeCasa} x ${timeFora}
@@ -120,50 +120,52 @@ DADOS DO CONFRONTO:
 ${match.rodada ? `- Rodada: ${match.rodada}` : ""}
 - Força ${timeCasa}: ${forcaCasa}/100
 - Força ${timeFora}: ${forcaFora}/100
-- Probabilidades calculadas: Vitória ${timeCasa} ${probCasa.toFixed(1)}% | Empate ${probEmpate.toFixed(1)}% | Vitória ${timeFora} ${probFora.toFixed(1)}%
+- Probabilidades: Vitória ${timeCasa} ${probCasa.toFixed(1)}% | Empate ${probEmpate.toFixed(1)}% | Vitória ${timeFora} ${probFora.toFixed(1)}%
 - Placar mais provável: ${placarCasa} x ${placarFora}
 
-ESTRUTURA OBRIGATÓRIA DO ARTIGO (mínimo 1200 palavras):
+ESTRUTURA OBRIGATÓRIA (mínimo 1200 palavras, HTML com h2, h3, p, ul, li, strong, em):
 
-<h2>O Grande Confronto: ${timeCasa} x ${timeFora}</h2>
-- Contexto do jogo e sua importância na competição (150+ palavras)
-- Situe o leitor no momento da temporada
+<h2>Introdução: Contexto Real do Confronto</h2>
+- Cite ambos os times com contexto específico da competição e momento (200+ palavras)
+- Explique por que este confronto é relevante NESTE momento da temporada
+- PROIBIDO aberturas genéricas
 
 <h2>Momento das Equipes na ${liga}</h2>
-- Análise da forma recente de ambas as equipes (200+ palavras)
-- Como chegam para este confronto
-- Fatores de motivação
-
-<h2>Histórico do Confronto Direto</h2>
-- Retrospecto entre as equipes (150+ palavras)
-- Padrões históricos deste clássico/confronto
-- Curiosidades relevantes
+- Desempenho recente de AMBAS as equipes com tendências concretas (250+ palavras)
+- Compare diretamente: quem chega melhor e por quê
+- Sequências, consistência, motivação
 
 <h2>Análise Tática e Fatores Decisivos</h2>
-- Pontos fortes e fracos de cada equipe (200+ palavras)
-- Esquemas táticos prováveis
-- Jogadores-chave para a partida
+- Ataque vs defesa de cada equipe usando dados de força (${forcaCasa} vs ${forcaFora}) (250+ palavras)
+- Pontos fortes e fracos com justificativa numérica
+- Esquemas táticos prováveis e jogadores-chave
 
 <!-- INSERIR IMAGEM: [ALT: Análise tática ${timeCasa} x ${timeFora} - ${liga}] -->
 
-<h2>O Que os Números Indicam</h2>
-- Análise estatística detalhada baseada nas probabilidades (200+ palavras)
-- Interpretação dos dados de força das equipes
-- Tendências estatísticas
+<h2>Fator Casa/Fora e Histórico</h2>
+- Impacto do mando de campo com dados (150+ palavras)
+- Retrospecto do confronto direto
+- Padrões históricos relevantes
 
-<h2>Cenários Prováveis</h2>
-- Possibilidades de resultado (150+ palavras)
-- O que cada time precisa fazer para vencer
-- Fatores externos (casa, torcida, clima)
+<h2>Tendência da Partida e Placar Estimado</h2>
+- Indique qual time chega melhor e JUSTIFIQUE com dados (200+ palavras)
+- Placar estimado: ${placarCasa} x ${placarFora} com justificativa matemática
+- Cenários alternativos prováveis
+- NÃO revelar resultado real
 
-<h2>Palpite Estatístico</h2>
-- Placar estimado: ${placarCasa} x ${placarFora} com justificativa (150+ palavras)
-- Confiança na previsão
-- NÃO revelar o resultado real
+<h2>Leitura de Cenário Statball</h2>
+- Análise direta estilo especialista (150+ palavras)
+- Formato: "O cenário indica um jogo com tendência X, principalmente pela Y do time Z..."
+- Cenário provável: ofensivo, defensivo, equilibrado etc.
 
 ${relatedLinksHtml ? `\nAdicione ao final do artigo os seguintes links relacionados:\n${relatedLinksHtml}` : ""}
 
-LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivesse ANTES do jogo acontecer.`;
+REGRAS CRÍTICAS:
+- TODA afirmação deve ser justificada com dados
+- SEMPRE compare os dois times lado a lado
+- Conteúdo ÚNICO por seção, sem repetir informações
+- Tom: natural, analítico, sem parecer robótico
+- Mínimo 1200 palavras`;
 
   const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
@@ -178,7 +180,7 @@ LEMBRE-SE: Mínimo 1200 palavras, use HTML com tags H2, escreva como se estivess
         { role: "user", content: userPrompt },
       ],
       max_tokens: 8000,
-      temperature: 0.7,
+      temperature: 0.75,
     }),
   });
 

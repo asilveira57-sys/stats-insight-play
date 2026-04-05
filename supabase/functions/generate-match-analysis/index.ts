@@ -70,107 +70,101 @@ async function generateLongFormContent(matchData: MatchData, GEMINI_API_KEY: str
     month: 'long', 
     year: 'numeric' 
   });
-  
-  const prompt = `Você é um analista esportivo brasileiro experiente, especializado em análise estatística e tática de futebol. Escreva como um profissional de redação esportiva de alto nível.
+
+  const timeCasa = matchData.time_casa.nome;
+  const timeFora = matchData.time_fora.nome;
+  const liga = matchData.liga.nome;
+  const probCasa = palpite?.prob_casa?.toFixed(1) || '33';
+  const probEmpate = palpite?.prob_empate?.toFixed(1) || '33';
+  const probFora = palpite?.prob_fora?.toFixed(1) || '33';
+  const placarCasa = palpite?.placar_casa_estimado || 0;
+  const placarFora = palpite?.placar_fora_estimado || 0;
+  const forcaCasa = palpite?.forca_time_casa?.toFixed(0) || '50';
+  const forcaFora = palpite?.forca_time_fora?.toFixed(0) || '50';
+  const confianca = palpite?.confianca?.toFixed(0) || '50';
+
+  const prompt = `Você é um analista esportivo brasileiro experiente e renomado, especialista em análise estatística e tática de futebol. Seu objetivo é gerar uma página de análise pré-jogo para o Statball que pareça escrita por especialista humano, interprete dados de forma útil e aumente o tempo de permanência do leitor.
 
 DADOS COMPLETOS DA PARTIDA:
-- Competição: ${matchData.liga.nome}
+- Competição: ${liga}
 - Data: ${matchDate} às ${matchData.hora?.substring(0, 5) || '00:00'}
-- Mandante: ${matchData.time_casa.nome}
-- Visitante: ${matchData.time_fora.nome}
+- Mandante: ${timeCasa}
+- Visitante: ${timeFora}
 
 MÉTRICAS DO SISTEMA DE ANÁLISE:
-- Força do ${matchData.time_casa.nome}: ${palpite?.forca_time_casa?.toFixed(0) || 50}/100
-- Força do ${matchData.time_fora.nome}: ${palpite?.forca_time_fora?.toFixed(0) || 50}/100
-- Probabilidade vitória ${matchData.time_casa.nome}: ${palpite?.prob_casa?.toFixed(1) || 33}%
-- Probabilidade empate: ${palpite?.prob_empate?.toFixed(1) || 33}%
-- Probabilidade vitória ${matchData.time_fora.nome}: ${palpite?.prob_fora?.toFixed(1) || 33}%
-- Placar mais provável: ${palpite?.placar_casa_estimado || 0} x ${palpite?.placar_fora_estimado || 0}
-- Nível de confiança da análise: ${palpite?.confianca?.toFixed(0) || 50}%
+- Força do ${timeCasa}: ${forcaCasa}/100
+- Força do ${timeFora}: ${forcaFora}/100
+- Probabilidade vitória ${timeCasa}: ${probCasa}%
+- Probabilidade empate: ${probEmpate}%
+- Probabilidade vitória ${timeFora}: ${probFora}%
+- Placar mais provável: ${placarCasa} x ${placarFora}
+- Nível de confiança: ${confianca}%
 
-INSTRUÇÕES DETALHADAS:
+ESTRUTURA OBRIGATÓRIA DO ARTIGO (HTML com h2, h3, p, ul, li, strong, em):
 
-Gere um artigo completo e aprofundado de análise pré-jogo seguindo EXATAMENTE esta estrutura:
-
-1. TÍTULO SEO (máximo 65 caracteres):
-- Inclua os nomes dos times
-- Mencione "Análise Estatística"
-- Inclua a competição
-- Exemplo: "${matchData.time_casa.nome} x ${matchData.time_fora.nome}: Análise Estatística da ${matchData.liga.nome}"
-
-2. RESUMO/META DESCRIPTION (máximo 155 caracteres):
-- Texto persuasivo para resultados de busca
-- Mencione a análise e a competição
-- Convide à leitura
-
-3. TEXTO PRINCIPAL (mínimo 1500 palavras):
-O artigo DEVE conter as seguintes seções em HTML, usando tags h2, h3, p, ul, li, strong, em:
-
-<h2>Introdução: Contexto do Confronto</h2>
-- Apresente o jogo e sua importância no campeonato
-- Contextualize o momento de cada equipe
-- Explique por que este confronto é relevante
+<h2>Introdução: Contexto Real do Confronto</h2>
+- Cite os dois times e a competição com contexto específico
+- Explique o momento de cada equipe na competição
+- PROIBIDO frases genéricas como "jogo promete ser equilibrado" ou "duas equipes fortes"
 - Mínimo 200 palavras
 
-<h2>Análise Pré-Jogo: Forma Recente das Equipes</h2>
-- Desempenho recente de cada time
-- Resultados em casa (mandante) e fora (visitante)
-- Sequências positivas ou negativas
-- Jogadores-chave e desfalques importantes
+<h2>Momento das Equipes</h2>
+- Desempenho recente dos dois times com tendências específicas
+- Sequências de vitórias, derrotas, consistência
+- Compare diretamente: quem chega melhor e por quê
 - Mínimo 250 palavras
 
-<h2>Leitura Estatística do Confronto</h2>
-- Explique as métricas de força de cada time
-- Analise as probabilidades calculadas
-- Compare os números de forma objetiva
-- Discuta tendências estatísticas
+<h2>Análise Tática Baseada em Dados</h2>
+- Ataque vs defesa de cada equipe (use os dados de força)
+- Pontos fortes e fracos com justificativa numérica
+- Comportamento tático esperado baseado nas métricas
 - Mínimo 300 palavras
-
-<h2>Cenários Táticos Prováveis</h2>
-- Como cada time deve se comportar taticamente
-- Possíveis formações e estratégias
-- Pontos de pressão e vulnerabilidades
-- Onde o jogo pode ser decidido
-- Mínimo 250 palavras
 
 <!-- INSERIR CTA PREMIUM AQUI -->
 <div class="premium-cta">
 <p><strong>Quer análises ainda mais detalhadas?</strong> Usuários do Clube Statball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto.</p>
 </div>
 
-<h2>Análise do Placar Previsto: ${palpite?.placar_casa_estimado || 0} x ${palpite?.placar_fora_estimado || 0}</h2>
-- Justifique matematicamente o placar previsto
-- Explique os fatores que levaram a essa projeção
-- Discuta cenários alternativos prováveis
-- Mínimo 200 palavras
+<h2>Fator Casa/Fora</h2>
+- Impacto real do mando de campo com dados
+- Diferenças de desempenho como mandante vs visitante
+- Mínimo 150 palavras
 
-<h2>Fatores Decisivos para o Resultado</h2>
-- Mando de campo e torcida
-- Calendário e desgaste físico
-- Histórico recente do confronto direto
-- Importância do jogo para cada equipe
-- Mínimo 200 palavras
+<h2>Tendência da Partida</h2>
+- Indique qual time chega melhor e JUSTIFIQUE com dados concretos
+- Evite cravar resultado absoluto
+- Analise o placar previsto ${placarCasa} x ${placarFora} com justificativa matemática
+- Discuta cenários alternativos
+- Mínimo 250 palavras
 
-<h2>Conclusão: O Que os Números Indicam</h2>
-- Síntese da análise completa
-- Reforce o valor da análise baseada em dados
-- Conclusão equilibrada e profissional
+<h2>Leitura de Cenário Statball</h2>
+- Análise direta estilo especialista em 1-2 parágrafos
+- Exemplo: "O cenário indica um jogo com tendência X, principalmente pela Y do time Z, enquanto o time W costuma..."
+- Cenário provável: jogo aberto, equilibrado, defensivo, etc.
 - Mínimo 150 palavras
 
 <!-- INSERIR CTA FINAL -->
 <div class="premium-cta-final">
-<p>Esta análise foi gerada pelo sistema de inteligência estatística do Statball. Para acompanhar análises detalhadas de todos os confrontos e acessar dados avançados, conheça o <strong>Clube Statball Premium</strong>.</p>
+<p>Esta análise foi gerada pelo sistema de inteligência estatística do Statball. Para acompanhar análises detalhadas de todos os confrontos, conheça o <strong>Clube Statball Premium</strong>.</p>
 </div>
 
-REGRAS IMPORTANTES:
+REGRAS CRÍTICAS:
+- PROIBIDO frases genéricas: "jogo promete ser equilibrado", "duas equipes fortes", "qualquer coisa pode acontecer", "confronto interessante"
+- OBRIGATÓRIO sempre comparar os dois times lado a lado
+- OBRIGATÓRIO justificar TODA afirmação com dados numéricos
+- OBRIGATÓRIO mencionar desempenho recente, ataque e defesa
 - Este é um portal de ANÁLISE ESTATÍSTICA, não de apostas
 - Nunca faça recomendações de apostas
-- Use linguagem profissional de jornalismo esportivo
-- Evite frases genéricas ou repetitivas
-- Cada seção deve ter conteúdo único e aprofundado
-- O texto total deve ter pelo menos 1500 palavras
-- Use dados concretos sempre que possível
-- Inclua as tags HTML corretamente formatadas
+- Cada seção deve ter conteúdo ÚNICO, sem repetir informações
+- Texto total MÍNIMO 1500 palavras
+- Tom: linguagem natural, levemente analítica, sem exagero técnico, sem parecer robótico
+
+TÍTULO SEO (máximo 60 caracteres):
+- Inclua os nomes dos times e a competição
+- Exemplo: "${timeCasa} x ${timeFora}: Análise Estatística - ${liga}"
+
+RESUMO/META DESCRIPTION (máximo 155 caracteres):
+- Texto persuasivo para resultados de busca
 
 Responda APENAS em formato JSON válido:
 {
@@ -190,10 +184,11 @@ Responda APENAS em formato JSON válido:
       messages: [
         { 
           role: "system", 
-          content: "Você é um analista esportivo brasileiro especializado em análise estatística de futebol. Gere conteúdo longo, detalhado e profissional. Responda sempre em JSON válido. O texto deve ser extenso e aprofundado, com pelo menos 1500 palavras." 
+          content: "Você é um analista esportivo brasileiro de elite, especializado em análise estatística de futebol. Seu conteúdo deve parecer escrito por humano especialista, nunca genérico ou automático. Interprete dados — não apenas repita números. Responda sempre em JSON válido com campos titulo, resumo e texto. O texto deve ter no mínimo 1500 palavras." 
         },
         { role: "user", content: prompt }
       ],
+      temperature: 0.75,
     }),
   });
 
@@ -236,7 +231,6 @@ Responda APENAS em formato JSON válido:
     
     // Second attempt: fix common issues like unescaped newlines in HTML strings
     try {
-      // Replace literal newlines inside JSON string values with escaped version
       const cleaned = jsonContent.trim()
         .replace(/\n/g, "\\n")
         .replace(/\r/g, "\\r")
