@@ -151,19 +151,60 @@ export default function AdminImageManager() {
     }
   };
 
+  const runReprocessBatch = async () => {
+    setReprocessRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reprocess-articles", {
+        body: { limit: 3, prioritize_recent: true },
+      });
+
+      if (error) throw error;
+
+      setReprocessProgress({
+        processed: data.processed || 0,
+        failed: data.failed || 0,
+        results: data.results || [],
+      });
+
+      toast({
+        title: "Reprocessamento concluído",
+        description: `${data.processed} artigos reescritos, ${data.failed} erros`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["admin-content-stats"] });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setReprocessRunning(false);
+    }
+  };
+
   const coveragePercent = stats ? Math.round(((stats.total - stats.nullCount) / Math.max(stats.total, 1)) * 100) : 0;
+  const contentPercent = contentStats ? Math.round((contentStats.updated / Math.max(contentStats.total, 1)) * 100) : 0;
 
   return (
     <AdminLayout>
       <Helmet>
-        <title>Gerenciar Imagens | Admin</title>
+        <title>Gerenciar Conteúdo | Admin</title>
       </Helmet>
 
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Gerenciamento de Imagens</h1>
-          <p className="text-muted-foreground">Correção em massa de thumbnails de artigos</p>
+          <h1 className="text-2xl font-bold text-foreground">Gerenciamento de Conteúdo</h1>
+          <p className="text-muted-foreground">Imagens e reprocessamento de artigos</p>
         </div>
+
+        <Tabs defaultValue="images">
+          <TabsList>
+            <TabsTrigger value="images" className="gap-2">
+              <Image className="h-4 w-4" /> Imagens
+            </TabsTrigger>
+            <TabsTrigger value="reprocess" className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Reprocessar Conteúdo
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="images" className="space-y-6 mt-4">
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
