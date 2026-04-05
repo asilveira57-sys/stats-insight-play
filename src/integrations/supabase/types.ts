@@ -3909,6 +3909,8 @@ export type Database = {
       noticias: {
         Row: {
           autor_id: string | null
+          content_updated: boolean | null
+          content_updated_at: string | null
           created_at: string | null
           data_publicacao: string | null
           id: string
@@ -3923,6 +3925,8 @@ export type Database = {
         }
         Insert: {
           autor_id?: string | null
+          content_updated?: boolean | null
+          content_updated_at?: string | null
           created_at?: string | null
           data_publicacao?: string | null
           id?: string
@@ -3937,6 +3941,8 @@ export type Database = {
         }
         Update: {
           autor_id?: string | null
+          content_updated?: boolean | null
+          content_updated_at?: string | null
           created_at?: string | null
           data_publicacao?: string | null
           id?: string
