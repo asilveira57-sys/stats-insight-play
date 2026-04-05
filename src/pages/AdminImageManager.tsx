@@ -38,17 +38,45 @@ function useImageStats() {
   });
 }
 
+function useContentStats() {
+  return useQuery({
+    queryKey: ["admin-content-stats"],
+    queryFn: async () => {
+      const [totalRes, updatedRes, pendingRes] = await Promise.all([
+        supabase.from("noticias").select("*", { count: "exact", head: true }).eq("publicada", true),
+        supabase.from("noticias").select("*", { count: "exact", head: true }).eq("publicada", true).eq("content_updated", true),
+        supabase.from("noticias").select("*", { count: "exact", head: true }).eq("publicada", true).or("content_updated.is.null,content_updated.eq.false"),
+      ]);
+
+      return {
+        total: totalRes.count || 0,
+        updated: updatedRes.count || 0,
+        pending: pendingRes.count || 0,
+      };
+    },
+    staleTime: 30_000,
+  });
+}
+
 export default function AdminImageManager() {
   const { isAdmin, isLoading: adminLoading } = useAdminAccess();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: stats, isLoading: statsLoading } = useImageStats();
+  const { data: contentStats, isLoading: contentStatsLoading } = useContentStats();
 
   const [svgRunning, setSvgRunning] = useState(false);
   const [svgProgress, setSvgProgress] = useState({ processed: 0, fixed: 0, errors: 0, pending: 0 });
 
   const [aiRunning, setAiRunning] = useState(false);
   const [aiProgress, setAiProgress] = useState({ processed: 0, fixed: 0, errors: 0, pending: 0 });
+
+  const [reprocessRunning, setReprocessRunning] = useState(false);
+  const [reprocessProgress, setReprocessProgress] = useState<{
+    processed: number;
+    failed: number;
+    results: Array<{ titulo: string; success: boolean; word_count_before: number; word_count_after: number; error?: string }>;
+  }>({ processed: 0, failed: 0, results: [] });
 
   if (adminLoading) {
     return (
