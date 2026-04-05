@@ -369,6 +369,110 @@ export default function AdminImageManager() {
             </CardContent>
           </Card>
         </div>
+          </TabsContent>
+
+          {/* Reprocess Content Tab */}
+          <TabsContent value="reprocess" className="space-y-6 mt-4">
+            {/* Content Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <StatCard
+                label="Total Artigos"
+                value={contentStats?.total}
+                loading={contentStatsLoading}
+                icon={<FileText className="h-4 w-4" />}
+              />
+              <StatCard
+                label="Já Reprocessados"
+                value={contentStats?.updated}
+                loading={contentStatsLoading}
+                icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+                variant="success"
+              />
+              <StatCard
+                label="Pendentes"
+                value={contentStats?.pending}
+                loading={contentStatsLoading}
+                icon={<RefreshCw className="h-4 w-4 text-orange-500" />}
+                variant="warning"
+              />
+            </div>
+
+            {/* Content Coverage Bar */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Progresso de Reprocessamento</span>
+                  <Badge variant={contentPercent >= 90 ? "default" : contentPercent >= 50 ? "secondary" : "destructive"}>
+                    {contentPercent}%
+                  </Badge>
+                </div>
+                <Progress value={contentPercent} className="h-3" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {contentStats?.updated || 0} de {contentStats?.total || 0} artigos com conteúdo atualizado
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Reprocess Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  Reprocessar Artigos (Lovable AI)
+                </CardTitle>
+                <CardDescription>
+                  Reescreve 100% do conteúdo textual de artigos genéricos, mantendo tema, título e URL.
+                  Usa Lovable AI Gateway (custo incluso). Processa 3 artigos por lote.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline">Batch: 3 artigos</Badge>
+                  <Badge variant="outline">Prioridade: mais recentes</Badge>
+                  <Badge variant="outline">Mínimo: 400 palavras</Badge>
+                </div>
+
+                {reprocessProgress.results.length > 0 && (
+                  <div className="rounded-lg border p-3 space-y-2">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Último lote</span>
+                      <span>{reprocessProgress.processed} OK / {reprocessProgress.failed} erros</span>
+                    </div>
+                    <div className="space-y-1">
+                      {reprocessProgress.results.map((r, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          {r.success ? (
+                            <TrendingUp className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{r.titulo}</p>
+                            {r.success ? (
+                              <p className="text-muted-foreground">
+                                {r.word_count_before} → {r.word_count_after} palavras
+                              </p>
+                            ) : (
+                              <p className="text-red-500">{r.error}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={runReprocessBatch} disabled={reprocessRunning} className="w-full">
+                  {reprocessRunning ? (
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Reprocessando...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4 mr-2" /> Reprocessar Batch (3 artigos)</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );
