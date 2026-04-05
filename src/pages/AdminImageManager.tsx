@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3 } from "lucide-react";
+import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp } from "lucide-react";
 
 function useImageStats() {
   return useQuery({
