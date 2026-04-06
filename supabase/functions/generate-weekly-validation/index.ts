@@ -6,6 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SCENE_VARIANTS = [
+  "Vista aérea panorâmica do estádio com torcida ao fundo e iluminação dourada",
+  "Perspectiva do nível do gramado com foco no centro do campo e linhas laterais",
+  "Ângulo da arquibancada principal com close na torcida e bandeiras coloridas",
+  "Vista noturna cinemática com holofotes e neblina atmosférica sobre o campo",
+  "Visão lateral do banco de reservas com o campo iluminado ao fundo",
+  "Ângulo dramático de trás do gol com a rede em primeiro plano",
+  "Vista do alto com padrões geométricos do gramado e sombras longas",
+  "Perspectiva do túnel de acesso ao campo com luz no final",
+];
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 interface WeeklyData {
   weekNumber: number;
   year: number;
@@ -182,14 +202,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gemini-2.5-flash",
+      model: "google/gemini-2.5-flash",
       messages: [
         { 
           role: "system", 
@@ -201,14 +221,10 @@ Responda APENAS em formato JSON válido:
   });
 
   if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error("Gemini rate limit exceeded. Please try again later.");
-    }
-    if (response.status === 402) {
-      throw new Error("Gemini payment required. Check your API credits.");
-    }
+    if (response.status === 429) throw new Error("Rate limit exceeded. Please try again later.");
+    if (response.status === 402) throw new Error("Credits exhausted. Add funds.");
     const errorText = await response.text();
-    console.error("Gemini text generation error:", response.status, errorText);
+    console.error("AI text generation error:", response.status, errorText);
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -235,41 +251,43 @@ Responda APENAS em formato JSON válido:
 }
 
 async function generateWeeklyThumbnail(weeklyData: WeeklyData, GEMINI_API_KEY: string): Promise<string | null> {
-  const prompt = `Create a professional weekly sports validation report thumbnail:
-- Dark modern background with subtle gradient
-- Large text showing "SEMANA ${weeklyData.weekNumber}"
-- Subtitle showing the league: "${weeklyData.league.nome}"
-- Data visualization elements showing comparison (charts, graphs)
-- Split design: AI vs HUMANS concept
-- Professional broadcast quality
-- Analytics dashboard aesthetic
-- 16:9 aspect ratio
-- Ultra high resolution
-- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes.`;
+  const scene = SCENE_VARIANTS[hashCode(`weekly-${weeklyData.weekNumber}-${weeklyData.year}-${weeklyData.league.slug}`) % SCENE_VARIANTS.length];
+
+  const prompt = `Create a UNIQUE professional sports stadium photograph for a weekly validation report.
+
+MANDATORY SCENE: ${scene}
+
+VISUAL REQUIREMENTS:
+- Photorealistic stadium photograph with analytical mood
+- Week ${weeklyData.weekNumber} of ${weeklyData.league.nome}
+- Professional broadcast quality, cinematic lighting
+- 16:9 aspect ratio, ultra high resolution
+
+CRITICAL: No text, no logos, no player faces. Pure photographic scene.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        model: "google/gemini-3.1-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.log("Thumbnail generation failed:", response.status, errorText);
+      console.log("Thumbnail generation failed:", response.status);
       return null;
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
-    return base64Image ? `data:image/png;base64,${base64Image}` : null;
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) return null;
+    return imageUrl.startsWith("data:") ? imageUrl : `data:image/png;base64,${imageUrl}`;
   } catch (error) {
     console.error("Error generating thumbnail:", error);
     return null;
@@ -581,12 +599,12 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);

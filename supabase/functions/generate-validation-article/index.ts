@@ -6,6 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SCENE_VARIANTS = [
+  "Vista aérea panorâmica do estádio com torcida ao fundo e iluminação dourada",
+  "Perspectiva do nível do gramado com foco no centro do campo e linhas laterais",
+  "Ângulo da arquibancada principal com close na torcida e bandeiras coloridas",
+  "Vista noturna cinemática com holofotes e neblina atmosférica sobre o campo",
+  "Visão lateral do banco de reservas com o campo iluminado ao fundo",
+  "Ângulo dramático de trás do gol com a rede em primeiro plano",
+  "Vista do alto com padrões geométricos do gramado e sombras longas",
+  "Perspectiva do túnel de acesso ao campo com luz no final",
+];
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 interface MatchData {
   id: string;
   data: string;
@@ -223,14 +243,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gemini-2.5-flash",
+      model: "google/gemini-2.5-flash",
       messages: [
         { 
           role: "system", 
@@ -243,9 +263,9 @@ Responda APENAS em formato JSON válido:
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gemini text generation error:", response.status, errorText);
-    if (response.status === 429) throw new Error("Gemini rate limit exceeded. Try again later.");
-    if (response.status === 402) throw new Error("Gemini payment required. Check your API credits.");
+    console.error("AI text generation error:", response.status, errorText);
+    if (response.status === 429) throw new Error("Rate limit exceeded. Try again later.");
+    if (response.status === 402) throw new Error("Credits exhausted. Add funds.");
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
@@ -272,43 +292,46 @@ Responda APENAS em formato JSON válido:
 }
 
 async function generateValidationThumbnail(matchData: MatchData, GEMINI_API_KEY: string): Promise<string | null> {
-  const placarReal = `${matchData.gols_casa} x ${matchData.gols_fora}`;
+  const scene = SCENE_VARIANTS[hashCode(matchData.id + "-val") % SCENE_VARIANTS.length];
+  const corCasa = matchData.time_casa.cores?.primary || '#1a1a2e';
+  const corFora = matchData.time_fora.cores?.primary || '#16213e';
   
-  const prompt = `Create a professional sports validation/analysis thumbnail:
-- Dark modern background with data visualization elements
-- Main focus: RESULT comparison concept
-- Large scoreboard showing "${placarReal}"
-- Subtle check/cross marks suggesting validation
-- Team colors as abstract accents: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
-- Text: "VALIDAÇÃO" or "ANÁLISE PÓS-JOGO" style
-- Professional broadcast quality
-- 16:9 aspect ratio
-- Ultra high resolution
-- CRITICAL: Do NOT include any team logos, crests, badges, or shields. Use only abstract geometric shapes and colors.`;
+  const prompt = `Create a UNIQUE professional post-match analysis photograph.
+
+MANDATORY SCENE: ${scene}
+
+VISUAL REQUIREMENTS:
+- Photorealistic stadium photograph with post-match atmosphere
+- Results/validation mood — final whistle moment, empty pitch after game
+- Team colors: ${corCasa} and ${corFora} as atmospheric lighting
+- Context: ${matchData.time_casa.nome} ${matchData.gols_casa} x ${matchData.gols_fora} ${matchData.time_fora.nome}
+- 16:9 aspect ratio, ultra high resolution
+
+CRITICAL: No text, no logos, no player faces. Pure photographic scene.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        model: "google/gemini-3.1-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Validation thumbnail generation error:", response.status, errorText);
+      console.error("Validation thumbnail error:", response.status);
       return null;
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
-    return base64Image ? `data:image/png;base64,${base64Image}` : null;
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) return null;
+    return imageUrl.startsWith("data:") ? imageUrl : `data:image/png;base64,${imageUrl}`;
   } catch (error) {
     console.error("Error generating thumbnail:", error);
     return null;
@@ -316,41 +339,42 @@ async function generateValidationThumbnail(matchData: MatchData, GEMINI_API_KEY:
 }
 
 async function generateValidationInternalImage(matchData: MatchData, GEMINI_API_KEY: string): Promise<string | null> {
-  const prompt = `Create a professional comparison infographic image:
-- Modern dark background with gradient
-- Split screen concept: PREDICTION vs REALITY
-- Abstract data charts on left side (prediction)
-- Football result visualization on right (reality)
-- Team colors: ${matchData.time_casa.cores?.primary || '#1a1a2e'} and ${matchData.time_fora.cores?.primary || '#16213e'}
-- Connecting arrows or comparison elements
-- Clean, professional, analytical aesthetic
-- No text, pure visual design
-- 16:9 aspect ratio
-- Modern sports analytics visual style`;
+  const scene = SCENE_VARIANTS[hashCode(matchData.id + "-val-int") % SCENE_VARIANTS.length];
+  const corCasa = matchData.time_casa.cores?.primary || '#1a1a2e';
+  const corFora = matchData.time_fora.cores?.primary || '#16213e';
+
+  const prompt = `Create a UNIQUE professional sports analytics photograph.
+
+MANDATORY SCENE: ${scene}
+
+VISUAL REQUIREMENTS:
+- Photorealistic analytical/tactical aesthetic
+- Team colors: ${corCasa} and ${corFora}
+- Post-match analysis context
+- 16:9 aspect ratio, ultra high resolution
+
+CRITICAL: No text, no logos, no player faces.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        model: "google/gemini-3.1-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Validation internal image generation error:", response.status, errorText);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
-    return base64Image ? `data:image/png;base64,${base64Image}` : null;
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) return null;
+    return imageUrl.startsWith("data:") ? imageUrl : `data:image/png;base64,${imageUrl}`;
   } catch (error) {
     console.error("Error generating internal image:", error);
     return null;
@@ -395,12 +419,12 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
