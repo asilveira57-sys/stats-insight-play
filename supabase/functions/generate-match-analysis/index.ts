@@ -6,6 +6,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SCENE_VARIANTS = [
+  "Vista aérea panorâmica do estádio com torcida ao fundo e iluminação dourada",
+  "Perspectiva do nível do gramado com foco no centro do campo e linhas laterais",
+  "Ângulo da arquibancada principal com close na torcida e bandeiras coloridas",
+  "Vista noturna cinemática com holofotes e neblina atmosférica sobre o campo",
+  "Visão lateral do banco de reservas com o campo iluminado ao fundo",
+  "Ângulo dramático de trás do gol com a rede em primeiro plano",
+  "Vista do alto com padrões geométricos do gramado e sombras longas",
+  "Perspectiva do túnel de acesso ao campo com luz no final",
+];
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getSceneForMatch(seed: string): string {
+  return SCENE_VARIANTS[hashCode(seed) % SCENE_VARIANTS.length];
+}
+
 interface MatchData {
   id: string;
   data: string;
