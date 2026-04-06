@@ -6,6 +6,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SCENE_VARIANTS = [
+  "Vista aérea panorâmica do estádio com torcida ao fundo e iluminação dourada",
+  "Perspectiva do nível do gramado com foco no centro do campo e linhas laterais",
+  "Ângulo da arquibancada principal com close na torcida e bandeiras coloridas",
+  "Vista noturna cinemática com holofotes e neblina atmosférica sobre o campo",
+  "Visão lateral do banco de reservas com o campo iluminado ao fundo",
+  "Ângulo dramático de trás do gol com a rede em primeiro plano",
+  "Vista do alto com padrões geométricos do gramado e sombras longas",
+  "Perspectiva do túnel de acesso ao campo com luz no final",
+];
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 interface MatchData {
   id: string;
   data: string;
@@ -167,14 +187,14 @@ REGRAS CRÍTICAS:
 - Tom: natural, analítico, sem parecer robótico
 - Mínimo 1200 palavras`;
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gemini-2.5-flash",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -212,32 +232,41 @@ async function generateThumbnailWithSeoName(
   const timeCasa = match.time_casa?.nome || "Time Casa";
   const timeFora = match.time_fora?.nome || "Time Fora";
   const liga = match.liga?.nome || "Campeonato";
-  const matchDate = formatDateForDisplay(match.data);
   
   const corCasa = match.time_casa?.cores?.primary || "#1a365d";
   const corFora = match.time_fora?.cores?.primary || "#742a2a";
 
-  const prompt = `Create a professional sports match preview thumbnail:
-- Dramatic stadium atmosphere at night with crowd silhouettes
-- Modern sports broadcast visual style with dynamic lighting
-- Team colors subtly incorporated: ${corCasa} and ${corFora}
-- Abstract geometric patterns suggesting competition
-- Professional typography overlay showing: "${timeCasa} vs ${timeFora}"
-- Subtitle: "${matchDate} - ${liga}"
+  const scene = SCENE_VARIANTS[hashCode(match.id) % SCENE_VARIANTS.length];
+
+  const prompt = `Create a UNIQUE professional sports photograph for a football match preview.
+
+MANDATORY SCENE: ${scene}
+
+VISUAL REQUIREMENTS:
+- Photorealistic stadium photograph, NOT illustration or cartoon
+- Match preview atmosphere — anticipation, rivalry, pre-game energy
+- Dominant colors from the two teams: ${corCasa} (home) and ${corFora} (away)
+- Match context: ${timeCasa} vs ${timeFora} — ${liga}
+- Professional broadcast/cinematic quality with dramatic lighting
 - 16:9 aspect ratio, ultra high resolution
-- Cinematic lighting with spotlights and lens flares
-- CRITICAL: Do NOT include any team logos, crests, badges, shields, or official emblems
-- Use abstract shapes, stadium architecture, and atmospheric effects only`;
+
+CRITICAL RULES:
+- Do NOT include any team logos, crests, badges, or shields
+- Do NOT include any text, typography, or written words
+- Do NOT include any recognizable player faces
+- This image MUST be visually unique`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        model: "google/gemini-3.1-flash-image-preview",
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
       }),
     });
 
@@ -247,30 +276,18 @@ async function generateThumbnailWithSeoName(
     }
 
     const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find((part: any) => part?.inlineData?.data);
-    const base64Image = imagePart?.inlineData?.data;
-
-    if (!base64Image) {
-      console.error("No valid image in Gemini response");
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) {
+      console.error("No valid image in AI response");
       return null;
     }
 
-    const imageUrl = `data:image/png;base64,${base64Image}`;
-
-    if (!base64Image) {
-      console.error("No image data after extraction");
-      return null;
-    }
-
-    // Extract base64 data and upload to storage
+    const base64Image = imageUrl.replace(/^data:image\/[a-z]+;base64,/, "");
     const imageBuffer = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
-    
-    const fileName = seoFileName;
     
     const { error: uploadError } = await supabase.storage
       .from("news-thumbnails")
-      .upload(fileName, imageBuffer, {
+      .upload(seoFileName, imageBuffer, {
         contentType: "image/png",
         upsert: true,
       });
@@ -282,7 +299,7 @@ async function generateThumbnailWithSeoName(
 
     const { data: publicUrl } = supabase.storage
       .from("news-thumbnails")
-      .getPublicUrl(fileName);
+      .getPublicUrl(seoFileName);
 
     return publicUrl.publicUrl;
   } catch (error) {
@@ -350,11 +367,11 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+  const geminiApiKey = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
 
   if (!geminiApiKey) {
     return new Response(
-      JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+      JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
