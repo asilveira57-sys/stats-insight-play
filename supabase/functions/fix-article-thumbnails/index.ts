@@ -90,14 +90,115 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     let limit = 1;
+    let mode = "unsplash"; // "unsplash" | "svg_replace"
     try {
       const body = await req.json();
       limit = Math.min(body?.limit || 1, 3);
+      mode = body?.mode || "unsplash";
     } catch {
       // defaults
     }
 
-    // Count total pending articles — ONLY legacy Unsplash placeholders, NOT null
+    // Mode: svg_replace — find articles with SVG geometric thumbnails
+    if (mode === "svg_replace") {
+      const { data: svgArticles, error: svgErr } = await supabase
+        .from("noticias")
+        .select("id, titulo, resumo, slug, imagem_url, partida_id")
+        .like("imagem_url", "%.svg")
+        .order("data_publicacao", { ascending: false })
+        .limit(limit);
+
+      if (svgErr) throw new Error(`Failed to fetch SVG articles: ${svgErr.message}`);
+
+      const { count: totalSvg } = await supabase
+        .from("noticias")
+        .select("*", { count: "exact", head: true })
+        .like("imagem_url", "%.svg");
+
+      if (!svgArticles || svgArticles.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "Nenhum artigo com SVG pendente", processed: 0, fixed: 0, errors: 0, pending: 0 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const results: any[] = [];
+
+      for (const article of svgArticles) {
+        try {
+          console.log(`Replacing SVG for: ${article.titulo} (${article.id})`);
+
+          const base64Image = await generateThumbnailViaGateway(
+            article.titulo || "Análise Esportiva",
+            article.resumo || "",
+            LOVABLE_API_KEY
+          );
+
+          if (!base64Image) {
+            results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: "Image generation returned null" });
+            continue;
+          }
+
+          const imageBytes = Uint8Array.from(atob(base64Image), (c) => c.charCodeAt(0));
+          const fileName = `replaced-${article.slug || article.id}.png`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("news-thumbnails")
+            .upload(fileName, imageBytes, { contentType: "image/png", upsert: true });
+
+          if (uploadError) {
+            results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: `Upload: ${uploadError.message}` });
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
+
+          if (!urlData?.publicUrl) {
+            results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: "No public URL" });
+            continue;
+          }
+
+          const { error: updateError } = await supabase
+            .from("noticias")
+            .update({ imagem_url: urlData.publicUrl })
+            .eq("id", article.id);
+
+          if (updateError) {
+            results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: `Update: ${updateError.message}` });
+            continue;
+          }
+
+          console.log(`✅ SVG replaced: ${article.titulo} -> ${urlData.publicUrl}`);
+          results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: true, imagem_url: urlData.publicUrl });
+
+          if (svgArticles.length > 1) await new Promise((r) => setTimeout(r, 3000));
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          if (errMsg === "RATE_LIMIT" || errMsg === "CREDITS_EXHAUSTED") {
+            results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: errMsg });
+            break;
+          }
+          results.push({ id: article.id, titulo: article.titulo, slug: article.slug, success: false, error: errMsg });
+        }
+      }
+
+      const fixed = results.filter((r) => r.success).length;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: "svg_replace",
+          message: `${fixed} SVGs substituídos`,
+          processed: results.length,
+          fixed,
+          errors: results.filter((r) => !r.success).length,
+          pending: Math.max((totalSvg || 0) - fixed, 0),
+          results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Original mode: unsplash placeholder replacement
     const { count: totalPendingUnsplash } = await supabase
       .from("noticias")
       .select("*", { count: "exact", head: true })
@@ -105,7 +206,6 @@ serve(async (req) => {
 
     const totalPending = totalPendingUnsplash || 0;
 
-    // Fetch ONLY articles with Unsplash placeholder (legacy)
     const { data: articles, error: fetchError } = await supabase
       .from("noticias")
       .select("id, titulo, resumo, slug, imagem_url")
