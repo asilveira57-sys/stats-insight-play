@@ -200,6 +200,9 @@ export default function AdminImageManager() {
             <TabsTrigger value="images" className="gap-2">
               <Image className="h-4 w-4" /> Imagens
             </TabsTrigger>
+            <TabsTrigger value="audit" className="gap-2">
+              <Eye className="h-4 w-4" /> Auditoria
+            </TabsTrigger>
             <TabsTrigger value="reprocess" className="gap-2">
               <RefreshCw className="h-4 w-4" /> Reprocessar Conteúdo
             </TabsTrigger>
