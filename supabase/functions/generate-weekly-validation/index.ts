@@ -653,6 +653,7 @@ serve(async (req) => {
       const articles: { slug: string; liga: string; week: number; year: number }[] = [];
       
       // Process one at a time until timeout
+      let circuitBreaker: string | null = null;
       for (const combo of pending) {
         if ((Date.now() - startTime) > SAFETY_TIMEOUT) break;
         
@@ -666,7 +667,13 @@ serve(async (req) => {
           break;
         } catch (e) {
           failed++;
+          const errMsg = e instanceof Error ? e.message : String(e);
           console.error(`Error processing week ${combo.week}/${combo.year} for ${combo.liga_nome}:`, e);
+          // CIRCUIT BREAKER: stop on 402/429
+          if (errMsg.includes('Credits exhausted') || errMsg.includes('Rate limit') || errMsg.includes('402') || errMsg.includes('429')) {
+            circuitBreaker = errMsg;
+            console.error(`CIRCUIT BREAKER: ${errMsg}. Stopping all processing.`);
+          }
           break;
         }
       }
