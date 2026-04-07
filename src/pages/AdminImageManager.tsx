@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp } from "lucide-react";
+import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp, Eye } from "lucide-react";
+import { AuditTab } from "@/components/admin/images/AuditTab";
 
 function useImageStats() {
   return useQuery({
@@ -199,6 +200,9 @@ export default function AdminImageManager() {
             <TabsTrigger value="images" className="gap-2">
               <Image className="h-4 w-4" /> Imagens
             </TabsTrigger>
+            <TabsTrigger value="audit" className="gap-2">
+              <Eye className="h-4 w-4" /> Auditoria
+            </TabsTrigger>
             <TabsTrigger value="reprocess" className="gap-2">
               <RefreshCw className="h-4 w-4" /> Reprocessar Conteúdo
             </TabsTrigger>
@@ -369,6 +373,10 @@ export default function AdminImageManager() {
             </CardContent>
           </Card>
         </div>
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-6 mt-4">
+            <AuditTab />
           </TabsContent>
 
           {/* Reprocess Content Tab */}
