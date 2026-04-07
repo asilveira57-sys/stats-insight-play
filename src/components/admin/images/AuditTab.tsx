@@ -77,7 +77,7 @@ export function AuditTab() {
     queryKey: ["audit-articles", filter, page],
     queryFn: async () => {
       const res = await buildQuery(false);
-      return { articles: (res.data || []) as ArticleRow[], count: res.count || 0 };
+      return { articles: (res.data || []) as unknown as ArticleRow[], count: res.count || 0 };
     },
     staleTime: 15_000,
   });
