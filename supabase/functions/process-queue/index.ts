@@ -119,7 +119,10 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
 
   if (!res.ok) {
     const text = await res.text();
-    // Check for rate limit
+    // CIRCUIT BREAKER: 402 (no credits) or 503 (circuit breaker from child) → stop the job immediately
+    if (res.status === 402 || res.status === 503) {
+      throw new Error(`CIRCUIT_BREAKER: ${text.slice(0, 200)}`);
+    }
     if (res.status === 429) {
       throw new Error(`429 Rate limit: ${text.slice(0, 100)}`);
     }
