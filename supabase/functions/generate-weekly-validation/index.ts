@@ -870,6 +870,12 @@ serve(async (req) => {
       } catch (e) {
         const errorMessage = e instanceof Error ? e.message : 'Unknown error';
         results.errors.push(`${league.nome}: ${errorMessage}`);
+        // CIRCUIT BREAKER: stop on 402/429
+        if (errorMessage.includes('Credits exhausted') || errorMessage.includes('Rate limit') || errorMessage.includes('402') || errorMessage.includes('429')) {
+          console.error(`CIRCUIT BREAKER: ${errorMessage}. Stopping all processing.`);
+          (results as any).circuit_breaker = errorMessage;
+          break;
+        }
       }
     }
 
