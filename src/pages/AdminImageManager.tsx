@@ -375,6 +375,10 @@ export default function AdminImageManager() {
         </div>
           </TabsContent>
 
+          <TabsContent value="audit" className="space-y-6 mt-4">
+            <AuditTab />
+          </TabsContent>
+
           {/* Reprocess Content Tab */}
           <TabsContent value="reprocess" className="space-y-6 mt-4">
             {/* Content Stats */}
