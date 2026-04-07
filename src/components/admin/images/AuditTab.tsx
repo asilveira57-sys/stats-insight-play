@@ -56,7 +56,7 @@ export function AuditTab() {
   const buildQuery = useCallback((countOnly: boolean) => {
     let q = supabase
       .from("noticias")
-      .select(countOnly ? "*" : "id, titulo, slug, imagem_url, data_publicacao, updated_at", {
+      .select(countOnly ? "*" : "id,titulo,slug,imagem_url,data_publicacao,updated_at", {
         count: "exact",
         head: countOnly,
       })
