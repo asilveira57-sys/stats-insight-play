@@ -763,6 +763,13 @@ serve(async (req) => {
         const errorMessage = matchError instanceof Error ? matchError.message : String(matchError);
         console.error(`Error processing validation for match ${match.id}:`, errorMessage);
         results.errors.push(`Match ${match.id}: ${errorMessage}`);
+
+        // CIRCUIT BREAKER: stop immediately on 402/429 — no point retrying
+        if (errorMessage.includes('Credits exhausted') || errorMessage.includes('Rate limit')) {
+          console.error(`CIRCUIT BREAKER: ${errorMessage}. Stopping all processing.`);
+          (results as any).circuit_breaker = errorMessage;
+          break;
+        }
       }
     }
 

@@ -62,10 +62,21 @@ Deno.serve(async (req) => {
         const consecutiveErrors = (progress.consecutive_errors || 0) + 1;
         const errMsg = String(e).slice(0, 200);
 
-        if (consecutiveErrors >= 10) {
+        // CIRCUIT BREAKER: immediately stop on credits/rate limit errors
+        const isCircuitBreaker = errMsg.includes('CIRCUIT_BREAKER') || errMsg.includes('Credits exhausted') || errMsg.includes('402') || errMsg.includes('payment_required');
+        
+        if (isCircuitBreaker || consecutiveErrors >= 10) {
           await supabase.from('background_jobs').update({
             status: 'failed',
-            progress: { ...progress, consecutive_errors: consecutiveErrors, last_error: errMsg, last_log: `❌ Parado após ${consecutiveErrors} erros: ${errMsg}` },
+            progress: { 
+              ...progress, 
+              consecutive_errors: consecutiveErrors, 
+              last_error: errMsg, 
+              circuit_breaker: isCircuitBreaker,
+              last_log: isCircuitBreaker 
+                ? `🛑 Parado: sem créditos ou rate limit. Recarregue e reinicie.`
+                : `❌ Parado após ${consecutiveErrors} erros: ${errMsg}` 
+            },
             updated_at: new Date().toISOString(),
           }).eq('id', job.id);
         } else {
@@ -119,7 +130,10 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
 
   if (!res.ok) {
     const text = await res.text();
-    // Check for rate limit
+    // CIRCUIT BREAKER: 402 (no credits) or 503 (circuit breaker from child) → stop the job immediately
+    if (res.status === 402 || res.status === 503) {
+      throw new Error(`CIRCUIT_BREAKER: ${text.slice(0, 200)}`);
+    }
     if (res.status === 429) {
       throw new Error(`429 Rate limit: ${text.slice(0, 100)}`);
     }
@@ -127,6 +141,12 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
   }
 
   const data = await res.json();
+  
+  // CIRCUIT BREAKER: child function signaled credits/rate limit exhaustion
+  if (data?.results?.circuit_breaker || data?.circuit_breaker) {
+    throw new Error(`CIRCUIT_BREAKER: ${data?.results?.circuit_breaker || data?.circuit_breaker}`);
+  }
+
   const progress = job.progress || {};
   let updated: any;
   let isDone = false;
