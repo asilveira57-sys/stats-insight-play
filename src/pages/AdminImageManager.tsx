@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp } from "lucide-react";
+import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp, Eye } from "lucide-react";
+import { AuditTab } from "@/components/admin/images/AuditTab";
 
 function useImageStats() {
   return useQuery({
