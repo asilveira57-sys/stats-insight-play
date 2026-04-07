@@ -679,15 +679,17 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({
-        success: true,
+        success: !circuitBreaker,
         scan_mode: true,
         pending: total - generated,
         generated,
         failed,
         total,
         articles,
+        ...(circuitBreaker ? { circuit_breaker: circuitBreaker } : {}),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        ...(circuitBreaker ? { status: 503 } : {}),
       });
     }
 
