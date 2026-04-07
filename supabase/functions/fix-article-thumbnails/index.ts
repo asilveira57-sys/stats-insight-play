@@ -91,20 +91,29 @@ serve(async (req) => {
 
     let limit = 1;
     let mode = "unsplash"; // "unsplash" | "svg_replace"
+    let targetId: string | null = null;
     try {
       const body = await req.json();
       limit = Math.min(body?.limit || 1, 3);
       mode = body?.mode || "unsplash";
+      targetId = body?.target_id || null;
     } catch {
       // defaults
     }
 
     // Mode: svg_replace — find articles with SVG geometric thumbnails
     if (mode === "svg_replace") {
-      const { data: svgArticles, error: svgErr } = await supabase
+      let svgQuery = supabase
         .from("noticias")
-        .select("id, titulo, resumo, slug, imagem_url, partida_id")
-        .like("imagem_url", "%.svg")
+        .select("id, titulo, resumo, slug, imagem_url, partida_id");
+
+      if (targetId) {
+        svgQuery = svgQuery.eq("id", targetId);
+      } else {
+        svgQuery = svgQuery.like("imagem_url", "%.svg");
+      }
+
+      const { data: svgArticles, error: svgErr } = await svgQuery
         .order("data_publicacao", { ascending: false })
         .limit(limit);
 
