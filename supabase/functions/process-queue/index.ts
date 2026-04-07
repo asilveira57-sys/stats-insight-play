@@ -141,6 +141,12 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
   }
 
   const data = await res.json();
+  
+  // CIRCUIT BREAKER: child function signaled credits/rate limit exhaustion
+  if (data?.results?.circuit_breaker || data?.circuit_breaker) {
+    throw new Error(`CIRCUIT_BREAKER: ${data?.results?.circuit_breaker || data?.circuit_breaker}`);
+  }
+
   const progress = job.progress || {};
   let updated: any;
   let isDone = false;
