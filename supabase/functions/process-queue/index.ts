@@ -62,10 +62,21 @@ Deno.serve(async (req) => {
         const consecutiveErrors = (progress.consecutive_errors || 0) + 1;
         const errMsg = String(e).slice(0, 200);
 
-        if (consecutiveErrors >= 10) {
+        // CIRCUIT BREAKER: immediately stop on credits/rate limit errors
+        const isCircuitBreaker = errMsg.includes('CIRCUIT_BREAKER') || errMsg.includes('Credits exhausted') || errMsg.includes('402') || errMsg.includes('payment_required');
+        
+        if (isCircuitBreaker || consecutiveErrors >= 10) {
           await supabase.from('background_jobs').update({
             status: 'failed',
-            progress: { ...progress, consecutive_errors: consecutiveErrors, last_error: errMsg, last_log: `❌ Parado após ${consecutiveErrors} erros: ${errMsg}` },
+            progress: { 
+              ...progress, 
+              consecutive_errors: consecutiveErrors, 
+              last_error: errMsg, 
+              circuit_breaker: isCircuitBreaker,
+              last_log: isCircuitBreaker 
+                ? `🛑 Parado: sem créditos ou rate limit. Recarregue e reinicie.`
+                : `❌ Parado após ${consecutiveErrors} erros: ${errMsg}` 
+            },
             updated_at: new Date().toISOString(),
           }).eq('id', job.id);
         } else {
