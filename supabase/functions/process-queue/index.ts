@@ -5,6 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Map job_type -> configuracoes key
+const AUTOMATION_FLAGS: Record<string, string> = {
+  validations: 'automation_validations_enabled',
+  weekly_validations: 'automation_weekly_enabled',
+  analyses: 'automation_analyses_enabled',
+  retro_articles: 'automation_retro_articles_enabled',
+  image_fix: 'automation_image_fix_enabled',
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,8 +23,21 @@ Deno.serve(async (req) => {
   const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const SAFETY_TIMEOUT = 25_000; // keep under pg_net HTTP timeout window
+  const SAFETY_TIMEOUT = 25_000;
   const startTime = Date.now();
+
+  // ── Load automation kill-switches from configuracoes ──
+  const { data: configRows } = await supabase
+    .from('configuracoes')
+    .select('chave, valor')
+    .in('chave', [...Object.values(AUTOMATION_FLAGS), 'generation_review_mode']);
+
+  const configMap = new Map<string, string>();
+  for (const row of configRows || []) {
+    configMap.set(row.chave, row.valor || 'false');
+  }
+
+  const reviewMode = configMap.get('generation_review_mode') === 'true';
 
   // Get all running jobs
   const { data: jobs, error: jobsError } = await supabase
@@ -36,7 +58,6 @@ Deno.serve(async (req) => {
   while (madeProgress && (Date.now() - startTime) < SAFETY_TIMEOUT) {
     madeProgress = false;
 
-    // Re-check which jobs are still running (could be stopped mid-execution)
     const { data: currentJobs } = await supabase
       .from('background_jobs')
       .select('*')
@@ -47,8 +68,29 @@ Deno.serve(async (req) => {
     for (const job of currentJobs) {
       if ((Date.now() - startTime) > SAFETY_TIMEOUT) break;
 
+      // ── KILL-SWITCH CHECK ──
+      const flagKey = AUTOMATION_FLAGS[job.job_type];
+      if (flagKey) {
+        const enabled = configMap.get(flagKey);
+        if (enabled !== 'true') {
+          // Automation is disabled → stop the job immediately
+          await supabase.from('background_jobs').update({
+            status: 'failed',
+            progress: {
+              ...(job.progress || {}),
+              last_log: `🛑 Automação desligada (${flagKey}=false). Ative nas configurações para continuar.`,
+              stopped_by_killswitch: true,
+            },
+            updated_at: new Date().toISOString(),
+          }).eq('id', job.id);
+
+          results.push({ job_type: job.job_type, stopped: 'killswitch' });
+          continue;
+        }
+      }
+
       try {
-        const result = await processJobItem(job, SUPABASE_URL, SERVICE_ROLE_KEY, supabase);
+        const result = await processJobItem(job, SUPABASE_URL, SERVICE_ROLE_KEY, supabase, reviewMode);
         results.push({ job_type: job.job_type, ...result });
         if (!result.isDone) madeProgress = true;
 
@@ -84,12 +126,11 @@ Deno.serve(async (req) => {
             progress: { ...progress, consecutive_errors: consecutiveErrors, last_error: errMsg, last_log: `⚠️ Erro (${consecutiveErrors}/10): ${errMsg}` },
             updated_at: new Date().toISOString(),
           }).eq('id', job.id);
-          madeProgress = true; // retry next round
+          madeProgress = true;
         }
 
         results.push({ job_type: job.job_type, error: errMsg });
 
-        // Backoff on error
         const backoff = Math.min(5000 * consecutiveErrors, 30000);
         if ((Date.now() - startTime + backoff) < SAFETY_TIMEOUT) {
           await new Promise(r => setTimeout(r, backoff));
@@ -103,13 +144,13 @@ Deno.serve(async (req) => {
   });
 });
 
-async function processJobItem(job: any, supabaseUrl: string, serviceKey: string, supabase: any) {
+async function processJobItem(job: any, supabaseUrl: string, serviceKey: string, supabase: any, reviewMode: boolean) {
   const functionMap: Record<string, { fn: string; body: any }> = {
     predictions: { fn: 'generate-predictions', body: {} },
     retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 100 } },
     analyses: { fn: 'generate-match-analysis', body: { limit: 1 } },
     retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1, skip_images: true } },
-    validations: { fn: 'generate-validation-article', body: { limit: 3, skip_images: true } },
+    validations: { fn: 'generate-validation-article', body: { limit: 1, skip_images: true } },
     image_fix: { fn: 'fix-article-thumbnails', body: { limit: 1 } },
     dedup_matches: { fn: 'dedup-matches', body: { limit: 50, dry_run: false } },
     fix_merges: { fn: 'fix-inverted-merges', body: { dry_run: false } },
@@ -118,6 +159,11 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
 
   const config = functionMap[job.job_type];
   if (!config) throw new Error(`Unknown job type: ${job.job_type}`);
+
+  // In review mode, force limit=1 for all content generation
+  if (reviewMode && config.body.limit !== undefined) {
+    config.body.limit = 1;
+  }
 
   const res = await fetch(`${supabaseUrl}/functions/v1/${config.fn}`, {
     method: 'POST',
@@ -130,7 +176,6 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
 
   if (!res.ok) {
     const text = await res.text();
-    // CIRCUIT BREAKER: 402 (no credits) or 503 (circuit breaker from child) → stop the job immediately
     if (res.status === 402 || res.status === 503) {
       throw new Error(`CIRCUIT_BREAKER: ${text.slice(0, 200)}`);
     }
@@ -142,7 +187,6 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
 
   const data = await res.json();
   
-  // CIRCUIT BREAKER: child function signaled credits/rate limit exhaustion
   if (data?.results?.circuit_breaker || data?.circuit_breaker) {
     throw new Error(`CIRCUIT_BREAKER: ${data?.results?.circuit_breaker || data?.circuit_breaker}`);
   }
@@ -239,7 +283,6 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
       const newFailed = (progress.failed || 0) + fail;
       isDone = pending === 0;
       const articles = results.articles || [];
-      // Merge new articles with existing ones (keep last 10)
       const existingArticles = progress.last_articles || [];
       updated = {
         generated: newGenerated, failed: newFailed,
@@ -296,7 +339,7 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
     case 'fix_merges': {
       const fixed = data?.fixed || 0;
       const totalMatches = data?.total_matches_migrated || 0;
-      isDone = true; // Single-pass operation
+      isDone = true;
       updated = {
         fixed,
         total_matches_migrated: totalMatches,
