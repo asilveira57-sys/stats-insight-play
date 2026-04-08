@@ -309,46 +309,30 @@ CRITICAL RULES:
 }
 
 async function getRelatedArticles(
-  supabase: any,
-  timeCasaId: string,
-  timeForaId: string,
-  matchDate: string,
-  ligaId: string,
+  _supabase: any,
+  _timeCasaId: string,
+  _timeForaId: string,
+  _matchDate: string,
+  _ligaId: string,
   ligaSlug: string | null,
   timeCasaSlug: string | null,
   timeForaSlug: string | null
 ): Promise<string[]> {
+  // Server-controlled links only — no AI-generated or DB-fetched article lists.
+  // This prevents infinite link bloat and keeps articles lightweight.
   const links: string[] = [];
 
-  // Get last 3 matches for each team that have news
-  const { data: casaMatches } = await supabase
-    .from("noticias")
-    .select("slug, titulo")
-    .not("partida_id", "is", null)
-    .order("data_publicacao", { ascending: false });
-
-  if (casaMatches) {
-    for (const article of casaMatches) {
-      if (article.slug) {
-        links.push(`<a href="/noticias/${article.slug}">${article.titulo}</a>`);
-      }
-    }
-  }
-
-  // Add team pillar links if available
   if (timeCasaSlug) {
-    links.push(`<a href="/time/${timeCasaSlug}">Todas análises do time</a>`);
+    links.push(`<a href="/time/${timeCasaSlug}">Todas análises do time mandante</a>`);
   }
   if (timeForaSlug && timeForaSlug !== timeCasaSlug) {
-    links.push(`<a href="/time/${timeForaSlug}">Todas análises do adversário</a>`);
+    links.push(`<a href="/time/${timeForaSlug}">Todas análises do visitante</a>`);
   }
-
-  // Add league pillar link
   if (ligaSlug) {
     links.push(`<a href="/campeonato/${ligaSlug}">Mais jogos desta competição</a>`);
   }
 
-  return links.slice(0, 6); // Max 6 links
+  return links;
 }
 
 serve(async (req) => {
@@ -378,7 +362,7 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  let limit = 2;
+  let limit = 1; // Safe default: 1 item per execution
   let leagueId: string | null = null;
   let skipImages = false;
 

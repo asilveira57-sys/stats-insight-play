@@ -1,15 +1,14 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Loader2, Eye, RefreshCw, Play, Pause, ChevronLeft, ChevronRight,
-  Image as ImageIcon, Sparkles, Filter, X
+  Loader2, Eye, RefreshCw, ChevronLeft, ChevronRight,
+  Image as ImageIcon, Filter
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogTitle
@@ -45,15 +44,10 @@ export function AuditTab() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
-  // Continuous replacement state
-  const [autoRunning, setAutoRunning] = useState(false);
-  const autoRef = useRef(false);
-  const [autoStats, setAutoStats] = useState({ replaced: 0, errors: 0, total: 0 });
-
   // Reset page when filter changes
   useEffect(() => setPage(0), [filter]);
 
-  const buildQuery = useCallback((countOnly: boolean) => {
+  const buildQuery = (countOnly: boolean) => {
     let q = supabase
       .from("noticias")
       .select(countOnly ? "*" : "id,titulo,slug,imagem_url,data_publicacao,updated_at", {
@@ -71,7 +65,7 @@ export function AuditTab() {
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
     }
     return q;
-  }, [filter, page]);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["audit-articles", filter, page],
@@ -105,113 +99,14 @@ export function AuditTab() {
     }
   };
 
-  const startAutoReplace = async () => {
-    autoRef.current = true;
-    setAutoRunning(true);
-
-    // Get total SVGs
-    const { count } = await supabase
-      .from("noticias")
-      .select("*", { count: "exact", head: true })
-      .eq("publicada", true)
-      .like("imagem_url", "%.svg");
-
-    setAutoStats({ replaced: 0, errors: 0, total: count || 0 });
-
-    let totalReplaced = 0;
-    let totalErrors = 0;
-
-    while (autoRef.current) {
-      try {
-        const { data: result, error } = await supabase.functions.invoke("fix-article-thumbnails", {
-          body: { limit: 3, mode: "svg_replace" },
-        });
-
-        if (error) throw error;
-
-        const fixed = result?.fixed || 0;
-        const errors = result?.errors || 0;
-        totalReplaced += fixed;
-        totalErrors += errors;
-
-        setAutoStats(prev => ({
-          ...prev,
-          replaced: totalReplaced,
-          errors: totalErrors,
-        }));
-
-        if (fixed === 0 && errors === 0) {
-          // Nothing left
-          autoRef.current = false;
-          toast({ title: "Substituição concluída", description: `${totalReplaced} imagens substituídas` });
-          break;
-        }
-
-        queryClient.invalidateQueries({ queryKey: ["audit-articles"] });
-        queryClient.invalidateQueries({ queryKey: ["admin-image-stats"] });
-
-        // Wait 10 seconds between batches
-        if (autoRef.current) {
-          await new Promise(r => setTimeout(r, 10000));
-        }
-      } catch (err: any) {
-        if (err.message?.includes("RATE_LIMIT") || err.message?.includes("CREDITS")) {
-          toast({ title: "Rate limit", description: "Pausando automaticamente...", variant: "destructive" });
-          autoRef.current = false;
-          break;
-        }
-        totalErrors++;
-        setAutoStats(prev => ({ ...prev, errors: totalErrors }));
-        await new Promise(r => setTimeout(r, 15000));
-      }
-    }
-
-    setAutoRunning(false);
-  };
-
-  const stopAutoReplace = () => {
-    autoRef.current = false;
-  };
-
-  const remaining = Math.max(autoStats.total - autoStats.replaced, 0);
-  const etaMinutes = remaining > 0 ? Math.ceil((remaining / 3) * (13 / 60)) : 0;
-  const autoPercent = autoStats.total > 0 ? Math.round((autoStats.replaced / autoStats.total) * 100) : 0;
-
   return (
     <div className="space-y-6">
-      {/* Auto-replace controls */}
+      {/* Info: auto-replace removed */}
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-foreground">Substituição Automática de SVGs</h3>
-              <p className="text-sm text-muted-foreground">
-                Processa 3 artigos por vez, pausa 10s entre lotes. Custo: $0 via Lovable AI.
-              </p>
-            </div>
-            {autoRunning ? (
-              <Button variant="destructive" onClick={stopAutoReplace}>
-                <Pause className="h-4 w-4 mr-2" /> Pausar
-              </Button>
-            ) : (
-              <Button onClick={startAutoReplace}>
-                <Play className="h-4 w-4 mr-2" /> Iniciar Substituição
-              </Button>
-            )}
-          </div>
-
-          {(autoRunning || autoStats.replaced > 0) && (
-            <div className="space-y-2">
-              <Progress value={autoPercent} className="h-3" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{autoStats.replaced} substituídas / {autoStats.errors} erros</span>
-                <span>
-                  {remaining} restantes
-                  {etaMinutes > 0 && ` (~${etaMinutes} min)`}
-                </span>
-              </div>
-            </div>
-          )}
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">
+            🛑 Substituição automática em lote está <strong>desativada</strong>. Use o botão de regenerar individual em cada imagem SVG.
+          </p>
         </CardContent>
       </Card>
 

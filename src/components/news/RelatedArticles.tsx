@@ -37,6 +37,8 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
+const MAX_RELATED = 6;
+
 export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesProps) {
   const { data: articles, isLoading } = useQuery({
     queryKey: ["related-articles", currentArticleId],
@@ -46,7 +48,8 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
         .select("id, titulo, resumo, slug, data_publicacao, imagem_url")
         .eq("publicada", true)
         .neq("id", currentArticleId)
-        .order("data_publicacao", { ascending: false });
+        .order("data_publicacao", { ascending: false })
+        .limit(MAX_RELATED);
 
       if (error) {
         console.error("Error fetching related articles:", error);
