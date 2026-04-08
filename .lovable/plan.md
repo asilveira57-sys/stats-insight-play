@@ -1,94 +1,90 @@
 
+Objetivo imediato: congelar toda automação excessiva, corrigir a geração nova primeiro e só depois mexer no passivo.
 
-# Plano: Corrigir Geração de Imagens + Substituição das Artísticas
+Diagnóstico confirmado
+- O “scroll infinito / referências sem fim” do artigo público não vem só do prompt: `src/components/news/RelatedArticles.tsx` hoje busca todos os artigos publicados, sem limite, e renderiza a lista inteira. Isso sozinho já explica a página ficando enorme.
+- Ainda existem pontos que podem disparar criação em lote ou contínua:
+  - `supabase/functions/process-queue/index.ts`
+  - `src/pages/Admin.tsx`
+  - `src/pages/AdminControlCenter.tsx`
+  - `src/components/admin/images/AuditTab.tsx`
+- `generate-validation-article` ainda mantém modo legado sem limite (`limit=0`), e `generate-match-analysis` / `generate-retroactive-articles` / `generate-weekly-validation` ainda aceitam múltiplos itens por execução.
+- A correção de imagens no `AuditTab` ainda roda em loop contínuo no navegador.
 
-## Diagnóstico
+Plano de implementação
 
-**Problema 1 — Imagens novas saindo iguais:**
-As funções `generate-match-analysis` e `generate-retroactive-articles` chamam a **API direta do Google** (`generativelanguage.googleapis.com`) com a sua chave pessoal — isso **custa dinheiro** e o prompt genérico gera imagens muito parecidas.
+1. Contenção imediata
+- Usar a tabela existente `configuracoes` para criar kill-switches de automação:
+  - `automation_validations_enabled = false`
+  - `automation_weekly_enabled = false`
+  - `automation_analyses_enabled = false`
+  - `automation_retro_articles_enabled = false`
+  - `automation_image_fix_enabled = false`
+  - `generation_review_mode = true`
+- Fazer `process-queue` checar esses flags antes de executar qualquer job e parar jobs ativos com motivo visível.
+- Desabilitar/ocultar no Admin todos os botões de backfill, loop e auto-correção enquanto os flags estiverem desligados.
+- Remover o loop automático do `AuditTab`; manter só ação manual.
 
-**Problema 2 — Imagens artísticas (SVG geométricas):**
-As ~891 thumbnails com padrões geométricos coloridos não parecem fotos reais de estádio. Precisam ser substituídas por imagens fotorrealísticas.
+2. Corrigir a geração nova antes do retroativo
+- Colocar as funções de conteúdo em “safe mode”:
+  - padrão = 1 item por execução
+  - nada de scan aberto por default
+  - semanal só com `league_id + week + year`
+  - validação só com `match_id` ou lote explícito e pequeno
+- Adicionar validação server-side antes de publicar:
+  - máximo 1 bloco de “conteúdos relacionados”
+  - máximo 6 links recomendados, hard cap 10 no HTML total
+  - remover blocos extras gerados pela IA
+  - rejeitar publicação fora do padrão em vez de salvar errado
+- Em `generate-retroactive-articles`, os links relacionados deixam de ser “montados pela IA” e passam a ser sempre injetados pelo servidor, já limitados e filtrados.
 
-**7 funções** ainda usam a API direta do Google em vez do Lovable AI Gateway (custo zero):
-- `generate-match-analysis` (texto + 2 imagens)
-- `generate-retroactive-articles` (texto + 1 imagem)
-- `generate-validation-article` (texto + 2 imagens)
-- `generate-weekly-validation` (texto + 1 imagem)
-- `generate-league-pillar` (texto)
-- `generate-team-pillar` (texto)
-- `run-team-merge-validation` (texto)
+3. Corrigir o artigo público
+- Em `src/components/news/RelatedArticles.tsx`, trocar a query sem limite por lista curta e contextual:
+  - 6 itens por padrão
+  - excluir o artigo atual
+  - filtrar por contexto (liga/times quando disponível)
+- Se necessário, passar mais contexto por `NoticiaDetalhes.tsx`.
+- Resultado: o artigo deixa de parecer “infinito” mesmo antes de qualquer reprocessamento histórico.
 
----
+4. Dar visibilidade real do que está sendo criado
+- Reaproveitar o Admin atual para um “modo revisão”:
+  - gerar 1 item
+  - mostrar link do artigo criado
+  - mostrar thumbnail/status da imagem
+  - mostrar último erro/validação
+- Manter lista curta dos últimos itens gerados para conferência imediata, sem lote contínuo.
 
-## Implementação
+5. Só depois tratar o passivo
+- Quando o fluxo novo estiver validado, liberar correção retroativa em micro-lotes:
+  - 1 por vez no início
+  - depois 3 por clique, nunca em loop automático
+- Ordem:
+  1. validações novas
+  2. semanais novas
+  3. imagens novas
+  4. retroativo antigo errado
 
-### Parte 1 — Migrar TODAS as funções para Lovable AI Gateway (custo zero)
+Detalhes técnicos
+- Não precisa nova tabela: vou usar `configuracoes`, que já existe no projeto.
+- O hard stop ficará em 3 camadas: UI + edge functions + `process-queue`.
+- A primeira entrega pode ser feita sem consumir IA: congelamento, limites, guardrails e correção do componente público.
 
-Trocar todas as chamadas `generativelanguage.googleapis.com` pelo gateway `ai.gateway.lovable.dev` usando `LOVABLE_API_KEY` (já disponível automaticamente). Isso elimina qualquer custo de API.
+Arquivos principais
+- `src/components/news/RelatedArticles.tsx`
+- `src/pages/NoticiaDetalhes.tsx`
+- `src/pages/Admin.tsx`
+- `src/pages/AdminControlCenter.tsx`
+- `src/components/admin/images/AuditTab.tsx`
+- `supabase/functions/process-queue/index.ts`
+- `supabase/functions/generate-validation-article/index.ts`
+- `supabase/functions/generate-weekly-validation/index.ts`
+- `supabase/functions/generate-match-analysis/index.ts`
+- `supabase/functions/generate-retroactive-articles/index.ts`
+- migration usando `configuracoes`
 
-**Para geração de texto:** endpoint `/v1/chat/completions` com modelo `google/gemini-2.5-flash`
-**Para geração de imagem:** mesmo endpoint com modelo `google/gemini-3.1-flash-image-preview` e `modalities: ["image", "text"]`
-
-### Parte 2 — Melhorar prompt de imagem para garantir unicidade
-
-O prompt atual é genérico ("stadium at night"). O novo prompt incluirá:
-- Nome específico dos dois times no texto do prompt
-- Cores dos times como elemento visual obrigatório
-- Detalhes únicos por partida (competição, data, contexto)
-- Instrução explícita: "esta imagem deve ser completamente diferente de qualquer outra gerada"
-- Variação de cenários: "ângulo da torcida", "visão aérea", "close no gramado", etc. — escolhido deterministicamente com base no hash do ID da partida
-
-### Parte 3 — Edge Function para substituir imagens artísticas (batch lento)
-
-Atualizar `fix-article-thumbnails` para:
-- **Novo modo**: `mode: "svg_replace"` — busca artigos com `imagem_url` contendo `.svg` ou padrões geométricos do storage
-- Processar **3 artigos por execução** (respeitar rate limit)
-- Delay de 3 segundos entre cada geração
-- Registrar cada imagem gerada com timestamp para auditoria
-
-### Parte 4 — Painel de visualização no Admin
-
-Adicionar ao `AdminImageManager.tsx`:
-- **Nova aba "Auditoria"** com grid de cards mostrando:
-  - Thumbnail atual do artigo (imagem pequena)
-  - Título do artigo
-  - Data de geração/atualização
-  - Status (SVG artística / IA correta / Pendente)
-- **Filtros**: "Somente SVGs", "Últimas geradas", "Todas"
-- **Paginação** de 20 em 20
-- Botão para abrir a imagem em tamanho completo
-- Botão "Regenerar" individual por artigo (gera 1 imagem via gateway)
-
-### Parte 5 — Automação contínua sem intervenção
-
-Criar lógica no `fix-article-thumbnails` para rodar em modo contínuo:
-- O admin clica "Iniciar substituição automática"
-- O frontend faz chamadas sequenciais: processa 3, espera 10 segundos, processa mais 3
-- Mostra progresso em tempo real (X de Y substituídas)
-- Botão "Pausar" para interromper a qualquer momento
-- Estimativa de tempo restante exibida
-
----
-
-## Arquivos a modificar
-
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/functions/generate-match-analysis/index.ts` | Migrar texto + imagens para Lovable AI Gateway |
-| `supabase/functions/generate-retroactive-articles/index.ts` | Migrar texto + imagem para Lovable AI Gateway |
-| `supabase/functions/generate-validation-article/index.ts` | Migrar texto + imagens para Lovable AI Gateway |
-| `supabase/functions/generate-weekly-validation/index.ts` | Migrar texto + imagem para Lovable AI Gateway |
-| `supabase/functions/generate-league-pillar/index.ts` | Migrar texto para Lovable AI Gateway |
-| `supabase/functions/generate-team-pillar/index.ts` | Migrar texto para Lovable AI Gateway |
-| `supabase/functions/run-team-merge-validation/index.ts` | Migrar texto para Lovable AI Gateway |
-| `supabase/functions/fix-article-thumbnails/index.ts` | Adicionar modo `svg_replace`, melhorar prompt |
-| `src/pages/AdminImageManager.tsx` | Aba de auditoria visual + automação contínua |
-
-## Resultado
-
-- **Custo futuro: $0** — tudo via Lovable AI Gateway
-- **Imagens novas: sempre únicas** — prompt contextualizado por partida
-- **Imagens artísticas: substituídas gradualmente** — 3 por vez, sem pressa
-- **Controle visual**: admin consegue ver e confirmar cada imagem gerada
-
+Resultado esperado
+- Nada continua gerando em lote grande sem você querer
+- O artigo público deixa de exibir listas intermináveis
+- A geração nova fica travada em modo seguro/manual
+- Você consegue validar artigo e imagem antes de pensar no retroativo
+- O retroativo só volta quando o fluxo novo estiver confiável
