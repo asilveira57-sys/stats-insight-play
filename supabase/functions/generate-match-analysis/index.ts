@@ -456,7 +456,7 @@ serve(async (req) => {
     try {
       const body = await req.json();
       targetMatchId = body?.match_id || null;
-      processLimit = body?.limit || 3;
+      processLimit = Math.min(body?.limit || 1, 3);
     } catch {
       // No body, process all scheduled matches with default limit
     }

@@ -432,7 +432,7 @@ serve(async (req) => {
     // Get optional parameters from request body
     let targetMatchId: string | null = null;
     let hoursAfterMatch = 3;
-    let batchLimit = 0; // 0 = no limit (legacy behavior)
+    let batchLimit = 1; // Safe default: 1 item per execution
     let skipImages = false; // skip image generation for speed in batch mode
     try {
       const body = await req.json();
