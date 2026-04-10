@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: false, error: `Download do Kaggle falhou (${resp.status})`, details: errText.slice(0, 500), job_id: job.id }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const rawText = await resp.text();
+      const rawText = (await resp.text()).replace(/\x00/g, "");
       const encoder = new TextEncoder();
       const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(rawText));
       const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
