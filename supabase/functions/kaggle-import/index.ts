@@ -283,7 +283,8 @@ Deno.serve(async (req) => {
 
     // ========== UPLOAD RAW DATA (manual upload) ==========
     if (action === "upload_raw") {
-      const { job_id, dataset_file_id, raw_text, content_hash, asset_type } = params;
+      const { job_id, dataset_file_id, content_hash, asset_type } = params;
+      const raw_text = (params.raw_text || "").replace(/\x00/g, "");
 
       if (content_hash) {
         const { data: existing } = await supabase.from("kaggle_raw_assets")
