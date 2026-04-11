@@ -64,7 +64,7 @@ interface KaggleFile {
 }
 
 export default function AdminKaggle() {
-  const [activeTab, setActiveTab] = useState("search");
+  const [activeTab, setActiveTab] = useState("auto");
   const [searchQuery, setSearchQuery] = useState("football results");
   const [searchResults, setSearchResults] = useState<KaggleDataset[]>([]);
   const [isSearching, setIsSearching] = useState(false);
