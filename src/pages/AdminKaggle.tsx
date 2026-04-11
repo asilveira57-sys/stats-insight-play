@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { KaggleAutoImportTab } from "@/components/admin/kaggle/KaggleAutoImportTab";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
