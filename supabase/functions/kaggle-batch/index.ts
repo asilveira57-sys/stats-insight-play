@@ -17,7 +17,8 @@ Deno.serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { action, batch_size, batch_id } = await req.json();
+    const body = await req.json();
+    const { action, batch_size, batch_id } = body;
     const shouldStop = () => Date.now() - startTime > SAFETY_TIMEOUT;
     const baseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
