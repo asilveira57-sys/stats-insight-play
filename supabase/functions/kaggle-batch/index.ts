@@ -205,12 +205,12 @@ Deno.serve(async (req) => {
 
     // ========== AUTO PIPELINE ==========
     if (action === "auto_pipeline") {
-      const { files } = await Promise.resolve({ files: body?.files || [] });
-      if (!files || !Array.isArray(body?.files) || body.files.length === 0) {
+      const files = body?.files;
+      if (!Array.isArray(files) || files.length === 0) {
         return new Response(JSON.stringify({ error: "files array is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const items: { dataset_slug: string; dataset_title: string; file_name: string }[] = body.files;
+      const items: { dataset_slug: string; dataset_title: string; file_name: string }[] = files;
       const results: any[] = [];
 
       for (const item of items) {
