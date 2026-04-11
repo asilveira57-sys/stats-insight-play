@@ -1,90 +1,57 @@
 
-Objetivo imediato: congelar toda automação excessiva, corrigir a geração nova primeiro e só depois mexer no passivo.
 
-Diagnóstico confirmado
-- O “scroll infinito / referências sem fim” do artigo público não vem só do prompt: `src/components/news/RelatedArticles.tsx` hoje busca todos os artigos publicados, sem limite, e renderiza a lista inteira. Isso sozinho já explica a página ficando enorme.
-- Ainda existem pontos que podem disparar criação em lote ou contínua:
-  - `supabase/functions/process-queue/index.ts`
-  - `src/pages/Admin.tsx`
-  - `src/pages/AdminControlCenter.tsx`
-  - `src/components/admin/images/AuditTab.tsx`
-- `generate-validation-article` ainda mantém modo legado sem limite (`limit=0`), e `generate-match-analysis` / `generate-retroactive-articles` / `generate-weekly-validation` ainda aceitam múltiplos itens por execução.
-- A correção de imagens no `AuditTab` ainda roda em loop contínuo no navegador.
+# Plano: Importação Kaggle Automatizada com Visibilidade
 
-Plano de implementação
+## O que existe hoje
 
-1. Contenção imediata
-- Usar a tabela existente `configuracoes` para criar kill-switches de automação:
-  - `automation_validations_enabled = false`
-  - `automation_weekly_enabled = false`
-  - `automation_analyses_enabled = false`
-  - `automation_retro_articles_enabled = false`
-  - `automation_image_fix_enabled = false`
-  - `generation_review_mode = true`
-- Fazer `process-queue` checar esses flags antes de executar qualquer job e parar jobs ativos com motivo visível.
-- Desabilitar/ocultar no Admin todos os botões de backfill, loop e auto-correção enquanto os flags estiverem desligados.
-- Remover o loop automático do `AuditTab`; manter só ação manual.
+O fluxo atual é 100% manual: você pesquisa → escolhe dataset → clica em "Ver Arquivos" → clica em "Importar" para cada arquivo individualmente. Não há visão consolidada do progresso.
 
-2. Corrigir a geração nova antes do retroativo
-- Colocar as funções de conteúdo em “safe mode”:
-  - padrão = 1 item por execução
-  - nada de scan aberto por default
-  - semanal só com `league_id + week + year`
-  - validação só com `match_id` ou lote explícito e pequeno
-- Adicionar validação server-side antes de publicar:
-  - máximo 1 bloco de “conteúdos relacionados”
-  - máximo 6 links recomendados, hard cap 10 no HTML total
-  - remover blocos extras gerados pela IA
-  - rejeitar publicação fora do padrão em vez de salvar errado
-- Em `generate-retroactive-articles`, os links relacionados deixam de ser “montados pela IA” e passam a ser sempre injetados pelo servidor, já limitados e filtrados.
+## O que vamos criar
 
-3. Corrigir o artigo público
-- Em `src/components/news/RelatedArticles.tsx`, trocar a query sem limite por lista curta e contextual:
-  - 6 itens por padrão
-  - excluir o artigo atual
-  - filtrar por contexto (liga/times quando disponível)
-- Se necessário, passar mais contexto por `NoticiaDetalhes.tsx`.
-- Resultado: o artigo deixa de parecer “infinito” mesmo antes de qualquer reprocessamento histórico.
+Uma rotina **"Auto-Discovery"** que encadeia tudo automaticamente:
 
-4. Dar visibilidade real do que está sendo criado
-- Reaproveitar o Admin atual para um “modo revisão”:
-  - gerar 1 item
-  - mostrar link do artigo criado
-  - mostrar thumbnail/status da imagem
-  - mostrar último erro/validação
-- Manter lista curta dos últimos itens gerados para conferência imediata, sem lote contínuo.
+1. **Pesquisa automática** — percorre as 8 queries populares já definidas (football results, soccer matches, brasileirao, etc.) buscando datasets relevantes
+2. **Filtra e prioriza** — seleciona apenas CSVs com nomes que indicam partidas (match, result, game, score) e ignora datasets já importados
+3. **Pipeline encadeado** — para cada arquivo elegível: Download → Profile → Stage → Resolve → Promote, com pausa de 5s entre arquivos
+4. **Painel de progresso em tempo real** — nova aba "Auto Import" no AdminKaggle mostrando:
+   - Fila de arquivos descobertos (com status: aguardando / processando / completo / falhou)
+   - Barra de progresso geral
+   - Log em tempo real de cada etapa
+   - Botão de **Parar** a qualquer momento
+5. **Controle de segurança** — limita a 5 arquivos por execução (configurável), respeita o circuit breaker, e nunca reimporta um hash já presente
 
-5. Só depois tratar o passivo
-- Quando o fluxo novo estiver validado, liberar correção retroativa em micro-lotes:
-  - 1 por vez no início
-  - depois 3 por clique, nunca em loop automático
-- Ordem:
-  1. validações novas
-  2. semanais novas
-  3. imagens novas
-  4. retroativo antigo errado
+## Implementação técnica
 
-Detalhes técnicos
-- Não precisa nova tabela: vou usar `configuracoes`, que já existe no projeto.
-- O hard stop ficará em 3 camadas: UI + edge functions + `process-queue`.
-- A primeira entrega pode ser feita sem consumir IA: congelamento, limites, guardrails e correção do componente público.
+### Nova Edge Function: `kaggle-autodiscover`
+- Recebe `{ queries: string[], max_files: number }`
+- Para cada query, chama a Kaggle API, filtra CSVs de partidas
+- Registra os candidatos numa fila temporária (retorna a lista)
+- Não processa ainda — só descobre
 
-Arquivos principais
-- `src/components/news/RelatedArticles.tsx`
-- `src/pages/NoticiaDetalhes.tsx`
-- `src/pages/Admin.tsx`
-- `src/pages/AdminControlCenter.tsx`
-- `src/components/admin/images/AuditTab.tsx`
-- `supabase/functions/process-queue/index.ts`
-- `supabase/functions/generate-validation-article/index.ts`
-- `supabase/functions/generate-weekly-validation/index.ts`
-- `supabase/functions/generate-match-analysis/index.ts`
-- `supabase/functions/generate-retroactive-articles/index.ts`
-- migration usando `configuracoes`
+### Mudança no `kaggle-batch/index.ts`
+- Nova action `auto_pipeline`: recebe lista de `{ dataset_slug, file_name }[]`
+- Para cada item: chama quick_import → kaggle-process (profile+stage) → kaggle-resolve → kaggle-promote
+- Retorna progresso parcial a cada arquivo concluído
+- Respeita timeout de 110s e retorna `{ partial: true, completed: N, remaining: [...] }` para o frontend re-invocar
 
-Resultado esperado
-- Nada continua gerando em lote grande sem você querer
-- O artigo público deixa de exibir listas intermináveis
-- A geração nova fica travada em modo seguro/manual
-- Você consegue validar artigo e imagem antes de pensar no retroativo
-- O retroativo só volta quando o fluxo novo estiver confiável
+### Frontend: nova aba "Auto Import" no `AdminKaggle.tsx`
+- Botão "Descobrir Datasets" → chama `kaggle-autodiscover`
+- Mostra lista de arquivos encontrados com checkbox para selecionar/deselecionar
+- Botão "Iniciar Pipeline" → chama `kaggle-batch` action `auto_pipeline` em loop
+- Polling a cada 5s para atualizar status dos jobs
+- Contador: "3 de 12 arquivos processados — 2.847 partidas importadas"
+- Botão vermelho "Parar" que interrompe o loop do frontend
+
+### Arquivos modificados
+| Arquivo | Mudança |
+|---------|---------|
+| `supabase/functions/kaggle-batch/index.ts` | Nova action `auto_pipeline` |
+| `src/pages/AdminKaggle.tsx` | Nova aba "Auto Import" com painel de progresso |
+| `supabase/config.toml` | Já tem `kaggle-batch` configurado |
+
+### Segurança
+- Máximo 5 arquivos por sessão (ajustável)
+- Skip automático de datasets/arquivos já importados (via hash ou job existente)
+- Circuit breaker: se qualquer etapa retornar 402/429, para tudo
+- Sem cron — execução sempre manual, iniciada por você
+
