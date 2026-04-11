@@ -202,6 +202,106 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ========== AUTO PIPELINE ==========
+    if (action === "auto_pipeline") {
+      const { files } = await Promise.resolve({ files: body?.files || [] });
+      if (!files || !Array.isArray(body?.files) || body.files.length === 0) {
+        return new Response(JSON.stringify({ error: "files array is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const items: { dataset_slug: string; dataset_title: string; file_name: string }[] = body.files;
+      const results: any[] = [];
+
+      for (const item of items) {
+        if (shouldStop()) {
+          results.push({ ...item, status: "skipped", reason: "timeout" });
+          break;
+        }
+
+        try {
+          // Step 1: Quick import (download)
+          const dlResult = await callFn("kaggle-import", {
+            action: "quick_import",
+            dataset_slug: item.dataset_slug,
+            dataset_title: item.dataset_title,
+            file_name: item.file_name,
+          });
+          if (!dlResult.ok) {
+            // Circuit breaker on 402/429
+            const errMsg = dlResult.data?.error || "";
+            if (errMsg.includes("402") || errMsg.includes("429") || errMsg.includes("Credits")) {
+              results.push({ ...item, status: "circuit_breaker", error: errMsg });
+              break;
+            }
+            results.push({ ...item, status: "failed", step: "download", error: errMsg });
+            continue;
+          }
+
+          const jobId = dlResult.data?.job_id;
+          if (!jobId) {
+            results.push({ ...item, status: "failed", step: "download", error: "No job_id returned" });
+            continue;
+          }
+
+          if (shouldStop()) { results.push({ ...item, status: "partial", step: "downloaded", job_id: jobId }); break; }
+
+          // Step 2: Profile
+          const profResult = await callFn("kaggle-process", { action: "profile", job_id: jobId });
+          if (!profResult.ok) { results.push({ ...item, status: "failed", step: "profile", job_id: jobId, error: profResult.data?.error }); continue; }
+
+          if (shouldStop()) { results.push({ ...item, status: "partial", step: "profiled", job_id: jobId }); break; }
+
+          // Step 3: Stage
+          const stageResult = await callFn("kaggle-process", { action: "stage", job_id: jobId });
+          if (!stageResult.ok) { results.push({ ...item, status: "failed", step: "stage", job_id: jobId, error: stageResult.data?.error }); continue; }
+
+          if (shouldStop()) { results.push({ ...item, status: "partial", step: "staged", job_id: jobId }); break; }
+
+          // Step 4: Resolve (loop)
+          let resolveComplete = false;
+          for (let pass = 0; pass < 10; pass++) {
+            if (shouldStop()) break;
+            const rr = await callFn("kaggle-resolve", { job_id: jobId });
+            if (!rr.ok) break;
+            if (rr.data?.complete) { resolveComplete = true; break; }
+          }
+
+          if (shouldStop()) { results.push({ ...item, status: "partial", step: "resolving", job_id: jobId }); break; }
+
+          // Step 5: Promote
+          const promResult = await callFn("kaggle-promote", { job_id: jobId, promote_mode: "all_resolved" });
+          results.push({
+            ...item,
+            status: promResult.ok ? "completed" : "failed",
+            step: "promote",
+            job_id: jobId,
+            promoted: promResult.data?.promoted || 0,
+            updated: promResult.data?.updated || 0,
+            resolve_complete: resolveComplete,
+          });
+        } catch (err) {
+          results.push({ ...item, status: "failed", error: err.message });
+        }
+      }
+
+      const completed = results.filter(r => r.status === "completed").length;
+      const totalPromoted = results.reduce((s, r) => s + (r.promoted || 0), 0);
+      const hasCircuitBreaker = results.some(r => r.status === "circuit_breaker");
+      const remaining = items.filter(item => !results.some(r => r.dataset_slug === item.dataset_slug && r.file_name === item.file_name));
+
+      return new Response(JSON.stringify({
+        success: true,
+        complete: remaining.length === 0 && !hasCircuitBreaker,
+        completed,
+        total_promoted: totalPromoted,
+        circuit_breaker: hasCircuitBreaker,
+        results,
+        remaining,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
