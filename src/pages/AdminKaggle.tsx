@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { KaggleAutoImportTab } from "@/components/admin/kaggle/KaggleAutoImportTab";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,7 +64,7 @@ interface KaggleFile {
 }
 
 export default function AdminKaggle() {
-  const [activeTab, setActiveTab] = useState("search");
+  const [activeTab, setActiveTab] = useState("auto");
   const [searchQuery, setSearchQuery] = useState("football results");
   const [searchResults, setSearchResults] = useState<KaggleDataset[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -324,7 +325,8 @@ export default function AdminKaggle() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-7 w-full">
+            <TabsTrigger value="auto"><Zap className="h-3 w-3 mr-1" />Auto Import</TabsTrigger>
             <TabsTrigger value="search"><Search className="h-3 w-3 mr-1" />Buscar</TabsTrigger>
             <TabsTrigger value="imported"><Database className="h-3 w-3 mr-1" />Importados</TabsTrigger>
             <TabsTrigger value="jobs"><List className="h-3 w-3 mr-1" />Jobs</TabsTrigger>
@@ -332,6 +334,11 @@ export default function AdminKaggle() {
             <TabsTrigger value="resolution"><GitMerge className="h-3 w-3 mr-1" />Resolução</TabsTrigger>
             <TabsTrigger value="logs"><Shield className="h-3 w-3 mr-1" />Logs</TabsTrigger>
           </TabsList>
+
+          {/* AUTO IMPORT TAB */}
+          <TabsContent value="auto">
+            <KaggleAutoImportTab />
+          </TabsContent>
 
           {/* SEARCH TAB */}
           <TabsContent value="search" className="space-y-4">
