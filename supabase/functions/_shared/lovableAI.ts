@@ -1,8 +1,35 @@
-// Shared Lovable AI Gateway helpers — zero cost, no external API keys needed
+// Shared AI helpers — now using OpenAI API directly (user's own key)
+// API pública mantida para compatibilidade com edge functions existentes.
+// O nome do arquivo permanece `lovableAI.ts` por compatibilidade de imports,
+// mas internamente usa OpenAI (chat.completions + DALL·E 3).
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const TEXT_MODEL = "google/gemini-2.5-flash";
-const IMAGE_MODEL = "google/gemini-3.1-flash-image-preview";
+const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
+
+const TEXT_MODEL = "gpt-4o-mini";
+const IMAGE_MODEL = "dall-e-3";
+
+// Mapeamento de modelos antigos (Lovable Gateway) -> OpenAI
+function mapModel(model?: string): string {
+  if (!model) return TEXT_MODEL;
+  // Se já é um modelo OpenAI direto, usa como veio
+  if (model.startsWith("gpt-") || model.startsWith("o1") || model.startsWith("o3")) {
+    return model;
+  }
+  // Mapas de gateway -> openai
+  const map: Record<string, string> = {
+    "google/gemini-2.5-flash": "gpt-4o-mini",
+    "google/gemini-2.5-flash-lite": "gpt-4o-mini",
+    "google/gemini-3-flash-preview": "gpt-4o-mini",
+    "google/gemini-2.5-pro": "gpt-4o",
+    "google/gemini-3.1-pro-preview": "gpt-4o",
+    "openai/gpt-5": "gpt-4o",
+    "openai/gpt-5-mini": "gpt-4o-mini",
+    "openai/gpt-5-nano": "gpt-4o-mini",
+    "openai/gpt-5.2": "gpt-4o",
+  };
+  return map[model] ?? TEXT_MODEL;
+}
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -18,11 +45,21 @@ export interface ChatOptions {
   tool_choice?: any;
 }
 
-export async function chatCompletion(apiKey: string, options: ChatOptions): Promise<any> {
+/**
+ * Texto via OpenAI Chat Completions.
+ * O parâmetro `apiKey` é mantido na assinatura por compatibilidade,
+ * mas a chave usada é sempre OPENAI_API_KEY do ambiente (mais seguro).
+ */
+export async function chatCompletion(_apiKey: string, options: ChatOptions): Promise<any> {
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) {
+    throw new Error("OPENAI_API_KEY não configurada");
+  }
+
   const { messages, model, temperature, max_tokens, tools, tool_choice } = options;
 
   const body: any = {
-    model: model || TEXT_MODEL,
+    model: mapModel(model),
     messages,
   };
   if (temperature !== undefined) body.temperature = temperature;
@@ -30,10 +67,10 @@ export async function chatCompletion(apiKey: string, options: ChatOptions): Prom
   if (tools) body.tools = tools;
   if (tool_choice) body.tool_choice = tool_choice;
 
-  const response = await fetch(GATEWAY_URL, {
+  const response = await fetch(OPENAI_CHAT_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -41,10 +78,11 @@ export async function chatCompletion(apiKey: string, options: ChatOptions): Prom
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Lovable AI Gateway error:", response.status, errorText);
+    console.error("OpenAI Chat error:", response.status, errorText);
     if (response.status === 429) throw new Error("RATE_LIMIT");
-    if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
-    throw new Error(`AI Gateway error ${response.status}: ${errorText}`);
+    if (response.status === 402 || response.status === 401) throw new Error("CREDITS_EXHAUSTED");
+    if (response.status === 400 && errorText.includes("insufficient_quota")) throw new Error("CREDITS_EXHAUSTED");
+    throw new Error(`OpenAI error ${response.status}: ${errorText}`);
   }
 
   return response.json();
@@ -122,50 +160,60 @@ CRITICAL RULES:
 - Use the specific camera angle described in MANDATORY SCENE above`;
 }
 
-export async function generateImage(apiKey: string, prompt: string): Promise<string | null> {
-  try {
-    const data = await chatCompletion(apiKey, {
-      model: IMAGE_MODEL,
-      messages: [{ role: "user", content: prompt }],
-    });
+/**
+ * Geração de imagem via DALL·E 3.
+ * Retorna a imagem como base64 puro (sem o prefixo `data:image/...`).
+ * `apiKey` é mantido na assinatura por compatibilidade; usa OPENAI_API_KEY do ambiente.
+ *
+ * Custo aproximado: $0.04/imagem 1024x1024 standard.
+ */
+export async function generateImage(_apiKey: string, prompt: string): Promise<string | null> {
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) {
+    console.error("OPENAI_API_KEY não configurada — pulando geração de imagem");
+    return null;
+  }
 
-    // Add modalities to the request body manually since chatCompletion doesn't support it
-    // We need to call directly
-    const response = await fetch(GATEWAY_URL, {
+  try {
+    // DALL·E 3 não aceita 16:9 puro — usamos 1792x1024 (≈16:9 widescreen)
+    const response = await fetch(OPENAI_IMAGE_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${openaiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: IMAGE_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
+        prompt,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+        response_format: "b64_json",
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Image generation error:", response.status, errorText);
+      console.error("DALL·E error:", response.status, errorText);
       if (response.status === 429) throw new Error("RATE_LIMIT");
-      if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
+      if (response.status === 402 || response.status === 401) throw new Error("CREDITS_EXHAUSTED");
+      if (response.status === 400 && errorText.includes("insufficient_quota")) throw new Error("CREDITS_EXHAUSTED");
+      // 400 com erro de "content_policy_violation" — apenas pula sem matar o job
       return null;
     }
 
     const imgData = await response.json();
-    const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!imageUrl) {
-      console.log("No image in AI response");
+    const b64 = imgData.data?.[0]?.b64_json;
+    if (!b64) {
+      console.log("DALL·E retornou sem b64_json");
       return null;
     }
-
-    // Return raw base64 (without data URL prefix)
-    return imageUrl.replace(/^data:image\/[a-z]+;base64,/, "");
+    return b64;
   } catch (error) {
     if (error instanceof Error && (error.message === "RATE_LIMIT" || error.message === "CREDITS_EXHAUSTED")) {
       throw error;
     }
-    console.error("Error generating image:", error);
+    console.error("Erro ao gerar imagem:", error);
     return null;
   }
 }
