@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp, Eye } from "lucide-react";
+import { Loader2, Image, ImageOff, Sparkles, Play, AlertTriangle, CheckCircle, BarChart3, RefreshCw, FileText, TrendingUp, Eye, Wand2 } from "lucide-react";
 import { AuditTab } from "@/components/admin/images/AuditTab";
+import { RegenerateNanoBananaTab } from "@/components/admin/images/RegenerateNanoBananaTab";
 
 function useImageStats() {
   return useQuery({
@@ -195,8 +196,11 @@ export default function AdminImageManager() {
           <p className="text-muted-foreground">Imagens e reprocessamento de artigos</p>
         </div>
 
-        <Tabs defaultValue="images">
+        <Tabs defaultValue="regenerate">
           <TabsList>
+            <TabsTrigger value="regenerate" className="gap-2">
+              <Wand2 className="h-4 w-4" /> Regenerar (Nano Banana)
+            </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <Image className="h-4 w-4" /> Imagens
             </TabsTrigger>
@@ -207,6 +211,10 @@ export default function AdminImageManager() {
               <RefreshCw className="h-4 w-4" /> Reprocessar Conteúdo
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="regenerate" className="space-y-6 mt-4">
+            <RegenerateNanoBananaTab />
+          </TabsContent>
 
           <TabsContent value="images" className="space-y-6 mt-4">
 
