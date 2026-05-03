@@ -196,7 +196,7 @@ export default function AdminImageManager() {
           <p className="text-muted-foreground">Imagens e reprocessamento de artigos</p>
         </div>
 
-        <Tabs defaultValue="images">
+        <Tabs defaultValue="regenerate">
           <TabsList>
             <TabsTrigger value="regenerate" className="gap-2">
               <Wand2 className="h-4 w-4" /> Regenerar (Nano Banana)
