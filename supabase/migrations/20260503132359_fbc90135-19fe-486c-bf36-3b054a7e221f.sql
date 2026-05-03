@@ -1,0 +1,2 @@
+ALTER TABLE public.noticias ADD COLUMN IF NOT EXISTS image_regenerated_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_noticias_image_regenerated_at ON public.noticias(image_regenerated_at) WHERE image_regenerated_at IS NULL;
