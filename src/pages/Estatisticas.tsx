@@ -256,10 +256,7 @@ export default function Estatisticas() {
               {leagueTeams.map((team) => (
                 <button
                   key={team.id}
-                  onClick={() => {
-                    setSelectedTeamId(team.id);
-                    setShowSearch(false);
-                  }}
+                  onClick={() => goToTeamSeo(team)}
                   className={cn(
                     "p-3 rounded-xl border transition-all flex flex-col items-center gap-2 hover:scale-105",
                     selectedTeamId === team.id 
