@@ -260,13 +260,10 @@ export default function TimeAnalises() {
                     Math.abs(p - currentPage) <= 1
                 )
                 .map((p, idx, arr) => (
-                  <>
-                    {idx > 0 && arr[idx - 1] !== p - 1 && (
-                      <PaginationItem key={`ellipsis-${p}`}>
-                        <span className="px-2 text-muted-foreground">…</span>
-                      </PaginationItem>
-                    )}
-                    <PaginationItem key={p}>
+                  <PaginationItem key={p}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 ? (
+                      <span className="px-2 text-muted-foreground">…</span>
+                    ) : (
                       <PaginationLink
                         onClick={(e) => {
                           e.preventDefault();
@@ -277,8 +274,8 @@ export default function TimeAnalises() {
                       >
                         {p}
                       </PaginationLink>
-                    </PaginationItem>
-                  </>
+                    )}
+                  </PaginationItem>
                 ))}
               <PaginationItem>
                 <PaginationNext
