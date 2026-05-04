@@ -51,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import TimePilar from "./pages/TimePilar";
+import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/validacao/semanal" element={<ValidacaoSemanal />} />
             <Route path="/times" element={<Times />} />
             <Route path="/times/:slug" element={<TimePilar />} />
+            <Route path="/times/:slug/analises" element={<TimeAnalises />} />
             <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/clubes/:slug" element={<ClubProfile />} />
