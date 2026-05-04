@@ -187,14 +187,14 @@ export default function EstatisticasTeam() {
         {/* Hero */}
         <Card className="overflow-hidden">
           <CardContent className="p-6 flex flex-col md:flex-row gap-6 items-center md:items-start">
-            <TeamBadge name={team.nome} colors={team.cores} size="xl" />
+            <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="xl" />
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl md:text-4xl font-bold">
                 Estatísticas do {team.nome} {season}
               </h1>
               {league && (
                 <p className="text-muted-foreground mt-1 flex items-center justify-center md:justify-start gap-2">
-                  <LeagueLogo name={league.nome} size="sm" /> {league.nome}
+                  <LeagueLogo name={league.nome} size="sm" logoUrl={null} /> {league.nome}
                 </p>
               )}
               <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
@@ -259,14 +259,14 @@ export default function EstatisticasTeam() {
           <>
             {/* Cards principais */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard title="Jogos" value={String(stats.jogos)} icon={Activity} />
-              <StatCard title="Gols Marcados" value={String(stats.golsMarcados)} icon={Target} />
-              <StatCard title="Gols Sofridos" value={String(stats.golsSofridos)} icon={Shield} />
-              <StatCard title="Saldo" value={(stats.saldo > 0 ? "+" : "") + stats.saldo} icon={TrendingUp} />
-              <StatCard title="Aproveitamento" value={`${stats.aproveitamento}%`} icon={Trophy} />
-              <StatCard title="Média Marcados" value={stats.mediaGolsMarcados.toFixed(2)} icon={Target} />
-              <StatCard title="Média Sofridos" value={stats.mediaGolsSofridos.toFixed(2)} icon={Shield} />
-              <StatCard title="Clean Sheets" value={String(stats.cleanSheets)} icon={Shield} />
+              <StatCard label="Jogos" value={String(stats.jogos)} icon={Activity} />
+              <StatCard label="Gols Marcados" value={String(stats.golsMarcados)} icon={Target} />
+              <StatCard label="Gols Sofridos" value={String(stats.golsSofridos)} icon={Shield} />
+              <StatCard label="Saldo" value={(stats.saldo > 0 ? "+" : "") + stats.saldo} icon={TrendingUp} />
+              <StatCard label="Aproveitamento" value={`${stats.aproveitamento}%`} icon={Trophy} />
+              <StatCard label="Média Marcados" value={stats.mediaGolsMarcados.toFixed(2)} icon={Target} />
+              <StatCard label="Média Sofridos" value={stats.mediaGolsSofridos.toFixed(2)} icon={Shield} />
+              <StatCard label="Clean Sheets" value={String(stats.cleanSheets)} icon={Shield} />
             </div>
 
             {/* Desempenho geral */}
