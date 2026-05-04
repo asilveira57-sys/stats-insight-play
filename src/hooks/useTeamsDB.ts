@@ -62,6 +62,7 @@ function mapToTime(row: any): Time {
   return {
     id: row.id,
     nome: row.nome,
+    slug: row.slug ?? null,
     escudo_url: row.escudo_url,
     pais: row.pais,
     api_id: row.api_id,
