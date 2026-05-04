@@ -111,6 +111,7 @@ const App = () => (
             <Route path="/validacao/semanal" element={<ValidacaoSemanal />} />
             <Route path="/times" element={<Times />} />
             <Route path="/times/:slug" element={<TimePilar />} />
+            <Route path="/times/:slug/analises" element={<TimeAnalises />} />
             <Route path="/campeonatos" element={<Campeonatos />} />
             <Route path="/campeonatos/:slug" element={<CampeonatoPilar />} />
             <Route path="/clubes/:slug" element={<ClubProfile />} />
