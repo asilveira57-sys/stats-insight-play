@@ -51,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import TimePilar from "./pages/TimePilar";
+import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
 import CampeonatoPilar from "./pages/CampeonatoPilar";
 import Campeonatos from "./pages/Campeonatos";
