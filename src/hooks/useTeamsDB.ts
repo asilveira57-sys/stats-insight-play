@@ -11,6 +11,7 @@ export interface TeamColors {
 export interface Time {
   id: string;
   nome: string;
+  slug: string | null;
   escudo_url: string | null;
   pais: string | null;
   api_id: number | null;
