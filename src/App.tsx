@@ -11,6 +11,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
+import EstatisticasLeague from "./pages/EstatisticasLeague";
+import EstatisticasTeam from "./pages/EstatisticasTeam";
 import Palpites from "./pages/Palpites";
 import Noticias from "./pages/Noticias";
 import NoticiaDetalhes from "./pages/NoticiaDetalhes";
