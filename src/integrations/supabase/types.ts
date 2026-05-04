@@ -5050,6 +5050,57 @@ export type Database = {
           },
         ]
       }
+      team_seo_content: {
+        Row: {
+          content: Json
+          generated_at: string
+          id: string
+          league_id: string | null
+          meta_description: string | null
+          meta_title: string | null
+          season: number
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          generated_at?: string
+          id?: string
+          league_id?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          season: number
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          generated_at?: string
+          id?: string
+          league_id?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          season?: number
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_seo_content_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_seo_content_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tecnico_partida: {
         Row: {
           created_at: string | null
