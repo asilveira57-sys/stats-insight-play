@@ -332,32 +332,37 @@ export default function TimePilar() {
               </h2>
               
               {relatedNews && relatedNews.length > 0 ? (
-                <div className="space-y-3">
-                  {relatedNews.map((news) => (
-                    <Link 
-                      key={news.id} 
-                      to={`/noticias/${news.slug}`}
-                      className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
-                    >
-                      {news.imagem_url && (
-                        <img 
-                          src={news.imagem_url} 
-                          alt="" 
-                          className="w-20 h-14 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-medium group-hover:text-primary transition-colors line-clamp-2">
-                          {news.titulo}
-                        </h3>
-                        <span className="text-xs text-muted-foreground">
-                          {news.data_publicacao && new Date(news.data_publicacao).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </Link>
-                  ))}
-                </div>
+                <>
+                  <div className="space-y-3">
+                    {relatedNews.slice(0, 10).map((news) => (
+                      <Link 
+                        key={news.id} 
+                        to={`/noticias/${news.slug}`}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+                      >
+                        {news.imagem_url && (
+                          <img 
+                            src={news.imagem_url} 
+                            alt="" 
+                            className="w-20 h-14 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-medium group-hover:text-primary transition-colors line-clamp-2">
+                            {news.titulo}
+                          </h3>
+                          <span className="text-xs text-muted-foreground">
+                            {news.data_publicacao && new Date(news.data_publicacao).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </Link>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Mostrando {Math.min(10, relatedNews.length)} de {relatedNews.length} análises
+                  </p>
+                </>
               ) : (
                 <p className="text-muted-foreground">
                   Ainda não há análises publicadas sobre o {team.nome}. 
@@ -365,7 +370,15 @@ export default function TimePilar() {
                 </p>
               )}
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap gap-2">
+                {relatedNews && relatedNews.length > 10 && (
+                  <Button variant="default" asChild>
+                    <Link to={`/times/${slug}/analises`}>
+                      Ver todas as análises do {team.nome}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="outline" asChild>
                   <Link to="/noticias">
                     Ver todas as análises
