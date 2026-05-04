@@ -11,6 +11,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
+import EstatisticasLeague from "./pages/EstatisticasLeague";
+import EstatisticasTeam from "./pages/EstatisticasTeam";
 import Palpites from "./pages/Palpites";
 import Noticias from "./pages/Noticias";
 import NoticiaDetalhes from "./pages/NoticiaDetalhes";
@@ -95,6 +97,9 @@ const App = () => (
             <Route path="/hub/sync-details" element={<HubSyncDetails />} />
             <Route path="/resultados" element={<Resultados />} />
             <Route path="/estatisticas" element={<Estatisticas />} />
+            <Route path="/estatisticas/:liga" element={<EstatisticasLeague />} />
+            <Route path="/estatisticas/:liga/:time" element={<EstatisticasTeam />} />
+            <Route path="/estatisticas/:liga/:time/:ano" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />

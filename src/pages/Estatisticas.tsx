@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { StatCard } from "@/components/cards/StatCard";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function Estatisticas() {
+  const navigate = useNavigate();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [compareTeamId, setCompareTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,6 +41,14 @@ export default function Estatisticas() {
   const [compareMode, setCompareMode] = useState(false);
   const [searchingFor, setSearchingFor] = useState<'main' | 'compare'>('main');
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
+
+  const goToTeamSeo = (team: { slug: string | null }) => {
+    if (!team.slug) return;
+    const leagueSlug = leagues?.find((l) => l.id === selectedLeagueId)?.slug;
+    if (leagueSlug) navigate(`/estatisticas/${leagueSlug}/${team.slug}`);
+    else navigate(`/estatisticas/_/${team.slug}`);
+  };
+
 
   const { data: teams, isLoading: teamsLoading } = useTeams();
   const { data: leagues } = useLeagues();
@@ -246,10 +256,7 @@ export default function Estatisticas() {
               {leagueTeams.map((team) => (
                 <button
                   key={team.id}
-                  onClick={() => {
-                    setSelectedTeamId(team.id);
-                    setShowSearch(false);
-                  }}
+                  onClick={() => goToTeamSeo(team)}
                   className={cn(
                     "p-3 rounded-xl border transition-all flex flex-col items-center gap-2 hover:scale-105",
                     selectedTeamId === team.id 

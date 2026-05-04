@@ -11,6 +11,7 @@ export interface TeamColors {
 export interface Time {
   id: string;
   nome: string;
+  slug: string | null;
   escudo_url: string | null;
   pais: string | null;
   api_id: number | null;
@@ -61,6 +62,7 @@ function mapToTime(row: any): Time {
   return {
     id: row.id,
     nome: row.nome,
+    slug: row.slug ?? null,
     escudo_url: row.escudo_url,
     pais: row.pais,
     api_id: row.api_id,
@@ -248,6 +250,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
 export interface Liga {
   id: string;
   nome: string;
+  slug: string | null;
   logo_url: string | null;
   pais: string | null;
 }
