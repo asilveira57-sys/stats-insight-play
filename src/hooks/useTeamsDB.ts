@@ -250,6 +250,7 @@ export function useTeamSearch(searchTerm: string, leagueId?: string | null) {
 export interface Liga {
   id: string;
   nome: string;
+  slug: string | null;
   logo_url: string | null;
   pais: string | null;
 }
