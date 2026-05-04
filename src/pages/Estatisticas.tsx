@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function Estatisticas() {
+  const navigate = useNavigate();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [compareTeamId, setCompareTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,6 +41,14 @@ export default function Estatisticas() {
   const [compareMode, setCompareMode] = useState(false);
   const [searchingFor, setSearchingFor] = useState<'main' | 'compare'>('main');
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
+
+  const goToTeamSeo = (team: { slug: string | null }) => {
+    if (!team.slug) return;
+    const leagueSlug = leagues?.find((l) => l.id === selectedLeagueId)?.slug;
+    if (leagueSlug) navigate(`/estatisticas/${leagueSlug}/${team.slug}`);
+    else navigate(`/estatisticas/_/${team.slug}`);
+  };
+
 
   const { data: teams, isLoading: teamsLoading } = useTeams();
   const { data: leagues } = useLeagues();
