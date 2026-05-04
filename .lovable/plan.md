@@ -1,57 +1,46 @@
+## Problema
 
+A página do time (ex.: `/times/fortaleza`) lista TODAS as análises de uma vez (70+ no caso do Fortaleza), gerando uma página gigantesca e ruim de navegar.
 
-# Plano: Importação Kaggle Automatizada com Visibilidade
+## Solução
 
-## O que existe hoje
+### 1. Página do time (`src/pages/TimePilar.tsx`) — mostrar só Top 10
 
-O fluxo atual é 100% manual: você pesquisa → escolhe dataset → clica em "Ver Arquivos" → clica em "Importar" para cada arquivo individualmente. Não há visão consolidada do progresso.
+- Na seção "Análises do {time}", exibir apenas as **10 análises mais recentes**.
+- Substituir o botão genérico "Ver todas as análises" (que hoje vai pra `/noticias`) por **"Ver todas as análises do {time} →"** que aponta pra nova rota dedicada: `/times/:slug/analises`.
+- Adicionar contador discreto: "Mostrando 10 de N análises".
 
-## O que vamos criar
+### 2. Nova página dedicada: `src/pages/TimeAnalises.tsx`
 
-Uma rotina **"Auto-Discovery"** que encadeia tudo automaticamente:
+Rota: `/times/:slug/analises`
 
-1. **Pesquisa automática** — percorre as 8 queries populares já definidas (football results, soccer matches, brasileirao, etc.) buscando datasets relevantes
-2. **Filtra e prioriza** — seleciona apenas CSVs com nomes que indicam partidas (match, result, game, score) e ignora datasets já importados
-3. **Pipeline encadeado** — para cada arquivo elegível: Download → Profile → Stage → Resolve → Promote, com pausa de 5s entre arquivos
-4. **Painel de progresso em tempo real** — nova aba "Auto Import" no AdminKaggle mostrando:
-   - Fila de arquivos descobertos (com status: aguardando / processando / completo / falhou)
-   - Barra de progresso geral
-   - Log em tempo real de cada etapa
-   - Botão de **Parar** a qualquer momento
-5. **Controle de segurança** — limita a 5 arquivos por execução (configurável), respeita o circuit breaker, e nunca reimporta um hash já presente
+Conteúdo:
+- Header com nome do time + breadcrumb (Time → Análises).
+- Campo de busca por título (filtro client-side sobre os resultados carregados).
+- Filtro opcional por ano (dropdown gerado dinamicamente a partir das datas).
+- Lista paginada de análises (12 por página) usando o componente `Pagination` já existente.
+- Cada item: thumbnail + título + data, link para `/noticias/{slug}`.
+- Estado vazio e loading com `Skeleton`.
 
-## Implementação técnica
+### 3. Hook
 
-### Nova Edge Function: `kaggle-autodiscover`
-- Recebe `{ queries: string[], max_files: number }`
-- Para cada query, chama a Kaggle API, filtra CSVs de partidas
-- Registra os candidatos numa fila temporária (retorna a lista)
-- Não processa ainda — só descobre
+Em `src/hooks/useTeamPillar.ts`:
+- Manter `useTeamRelatedNews` (já retorna todas, ordenado por data desc) — a página do time vai aplicar `.slice(0, 10)` e usar `.length` pro contador.
+- Não precisa de hook novo: a página de análises reutiliza `useTeamRelatedNews(teamName)` sem limit, pagina no cliente. Volume esperado (dezenas a baixas centenas) não justifica paginação no servidor.
 
-### Mudança no `kaggle-batch/index.ts`
-- Nova action `auto_pipeline`: recebe lista de `{ dataset_slug, file_name }[]`
-- Para cada item: chama quick_import → kaggle-process (profile+stage) → kaggle-resolve → kaggle-promote
-- Retorna progresso parcial a cada arquivo concluído
-- Respeita timeout de 110s e retorna `{ partial: true, completed: N, remaining: [...] }` para o frontend re-invocar
+### 4. Roteamento
 
-### Frontend: nova aba "Auto Import" no `AdminKaggle.tsx`
-- Botão "Descobrir Datasets" → chama `kaggle-autodiscover`
-- Mostra lista de arquivos encontrados com checkbox para selecionar/deselecionar
-- Botão "Iniciar Pipeline" → chama `kaggle-batch` action `auto_pipeline` em loop
-- Polling a cada 5s para atualizar status dos jobs
-- Contador: "3 de 12 arquivos processados — 2.847 partidas importadas"
-- Botão vermelho "Parar" que interrompe o loop do frontend
+Em `src/App.tsx`, adicionar a rota `/times/:slug/analises` apontando para `TimeAnalises`.
 
-### Arquivos modificados
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/functions/kaggle-batch/index.ts` | Nova action `auto_pipeline` |
-| `src/pages/AdminKaggle.tsx` | Nova aba "Auto Import" com painel de progresso |
-| `supabase/config.toml` | Já tem `kaggle-batch` configurado |
+## Detalhes técnicos
 
-### Segurança
-- Máximo 5 arquivos por sessão (ajustável)
-- Skip automático de datasets/arquivos já importados (via hash ou job existente)
-- Circuit breaker: se qualquer etapa retornar 402/429, para tudo
-- Sem cron — execução sempre manual, iniciada por você
+- Reusar `Pagination`, `PaginationContent`, `PaginationItem`, `PaginationLink`, `PaginationPrevious`, `PaginationNext` de `src/components/ui/pagination.tsx`.
+- Slug do time: a página `TimePilar` já resolve `slug → team`; replicar a mesma lógica em `TimeAnalises` (ou extrair hook `useTeamBySlug` se ainda não existir — verificar `useTeamPillar`).
+- Manter SEO: `<title>` "Análises do {time} | Statball" e meta description.
+- Sem alterações em backend/banco.
 
+## Arquivos afetados
+
+- `src/pages/TimePilar.tsx` — limitar a 10, ajustar CTA.
+- `src/pages/TimeAnalises.tsx` — **novo**.
+- `src/App.tsx` — registrar nova rota.
