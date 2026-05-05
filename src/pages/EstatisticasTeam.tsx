@@ -102,19 +102,15 @@ export default function EstatisticasTeam() {
   // SEO meta
   const title = useMemo(() => {
     if (!data) return "Estatísticas | Statball";
-    return (
-      seoContent?.meta_title ||
-      `Estatísticas do ${data.team.nome} ${data.season} – Gols, Média e Desempenho | Statball`
-    );
-  }, [data, seoContent]);
+    const fallback = VARIATION_META[variation].title(data.team.nome, data.season, data.league?.nome);
+    return variation === "geral" ? (seoContent?.meta_title || fallback) : fallback;
+  }, [data, seoContent, variation]);
 
   const description = useMemo(() => {
     if (!data) return "Estatísticas detalhadas de futebol.";
-    return (
-      seoContent?.meta_description ||
-      `Veja as estatísticas completas do ${data.team.nome}${data.league ? ` no ${data.league.nome}` : ""} ${data.season}: gols, desempenho, médias e análise detalhada.`
-    );
-  }, [data, seoContent]);
+    const fallback = VARIATION_META[variation].desc(data.team.nome, data.season);
+    return variation === "geral" ? (seoContent?.meta_description || fallback) : fallback;
+  }, [data, seoContent, variation]);
 
   useEffect(() => {
     document.title = title;
