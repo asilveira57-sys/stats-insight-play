@@ -99,9 +99,14 @@ const App = () => (
             <Route path="/hub/sync-details" element={<HubSyncDetails />} />
             <Route path="/resultados" element={<Resultados />} />
             <Route path="/estatisticas" element={<Estatisticas />} />
+            <Route path="/estatisticas" element={<Estatisticas />} />
+            <Route path="/estatisticas/rankings/:metrica" element={<EstatisticasRanking />} />
+            <Route path="/estatisticas/rankings/:metrica/:ano" element={<EstatisticasRanking />} />
+            <Route path="/estatisticas/times/:slug" element={<EstatisticasTeamGlobal />} />
             <Route path="/estatisticas/:liga" element={<EstatisticasLeague />} />
             <Route path="/estatisticas/:liga/:time" element={<EstatisticasTeam />} />
             <Route path="/estatisticas/:liga/:time/:ano" element={<EstatisticasTeam />} />
+            <Route path="/estatisticas/:liga/:time/:ano/:view" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
