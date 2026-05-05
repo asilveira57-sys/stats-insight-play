@@ -270,6 +270,37 @@ export default function EstatisticasTeam() {
           </CardContent>
         </Card>
 
+        {/* Variation tabs */}
+        {league && (
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: "geral", label: "Geral" },
+              { key: "gols", label: "Gols" },
+              { key: "mandante", label: "Mandante" },
+              { key: "visitante", label: "Visitante" },
+            ] as { key: ViewVariation; label: string }[]).map((v) => {
+              const path = v.key === "geral"
+                ? `/estatisticas/${league.slug}/${team.slug}/${season}`
+                : `/estatisticas/${league.slug}/${team.slug}/${season}/${v.key}`;
+              const active = v.key === variation;
+              return (
+                <Link
+                  key={v.key}
+                  to={path}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium transition",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/70 text-muted-foreground",
+                  )}
+                >
+                  {v.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
         {stats.jogos === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
