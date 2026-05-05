@@ -114,8 +114,8 @@ NUNCA invente números. Use APENAS os dados acima. Linguagem analítica, neutra 
     });
 
     if (aiResp.status === 429 || aiResp.status === 402) {
-      return new Response(JSON.stringify({ error: aiResp.status === 429 ? "Rate limit" : "Sem créditos" }), {
-        status: aiResp.status,
+      return new Response(JSON.stringify({ skipped: true, reason: aiResp.status === 429 ? "rate_limit" : "no_credits" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
