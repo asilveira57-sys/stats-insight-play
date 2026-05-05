@@ -5738,6 +5738,34 @@ export type Database = {
           team_b_slug: string
         }[]
       }
+      get_team_season_rankings: {
+        Args: {
+          p_league_id?: string
+          p_limit?: number
+          p_metric?: string
+          p_season: number
+        }
+        Returns: {
+          aproveitamento: number
+          derrotas: number
+          empates: number
+          gols_marcados: number
+          gols_sofridos: number
+          jogos: number
+          league_id: string
+          league_nome: string
+          league_slug: string
+          media_gols_marcados: number
+          media_gols_sofridos: number
+          pontos: number
+          saldo: number
+          team_cores: Json
+          team_id: string
+          team_nome: string
+          team_slug: string
+          vitorias: number
+        }[]
+      }
       get_teams_with_aliases: {
         Args: {
           p_limit?: number
