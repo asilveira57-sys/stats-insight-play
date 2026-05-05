@@ -20,10 +20,35 @@ const formColors: Record<string, string> = {
   D: "bg-rose-500 text-white",
 };
 
+type ViewVariation = "geral" | "gols" | "mandante" | "visitante";
+
+const VARIATION_META: Record<ViewVariation, { title: (t: string, s: number, l?: string) => string; desc: (t: string, s: number) => string }> = {
+  geral: {
+    title: (t, s, l) => `Estatísticas do ${t} ${s}${l ? ` – ${l}` : ""} | Statball`,
+    desc: (t, s) => `Estatísticas completas do ${t} na temporada ${s}: gols, médias, aproveitamento e desempenho.`,
+  },
+  gols: {
+    title: (t, s) => `${t} ${s}: Gols Marcados, Sofridos e Médias | Statball`,
+    desc: (t, s) => `Análise de gols do ${t} em ${s}: marcados, sofridos, médias por jogo, Over 2.5 e BTTS.`,
+  },
+  mandante: {
+    title: (t, s) => `${t} como Mandante ${s}: Desempenho em Casa | Statball`,
+    desc: (t, s) => `Estatísticas do ${t} como mandante em ${s}: vitórias em casa, gols e aproveitamento.`,
+  },
+  visitante: {
+    title: (t, s) => `${t} como Visitante ${s}: Desempenho Fora de Casa | Statball`,
+    desc: (t, s) => `Estatísticas do ${t} como visitante em ${s}: vitórias fora, gols marcados e aproveitamento.`,
+  },
+};
+
 export default function EstatisticasTeam() {
-  const { liga, time, ano } = useParams<{ liga: string; time: string; ano?: string }>();
+  const { liga, time, ano, view } = useParams<{ liga: string; time: string; ano?: string; view?: string }>();
   const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
+
+  const variation: ViewVariation = (["gols", "mandante", "visitante"].includes(view || "")
+    ? (view as ViewVariation)
+    : "geral");
 
   const seasonParam = ano ? parseInt(ano, 10) : null;
   const { data, isLoading } = useTeamSeoStats(time ?? null, liga ?? null, seasonParam);
@@ -77,19 +102,15 @@ export default function EstatisticasTeam() {
   // SEO meta
   const title = useMemo(() => {
     if (!data) return "Estatísticas | Statball";
-    return (
-      seoContent?.meta_title ||
-      `Estatísticas do ${data.team.nome} ${data.season} – Gols, Média e Desempenho | Statball`
-    );
-  }, [data, seoContent]);
+    const fallback = VARIATION_META[variation].title(data.team.nome, data.season, data.league?.nome);
+    return variation === "geral" ? (seoContent?.meta_title || fallback) : fallback;
+  }, [data, seoContent, variation]);
 
   const description = useMemo(() => {
     if (!data) return "Estatísticas detalhadas de futebol.";
-    return (
-      seoContent?.meta_description ||
-      `Veja as estatísticas completas do ${data.team.nome}${data.league ? ` no ${data.league.nome}` : ""} ${data.season}: gols, desempenho, médias e análise detalhada.`
-    );
-  }, [data, seoContent]);
+    const fallback = VARIATION_META[variation].desc(data.team.nome, data.season);
+    return variation === "geral" ? (seoContent?.meta_description || fallback) : fallback;
+  }, [data, seoContent, variation]);
 
   useEffect(() => {
     document.title = title;
@@ -248,6 +269,37 @@ export default function EstatisticasTeam() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Variation tabs */}
+        {league && (
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: "geral", label: "Geral" },
+              { key: "gols", label: "Gols" },
+              { key: "mandante", label: "Mandante" },
+              { key: "visitante", label: "Visitante" },
+            ] as { key: ViewVariation; label: string }[]).map((v) => {
+              const path = v.key === "geral"
+                ? `/estatisticas/${league.slug}/${team.slug}/${season}`
+                : `/estatisticas/${league.slug}/${team.slug}/${season}/${v.key}`;
+              const active = v.key === variation;
+              return (
+                <Link
+                  key={v.key}
+                  to={path}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium transition",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/70 text-muted-foreground",
+                  )}
+                >
+                  {v.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         {stats.jogos === 0 ? (
           <Card>
