@@ -13,6 +13,8 @@ import Resultados from "./pages/Resultados";
 import Estatisticas from "./pages/Estatisticas";
 import EstatisticasLeague from "./pages/EstatisticasLeague";
 import EstatisticasTeam from "./pages/EstatisticasTeam";
+import EstatisticasTeamGlobal from "./pages/EstatisticasTeamGlobal";
+import EstatisticasRanking from "./pages/EstatisticasRanking";
 import Palpites from "./pages/Palpites";
 import Noticias from "./pages/Noticias";
 import NoticiaDetalhes from "./pages/NoticiaDetalhes";
