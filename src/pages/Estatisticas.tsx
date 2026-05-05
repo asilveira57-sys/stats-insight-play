@@ -245,6 +245,36 @@ export default function Estatisticas() {
           </div>
         </div>
 
+        {/* Rankings rápidos */}
+        <div className="mb-8 p-4 rounded-lg bg-muted/30 border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-primary" /> Rankings da temporada
+            </h2>
+            <Link to={`/estatisticas/rankings/pontos/${new Date().getFullYear()}`} className="text-sm text-primary hover:underline">
+              Ver todos
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { k: "pontos", l: "Mais Pontos" },
+              { k: "melhores-ataques", l: "Melhores Ataques" },
+              { k: "melhores-defesas", l: "Melhores Defesas" },
+              { k: "mais-gols", l: "Mais Gols" },
+              { k: "mais-vitorias", l: "Mais Vitórias" },
+              { k: "aproveitamento", l: "Maior Aproveitamento" },
+            ].map((r) => (
+              <Link
+                key={r.k}
+                to={`/estatisticas/rankings/${r.k}/${new Date().getFullYear()}`}
+                className="text-xs px-3 py-1.5 rounded-full bg-card hover:bg-primary hover:text-primary-foreground transition border border-border"
+              >
+                {r.l}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* League Teams Grid */}
         {selectedLeagueId && leagueTeams && leagueTeams.length > 0 && !compareMode && (
           <div className="mb-8">
