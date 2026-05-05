@@ -94,7 +94,17 @@ export default function EstatisticasTeam() {
           },
         },
       })
-      .then(() => refetchContent())
+      .then((res) => {
+        if (res.error) {
+          // 402 (sem créditos) / 429 (rate limit) — segue com fallback estático, sem quebrar a página
+          console.warn("generate-team-seo indisponível:", res.error.message);
+          return;
+        }
+        return refetchContent();
+      })
+      .catch((err) => {
+        console.warn("generate-team-seo falhou:", err);
+      })
       .finally(() => setGenerating(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.team.id, data?.season, data?.league?.id, seoContent]);
