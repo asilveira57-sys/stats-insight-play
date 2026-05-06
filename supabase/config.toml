@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.generate-svg-thumbnails]
 verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
