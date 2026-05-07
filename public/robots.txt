@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://wlvwcbxegrmobefloikr.supabase.co/functions/v1/sitemap
+Sitemap: https://www.statball.com.br/sitemap.xml
