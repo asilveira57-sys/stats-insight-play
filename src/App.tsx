@@ -32,6 +32,7 @@ import ValidacaoSemanal from "./pages/ValidacaoSemanal";
 import EditorialDashboard from "./pages/EditorialDashboard";
 import Admin from "./pages/Admin";
 import AdminControlCenter from "./pages/AdminControlCenter";
+import AdminSitemap from "./pages/AdminSitemap";
 import AdminAnalyticsIntegrations from "./pages/AdminAnalyticsIntegrations";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminSlugs from "./pages/AdminSlugs";
@@ -131,6 +132,7 @@ const App = () => (
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
+            <Route path="/admin/sitemap" element={<AdminSitemap />} />
             <Route path="/admin/integracoes/analytics" element={<AdminAnalyticsIntegrations />} />
             <Route path="/admin/privacidade/lgpd" element={<AdminLgpdPage />} />
             <Route path="/admin/slugs" element={<AdminSlugs />} />

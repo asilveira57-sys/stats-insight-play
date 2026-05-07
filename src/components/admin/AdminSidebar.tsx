@@ -19,6 +19,7 @@ import {
   BookOpen,
   HardDrive,
   Image,
+  Map,
 } from "lucide-react";
 import {
   Sidebar,
@@ -74,6 +75,7 @@ const menuGroups = [
     label: "Configurações",
     items: [
       { title: "Analytics", url: "/admin/integracoes/analytics", icon: BarChart3 },
+      { title: "Sitemap", url: "/admin/sitemap", icon: Map },
       { title: "LGPD / Privacidade", url: "/admin/privacidade/lgpd", icon: Shield },
     ],
   },

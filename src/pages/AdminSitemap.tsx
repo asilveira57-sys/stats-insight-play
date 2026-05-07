@@ -29,7 +29,7 @@ const FILES: SitemapFile[] = [
 ];
 
 export default function AdminSitemap() {
-  const { isAdmin, loading: adminLoading } = useAdminAccess();
+  const { isAdmin, isLoading: adminLoading } = useAdminAccess();
   const { toast } = useToast();
   const [downloading, setDownloading] = useState<string | null>(null);
   const [bulk, setBulk] = useState(false);
