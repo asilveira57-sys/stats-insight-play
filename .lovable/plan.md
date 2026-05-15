@@ -1,96 +1,96 @@
 ## Objetivo
 
-Zerar o custo de imagens. Gerar 100% das capas via **template SVG dinâmico** (cores dos times + escudo da liga + tipografia do confronto) — sem chamada a IA, sem créditos consumidos, infinitamente escalável para os 30k+ artigos retroativos. Manter Google AI Studio (free tier ~1500 img/dia, sua API key, fora do Lovable Gateway) como camada **opcional** para destaques editoriais — também $0/mês desde que respeite o limite diário.
+1. Validar visualmente que cada card SVG é único entre lotes (você roda 100 em 100).
+2. Transformar a "máquina de imagem" em uma alavanca de SEO: nome de arquivo com palavra-chave, alt descritivo, dimensões/og corretos e structured data.
 
-## Diagnóstico do custo atual
+---
 
-- Hoje: `regenerate-article-images` chama `google/gemini-2.5-flash-image` via Lovable AI Gateway → **~$0,003/imagem**
-- 1 dólar = ~330 imagens. Em 30k artigos = **~$90**, fora do orçamento ($0)
-- Mesmo só conteúdo novo já queimou o saldo do mês em 1 dia
-- Solução: deixar de pagar IA na maioria dos casos. SVG é renderizado em milissegundos no edge, custa zero
+## Parte 1 — Histórico ao vivo dos últimos 10 gerados
 
-## Arquitetura proposta
+**Onde:** `src/components/admin/images/SvgCardTab.tsx` (Admin → Imagens → SVG Cards)
 
-```text
-Artigo publicado
-   │
-   ├─ tem partida_id? ──► gera card SVG personalizado (cores casa+fora, escudo liga, "TIME A vs TIME B", data, liga)
-   │
-   ├─ é destaque editorial flag (novo campo)? ──► usa Google AI Studio direto (sua key, free tier)
-   │
-   └─ fallback ──► SVG genérico com gradiente neutro + logo Statball
+**O que muda:**
+- Nova seção **"Últimos 10 gerados"** abaixo da "Amostra do último lote", sempre visível.
+- Lê direto da tabela `noticias` (não depende do retorno do edge function), ordenado por `image_regenerated_at DESC`, filtrando `image_source = 'svg'`.
+- Atualiza automaticamente: `refetchInterval: 3s` enquanto rodando, `15s` em idle.
+- Cada card mostra: thumbnail (1200x630), título, confronto (time casa vs fora), data/hora UTC-3 do `image_regenerated_at`, badge com a liga.
+- Botão "Abrir imagem" em nova aba para inspeção em tamanho real.
+- Indicador visual de duplicidade: se duas thumbnails geradas no mesmo lote tiverem o mesmo `partida_id`, marca com badge amarelo "MESMO JOGO" (ajuda a flagrar repetições reais — quando o confronto é realmente o mesmo, o card será idêntico de propósito).
+
+**Por que isso resolve sua dúvida de unicidade:**
+O card SVG é determinístico em função de `(time_casa, time_fora, cores, liga, data)`. Logo:
+- **Confrontos diferentes → cards diferentes** (cores e nomes mudam).
+- **Mesmo confronto, artigos diferentes (ex: prévia + pós-jogo) → card idêntico**, porque os dados de origem são iguais. Isso é esperado e correto. O badge "MESMO JOGO" deixa isso explícito pra você não confundir com bug.
+- Se quiser variar mesmo entre artigos do mesmo confronto, posso adicionar um sufixo no SVG (ex: "PRÉVIA" / "ANÁLISE" / "PÓS-JOGO") usando `noticia.tipo` ou heurística no título. **Quer que eu inclua isso já?** (default = não, mantém o card limpo)
+
+---
+
+## Parte 2 — SEO via imagem
+
+A engine de imagens hoje só salva o arquivo. Vamos extrair valor de SEO em 4 frentes:
+
+### 2.1 Filename com palavra-chave (no edge function)
+
+**Hoje:** `svg-{uuid}.png` → zero valor SEO.
+
+**Mudança em `generate-article-card-svg/index.ts`:**
+- Gerar slug a partir de `{slug-do-artigo}` ou fallback `{time-casa}-vs-{time-fora}-{liga}-{ano}` usando o slugify já existente no projeto.
+- Limite 80 chars, ASCII, kebab-case.
+- Nome final: `${slug}-statball.png` (ex: `flamengo-vs-palmeiras-brasileirao-2026-statball.png`).
+- Mantém `upsert: true` — re-gerações sobrescrevem o mesmo arquivo (sem lixo no bucket).
+- Para evitar colisão entre artigos diferentes do mesmo jogo, anexar 6 chars do `art.id` ao final: `${slug}-{shortId}.png`.
+
+### 2.2 Alt text descritivo persistido
+
+**Adicionar coluna** `noticias.imagem_alt TEXT` (nullable).
+
+**Edge function preenche** com template:
+> `"Capa do artigo: {Time Casa} vs {Time Fora} pela {Liga} em {data por extenso} — análise estatística Statball"`
+
+**Frontend (`NoticiaDetalhes.tsx` linha 219):** trocar `alt={noticia.titulo}` por `alt={noticia.imagem_alt || noticia.titulo}`.
+
+Aplicar o mesmo em `NewsCard.tsx`, `RelatedArticles.tsx` e qualquer `<img>` que usa `imagem_url`.
+
+### 2.3 Open Graph + Twitter image dimensions corretas
+
+`ArticleSEO.tsx` já emite `og:image:width=1280 / height=720`. Card SVG é **1200x630**. Corrigir para os valores reais (1200/630) — se errado, Facebook/LinkedIn rejeitam ou recortam.
+
+### 2.4 Schema.org ImageObject no JSON-LD
+
+Em `ArticleSEO.tsx`, expandir o campo `image` do JSON-LD de string simples para objeto:
+
+```json
+"image": {
+  "@type": "ImageObject",
+  "url": "...",
+  "width": 1200,
+  "height": 630,
+  "caption": "{imagem_alt}"
+}
 ```
 
-## Etapa 1 — Edge function `generate-article-card-svg`
+Google usa isso para Rich Results de notícias.
 
-Nova function que produz SVG 1200x630 (Open Graph friendly) com:
+### 2.5 Bonus barato: lazy + loading hints
 
-- Fundo: gradiente diagonal entre `cores.primary` do time casa → `cores.primary` do time fora (cai pra `#0F172A → #1e293b` quando não houver)
-- Camada superior: nome da liga + data (cor branca semi-transparente)
-- Centro: `TIME CASA` em letras grandes, "VS" estilizado, `TIME FORA` (uso da fonte do projeto via `<text>` SVG embutido)
-- Canto inferior direito: logo da liga (URL já disponível em `ligas.logo_url`) — respeitando regra de NÃO usar logos de times
-- Canto inferior esquerdo: marca "statball.com.br"
-- Saída: PNG renderizado server-side via `npm:@resvg/resvg-js` (binário Deno), upload em `news-thumbnails`
+- `<img loading="lazy" decoding="async">` em listas (NewsCard, RelatedArticles).
+- Hero do artigo usa `loading="eager" fetchpriority="high"` (já é LCP, não pode ser lazy).
 
-Custo por imagem: **$0** (CPU/memória do edge é coberto pelo plano).
+---
 
-## Etapa 2 — Refatoração de `regenerate-article-images`
+## Ordem de implementação
 
-- Renomear para `regenerate-article-images-ai` (mantém capacidade IA para destaques)
-- Adicionar campo `noticias.image_source` (`'svg' | 'ai_gemini' | 'ai_lovable'`) pra rastreabilidade
-- Modo padrão da aba "Regenerar imagens" passa a chamar a nova function SVG
-- Botão secundário "Gerar via IA (premium)" continua disponível, mas com aviso de custo
+1. **Migration**: `ALTER TABLE noticias ADD COLUMN imagem_alt TEXT;`
+2. **Edge function** `generate-article-card-svg`: slug no filename, geração e persistência do `imagem_alt`.
+3. **Frontend admin** `SvgCardTab.tsx`: seção "Últimos 10 gerados" com auto-refresh + badge de duplicata.
+4. **SEO**: `ArticleSEO.tsx` (dimensões + ImageObject), `NoticiaDetalhes.tsx` + `NewsCard.tsx` + `RelatedArticles.tsx` (alt dinâmico, loading hints).
 
-## Etapa 3 — Google AI Studio direto (opcional, $0)
+## Impacto
 
-- Pedir nova secret `GOOGLE_AI_STUDIO_API_KEY` (você gera grátis em aistudio.google.com)
-- Free tier do `gemini-2.5-flash-image-preview` no AI Studio: ~1500 req/dia sem cobrança
-- Function `generate-image-google-aistudio` chama direto `generativelanguage.googleapis.com` (sem passar pelo Lovable Gateway → zero crédito Lovable)
-- Reserva esse caminho para artigos marcados como "destaque" (novo toggle no editor)
+- **Custo:** $0 (continua tudo no SVG).
+- **SEO:** filename com keyword + alt rico + ImageObject = sinais claros pro Google Images e Discover.
+- **Operação:** você acompanha o histórico em tempo real e identifica visualmente se algo repetiu indevidamente.
 
-## Etapa 4 — Backfill em massa dos 30k
+## Pergunta aberta
 
-- Adicionar aba "Recarregar capas SVG (lote)" em `/admin/imagens`
-- Worker dispara em batches de 200 (SVG é rápido, ~50ms/imagem)
-- Roda via pg_cron a cada 5min até concluir, atualiza `image_source='svg'` e `image_regenerated_at`
-- Estimativa: 30k imagens em ~25 minutos de processamento total
-
-## UI do admin
-
-Aba existente `RegenerateNanoBananaTab` ganha 2 modos:
-
-```text
-[ ] Modo SVG (custo zero, recomendado)         ◀ default
-[ ] Modo Google AI Studio (free tier diário)
-[ ] Modo Lovable AI Gateway (pago, $0.003/img)
-```
-
-Card de status mostra:
-- Pendentes • Já com SVG • Já com IA • Custo gasto no mês
-
-## Detalhes técnicos
-
-- **Renderização SVG → PNG**: `npm:@resvg/resvg-js@2.6.2` no Deno edge (já testado no ecossistema Supabase)
-- **Fontes embutidas**: usar fonte system-safe (Inter via base64) ou texto puro com `<tspan>` pra evitar dependência externa
-- **Cache busting**: manter `?v=timestamp` no URL final
-- **Conformidade**: nunca renderizar escudo/badge de time (regra `mem://style/team-badge-compliance`); só logo da liga via `ligas.logo_url` (regra `mem://style/league-branding`)
-- **Bucket**: reusa `news-thumbnails` que já existe
-- **Coluna nova**: `noticias.image_source TEXT DEFAULT 'svg'`
-
-## Resultado esperado
-
-| Métrica | Antes | Depois |
-|---|---|---|
-| Custo/imagem padrão | $0,003 | **$0** |
-| Custo p/ 30k retroativos | ~$90 | **$0** |
-| Custo p/ artigos novos diários | ~$0,15/dia | **$0** (SVG) ou $0 (AI Studio free) |
-| Tempo p/ regerar 30k | ~25h (IA) | **~25min** (SVG) |
-| Saldo Lovable AI consumido | alto | praticamente nulo |
-
-## Ordem de execução
-
-1. Migration: adiciona `noticias.image_source`
-2. Cria edge function `generate-article-card-svg` (com `@resvg/resvg-js`)
-3. Refatora aba do admin pra ter os 3 modos, padrão SVG
-4. Worker de backfill em lote
-5. (Opcional, depois) pede secret `GOOGLE_AI_STUDIO_API_KEY` e cria function pro modo destaque
+Quer que eu adicione o sufixo "PRÉVIA / ANÁLISE / PÓS-JOGO" no card pra diferenciar visualmente artigos do mesmo confronto, ou mantém o card limpo (default)?

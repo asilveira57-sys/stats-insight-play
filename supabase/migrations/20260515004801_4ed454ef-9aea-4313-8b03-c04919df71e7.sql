@@ -1,0 +1,1 @@
+ALTER TABLE public.noticias ADD COLUMN IF NOT EXISTS imagem_alt TEXT;
