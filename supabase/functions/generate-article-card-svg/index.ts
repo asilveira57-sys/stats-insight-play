@@ -77,11 +77,9 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-function pickStadium(seed: string): string {
-  const loaded = Array.from(stadiumCache.keys());
-  if (loaded.length === 0) return "";
-  const idx = hashString(seed) % loaded.length;
-  return stadiumCache.get(loaded[idx]) || "";
+function pickStadiumName(seed: string): string {
+  const idx = hashString(seed) % STADIUM_FILES.length;
+  return STADIUM_FILES[idx];
 }
 
 const corsHeaders = {
