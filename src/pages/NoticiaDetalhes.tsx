@@ -174,6 +174,7 @@ export default function NoticiaDetalhes() {
         title={noticia.titulo}
         description={noticia.resumo || noticia.texto.slice(0, 160)}
         image={noticia.imagem_url || undefined}
+        imageAlt={(noticia as any).imagem_alt || noticia.titulo}
         url={articleUrl}
         publishedTime={noticia.data_publicacao || noticia.created_at}
       />
