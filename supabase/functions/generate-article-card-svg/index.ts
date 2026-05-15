@@ -1,43 +1,11 @@
 // Generates SVG-based article cover cards (zero AI cost).
-// Renders SVG → PNG via @resvg/resvg-wasm with stadium background + Inter font.
+// Stores the SVG directly to avoid CPU-heavy PNG rasterization in Edge Functions.
 // Body: { article_ids?: string[], limit?: number, mode?: 'preview'|'execute' }
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resvg, initWasm } from "npm:@resvg/resvg-wasm@2.6.2";
 
-let wasmReady: Promise<void> | null = null;
-async function ensureWasm() {
-  if (!wasmReady) {
-    wasmReady = (async () => {
-      const res = await fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm");
-      const buf = await res.arrayBuffer();
-      await initWasm(buf);
-    })();
-  }
-  await wasmReady;
-}
-
-// ---- Font cache (Inter Bold + Black via jsdelivr) ----
-let fontBuffersPromise: Promise<Uint8Array[]> | null = null;
-async function getFontBuffers(): Promise<Uint8Array[]> {
-  if (!fontBuffersPromise) {
-    fontBuffersPromise = (async () => {
-      const urls = [
-        "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
-      ];
-      const bufs = await Promise.all(urls.map(async (u) => {
-        const r = await fetch(u);
-        if (!r.ok) throw new Error(`font fetch ${u}: ${r.status}`);
-        return new Uint8Array(await r.arrayBuffer());
-      }));
-      return bufs;
-    })();
-  }
-  return fontBuffersPromise;
-}
-
-// ---- Stadium image cache (8 backgrounds as base64 data URIs) ----
+// ---- Stadium image URLs ----
 const STADIUM_BASE = "https://wlvwcbxegrmobefloikr.supabase.co/storage/v1/object/public/card-backgrounds";
 const STADIUM_FILES = [
   "01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg","07.jpg","08.jpg",
@@ -45,28 +13,6 @@ const STADIUM_FILES = [
   "17.jpg","18.jpg","19.jpg","20.jpg","21.jpg","22.jpg","23.jpg","24.jpg",
   "25.jpg","26.jpg","27.jpg","28.jpg",
 ];
-const stadiumCache: Map<string, string> = new Map();
-
-// Lazy: fetch a single stadium on demand and cache its data URI.
-async function loadStadium(name: string): Promise<string | null> {
-  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await fetch(`${STADIUM_BASE}/${name}`);
-      if (!r.ok) throw new Error(`status ${r.status}`);
-      const buf = new Uint8Array(await r.arrayBuffer());
-      let bin = "";
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const uri = `data:image/jpeg;base64,${btoa(bin)}`;
-      stadiumCache.set(name, uri);
-      return uri;
-    } catch (e) {
-      if (attempt === 2) console.warn(`stadium ${name} skipped: ${e}`);
-      await new Promise((res) => setTimeout(res, 200 * (attempt + 1)));
-    }
-  }
-  return null;
-}
 
 function hashString(s: string): number {
   let h = 0;
