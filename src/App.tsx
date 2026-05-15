@@ -33,6 +33,7 @@ import EditorialDashboard from "./pages/EditorialDashboard";
 import Admin from "./pages/Admin";
 import AdminControlCenter from "./pages/AdminControlCenter";
 import AdminSitemap from "./pages/AdminSitemap";
+import AdminApiFootball from "./pages/AdminApiFootball";
 import AdminAnalyticsIntegrations from "./pages/AdminAnalyticsIntegrations";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminSlugs from "./pages/AdminSlugs";
@@ -133,6 +134,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/sitemap" element={<AdminSitemap />} />
+            <Route path="/admin/api-football" element={<AdminApiFootball />} />
             <Route path="/admin/integracoes/analytics" element={<AdminAnalyticsIntegrations />} />
             <Route path="/admin/privacidade/lgpd" element={<AdminLgpdPage />} />
             <Route path="/admin/slugs" element={<AdminSlugs />} />
