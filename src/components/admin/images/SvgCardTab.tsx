@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, Image as ImageIcon, Zap, Infinity as InfinityIcon, StopCircle, ExternalLink, History } from "lucide-react";
+import { Loader2, Play, Image as ImageIcon, Zap, Infinity as InfinityIcon, StopCircle, ExternalLink, History, RefreshCw } from "lucide-react";
 
 interface ResultItem {
   id: string;
