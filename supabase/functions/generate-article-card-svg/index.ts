@@ -100,6 +100,24 @@ function buildSvg(args: {
 </svg>`;
 }
 
+function slugify(s: string): string {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string }): string {
+  const parts = [`Capa do artigo: ${args.timeCasa} vs ${args.timeFora}`];
+  if (args.liga) parts.push(`pela ${args.liga}`);
+  if (args.data) parts.push(`em ${args.data}`);
+  parts.push("— análise estatística Statball");
+  return parts.join(" ");
+}
+
 function fmtDateBR(dStr: string | null): string {
   if (!dStr) return "";
   try {
