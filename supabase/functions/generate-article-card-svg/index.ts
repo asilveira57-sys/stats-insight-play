@@ -357,7 +357,7 @@ serve(async (req) => {
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
-        const stadium = pickStadium(art.id);
+        const stadium = (await loadStadium(pickStadiumName(art.id))) || "";
         const titulo = art.titulo || "";
 
         const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
