@@ -23,8 +23,11 @@ export function SvgCardTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [batchSize, setBatchSize] = useState(1);
+  const [batchCount, setBatchCount] = useState(1);
   const [running, setRunning] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
+  const [multiRun, setMultiRun] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [stopFlag, setStopFlag] = useState(false);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [progress, setProgress] = useState({ totalFixed: 0, lastBatchFixed: 0, lastBatchErrors: 0 });
@@ -142,6 +145,38 @@ export function SvgCardTab() {
     }
   };
 
+  const runMulti = async () => {
+    setMultiRun(true);
+    setRunning(true);
+    setStopFlag(false);
+    setBatchProgress({ current: 0, total: batchCount });
+    let totalFixed = 0;
+    let totalErrors = 0;
+    try {
+      for (let i = 0; i < batchCount; i++) {
+        if (stopFlag) break;
+        setBatchProgress({ current: i + 1, total: batchCount });
+        const r = await runOneBatch();
+        totalFixed += r.fixed;
+        totalErrors += r.errors;
+        setResults(r.results);
+        setProgress({ totalFixed, lastBatchFixed: r.fixed, lastBatchErrors: r.errors });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-pending"] });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-done"] });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-latest-10"] });
+        if (r.pending === 0) break;
+        await new Promise(res => setTimeout(res, 500));
+      }
+      toast({ title: "Multi-lote finalizado", description: `Total: ${totalFixed} corrigidos, ${totalErrors} erros` });
+    } catch (err: any) {
+      toast({ title: "Multi-lote interrompido", description: err.message, variant: "destructive" });
+    } finally {
+      setRunning(false);
+      setMultiRun(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-image-stats"] });
+    }
+  };
+
   const total = (pendingCount || 0) + (doneCount || 0);
   const percent = total > 0 ? Math.round(((doneCount || 0) / total) * 100) : 0;
 
@@ -195,20 +230,44 @@ export function SvgCardTab() {
                 id="batch"
                 type="number"
                 min={1}
-                max={50}
+                max={100}
                 value={batchSize}
-                onChange={(e) => setBatchSize(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                onChange={(e) => setBatchSize(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                className="w-28"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="batchCount">Nº de lotes</Label>
+              <Input
+                id="batchCount"
+                type="number"
+                min={1}
+                max={1000}
+                value={batchCount}
+                onChange={(e) => setBatchCount(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))}
                 className="w-28"
               />
             </div>
 
             <Button onClick={runBatch} disabled={running || !pendingCount} className="gap-2">
-              {running && !autoRun ? (
+              {running && !autoRun && !multiRun ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</>
               ) : (
                 <><Play className="h-4 w-4" /> Rodar 1 lote</>
               )}
             </Button>
+
+            {!multiRun ? (
+              <Button onClick={runMulti} disabled={running || !pendingCount} variant="default" className="gap-2">
+                {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                Rodar {batchCount} lote{batchCount > 1 ? "s" : ""}
+              </Button>
+            ) : (
+              <Button onClick={() => setStopFlag(true)} variant="destructive" className="gap-2">
+                <StopCircle className="h-4 w-4" /> Parar ({batchProgress.current}/{batchProgress.total})
+              </Button>
+            )}
 
             {!autoRun ? (
               <Button onClick={runAuto} disabled={running || !pendingCount} variant="secondary" className="gap-2">
@@ -220,6 +279,12 @@ export function SvgCardTab() {
               </Button>
             )}
           </div>
+
+          {multiRun && (
+            <div className="text-sm text-muted-foreground">
+              Lote {batchProgress.current} de {batchProgress.total}...
+            </div>
+          )}
 
           {progress.totalFixed > 0 && (
             <div className="rounded-lg border p-3 grid grid-cols-3 gap-4 text-sm">
