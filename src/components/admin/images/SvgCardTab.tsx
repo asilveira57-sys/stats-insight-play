@@ -106,6 +106,7 @@ export function SvgCardTab() {
       setRunning(false);
       queryClient.invalidateQueries({ queryKey: ["svg-card-pending"] });
       queryClient.invalidateQueries({ queryKey: ["svg-card-done"] });
+      queryClient.invalidateQueries({ queryKey: ["svg-card-latest-10"] });
       queryClient.invalidateQueries({ queryKey: ["admin-image-stats"] });
     }
   };
