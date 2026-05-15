@@ -49,6 +49,13 @@ function pickColor(c: any, fallback: string): string {
   return fallback;
 }
 
+function detectTipo(titulo: string): "PRÉVIA" | "PÓS-JOGO" | "ANÁLISE" {
+  const t = (titulo || "").toLowerCase();
+  if (/\b(pr[ée]via|preview|antes|antevis[aã]o)\b/.test(t)) return "PRÉVIA";
+  if (/\b(p[óo]s[\s-]?jogo|resultado|encerrad|terminou|venceu|perdeu|empat|placar|goleada)\b/.test(t)) return "PÓS-JOGO";
+  return "ANÁLISE";
+}
+
 function buildSvg(args: {
   timeCasa: string;
   timeFora: string;
@@ -57,12 +64,22 @@ function buildSvg(args: {
   liga: string;
   data: string;
   ligaLogo?: string | null;
+  tipo: string;
 }): string {
-  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo } = args;
+  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo, tipo } = args;
   const tc = escapeXml(fitText(timeCasa.toUpperCase(), 22));
   const tf = escapeXml(fitText(timeFora.toUpperCase(), 22));
   const lg = escapeXml(fitText(liga, 40));
   const dt = escapeXml(data);
+  const tp = escapeXml(tipo.toUpperCase());
+
+  // Estimate badge width based on character count (approx 14px per char at 22px font + padding)
+  const badgeW = Math.max(120, tp.length * 16 + 40);
+  const badgeBlock = `
+  <g>
+    <rect x="${W - badgeW - 60}" y="55" width="${badgeW}" height="48" rx="24" fill="#22D3EE" opacity="0.95"/>
+    <text x="${W - badgeW/2 - 60}" y="87" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="900" fill="#0F172A" letter-spacing="2">${tp}</text>
+  </g>`;
 
   const logoBlock = ligaLogo
     ? `<image href="${escapeXml(ligaLogo)}" x="${W - 140}" y="${H - 140}" width="100" height="100" preserveAspectRatio="xMidYMid meet" opacity="0.95"/>`
