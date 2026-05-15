@@ -145,6 +145,38 @@ export function SvgCardTab() {
     }
   };
 
+  const runMulti = async () => {
+    setMultiRun(true);
+    setRunning(true);
+    setStopFlag(false);
+    setBatchProgress({ current: 0, total: batchCount });
+    let totalFixed = 0;
+    let totalErrors = 0;
+    try {
+      for (let i = 0; i < batchCount; i++) {
+        if (stopFlag) break;
+        setBatchProgress({ current: i + 1, total: batchCount });
+        const r = await runOneBatch();
+        totalFixed += r.fixed;
+        totalErrors += r.errors;
+        setResults(r.results);
+        setProgress({ totalFixed, lastBatchFixed: r.fixed, lastBatchErrors: r.errors });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-pending"] });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-done"] });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-latest-10"] });
+        if (r.pending === 0) break;
+        await new Promise(res => setTimeout(res, 500));
+      }
+      toast({ title: "Multi-lote finalizado", description: `Total: ${totalFixed} corrigidos, ${totalErrors} erros` });
+    } catch (err: any) {
+      toast({ title: "Multi-lote interrompido", description: err.message, variant: "destructive" });
+    } finally {
+      setRunning(false);
+      setMultiRun(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-image-stats"] });
+    }
+  };
+
   const total = (pendingCount || 0) + (doneCount || 0);
   const percent = total > 0 ? Math.round(((doneCount || 0) / total) * 100) : 0;
 
