@@ -4,7 +4,19 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resvg } from "npm:@resvg/resvg-js@2.6.2";
+import { Resvg, initWasm } from "npm:@resvg/resvg-wasm@2.6.2";
+
+let wasmReady: Promise<void> | null = null;
+async function ensureWasm() {
+  if (!wasmReady) {
+    wasmReady = (async () => {
+      const res = await fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm");
+      const buf = await res.arrayBuffer();
+      await initWasm(buf);
+    })();
+  }
+  await wasmReady;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
