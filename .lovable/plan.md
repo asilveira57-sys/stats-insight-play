@@ -1,96 +1,99 @@
-## Objetivo
+## Diagnóstico do print que você mandou
 
-1. Validar visualmente que cada card SVG é único entre lotes (você roda 100 em 100).
-2. Transformar a "máquina de imagem" em uma alavanca de SEO: nome de arquivo com palavra-chave, alt descritivo, dimensões/og corretos e structured data.
+Os 6 cards saíram **idênticos** (gradiente azul→vermelho, badge ciano, sem texto). O motivo real:
 
----
+1. **`@resvg/resvg-wasm` não tem fonte carregada por padrão.** Quando o SVG tem `<text>`, ele é renderizado **vazio** se nenhuma fonte foi registrada. Por isso nem o nome dos times, nem a liga, nem o badge "PRÉVIA" apareceram. O que você vê é só o gradiente + o `<rect>` do badge (a forma sem o texto dentro).
+2. **Sem imagem de fundo**, o card vira só "duas cores em diagonal" — visualmente parece tudo igual mesmo entre confrontos diferentes, porque sem texto você não percebe a variação de cores (e cores default `#1e3a8a` / `#7f1d1d` predominam quando o time não tem `cores` cadastradas, o que parece ser o caso da maioria).
+3. **O thumb no admin não é clicável** — só o ícone de "abrir imagem em tamanho real" abre o PNG, sem link pro artigo.
 
-## Parte 1 — Histórico ao vivo dos últimos 10 gerados
-
-**Onde:** `src/components/admin/images/SvgCardTab.tsx` (Admin → Imagens → SVG Cards)
-
-**O que muda:**
-- Nova seção **"Últimos 10 gerados"** abaixo da "Amostra do último lote", sempre visível.
-- Lê direto da tabela `noticias` (não depende do retorno do edge function), ordenado por `image_regenerated_at DESC`, filtrando `image_source = 'svg'`.
-- Atualiza automaticamente: `refetchInterval: 3s` enquanto rodando, `15s` em idle.
-- Cada card mostra: thumbnail (1200x630), título, confronto (time casa vs fora), data/hora UTC-3 do `image_regenerated_at`, badge com a liga.
-- Botão "Abrir imagem" em nova aba para inspeção em tamanho real.
-- Indicador visual de duplicidade: se duas thumbnails geradas no mesmo lote tiverem o mesmo `partida_id`, marca com badge amarelo "MESMO JOGO" (ajuda a flagrar repetições reais — quando o confronto é realmente o mesmo, o card será idêntico de propósito).
-
-**Por que isso resolve sua dúvida de unicidade:**
-O card SVG é determinístico em função de `(time_casa, time_fora, cores, liga, data)`. Logo:
-- **Confrontos diferentes → cards diferentes** (cores e nomes mudam).
-- **Mesmo confronto, artigos diferentes (ex: prévia + pós-jogo) → card idêntico**, porque os dados de origem são iguais. Isso é esperado e correto. O badge "MESMO JOGO" deixa isso explícito pra você não confundir com bug.
-- Se quiser variar mesmo entre artigos do mesmo confronto, posso adicionar um sufixo no SVG (ex: "PRÉVIA" / "ANÁLISE" / "PÓS-JOGO") usando `noticia.tipo` ou heurística no título. **Quer que eu inclua isso já?** (default = não, mantém o card limpo)
+Resolver os 3 pontos é o que esse plano faz, mantendo **custo zero**.
 
 ---
 
-## Parte 2 — SEO via imagem
+## Parte 1 — Fonte real embutida no edge function
 
-A engine de imagens hoje só salva o arquivo. Vamos extrair valor de SEO em 4 frentes:
+**Problema:** resvg-wasm não tem fontes do sistema; precisa receber TTF explicitamente.
 
-### 2.1 Filename com palavra-chave (no edge function)
+**Solução:**
+- No `generate-article-card-svg/index.ts`, baixar **uma vez por cold-start** uma fonte open-source da Google Fonts via CDN (ex: `Inter-Bold.ttf` + `Inter-Black.ttf` da `fonts.gstatic.com`) como `ArrayBuffer`.
+- Passar via `new Resvg(svg, { font: { fontBuffers: [interBold, interBlack], defaultFontFamily: "Inter" } })`.
+- Trocar `font-family="Helvetica, Arial, sans-serif"` por `font-family="Inter"` no SVG.
+- Cachear em variável module-level pra não baixar a cada request.
 
-**Hoje:** `svg-{uuid}.png` → zero valor SEO.
+Isso sozinho já faz o **nome dos times, VS, liga, data, badge "PRÉVIA/ANÁLISE/PÓS-JOGO" e marca Statball aparecerem**. Por si só, dois cards de jogos diferentes ficam visivelmente distintos (texto + cores).
 
-**Mudança em `generate-article-card-svg/index.ts`:**
-- Gerar slug a partir de `{slug-do-artigo}` ou fallback `{time-casa}-vs-{time-fora}-{liga}-{ano}` usando o slugify já existente no projeto.
-- Limite 80 chars, ASCII, kebab-case.
-- Nome final: `${slug}-statball.png` (ex: `flamengo-vs-palmeiras-brasileirao-2026-statball.png`).
-- Mantém `upsert: true` — re-gerações sobrescrevem o mesmo arquivo (sem lixo no bucket).
-- Para evitar colisão entre artigos diferentes do mesmo jogo, anexar 6 chars do `art.id` ao final: `${slug}-{shortId}.png`.
+---
 
-### 2.2 Alt text descritivo persistido
+## Parte 2 — Imagem de estádio como fundo (zero custo)
 
-**Adicionar coluna** `noticias.imagem_alt TEXT` (nullable).
+**Estratégia:** banco fixo de ~12 fotos genéricas de estádio (sem identificação de clube — só arquibancada, gramado iluminado, vista aérea, holofotes). Usadas como background com overlay escuro pra texto continuar legível.
 
-**Edge function preenche** com template:
-> `"Capa do artigo: {Time Casa} vs {Time Fora} pela {Liga} em {data por extenso} — análise estatística Statball"`
+**Implementação:**
+1. **Bucket `card-backgrounds`** (público) com 12 imagens 1200x630 JPG pré-otimizadas (~80KB cada). Faço o seed copiando 12 imagens livres de direitos (Pexels/Unsplash CC0) ou geradas via `imagegen`.
+2. **Seleção determinística por jogo** para garantir variedade sem aleatoriedade entre rodadas:  
+   `idx = hash(partida_id || titulo) % 12`  
+   → Mesmo confronto sempre cai no mesmo estádio (estável). Confrontos diferentes caem em estádios diferentes.
+3. **No SVG**, embutir a imagem como `<image href="data:image/jpeg;base64,..." width="1200" height="630"/>` na primeira camada, **antes** do gradiente — que vira overlay semi-transparente colorido com as cores dos times. Resultado: foto real visível por baixo + tom dos times por cima + texto branco legível.
+4. **Pré-carrega** as 12 imagens em base64 uma única vez (cache module-level), assim cada request só pega a do índice escolhido.
 
-**Frontend (`NoticiaDetalhes.tsx` linha 219):** trocar `alt={noticia.titulo}` por `alt={noticia.imagem_alt || noticia.titulo}`.
-
-Aplicar o mesmo em `NewsCard.tsx`, `RelatedArticles.tsx` e qualquer `<img>` que usa `imagem_url`.
-
-### 2.3 Open Graph + Twitter image dimensions corretas
-
-`ArticleSEO.tsx` já emite `og:image:width=1280 / height=720`. Card SVG é **1200x630**. Corrigir para os valores reais (1200/630) — se errado, Facebook/LinkedIn rejeitam ou recortam.
-
-### 2.4 Schema.org ImageObject no JSON-LD
-
-Em `ArticleSEO.tsx`, expandir o campo `image` do JSON-LD de string simples para objeto:
-
-```json
-"image": {
-  "@type": "ImageObject",
-  "url": "...",
-  "width": 1200,
-  "height": 630,
-  "caption": "{imagem_alt}"
-}
+```text
+┌─────────────────────────────────────────────┐
+│  [foto estádio]                             │
+│  [overlay diagonal cor casa→cor fora 60%]   │
+│  [overlay vertical preto 0→0.55]            │
+│  LIGA            [PRÉVIA]                   │
+│  data                                       │
+│         FLAMENGO                            │
+│            VS                               │
+│         PALMEIRAS                           │
+│  statball.com.br             [logo liga]    │
+└─────────────────────────────────────────────┘
 ```
 
-Google usa isso para Rich Results de notícias.
+---
 
-### 2.5 Bonus barato: lazy + loading hints
+## Parte 3 — Card admin clicável
 
-- `<img loading="lazy" decoding="async">` em listas (NewsCard, RelatedArticles).
-- Hero do artigo usa `loading="eager" fetchpriority="high"` (já é LCP, não pode ser lazy).
+**Em `SvgCardTab.tsx`**, no bloco "Últimos 10 gerados" (linhas 285–325):
+- Envolver a imagem inteira em `<Link to={"/noticia/" + n.slug} target="_blank">` (rota correta: vou conferir no `App.tsx`, mas pelo `useNoticiaBySlug` é `/noticias/:slug` ou `/noticia/:slug` — uso o que já está em produção).
+- Manter o ícone "abrir imagem PNG raw" como botão secundário no canto.
+- Adicionar mais um botão pequeno "↻ Regenerar este" que invoca `generate-article-card-svg` com `{ article_ids: [n.id] }` — útil pra você corrigir um caso ruim sem rodar o lote todo.
 
 ---
 
-## Ordem de implementação
+## Parte 4 — Estratégia de re-execução
 
-1. **Migration**: `ALTER TABLE noticias ADD COLUMN imagem_alt TEXT;`
-2. **Edge function** `generate-article-card-svg`: slug no filename, geração e persistência do `imagem_alt`.
-3. **Frontend admin** `SvgCardTab.tsx`: seção "Últimos 10 gerados" com auto-refresh + badge de duplicata.
-4. **SEO**: `ArticleSEO.tsx` (dimensões + ImageObject), `NoticiaDetalhes.tsx` + `NewsCard.tsx` + `RelatedArticles.tsx` (alt dinâmico, loading hints).
+Como os ~4.600 cards atuais saíram quebrados (sem texto), o fluxo certo é:
+1. Deploy das mudanças (fonte + estádio).
+2. **Resetar o backlog**: marcar todos os SVGs atuais como "pendentes de novo" via SQL (`UPDATE noticias SET image_regenerated_at = NULL WHERE image_source = 'svg'`).
+3. Rodar Auto-run de novo. Cada batch agora gera card de verdade, com texto e estádio.
 
-## Impacto
+Vou pedir confirmação antes do reset, porque é destrutivo do estado atual.
 
-- **Custo:** $0 (continua tudo no SVG).
-- **SEO:** filename com keyword + alt rico + ImageObject = sinais claros pro Google Images e Discover.
-- **Operação:** você acompanha o histórico em tempo real e identifica visualmente se algo repetiu indevidamente.
+---
 
-## Pergunta aberta
+## Ordem técnica de implementação
 
-Quer que eu adicione o sufixo "PRÉVIA / ANÁLISE / PÓS-JOGO" no card pra diferenciar visualmente artigos do mesmo confronto, ou mantém o card limpo (default)?
+1. Editar `supabase/functions/generate-article-card-svg/index.ts`:
+   - carregar Inter-Bold + Inter-Black (cache module-level)
+   - carregar 12 estádios em base64 (cache module-level)
+   - função `pickStadium(seed)` determinística
+   - SVG novo: `<image>` estádio + overlay gradiente cores + overlay preto + textos com `font-family="Inter"`
+2. Criar bucket `card-backgrounds` (público) via migration + seed das 12 imagens (uso `imagegen` premium pra ficar bom — feito uma vez só, custo único de ~$0.50 que vale para sempre).
+3. Editar `src/components/admin/images/SvgCardTab.tsx`:
+   - thumb vira link pro artigo (`/noticia/:slug` ou `/noticias/:slug` — confirmo na implementação)
+   - botão "↻ Regerar este" por card
+4. Deploy edge function + perguntar se reseta backlog dos 4.600 antigos.
+
+## Custo
+
+- **Recorrente:** $0 (fontes via CDN, estádios em storage do projeto).
+- **Único, no setup:** ~$0.50 pra gerar as 12 fotos de estádio com `imagegen` em qualidade boa. Alternativa $0: baixar de Pexels/Unsplash CC0 via curl. **Quer que eu use Pexels grátis ou gere com imagegen pra ter controle total do estilo?**
+
+## Dúvida pra você decidir
+
+A foto de estádio deve ser:
+- **(A)** Genérica sempre (12 ambientes diferentes, sem identidade de clube) — seguro, $0 recorrente, atende copyright.
+- **(B)** Tentar usar foto do estádio do mandante quando soubermos (ex: Maracanã pro Flamengo) — mais bonito, mas exige mapeamento manual time→estádio e fotos sem direitos. Mais trabalho, mais risco.
+
+Recomendo **(A)** pra subir rápido e iterar pra (B) depois se valer a pena.
