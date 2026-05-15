@@ -246,7 +246,7 @@ serve(async (req) => {
         const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
         const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
 
-        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr });
+        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr, tipo });
 
         const { error: updErr } = await supabase
           .from("noticias")
