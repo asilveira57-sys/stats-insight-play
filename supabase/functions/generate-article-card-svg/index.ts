@@ -45,39 +45,27 @@ const STADIUM_FILES = [
   "17.jpg","18.jpg","19.jpg","20.jpg","21.jpg","22.jpg","23.jpg","24.jpg",
   "25.jpg","26.jpg","27.jpg","28.jpg",
 ];
-let stadiumCache: Map<string, string> = new Map();
-let stadiumLoadPromise: Promise<void> | null = null;
+const stadiumCache: Map<string, string> = new Map();
 
-async function ensureStadiums() {
-  if (!stadiumLoadPromise) {
-    stadiumLoadPromise = (async () => {
-      const results = await Promise.allSettled(STADIUM_FILES.map(async (name) => {
-        // Retry up to 2x on transient failures
-        let lastErr: unknown;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            const r = await fetch(`${STADIUM_BASE}/${name}`);
-            if (!r.ok) throw new Error(`status ${r.status}`);
-            const buf = new Uint8Array(await r.arrayBuffer());
-            let bin = "";
-            for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-            stadiumCache.set(name, `data:image/jpeg;base64,${btoa(bin)}`);
-            return;
-          } catch (e) {
-            lastErr = e;
-            await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-          }
-        }
-        console.warn(`stadium ${name} skipped: ${lastErr}`);
-      }));
-      // If we got at least 1, consider it usable; otherwise reset to retry next call
-      if (stadiumCache.size === 0) {
-        stadiumLoadPromise = null;
-        throw new Error("no stadiums loaded");
-      }
-    })().catch((e) => { stadiumLoadPromise = null; throw e; });
+// Lazy: fetch a single stadium on demand and cache its data URI.
+async function loadStadium(name: string): Promise<string | null> {
+  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`${STADIUM_BASE}/${name}`);
+      if (!r.ok) throw new Error(`status ${r.status}`);
+      const buf = new Uint8Array(await r.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const uri = `data:image/jpeg;base64,${btoa(bin)}`;
+      stadiumCache.set(name, uri);
+      return uri;
+    } catch (e) {
+      if (attempt === 2) console.warn(`stadium ${name} skipped: ${e}`);
+      await new Promise((res) => setTimeout(res, 200 * (attempt + 1)));
+    }
   }
-  await stadiumLoadPromise;
+  return null;
 }
 
 function hashString(s: string): number {
