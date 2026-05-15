@@ -248,12 +248,13 @@ serve(async (req) => {
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, KEY);
 
-    let limit = 1;
+    let limit = 5;
     let articleIds: string[] | null = null;
     let mode: "preview" | "execute" = "execute";
     try {
       const body = await req.json();
-      limit = 1;
+      const requested = Number(body?.limit ?? body?.batch_size ?? 5);
+      limit = Math.min(Math.max(1, isFinite(requested) ? requested : 5), 50);
       articleIds = Array.isArray(body?.article_ids) ? body.article_ids : null;
       mode = body?.mode === "preview" ? "preview" : "execute";
     } catch {}
