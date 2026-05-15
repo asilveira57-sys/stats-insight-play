@@ -109,6 +109,7 @@ function fmtDateBR(dStr: string | null): string {
 }
 
 async function renderPng(svg: string): Promise<Uint8Array> {
+  await ensureWasm();
   const r = new Resvg(svg, { fitTo: { mode: "width", value: W } });
   const png = r.render();
   return png.asPng();
