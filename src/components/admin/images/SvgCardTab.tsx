@@ -58,6 +58,22 @@ export function SvgCardTab() {
     refetchInterval: running ? 3_000 : false,
   });
 
+  // Últimos 10 gerados (independente do retorno do edge function)
+  const { data: latest } = useQuery({
+    queryKey: ["svg-card-latest-10"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("noticias")
+        .select("id, titulo, slug, imagem_url, imagem_alt, partida_id, image_regenerated_at, partidas:partida_id(liga:liga_id(nome))")
+        .eq("image_source", "svg")
+        .not("image_regenerated_at", "is", null)
+        .order("image_regenerated_at", { ascending: false })
+        .limit(10);
+      return data || [];
+    },
+    refetchInterval: running ? 3_000 : 15_000,
+  });
+
   const runOneBatch = async (): Promise<{ pending: number; fixed: number; errors: number; results: ResultItem[] }> => {
     const { data, error } = await supabase.functions.invoke("generate-article-card-svg", {
       body: { limit: batchSize, mode: "execute" },
