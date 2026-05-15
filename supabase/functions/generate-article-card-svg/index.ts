@@ -45,39 +45,27 @@ const STADIUM_FILES = [
   "17.jpg","18.jpg","19.jpg","20.jpg","21.jpg","22.jpg","23.jpg","24.jpg",
   "25.jpg","26.jpg","27.jpg","28.jpg",
 ];
-let stadiumCache: Map<string, string> = new Map();
-let stadiumLoadPromise: Promise<void> | null = null;
+const stadiumCache: Map<string, string> = new Map();
 
-async function ensureStadiums() {
-  if (!stadiumLoadPromise) {
-    stadiumLoadPromise = (async () => {
-      const results = await Promise.allSettled(STADIUM_FILES.map(async (name) => {
-        // Retry up to 2x on transient failures
-        let lastErr: unknown;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            const r = await fetch(`${STADIUM_BASE}/${name}`);
-            if (!r.ok) throw new Error(`status ${r.status}`);
-            const buf = new Uint8Array(await r.arrayBuffer());
-            let bin = "";
-            for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-            stadiumCache.set(name, `data:image/jpeg;base64,${btoa(bin)}`);
-            return;
-          } catch (e) {
-            lastErr = e;
-            await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-          }
-        }
-        console.warn(`stadium ${name} skipped: ${lastErr}`);
-      }));
-      // If we got at least 1, consider it usable; otherwise reset to retry next call
-      if (stadiumCache.size === 0) {
-        stadiumLoadPromise = null;
-        throw new Error("no stadiums loaded");
-      }
-    })().catch((e) => { stadiumLoadPromise = null; throw e; });
+// Lazy: fetch a single stadium on demand and cache its data URI.
+async function loadStadium(name: string): Promise<string | null> {
+  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`${STADIUM_BASE}/${name}`);
+      if (!r.ok) throw new Error(`status ${r.status}`);
+      const buf = new Uint8Array(await r.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const uri = `data:image/jpeg;base64,${btoa(bin)}`;
+      stadiumCache.set(name, uri);
+      return uri;
+    } catch (e) {
+      if (attempt === 2) console.warn(`stadium ${name} skipped: ${e}`);
+      await new Promise((res) => setTimeout(res, 200 * (attempt + 1)));
+    }
   }
-  await stadiumLoadPromise;
+  return null;
 }
 
 function hashString(s: string): number {
@@ -89,11 +77,9 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-function pickStadium(seed: string): string {
-  const loaded = Array.from(stadiumCache.keys());
-  if (loaded.length === 0) return "";
-  const idx = hashString(seed) % loaded.length;
-  return stadiumCache.get(loaded[idx]) || "";
+function pickStadiumName(seed: string): string {
+  const idx = hashString(seed) % STADIUM_FILES.length;
+  return STADIUM_FILES[idx];
 }
 
 const corsHeaders = {
@@ -303,18 +289,18 @@ serve(async (req) => {
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, KEY);
 
-    let limit = 50;
+    let limit = 5;
     let articleIds: string[] | null = null;
     let mode: "preview" | "execute" = "execute";
     try {
       const body = await req.json();
-      limit = Math.max(1, Math.min(body?.limit || 50, 500));
+      limit = Math.max(1, Math.min(body?.limit || 5, 20));
       articleIds = Array.isArray(body?.article_ids) ? body.article_ids : null;
       mode = body?.mode === "preview" ? "preview" : "execute";
     } catch {}
 
-    // Pré-carrega assets pesados (font + estádios) uma única vez por cold-start
-    await Promise.all([ensureWasm(), getFontBuffers(), ensureStadiums()]);
+    // Pré-carrega apenas WASM + fonte (estádios são lazy por artigo)
+    await Promise.all([ensureWasm(), getFontBuffers()]);
 
     let q = supabase
       .from("noticias")
@@ -371,7 +357,7 @@ serve(async (req) => {
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
-        const stadium = pickStadium(art.id);
+        const stadium = (await loadStadium(pickStadiumName(art.id))) || "";
         const titulo = art.titulo || "";
 
         const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
