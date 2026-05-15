@@ -4,6 +4,7 @@ interface ArticleSEOProps {
   title: string;
   description: string;
   image?: string;
+  imageAlt?: string;
   url: string;
   publishedTime?: string;
   author?: string;
