@@ -90,8 +90,10 @@ function hashString(s: string): number {
 }
 
 function pickStadium(seed: string): string {
-  const idx = hashString(seed) % STADIUM_FILES.length;
-  return stadiumCache.get(STADIUM_FILES[idx]) || "";
+  const loaded = Array.from(stadiumCache.keys());
+  if (loaded.length === 0) return "";
+  const idx = hashString(seed) % loaded.length;
+  return stadiumCache.get(loaded[idx]) || "";
 }
 
 const corsHeaders = {
