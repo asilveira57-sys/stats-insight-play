@@ -24,8 +24,7 @@ async function getFontBuffers(): Promise<Uint8Array[]> {
   if (!fontBuffersPromise) {
     fontBuffersPromise = (async () => {
       const urls = [
-        "https://cdn.jsdelivr.net/gh/rsms/inter@v4.0/docs/font-files/Inter-Bold.ttf",
-        "https://cdn.jsdelivr.net/gh/rsms/inter@v4.0/docs/font-files/Inter-Black.ttf",
+        "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
       ];
       const bufs = await Promise.all(urls.map(async (u) => {
         const r = await fetch(u);
