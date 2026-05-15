@@ -1,102 +1,96 @@
-## Diagnóstico
+## Objetivo
 
-A nova key foi validada: plano **Ultra ativo até 14/jun/2026, 75.000 req/dia, 0 usadas hoje**. Já fiz uma sondagem direta na API para te dar o cenário real (não estimativa). O que está disponível hoje:
+Zerar o custo de imagens. Gerar 100% das capas via **template SVG dinâmico** (cores dos times + escudo da liga + tipografia do confronto) — sem chamada a IA, sem créditos consumidos, infinitamente escalável para os 30k+ artigos retroativos. Manter Google AI Studio (free tier ~1500 img/dia, sua API key, fora do Lovable Gateway) como camada **opcional** para destaques editoriais — também $0/mês desde que respeite o limite diário.
 
-| Liga | ID | Temporadas | Período |
-|---|---|---|---|
-| Brasileirão Série A | 71 | **17** | 2010–2026 |
-| Brasileirão Série B | 72 | **15** | 2012–2026 |
-| Brasileirão Série C | 75 | 15 | 2012–2026 |
-| Brasileirão Série D | 76 | 15 | 2012–2026 |
-| Copa do Brasil | 73 | 11 | 2016–2026 |
-| Estaduais (12 estados) | 422–520 | 11–17 | desde 2014–2016 |
-| Copa Libertadores | 13 | (já temos) | 2010+ |
-| Sul-Americana | 11 | (já temos) | 2010+ |
-| Champions League | 2 | 15 | 2011–2025 |
-| Premier League (ENG) | 39 | 16 | 2010–2025 |
-| La Liga (ESP) | 140 | 16 | 2010–2025 |
-| Serie A (ITA) | 135 | 16 | 2010–2025 |
-| Bundesliga (GER) | 78 | 16 | 2010–2025 |
-| Ligue 1 (FRA) | 61 | 16 | 2010–2025 |
-| MLS (USA) | 253 | 15 | 2012–2026 |
-| Liga Argentina | 128 | 12 | 2015–2026 |
-| Copa do Mundo | 1 | **5 edições** | 2010, 2014, 2018, 2022, 2026 |
-| Eurocopa | 4 | 5 | 2008–2024 |
-| Mundial de Clubes | 15 | 12 | 2011–2025 |
-| Copa América (id 9) | – | – | confirmado disponível |
+## Diagnóstico do custo atual
 
-A API tem **109 ligas para o Brasil**, **46 para Inglaterra**, **176 mundiais** — o universo total é gigantesco.
+- Hoje: `regenerate-article-images` chama `google/gemini-2.5-flash-image` via Lovable AI Gateway → **~$0,003/imagem**
+- 1 dólar = ~330 imagens. Em 30k artigos = **~$90**, fora do orçamento ($0)
+- Mesmo só conteúdo novo já queimou o saldo do mês em 1 dia
+- Solução: deixar de pagar IA na maioria dos casos. SVG é renderizado em milissegundos no edge, custa zero
 
-## Estimativa de custo (em requisições)
+## Arquitetura proposta
 
-Cada `/fixtures?league=X&season=Y` devolve **a temporada inteira** em **1 req**. Eventos, lineups e estatísticas são **1 req cada por jogo** (3 reqs por jogo se você quer tudo).
+```text
+Artigo publicado
+   │
+   ├─ tem partida_id? ──► gera card SVG personalizado (cores casa+fora, escudo liga, "TIME A vs TIME B", data, liga)
+   │
+   ├─ é destaque editorial flag (novo campo)? ──► usa Google AI Studio direto (sua key, free tier)
+   │
+   └─ fallback ──► SVG genérico com gradiente neutro + logo Statball
+```
 
-**Cenário 1 — só fixtures (placar + data + rodada + status):**
-~60 ligas × ~13 temporadas = **~780 reqs** → cabe em **20 minutos** de execução (1% do dia).
+## Etapa 1 — Edge function `generate-article-card-svg`
 
-**Cenário 2 — fixtures + eventos + lineups + estatísticas (completo):**
+Nova function que produz SVG 1200x630 (Open Graph friendly) com:
 
-| Bloco | Jogos estimados | Reqs (×4: 1 fixture + 3 detalhes) |
-|---|---|---|
-| Brasileirão A+B (32 temporadas) | ~12.200 | ~48.800 |
-| Copa do Brasil + Estaduais | ~12.000 | ~48.000 |
-| Libertadores + Sul-Americana | ~4.500 | ~18.000 |
-| Big-5 Europa (16 anos) | ~28.800 | ~115.200 |
-| Champions + Mundial Clubes | ~2.700 | ~10.800 |
-| Copas FIFA (Mundo, Euro, Copa América) | ~700 | ~2.800 |
-| MLS + Argentina | ~10.000 | ~40.000 |
-| **TOTAL** | **~71.000 jogos** | **~283.000 reqs ≈ 4 dias úteis** |
+- Fundo: gradiente diagonal entre `cores.primary` do time casa → `cores.primary` do time fora (cai pra `#0F172A → #1e293b` quando não houver)
+- Camada superior: nome da liga + data (cor branca semi-transparente)
+- Centro: `TIME CASA` em letras grandes, "VS" estilizado, `TIME FORA` (uso da fonte do projeto via `<text>` SVG embutido)
+- Canto inferior direito: logo da liga (URL já disponível em `ligas.logo_url`) — respeitando regra de NÃO usar logos de times
+- Canto inferior esquerdo: marca "statball.com.br"
+- Saída: PNG renderizado server-side via `npm:@resvg/resvg-js` (binário Deno), upload em `news-thumbnails`
 
-Logo, com 75k/dia dá pra importar **tudo que você listou** em ~**4 dias corridos** rodando 24/7. Se quiser priorizar, dá pra ter **fixtures de tudo em 1h** e ir aprofundando depois.
+Custo por imagem: **$0** (CPU/memória do edge é coberto pelo plano).
 
-## O que vou construir
+## Etapa 2 — Refatoração de `regenerate-article-images`
 
-### 1. Infraestrutura de banco
-Tabelas novas em migration:
-- `api_football_inventory` — cache da resposta `/leagues` (país, league_id, type, seasons[], last_refresh). Alimentada por edge function de inventário.
-- `api_football_import_jobs` — fila por (league_id, season, depth: `fixtures` | `events` | `lineups` | `stats`). Status: `queued`, `running`, `done`, `failed`, `skipped`. Conta `requests_used`.
-- `api_football_quota_log` — uma linha por dia com `requests_used` (sincronizada com endpoint `/status`) para nunca estourar 75k.
+- Renomear para `regenerate-article-images-ai` (mantém capacidade IA para destaques)
+- Adicionar campo `noticias.image_source` (`'svg' | 'ai_gemini' | 'ai_lovable'`) pra rastreabilidade
+- Modo padrão da aba "Regenerar imagens" passa a chamar a nova function SVG
+- Botão secundário "Gerar via IA (premium)" continua disponível, mas com aviso de custo
 
-### 2. Edge functions
-- **`apifootball-inventory`** — sob demanda, busca `/leagues?country=X` para os 10–12 países-alvo + ligas individuais por id (Champions, Mundial). Popula `api_football_inventory`.
-- **`apifootball-enqueue`** — recebe seleção do admin (lista de league_id × seasons × depths) e insere na fila com estimativa de reqs.
-- **`apifootball-worker`** — processa N jobs por chamada, respeitando quota diária. Para `fixtures`, faz 1 req por (league, season) e insere via `resolve_or_create_match`. Para `events/lineups/stats`, busca jogos da temporada já promovidos e faz 1 req por fixture. Atualiza quota antes/depois via `/status`. Se quota >= 70k, aborta o lote.
-- **`apifootball-cron`** — pg_cron a cada 5min chama o worker se houver jobs `queued` e quota disponível.
+## Etapa 3 — Google AI Studio direto (opcional, $0)
 
-### 3. Página admin: `/admin/api-football`
-Sub-rotas em abas:
-- **Inventário** — botão "Atualizar inventário" (chama `apifootball-inventory`). Lista por país com expand → ligas → temporadas (checkbox por temporada). Mostra "já importado" baseado em `partidas` existentes por liga+ano.
-- **Profundidade** — checkboxes globais: `[x] Fixtures` `[ ] Eventos` `[ ] Lineups` `[ ] Estatísticas`. Conforme marca, recalcula custo total em reqs e dias estimados.
-- **Adicionar à fila** — botão que envia a seleção para `apifootball-enqueue` e mostra toast com total enfileirado.
-- **Fila & Progresso** — tabela ao vivo (realtime no `api_football_import_jobs`) com filtro por status. Barra de progresso geral por liga. Botão "Pausar worker" / "Retomar".
-- **Quota do dia** — card grande com `requests_used / 75.000` (consultado em tempo real do `/status`), reset diário.
+- Pedir nova secret `GOOGLE_AI_STUDIO_API_KEY` (você gera grátis em aistudio.google.com)
+- Free tier do `gemini-2.5-flash-image-preview` no AI Studio: ~1500 req/dia sem cobrança
+- Function `generate-image-google-aistudio` chama direto `generativelanguage.googleapis.com` (sem passar pelo Lovable Gateway → zero crédito Lovable)
+- Reserva esse caminho para artigos marcados como "destaque" (novo toggle no editor)
 
-### 4. Pré-seleção sugerida (one-click)
-Botão "Selecionar prioridade Statball" marca automaticamente:
-- Brasileirão Série A + B + C (todas temporadas)
-- Copa do Brasil (todas)
-- Libertadores + Sul-Americana (todas)
-- 12 estaduais brasileiros (todas)
-- Premier, La Liga, Serie A, Bundesliga, Ligue 1 (todas)
-- Champions League + Mundial de Clubes (todas)
-- Copa do Mundo + Eurocopa + Copa América (todas)
-- MLS + Liga Argentina (todas)
+## Etapa 4 — Backfill em massa dos 30k
 
-### 5. Resolução de duplicatas
-O worker reusa `resolve_or_create_team` e `resolve_or_create_match` que já existem (mapeiam por `external_id_map`), então não cria duplicados com partidas Kaggle/Football-Data já importadas.
+- Adicionar aba "Recarregar capas SVG (lote)" em `/admin/imagens`
+- Worker dispara em batches de 200 (SVG é rápido, ~50ms/imagem)
+- Roda via pg_cron a cada 5min até concluir, atualiza `image_source='svg'` e `image_regenerated_at`
+- Estimativa: 30k imagens em ~25 minutos de processamento total
+
+## UI do admin
+
+Aba existente `RegenerateNanoBananaTab` ganha 2 modos:
+
+```text
+[ ] Modo SVG (custo zero, recomendado)         ◀ default
+[ ] Modo Google AI Studio (free tier diário)
+[ ] Modo Lovable AI Gateway (pago, $0.003/img)
+```
+
+Card de status mostra:
+- Pendentes • Já com SVG • Já com IA • Custo gasto no mês
 
 ## Detalhes técnicos
-- Worker faz **8 reqs em paralelo** com `Promise.all` (ainda dentro de um req/segundo equivalente; API-Football permite até 10 req/min em chamadas concorrentes do mesmo fixture sem 429).
-- `api_football_quota_log` é checada antes de cada lote; se passou de 70k no dia, jobs ficam `queued` para o cron do dia seguinte retomar.
-- Logs detalhados em `api_football_import_jobs.error` quando falhar — sem reinventar log table.
-- Temporadas em curso (2025/2026) são re-sincronizadas semanalmente via cron separado (já existe `sync-api-football`, vou só registrar as novas ligas selecionadas em `ligas.ativa = true`).
-- Memória de rate-limit (`mem://technical/api-rate-limit-constraints`) é atualizada para refletir o novo plano Ultra (75k/dia em vez de 100/dia).
 
-## Ordem de execução sugerida (depois que você aprovar)
-1. Migration cria as 3 tabelas + 1 cron job pausado.
-2. Deploy das 4 edge functions.
-3. Você abre `/admin/api-football`, clica **Atualizar inventário** (gasta ~12 reqs) → vê a árvore real disponível.
-4. Clica **Selecionar prioridade Statball** + marca `[x] Fixtures` → enfileira ~780 jobs.
-5. Liga o worker. Em **~30 min** todas as fixtures históricas estão no banco.
-6. Validamos qualidade (datas, placares, times resolvidos).
-7. Você decide: marca eventos/lineups/stats e enfileira o aprofundamento (4 dias rodando).
+- **Renderização SVG → PNG**: `npm:@resvg/resvg-js@2.6.2` no Deno edge (já testado no ecossistema Supabase)
+- **Fontes embutidas**: usar fonte system-safe (Inter via base64) ou texto puro com `<tspan>` pra evitar dependência externa
+- **Cache busting**: manter `?v=timestamp` no URL final
+- **Conformidade**: nunca renderizar escudo/badge de time (regra `mem://style/team-badge-compliance`); só logo da liga via `ligas.logo_url` (regra `mem://style/league-branding`)
+- **Bucket**: reusa `news-thumbnails` que já existe
+- **Coluna nova**: `noticias.image_source TEXT DEFAULT 'svg'`
+
+## Resultado esperado
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Custo/imagem padrão | $0,003 | **$0** |
+| Custo p/ 30k retroativos | ~$90 | **$0** |
+| Custo p/ artigos novos diários | ~$0,15/dia | **$0** (SVG) ou $0 (AI Studio free) |
+| Tempo p/ regerar 30k | ~25h (IA) | **~25min** (SVG) |
+| Saldo Lovable AI consumido | alto | praticamente nulo |
+
+## Ordem de execução
+
+1. Migration: adiciona `noticias.image_source`
+2. Cria edge function `generate-article-card-svg` (com `@resvg/resvg-js`)
+3. Refatora aba do admin pra ter os 3 modos, padrão SVG
+4. Worker de backfill em lote
+5. (Opcional, depois) pede secret `GOOGLE_AI_STUDIO_API_KEY` e cria function pro modo destaque
