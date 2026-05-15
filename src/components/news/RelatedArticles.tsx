@@ -15,6 +15,7 @@ interface RelatedArticle {
   slug: string | null;
   data_publicacao: string | null;
   imagem_url: string | null;
+  imagem_alt?: string | null;
 }
 
 function generateSlug(title: string, id: string): string {
