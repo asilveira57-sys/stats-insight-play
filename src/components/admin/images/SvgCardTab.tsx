@@ -230,20 +230,44 @@ export function SvgCardTab() {
                 id="batch"
                 type="number"
                 min={1}
-                max={50}
+                max={100}
                 value={batchSize}
-                onChange={(e) => setBatchSize(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                onChange={(e) => setBatchSize(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                className="w-28"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="batchCount">Nº de lotes</Label>
+              <Input
+                id="batchCount"
+                type="number"
+                min={1}
+                max={1000}
+                value={batchCount}
+                onChange={(e) => setBatchCount(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))}
                 className="w-28"
               />
             </div>
 
             <Button onClick={runBatch} disabled={running || !pendingCount} className="gap-2">
-              {running && !autoRun ? (
+              {running && !autoRun && !multiRun ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</>
               ) : (
                 <><Play className="h-4 w-4" /> Rodar 1 lote</>
               )}
             </Button>
+
+            {!multiRun ? (
+              <Button onClick={runMulti} disabled={running || !pendingCount} variant="default" className="gap-2">
+                {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                Rodar {batchCount} lote{batchCount > 1 ? "s" : ""}
+              </Button>
+            ) : (
+              <Button onClick={() => setStopFlag(true)} variant="destructive" className="gap-2">
+                <StopCircle className="h-4 w-4" /> Parar ({batchProgress.current}/{batchProgress.total})
+              </Button>
+            )}
 
             {!autoRun ? (
               <Button onClick={runAuto} disabled={running || !pendingCount} variant="secondary" className="gap-2">
@@ -255,6 +279,12 @@ export function SvgCardTab() {
               </Button>
             )}
           </div>
+
+          {multiRun && (
+            <div className="text-sm text-muted-foreground">
+              Lote {batchProgress.current} de {batchProgress.total}...
+            </div>
+          )}
 
           {progress.totalFixed > 0 && (
             <div className="rounded-lg border p-3 grid grid-cols-3 gap-4 text-sm">
