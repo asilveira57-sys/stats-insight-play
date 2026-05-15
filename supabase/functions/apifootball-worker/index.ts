@@ -8,6 +8,7 @@ const corsHeaders = {
 const BASE = 'https://v3.football.api-sports.io';
 const QUOTA_BUFFER = 5000; // não passar de (limit - 5000) para deixar folga
 const MAX_JOBS_PER_INVOCATION = 8; // número de jobs (não fixtures) por chamada
+const TIME_BUDGET_MS = 110_000; // sai antes do idle timeout de 150s
 
 type Job = {
   id: string;
@@ -186,83 +187,111 @@ async function processFixtureDetail(
   return { fixtures_total: list.length, requests_used: used, processed };
 }
 
+async function runWorker(background = false): Promise<any> {
+  const startedAt = Date.now();
+  const apiKey = Deno.env.get('API_FOOTBALL_KEY');
+  if (!apiKey) throw new Error('API_FOOTBALL_KEY not configured');
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  const { used, limit } = await syncQuota(supabase, apiKey);
+  if (used >= limit - QUOTA_BUFFER) {
+    return { ok: true, paused: true, used, limit };
+  }
+
+  const { data: jobs } = await supabase
+    .from('api_football_import_jobs')
+    .select('id, league_id, league_name, season, depth, fixtures_total, requests_used')
+    .eq('status', 'queued')
+    .order('priority', { ascending: true })
+    .order('depth', { ascending: true })
+    .limit(MAX_JOBS_PER_INVOCATION);
+
+  const ordered = (jobs ?? []).sort((a, b) => {
+    const order = { fixtures: 0, events: 1, lineups: 2, stats: 3 } as any;
+    return order[a.depth] - order[b.depth];
+  });
+
+  if (ordered.length === 0) {
+    return { ok: true, idle: true, used, limit };
+  }
+
+  const results: any[] = [];
+  for (const job of ordered as Job[]) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      console.log('time budget reached, deferring remaining jobs');
+      break;
+    }
+    await supabase.from('api_football_import_jobs').update({
+      status: 'running', started_at: new Date().toISOString(),
+    }).eq('id', job.id);
+
+    try {
+      let result;
+      if (job.depth === 'fixtures') {
+        result = await processFixtures(supabase, apiKey, job);
+      } else {
+        const ep = job.depth === 'stats' ? 'statistics' : job.depth;
+        result = await processFixtureDetail(supabase, apiKey, job, ep as any);
+      }
+      await supabase.from('api_football_import_jobs').update({
+        status: 'done',
+        fixtures_total: result.fixtures_total,
+        fixtures_processed: result.processed ?? result.fixtures_total,
+        requests_used: result.requests_used,
+        finished_at: new Date().toISOString(),
+      }).eq('id', job.id);
+      results.push({ job_id: job.id, ...result });
+    } catch (e) {
+      await supabase.from('api_football_import_jobs').update({
+        status: 'failed', error: String(e), finished_at: new Date().toISOString(),
+      }).eq('id', job.id);
+      results.push({ job_id: job.id, error: String(e) });
+    }
+
+    const q = await syncQuota(supabase, apiKey);
+    if (q.used >= q.limit - QUOTA_BUFFER) break;
+  }
+
+  // Auto re-invoca em background se ainda houver jobs queued
+  try {
+    const { count } = await supabase
+      .from('api_football_import_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'queued');
+    if ((count ?? 0) > 0) {
+      const selfUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apifootball-worker`;
+      fetch(selfUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({ background: true }),
+      }).catch((e) => console.warn('self-reinvoke failed', e));
+    }
+  } catch (e) {
+    console.warn('queue check failed', e);
+  }
+
+  const final = await syncQuota(supabase, apiKey);
+  return { ok: true, processed: results.length, results, quota: final, duration_ms: Date.now() - startedAt };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get('API_FOOTBALL_KEY');
-    if (!apiKey) throw new Error('API_FOOTBALL_KEY not configured');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-
-    // 1. Sincroniza quota
-    const { used, limit } = await syncQuota(supabase, apiKey);
-    if (used >= limit - QUOTA_BUFFER) {
-      return new Response(JSON.stringify({ ok: true, paused: true, used, limit }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Dispara em background e responde imediatamente para evitar idle timeout
+    const task = runWorker().catch((e) => console.error('worker bg error', e));
+    // @ts-ignore EdgeRuntime is available in Supabase edge functions
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(task);
     }
-
-    // 2. Pega próximos jobs queued
-    const { data: jobs } = await supabase
-      .from('api_football_import_jobs')
-      .select('id, league_id, league_name, season, depth, fixtures_total, requests_used')
-      .eq('status', 'queued')
-      .order('priority', { ascending: true })
-      .order('depth', { ascending: true }) // fixtures vem antes de events/lineups/stats por nome alfabético — ajustar:
-      .limit(MAX_JOBS_PER_INVOCATION);
-
-    // Reordena: fixtures primeiro
-    const ordered = (jobs ?? []).sort((a, b) => {
-      const order = { fixtures: 0, events: 1, lineups: 2, stats: 3 } as any;
-      return order[a.depth] - order[b.depth];
-    });
-
-    if (ordered.length === 0) {
-      return new Response(JSON.stringify({ ok: true, idle: true, used, limit }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const results: any[] = [];
-    for (const job of ordered as Job[]) {
-      // Marca running
-      await supabase.from('api_football_import_jobs').update({
-        status: 'running', started_at: new Date().toISOString(),
-      }).eq('id', job.id);
-
-      try {
-        let result;
-        if (job.depth === 'fixtures') {
-          result = await processFixtures(supabase, apiKey, job);
-        } else {
-          const ep = job.depth === 'stats' ? 'statistics' : job.depth;
-          result = await processFixtureDetail(supabase, apiKey, job, ep as any);
-        }
-        await supabase.from('api_football_import_jobs').update({
-          status: 'done',
-          fixtures_total: result.fixtures_total,
-          fixtures_processed: result.processed ?? result.fixtures_total,
-          requests_used: result.requests_used,
-          finished_at: new Date().toISOString(),
-        }).eq('id', job.id);
-        results.push({ job_id: job.id, ...result });
-      } catch (e) {
-        await supabase.from('api_football_import_jobs').update({
-          status: 'failed', error: String(e), finished_at: new Date().toISOString(),
-        }).eq('id', job.id);
-        results.push({ job_id: job.id, error: String(e) });
-      }
-
-      // Re-checa quota após cada job
-      const q = await syncQuota(supabase, apiKey);
-      if (q.used >= q.limit - QUOTA_BUFFER) break;
-    }
-
-    const final = await syncQuota(supabase, apiKey);
-    return new Response(JSON.stringify({ ok: true, processed: results.length, results, quota: final }), {
+    return new Response(JSON.stringify({ ok: true, started: true, message: 'worker em execução em background' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
