@@ -225,14 +225,16 @@ serve(async (req) => {
         const liga = m?.liga?.nome || "Futebol";
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
+        const tipo = detectTipo(art.titulo || "");
 
-        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo });
+        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo });
         const png = await renderPng(svg);
 
-        // SEO filename: {slug-do-artigo|matchup}-{shortId}.png
+        // SEO filename: {slug-do-artigo|matchup}-{tipo}-{shortId}.png
+        const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
           ? slugify(art.slug)
-          : slugify(`${timeCasa}-vs-${timeFora}-${liga}`);
+          : slugify(`${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
         const fileName = `${baseSlug || "statball-card"}-${shortId}.png`;
 
