@@ -197,10 +197,13 @@ export default function AdminImageManager() {
           <p className="text-muted-foreground">Imagens e reprocessamento de artigos</p>
         </div>
 
-        <Tabs defaultValue="regenerate">
+        <Tabs defaultValue="svg-card">
           <TabsList>
+            <TabsTrigger value="svg-card" className="gap-2">
+              <Zap className="h-4 w-4" /> SVG Cards (custo zero)
+            </TabsTrigger>
             <TabsTrigger value="regenerate" className="gap-2">
-              <Wand2 className="h-4 w-4" /> Regenerar (Nano Banana)
+              <Wand2 className="h-4 w-4" /> IA Premium (Nano Banana)
             </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <Image className="h-4 w-4" /> Imagens
@@ -212,6 +215,10 @@ export default function AdminImageManager() {
               <RefreshCw className="h-4 w-4" /> Reprocessar Conteúdo
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="svg-card" className="space-y-6 mt-4">
+            <SvgCardTab />
+          </TabsContent>
 
           <TabsContent value="regenerate" className="space-y-6 mt-4">
             <RegenerateNanoBananaTab />
