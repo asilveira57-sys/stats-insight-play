@@ -289,18 +289,18 @@ serve(async (req) => {
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, KEY);
 
-    let limit = 50;
+    let limit = 5;
     let articleIds: string[] | null = null;
     let mode: "preview" | "execute" = "execute";
     try {
       const body = await req.json();
-      limit = Math.max(1, Math.min(body?.limit || 50, 500));
+      limit = Math.max(1, Math.min(body?.limit || 5, 20));
       articleIds = Array.isArray(body?.article_ids) ? body.article_ids : null;
       mode = body?.mode === "preview" ? "preview" : "execute";
     } catch {}
 
-    // Pré-carrega assets pesados (font + estádios) uma única vez por cold-start
-    await Promise.all([ensureWasm(), getFontBuffers(), ensureStadiums()]);
+    // Pré-carrega apenas WASM + fonte (estádios são lazy por artigo)
+    await Promise.all([ensureWasm(), getFontBuffers()]);
 
     let q = supabase
       .from("noticias")
