@@ -15,6 +15,7 @@ interface RelatedArticle {
   slug: string | null;
   data_publicacao: string | null;
   imagem_url: string | null;
+  imagem_alt?: string | null;
 }
 
 function generateSlug(title: string, id: string): string {
@@ -45,7 +46,7 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
     queryFn: async (): Promise<RelatedArticle[]> => {
       const { data, error } = await supabase
         .from("noticias")
-        .select("id, titulo, resumo, slug, data_publicacao, imagem_url")
+        .select("id, titulo, resumo, slug, data_publicacao, imagem_url, imagem_alt")
         .eq("publicada", true)
         .neq("id", currentArticleId)
         .order("data_publicacao", { ascending: false })
@@ -84,8 +85,12 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
                 {article.imagem_url && (
                   <img
                     src={article.imagem_url}
-                    alt=""
+                    alt={article.imagem_alt || article.titulo}
                     className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    loading="lazy"
+                    decoding="async"
+                    width={64}
+                    height={64}
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
