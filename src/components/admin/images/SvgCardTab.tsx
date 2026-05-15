@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, Image as ImageIcon, Zap, Infinity as InfinityIcon, StopCircle } from "lucide-react";
+import { Loader2, Play, Image as ImageIcon, Zap, Infinity as InfinityIcon, StopCircle, ExternalLink, History } from "lucide-react";
 
 interface ResultItem {
   id: string;
