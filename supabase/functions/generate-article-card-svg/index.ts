@@ -128,8 +128,9 @@ function slugify(s: string): string {
     .slice(0, 80);
 }
 
-function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string }): string {
-  const parts = [`Capa do artigo: ${args.timeCasa} vs ${args.timeFora}`];
+function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string; tipo: string }): string {
+  const tipoLabel = args.tipo === "PRÉVIA" ? "Prévia" : args.tipo === "PÓS-JOGO" ? "Pós-jogo" : "Análise";
+  const parts = [`${tipoLabel}: ${args.timeCasa} vs ${args.timeFora}`];
   if (args.liga) parts.push(`pela ${args.liga}`);
   if (args.data) parts.push(`em ${args.data}`);
   parts.push("— análise estatística Statball");
