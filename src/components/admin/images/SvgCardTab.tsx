@@ -22,7 +22,7 @@ interface ResultItem {
 export function SvgCardTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [batchSize, setBatchSize] = useState(100);
+  const [batchSize, setBatchSize] = useState(1);
   const [running, setRunning] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
   const [stopFlag, setStopFlag] = useState(false);
@@ -184,22 +184,22 @@ export function SvgCardTab() {
         <CardHeader>
           <CardTitle className="text-base">Executar geração</CardTitle>
           <CardDescription>
-            Use auto-run pra processar até zerar a fila. Lotes de 100 levam ~30s. 30k artigos ≈ 25 min.
+            Use auto-run pra processar até zerar a fila. A geração roda 1 card por chamada para evitar limite de CPU.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label htmlFor="batch">Tamanho do lote (1-500)</Label>
+              <Label htmlFor="batch">Cards por chamada</Label>
               <Input
                 id="batch"
                 type="number"
                 min={1}
-                max={500}
+                max={1}
                 value={batchSize}
-                onChange={(e) => setBatchSize(Math.max(1, Math.min(500, parseInt(e.target.value) || 100)))}
+                onChange={() => setBatchSize(1)}
                 className="w-28"
-                disabled={running}
+                disabled
               />
             </div>
 
@@ -341,7 +341,7 @@ export function SvgCardTab() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1 rounded bg-background/80 hover:bg-background"
-                          title="Abrir imagem PNG"
+                          title="Abrir imagem"
                         >
                           <ExternalLink className="h-3 w-3" />
                         </a>

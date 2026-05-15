@@ -1,43 +1,11 @@
 // Generates SVG-based article cover cards (zero AI cost).
-// Renders SVG → PNG via @resvg/resvg-wasm with stadium background + Inter font.
+// Stores the SVG directly to avoid CPU-heavy PNG rasterization in Edge Functions.
 // Body: { article_ids?: string[], limit?: number, mode?: 'preview'|'execute' }
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resvg, initWasm } from "npm:@resvg/resvg-wasm@2.6.2";
 
-let wasmReady: Promise<void> | null = null;
-async function ensureWasm() {
-  if (!wasmReady) {
-    wasmReady = (async () => {
-      const res = await fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm");
-      const buf = await res.arrayBuffer();
-      await initWasm(buf);
-    })();
-  }
-  await wasmReady;
-}
-
-// ---- Font cache (Inter Bold + Black via jsdelivr) ----
-let fontBuffersPromise: Promise<Uint8Array[]> | null = null;
-async function getFontBuffers(): Promise<Uint8Array[]> {
-  if (!fontBuffersPromise) {
-    fontBuffersPromise = (async () => {
-      const urls = [
-        "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
-      ];
-      const bufs = await Promise.all(urls.map(async (u) => {
-        const r = await fetch(u);
-        if (!r.ok) throw new Error(`font fetch ${u}: ${r.status}`);
-        return new Uint8Array(await r.arrayBuffer());
-      }));
-      return bufs;
-    })();
-  }
-  return fontBuffersPromise;
-}
-
-// ---- Stadium image cache (8 backgrounds as base64 data URIs) ----
+// ---- Stadium image URLs ----
 const STADIUM_BASE = "https://wlvwcbxegrmobefloikr.supabase.co/storage/v1/object/public/card-backgrounds";
 const STADIUM_FILES = [
   "01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg","07.jpg","08.jpg",
@@ -47,25 +15,27 @@ const STADIUM_FILES = [
 ];
 const stadiumCache: Map<string, string> = new Map();
 
-// Lazy: fetch a single stadium on demand and cache its data URI.
-async function loadStadium(name: string): Promise<string | null> {
-  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await fetch(`${STADIUM_BASE}/${name}`);
-      if (!r.ok) throw new Error(`status ${r.status}`);
-      const buf = new Uint8Array(await r.arrayBuffer());
-      let bin = "";
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const uri = `data:image/jpeg;base64,${btoa(bin)}`;
-      stadiumCache.set(name, uri);
-      return uri;
-    } catch (e) {
-      if (attempt === 2) console.warn(`stadium ${name} skipped: ${e}`);
-      await new Promise((res) => setTimeout(res, 200 * (attempt + 1)));
-    }
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
-  return null;
+  return btoa(binary);
+}
+
+async function loadStadium(name: string): Promise<string> {
+  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
+  try {
+    const r = await fetch(`${STADIUM_BASE}/${name}`);
+    if (!r.ok) throw new Error(`status ${r.status}`);
+    const uri = `data:image/jpeg;base64,${bytesToBase64(new Uint8Array(await r.arrayBuffer()))}`;
+    stadiumCache.set(name, uri);
+    return uri;
+  } catch (e) {
+    console.warn(`stadium ${name} skipped: ${e}`);
+    return "";
+  }
 }
 
 function hashString(s: string): number {
@@ -266,19 +236,8 @@ function fmtDateBR(dStr: string | null): string {
   } catch { return dStr; }
 }
 
-async function renderPng(svg: string): Promise<Uint8Array> {
-  await ensureWasm();
-  const fontBuffers = await getFontBuffers();
-  const r = new Resvg(svg, {
-    fitTo: { mode: "width", value: W },
-    font: {
-      fontBuffers,
-      defaultFontFamily: "Inter",
-      loadSystemFonts: false,
-    },
-  });
-  const png = r.render();
-  return png.asPng();
+function renderSvg(svg: string): Uint8Array {
+  return new TextEncoder().encode(svg);
 }
 
 serve(async (req) => {
@@ -289,18 +248,17 @@ serve(async (req) => {
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, KEY);
 
-    let limit = 5;
+    let limit = 1;
     let articleIds: string[] | null = null;
     let mode: "preview" | "execute" = "execute";
     try {
       const body = await req.json();
-      limit = Math.max(1, Math.min(body?.limit || 5, 20));
+      limit = 1;
       articleIds = Array.isArray(body?.article_ids) ? body.article_ids : null;
       mode = body?.mode === "preview" ? "preview" : "execute";
     } catch {}
 
-    // Pré-carrega apenas WASM + fonte (estádios são lazy por artigo)
-    await Promise.all([ensureWasm(), getFontBuffers()]);
+    // Mantém a função leve: gera SVG direto, sem rasterização PNG/WASM.
 
     let q = supabase
       .from("noticias")
@@ -357,22 +315,22 @@ serve(async (req) => {
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
-        const stadium = (await loadStadium(pickStadiumName(art.id))) || "";
+        const stadium = await loadStadium(pickStadiumName(art.id));
         const titulo = art.titulo || "";
 
         const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
-        const png = await renderPng(svg);
+        const svgBytes = renderSvg(svg);
 
         const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
           ? slugify(art.slug)
           : slugify(hasMatch ? `${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}` : `${titulo}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
-        const fileName = `${baseSlug || "statball-card"}-${shortId}.png`;
+        const fileName = `${baseSlug || "statball-card"}-${shortId}.svg`;
 
         const { error: upErr } = await supabase.storage
           .from("news-thumbnails")
-          .upload(fileName, png, { contentType: "image/png", upsert: true, cacheControl: "31536000" });
+          .upload(fileName, svgBytes, { contentType: "image/svg+xml", upsert: true, cacheControl: "31536000" });
         if (upErr) throw new Error(`upload: ${upErr.message}`);
 
         const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
