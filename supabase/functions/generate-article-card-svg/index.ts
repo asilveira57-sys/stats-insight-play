@@ -212,7 +212,7 @@ function fmtDateBR(dStr: string | null): string {
   } catch { return dStr; }
 }
 
-async function renderPng(svg: string): Promise<Uint8Array> {
+function renderSvg(svg: string): Uint8Array {
   return new TextEncoder().encode(svg);
 }
 
@@ -295,7 +295,7 @@ serve(async (req) => {
         const titulo = art.titulo || "";
 
         const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
-        const svgBytes = await renderPng(svg);
+        const svgBytes = renderSvg(svg);
 
         const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
