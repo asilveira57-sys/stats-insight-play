@@ -8,6 +8,7 @@ const corsHeaders = {
 const BASE = 'https://v3.football.api-sports.io';
 const QUOTA_BUFFER = 5000; // não passar de (limit - 5000) para deixar folga
 const MAX_JOBS_PER_INVOCATION = 8; // número de jobs (não fixtures) por chamada
+const TIME_BUDGET_MS = 110_000; // sai antes do idle timeout de 150s
 
 type Job = {
   id: string;
