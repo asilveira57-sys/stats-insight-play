@@ -85,8 +85,12 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
                 {article.imagem_url && (
                   <img
                     src={article.imagem_url}
-                    alt=""
+                    alt={article.imagem_alt || article.titulo}
                     className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    loading="lazy"
+                    decoding="async"
+                    width={64}
+                    height={64}
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
