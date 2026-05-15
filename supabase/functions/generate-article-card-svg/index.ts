@@ -341,23 +341,25 @@ serve(async (req) => {
     for (const art of articles) {
       try {
         const m = art.partida_id ? matchInfo.get(art.partida_id) : null;
+        const hasMatch = !!(m?.time_casa?.nome && m?.time_fora?.nome);
         const corCasa = pickColor(m?.time_casa?.cores, "#1e3a8a");
         const corFora = pickColor(m?.time_fora?.cores, "#7f1d1d");
-        const timeCasa = m?.time_casa?.nome || "STATBALL";
-        const timeFora = m?.time_fora?.nome || "ANÁLISE";
-        const liga = m?.liga?.nome || "Futebol";
+        const timeCasa = m?.time_casa?.nome || "";
+        const timeFora = m?.time_fora?.nome || "";
+        const liga = m?.liga?.nome || "Statball";
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
-        const stadium = pickStadium(art.partida_id || art.id);
+        const stadium = pickStadium(art.id);
+        const titulo = art.titulo || "";
 
-        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium });
+        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
         const png = await renderPng(svg);
 
         const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
           ? slugify(art.slug)
-          : slugify(`${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}`);
+          : slugify(hasMatch ? `${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}` : `${titulo}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
         const fileName = `${baseSlug || "statball-card"}-${shortId}.png`;
 
@@ -369,7 +371,7 @@ serve(async (req) => {
         const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
         const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
 
-        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr, tipo });
+        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr, tipo, hasMatch, titulo });
 
         const { error: updErr } = await supabase
           .from("noticias")
