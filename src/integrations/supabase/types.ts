@@ -4047,6 +4047,7 @@ export type Database = {
           data_publicacao: string | null
           id: string
           image_regenerated_at: string | null
+          image_source: string | null
           imagem_url: string | null
           partida_id: string | null
           publicada: boolean | null
@@ -4064,6 +4065,7 @@ export type Database = {
           data_publicacao?: string | null
           id?: string
           image_regenerated_at?: string | null
+          image_source?: string | null
           imagem_url?: string | null
           partida_id?: string | null
           publicada?: boolean | null
@@ -4081,6 +4083,7 @@ export type Database = {
           data_publicacao?: string | null
           id?: string
           image_regenerated_at?: string | null
+          image_source?: string | null
           imagem_url?: string | null
           partida_id?: string | null
           publicada?: boolean | null
