@@ -23,8 +23,11 @@ export function SvgCardTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [batchSize, setBatchSize] = useState(1);
+  const [batchCount, setBatchCount] = useState(1);
   const [running, setRunning] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
+  const [multiRun, setMultiRun] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [stopFlag, setStopFlag] = useState(false);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [progress, setProgress] = useState({ totalFixed: 0, lastBatchFixed: 0, lastBatchErrors: 0 });
