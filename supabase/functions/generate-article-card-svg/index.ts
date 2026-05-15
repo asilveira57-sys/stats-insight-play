@@ -49,6 +49,13 @@ function pickColor(c: any, fallback: string): string {
   return fallback;
 }
 
+function detectTipo(titulo: string): "PRÉVIA" | "PÓS-JOGO" | "ANÁLISE" {
+  const t = (titulo || "").toLowerCase();
+  if (/\b(pr[ée]via|preview|antes|antevis[aã]o)\b/.test(t)) return "PRÉVIA";
+  if (/\b(p[óo]s[\s-]?jogo|resultado|encerrad|terminou|venceu|perdeu|empat|placar|goleada)\b/.test(t)) return "PÓS-JOGO";
+  return "ANÁLISE";
+}
+
 function buildSvg(args: {
   timeCasa: string;
   timeFora: string;
@@ -57,12 +64,22 @@ function buildSvg(args: {
   liga: string;
   data: string;
   ligaLogo?: string | null;
+  tipo: string;
 }): string {
-  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo } = args;
+  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo, tipo } = args;
   const tc = escapeXml(fitText(timeCasa.toUpperCase(), 22));
   const tf = escapeXml(fitText(timeFora.toUpperCase(), 22));
   const lg = escapeXml(fitText(liga, 40));
   const dt = escapeXml(data);
+  const tp = escapeXml(tipo.toUpperCase());
+
+  // Estimate badge width based on character count (approx 14px per char at 22px font + padding)
+  const badgeW = Math.max(120, tp.length * 16 + 40);
+  const badgeBlock = `
+  <g>
+    <rect x="${W - badgeW - 60}" y="55" width="${badgeW}" height="48" rx="24" fill="#22D3EE" opacity="0.95"/>
+    <text x="${W - badgeW/2 - 60}" y="87" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="900" fill="#0F172A" letter-spacing="2">${tp}</text>
+  </g>`;
 
   const logoBlock = ligaLogo
     ? `<image href="${escapeXml(ligaLogo)}" x="${W - 140}" y="${H - 140}" width="100" height="100" preserveAspectRatio="xMidYMid meet" opacity="0.95"/>`
@@ -96,6 +113,7 @@ function buildSvg(args: {
   <text x="60" y="${H - 50}" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF" opacity="0.9">statball.com.br</text>
   <text x="60" y="${H - 25}" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#94A3B8">análise estatística de futebol</text>
 
+  ${badgeBlock}
   ${logoBlock}
 </svg>`;
 }
@@ -110,8 +128,9 @@ function slugify(s: string): string {
     .slice(0, 80);
 }
 
-function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string }): string {
-  const parts = [`Capa do artigo: ${args.timeCasa} vs ${args.timeFora}`];
+function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string; tipo: string }): string {
+  const tipoLabel = args.tipo === "PRÉVIA" ? "Prévia" : args.tipo === "PÓS-JOGO" ? "Pós-jogo" : "Análise";
+  const parts = [`${tipoLabel}: ${args.timeCasa} vs ${args.timeFora}`];
   if (args.liga) parts.push(`pela ${args.liga}`);
   if (args.data) parts.push(`em ${args.data}`);
   parts.push("— análise estatística Statball");
@@ -206,14 +225,16 @@ serve(async (req) => {
         const liga = m?.liga?.nome || "Futebol";
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
+        const tipo = detectTipo(art.titulo || "");
 
-        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo });
+        const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo });
         const png = await renderPng(svg);
 
-        // SEO filename: {slug-do-artigo|matchup}-{shortId}.png
+        // SEO filename: {slug-do-artigo|matchup}-{tipo}-{shortId}.png
+        const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
           ? slugify(art.slug)
-          : slugify(`${timeCasa}-vs-${timeFora}-${liga}`);
+          : slugify(`${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
         const fileName = `${baseSlug || "statball-card"}-${shortId}.png`;
 
@@ -225,7 +246,7 @@ serve(async (req) => {
         const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
         const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
 
-        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr });
+        const imagemAlt = buildAlt({ timeCasa, timeFora, liga, data: dataStr, tipo });
 
         const { error: updErr } = await supabase
           .from("noticias")
