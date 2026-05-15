@@ -213,18 +213,7 @@ function fmtDateBR(dStr: string | null): string {
 }
 
 async function renderPng(svg: string): Promise<Uint8Array> {
-  await ensureWasm();
-  const fontBuffers = await getFontBuffers();
-  const r = new Resvg(svg, {
-    fitTo: { mode: "width", value: W },
-    font: {
-      fontBuffers,
-      defaultFontFamily: "Inter",
-      loadSystemFonts: false,
-    },
-  });
-  const png = r.render();
-  return png.asPng();
+  return new TextEncoder().encode(svg);
 }
 
 serve(async (req) => {
@@ -235,18 +224,17 @@ serve(async (req) => {
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, KEY);
 
-    let limit = 5;
+    let limit = 1;
     let articleIds: string[] | null = null;
     let mode: "preview" | "execute" = "execute";
     try {
       const body = await req.json();
-      limit = Math.max(1, Math.min(body?.limit || 5, 20));
+      limit = 1;
       articleIds = Array.isArray(body?.article_ids) ? body.article_ids : null;
       mode = body?.mode === "preview" ? "preview" : "execute";
     } catch {}
 
-    // Pré-carrega apenas WASM + fonte (estádios são lazy por artigo)
-    await Promise.all([ensureWasm(), getFontBuffers()]);
+    // Mantém a função leve: gera SVG direto, sem rasterização PNG/WASM.
 
     let q = supabase
       .from("noticias")
@@ -303,22 +291,22 @@ serve(async (req) => {
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
-        const stadium = (await loadStadium(pickStadiumName(art.id))) || "";
+        const stadium = `${STADIUM_BASE}/${pickStadiumName(art.id)}`;
         const titulo = art.titulo || "";
 
         const svg = buildSvg({ timeCasa, timeFora, corCasa, corFora, liga, data: dataStr, ligaLogo, tipo, stadium, hasMatch, titulo });
-        const png = await renderPng(svg);
+        const svgBytes = await renderPng(svg);
 
         const tipoSlug = tipo === "PRÉVIA" ? "previa" : tipo === "PÓS-JOGO" ? "pos-jogo" : "analise";
         const baseSlug = art.slug
           ? slugify(art.slug)
           : slugify(hasMatch ? `${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}` : `${titulo}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
-        const fileName = `${baseSlug || "statball-card"}-${shortId}.png`;
+        const fileName = `${baseSlug || "statball-card"}-${shortId}.svg`;
 
         const { error: upErr } = await supabase.storage
           .from("news-thumbnails")
-          .upload(fileName, png, { contentType: "image/png", upsert: true, cacheControl: "31536000" });
+          .upload(fileName, svgBytes, { contentType: "image/svg+xml", upsert: true, cacheControl: "31536000" });
         if (upErr) throw new Error(`upload: ${upErr.message}`);
 
         const { data: urlData } = supabase.storage.from("news-thumbnails").getPublicUrl(fileName);
