@@ -95,6 +95,138 @@ export type Database = {
         }
         Relationships: []
       }
+      api_football_import_jobs: {
+        Row: {
+          created_at: string
+          depth: string
+          error: string | null
+          finished_at: string | null
+          fixtures_processed: number | null
+          fixtures_total: number | null
+          id: string
+          league_id: number
+          league_name: string | null
+          priority: number
+          requests_estimated: number | null
+          requests_used: number | null
+          season: number
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          depth: string
+          error?: string | null
+          finished_at?: string | null
+          fixtures_processed?: number | null
+          fixtures_total?: number | null
+          id?: string
+          league_id: number
+          league_name?: string | null
+          priority?: number
+          requests_estimated?: number | null
+          requests_used?: number | null
+          season: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          depth?: string
+          error?: string | null
+          finished_at?: string | null
+          fixtures_processed?: number | null
+          fixtures_total?: number | null
+          id?: string
+          league_id?: number
+          league_name?: string | null
+          priority?: number
+          requests_estimated?: number | null
+          requests_used?: number | null
+          season?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      api_football_inventory: {
+        Row: {
+          country: string | null
+          country_code: string | null
+          created_at: string
+          flag_url: string | null
+          id: string
+          is_priority: boolean
+          last_refresh: string
+          league_id: number
+          league_name: string
+          league_type: string | null
+          logo_url: string | null
+          seasons: Json
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          flag_url?: string | null
+          id?: string
+          is_priority?: boolean
+          last_refresh?: string
+          league_id: number
+          league_name: string
+          league_type?: string | null
+          logo_url?: string | null
+          seasons?: Json
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          flag_url?: string | null
+          id?: string
+          is_priority?: boolean
+          last_refresh?: string
+          league_id?: number
+          league_name?: string
+          league_type?: string | null
+          logo_url?: string | null
+          seasons?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      api_football_quota_log: {
+        Row: {
+          created_at: string
+          daily_limit: number
+          day: string
+          id: string
+          last_check: string
+          requests_used: number
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number
+          day: string
+          id?: string
+          last_check?: string
+          requests_used?: number
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number
+          day?: string
+          id?: string
+          last_check?: string
+          requests_used?: number
+        }
+        Relationships: []
+      }
       api_request_cache: {
         Row: {
           created_at: string | null
@@ -4077,7 +4209,11 @@ export type Database = {
       }
       partidas: {
         Row: {
+          api_events: Json | null
           api_id: number | null
+          api_lineups: Json | null
+          api_source: string | null
+          api_statistics: Json | null
           created_at: string | null
           data: string
           detalhes_sincronizados: boolean | null
@@ -4096,7 +4232,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          api_events?: Json | null
           api_id?: number | null
+          api_lineups?: Json | null
+          api_source?: string | null
+          api_statistics?: Json | null
           created_at?: string | null
           data: string
           detalhes_sincronizados?: boolean | null
@@ -4115,7 +4255,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          api_events?: Json | null
           api_id?: number | null
+          api_lineups?: Json | null
+          api_source?: string | null
+          api_statistics?: Json | null
           created_at?: string | null
           data?: string
           detalhes_sincronizados?: boolean | null

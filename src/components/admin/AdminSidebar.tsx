@@ -60,6 +60,7 @@ const menuGroups = [
       { title: "Cartola FC", url: "/admin/cartola", icon: Trophy },
       { title: "Fontes Históricas", url: "/admin/fontes-historicas", icon: BookOpen },
       { title: "Kaggle Import", url: "/admin/kaggle", icon: HardDrive },
+      { title: "API-Football", url: "/admin/api-football", icon: Database },
     ],
   },
   {
