@@ -42,6 +42,8 @@ const STADIUM_BASE = "https://wlvwcbxegrmobefloikr.supabase.co/storage/v1/object
 const STADIUM_FILES = [
   "01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg","07.jpg","08.jpg",
   "09.jpg","10.jpg","11.jpg","12.jpg","13.jpg","14.jpg","15.jpg","16.jpg",
+  "17.jpg","18.jpg","19.jpg","20.jpg","21.jpg","22.jpg","23.jpg","24.jpg",
+  "25.jpg","26.jpg","27.jpg","28.jpg",
 ];
 let stadiumCache: Map<string, string> = new Map();
 let stadiumLoadPromise: Promise<void> | null = null;
@@ -178,7 +180,7 @@ function buildSvg(args: {
 const punchText = (x: number, y: number, size: number, content: string, fill = "#FFFFFF", letterSpacing = 0) => `
   <text x="${x}" y="${y + 6}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="#000000" opacity="0.55" letter-spacing="${letterSpacing}">${content}</text>
   <text x="${x}" y="${y + 3}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="#000000" opacity="0.85" letter-spacing="${letterSpacing}">${content}</text>
-  <text x="${x}" y="${y}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="${fill}" stroke="#000000" stroke-width="4" paint-order="stroke fill" letter-spacing="${letterSpacing}">${content}</text>`;
+  <text x="${x}" y="${y}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="${fill}" stroke="#000000" stroke-width="6" stroke-linejoin="round" paint-order="stroke fill" letter-spacing="${letterSpacing}">${content}</text>`;
 
   const matchupBlock = hasMatch
     ? `${punchText(W/2, H/2 - 30, 78, tc)}
@@ -205,11 +207,17 @@ ${punchText(W/2, H/2 + 118, 78, tf)}`
       <stop offset="55%" stop-color="#000000" stop-opacity="0.05"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
     </linearGradient>
+    <radialGradient id="centerPlate" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="70%" stop-color="#000000" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
   ${stadiumBlock}
   <rect width="${W}" height="${H}" fill="url(#teamOverlay)"/>
   <rect width="${W}" height="${H}" fill="url(#darkOverlay)"/>
+  <ellipse cx="${W/2}" cy="${H/2 + 30}" rx="${W*0.55}" ry="${H*0.42}" fill="url(#centerPlate)"/>
 
   <!-- Top bar -->
   <text x="60" y="80" font-family="Inter" font-size="28" font-weight="700" fill="#22D3EE" letter-spacing="2">${lg}</text>
