@@ -239,8 +239,11 @@ function slugify(s: string): string {
     .slice(0, 80);
 }
 
-function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string; tipo: string }): string {
+function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string; tipo: string; hasMatch: boolean; titulo: string }): string {
   const tipoLabel = args.tipo === "PRÉVIA" ? "Prévia" : args.tipo === "PÓS-JOGO" ? "Pós-jogo" : "Análise";
+  if (!args.hasMatch) {
+    return `${tipoLabel}: ${args.titulo} — Statball`;
+  }
   const parts = [`${tipoLabel}: ${args.timeCasa} vs ${args.timeFora}`];
   if (args.liga) parts.push(`pela ${args.liga}`);
   if (args.data) parts.push(`em ${args.data}`);
