@@ -217,9 +217,14 @@ export default function NoticiaDetalhes() {
           <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden">
             <img
               src={noticia.imagem_url}
-              alt={noticia.titulo}
+              alt={(noticia as any).imagem_alt || noticia.titulo}
               className="w-full h-full object-cover"
               itemProp="image"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              width={1200}
+              height={630}
               onError={(e) => {
                 const el = e.target as HTMLImageElement;
                 el.style.display = "none";
