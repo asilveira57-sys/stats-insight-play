@@ -289,33 +289,72 @@ export function SvgCardTab() {
                 const when = n.image_regenerated_at
                   ? new Date(n.image_regenerated_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
                   : "";
+                const regenerateOne = async () => {
+                  try {
+                    const { error } = await supabase.functions.invoke("generate-article-card-svg", {
+                      body: { article_ids: [n.id], mode: "execute" },
+                    });
+                    if (error) throw error;
+                    toast({ title: "Card regerado", description: n.titulo.slice(0, 60) });
+                    queryClient.invalidateQueries({ queryKey: ["svg-card-latest-10"] });
+                  } catch (e: any) {
+                    toast({ title: "Erro ao regerar", description: e.message, variant: "destructive" });
+                  }
+                };
                 return (
-                  <div key={n.id} className="rounded-lg overflow-hidden border bg-card">
+                  <div key={n.id} className="rounded-lg overflow-hidden border bg-card group">
                     <div className="relative">
-                      <img
-                        src={n.imagem_url}
-                        alt={n.imagem_alt || n.titulo}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full aspect-[1200/630] object-cover"
-                      />
+                      {n.slug ? (
+                        <Link to={`/noticias/${n.slug}`} target="_blank" rel="noopener noreferrer" title="Abrir artigo">
+                          <img
+                            src={n.imagem_url}
+                            alt={n.imagem_alt || n.titulo}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full aspect-[1200/630] object-cover transition-transform group-hover:scale-[1.02]"
+                          />
+                        </Link>
+                      ) : (
+                        <img
+                          src={n.imagem_url}
+                          alt={n.imagem_alt || n.titulo}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full aspect-[1200/630] object-cover"
+                        />
+                      )}
                       {dupe && (
                         <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-yellow-500/20 border-yellow-500/40 text-yellow-700 dark:text-yellow-400">
                           MESMO JOGO
                         </Badge>
                       )}
-                      <a
-                        href={n.imagem_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background"
-                        title="Abrir em tamanho real"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <div className="absolute top-1 right-1 flex gap-1">
+                        <button
+                          onClick={regenerateOne}
+                          className="p-1 rounded bg-background/80 hover:bg-background"
+                          title="Regerar este card"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                        </button>
+                        <a
+                          href={n.imagem_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 rounded bg-background/80 hover:bg-background"
+                          title="Abrir imagem PNG"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
                     </div>
                     <div className="p-2 space-y-1">
-                      <p className="text-xs font-medium line-clamp-2">{n.titulo}</p>
+                      {n.slug ? (
+                        <Link to={`/noticias/${n.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium line-clamp-2 hover:underline block">
+                          {n.titulo}
+                        </Link>
+                      ) : (
+                        <p className="text-xs font-medium line-clamp-2">{n.titulo}</p>
+                      )}
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                         {ligaNome && <Badge variant="secondary" className="text-[9px] px-1 py-0">{ligaNome}</Badge>}
                         <span>{when}</span>
