@@ -113,6 +113,7 @@ function buildSvg(args: {
   <text x="60" y="${H - 50}" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF" opacity="0.9">statball.com.br</text>
   <text x="60" y="${H - 25}" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#94A3B8">análise estatística de futebol</text>
 
+  ${badgeBlock}
   ${logoBlock}
 </svg>`;
 }
