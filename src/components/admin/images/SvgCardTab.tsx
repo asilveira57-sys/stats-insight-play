@@ -265,6 +265,68 @@ export function SvgCardTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Últimos 10 gerados — atualiza ao vivo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4" /> Últimos 10 gerados
+            {running && <Badge variant="outline" className="text-[10px]">atualizando ao vivo</Badge>}
+          </CardTitle>
+          <CardDescription>
+            Lê direto do banco. Se aparecer "MESMO JOGO" em dois cards, é esperado: artigos diferentes do mesmo confronto produzem o mesmo card (cores e times são iguais).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!latest || latest.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum card gerado ainda.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {latest.map((n: any, idx: number) => {
+                const dupe = n.partida_id && latest.some((o: any, i: number) => i !== idx && o.partida_id === n.partida_id);
+                const ligaNome = n.partidas?.liga?.nome;
+                const when = n.image_regenerated_at
+                  ? new Date(n.image_regenerated_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                  : "";
+                return (
+                  <div key={n.id} className="rounded-lg overflow-hidden border bg-card">
+                    <div className="relative">
+                      <img
+                        src={n.imagem_url}
+                        alt={n.imagem_alt || n.titulo}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full aspect-[1200/630] object-cover"
+                      />
+                      {dupe && (
+                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-yellow-500/20 border-yellow-500/40 text-yellow-700 dark:text-yellow-400">
+                          MESMO JOGO
+                        </Badge>
+                      )}
+                      <a
+                        href={n.imagem_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-background"
+                        title="Abrir em tamanho real"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      <p className="text-xs font-medium line-clamp-2">{n.titulo}</p>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        {ligaNome && <Badge variant="secondary" className="text-[9px] px-1 py-0">{ligaNome}</Badge>}
+                        <span>{when}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
