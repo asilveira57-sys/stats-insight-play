@@ -51,17 +51,31 @@ let stadiumLoadPromise: Promise<void> | null = null;
 async function ensureStadiums() {
   if (!stadiumLoadPromise) {
     stadiumLoadPromise = (async () => {
-      await Promise.all(STADIUM_FILES.map(async (name) => {
-        const r = await fetch(`${STADIUM_BASE}/${name}`);
-        if (!r.ok) throw new Error(`stadium ${name}: ${r.status}`);
-        const buf = new Uint8Array(await r.arrayBuffer());
-        // base64 encode
-        let bin = "";
-        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-        const b64 = btoa(bin);
-        stadiumCache.set(name, `data:image/jpeg;base64,${b64}`);
+      const results = await Promise.allSettled(STADIUM_FILES.map(async (name) => {
+        // Retry up to 2x on transient failures
+        let lastErr: unknown;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const r = await fetch(`${STADIUM_BASE}/${name}`);
+            if (!r.ok) throw new Error(`status ${r.status}`);
+            const buf = new Uint8Array(await r.arrayBuffer());
+            let bin = "";
+            for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+            stadiumCache.set(name, `data:image/jpeg;base64,${btoa(bin)}`);
+            return;
+          } catch (e) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+          }
+        }
+        console.warn(`stadium ${name} skipped: ${lastErr}`);
       }));
-    })();
+      // If we got at least 1, consider it usable; otherwise reset to retry next call
+      if (stadiumCache.size === 0) {
+        stadiumLoadPromise = null;
+        throw new Error("no stadiums loaded");
+      }
+    })().catch((e) => { stadiumLoadPromise = null; throw e; });
   }
   await stadiumLoadPromise;
 }
@@ -76,8 +90,10 @@ function hashString(s: string): number {
 }
 
 function pickStadium(seed: string): string {
-  const idx = hashString(seed) % STADIUM_FILES.length;
-  return stadiumCache.get(STADIUM_FILES[idx]) || "";
+  const loaded = Array.from(stadiumCache.keys());
+  if (loaded.length === 0) return "";
+  const idx = hashString(seed) % loaded.length;
+  return stadiumCache.get(loaded[idx]) || "";
 }
 
 const corsHeaders = {
