@@ -113,6 +113,29 @@ function detectTipo(titulo: string): "PRÉVIA" | "PÓS-JOGO" | "ANÁLISE" {
   return "ANÁLISE";
 }
 
+// Wrap text into N lines max, breaking on spaces, ellipsis if overflow
+function wrapLines(text: string, maxCharsPerLine: number, maxLines: number): string[] {
+  const words = (text || "").trim().split(/\s+/);
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const tryLine = cur ? `${cur} ${w}` : w;
+    if (tryLine.length <= maxCharsPerLine) {
+      cur = tryLine;
+    } else {
+      if (cur) lines.push(cur);
+      if (lines.length >= maxLines) break;
+      cur = w.length > maxCharsPerLine ? w.slice(0, maxCharsPerLine - 1) + "…" : w;
+    }
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  if (lines.length === maxLines && words.join(" ").length > lines.join(" ").length) {
+    const last = lines[maxLines - 1];
+    lines[maxLines - 1] = last.length > maxCharsPerLine - 1 ? last.slice(0, maxCharsPerLine - 1) + "…" : last + "…";
+  }
+  return lines;
+}
+
 function buildSvg(args: {
   timeCasa: string;
   timeFora: string;
@@ -123,8 +146,10 @@ function buildSvg(args: {
   ligaLogo?: string | null;
   tipo: string;
   stadium: string;
+  hasMatch: boolean;
+  titulo: string;
 }): string {
-  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo, tipo, stadium } = args;
+  const { timeCasa, timeFora, corCasa, corFora, liga, data, ligaLogo, tipo, stadium, hasMatch, titulo } = args;
   const tc = escapeXml(fitText(timeCasa.toUpperCase(), 22));
   const tf = escapeXml(fitText(timeFora.toUpperCase(), 22));
   const lg = escapeXml(fitText(liga, 40));
