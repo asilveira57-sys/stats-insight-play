@@ -1,0 +1,1 @@
+UPDATE api_football_import_jobs SET status='queued', started_at=NULL WHERE status='running' AND started_at < now() - interval '3 minutes';
