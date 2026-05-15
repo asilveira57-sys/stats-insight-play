@@ -195,11 +195,10 @@ export function SvgCardTab() {
                 id="batch"
                 type="number"
                 min={1}
-                max={1}
+                max={50}
                 value={batchSize}
-                onChange={() => setBatchSize(1)}
+                onChange={(e) => setBatchSize(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
                 className="w-28"
-                disabled
               />
             </div>
 
