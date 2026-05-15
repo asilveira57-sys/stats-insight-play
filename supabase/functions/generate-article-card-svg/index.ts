@@ -13,6 +13,30 @@ const STADIUM_FILES = [
   "17.jpg","18.jpg","19.jpg","20.jpg","21.jpg","22.jpg","23.jpg","24.jpg",
   "25.jpg","26.jpg","27.jpg","28.jpg",
 ];
+const stadiumCache: Map<string, string> = new Map();
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadStadium(name: string): Promise<string> {
+  if (stadiumCache.has(name)) return stadiumCache.get(name)!;
+  try {
+    const r = await fetch(`${STADIUM_BASE}/${name}`);
+    if (!r.ok) throw new Error(`status ${r.status}`);
+    const uri = `data:image/jpeg;base64,${bytesToBase64(new Uint8Array(await r.arrayBuffer()))}`;
+    stadiumCache.set(name, uri);
+    return uri;
+  } catch (e) {
+    console.warn(`stadium ${name} skipped: ${e}`);
+    return "";
+  }
+}
 
 function hashString(s: string): number {
   let h = 0;
