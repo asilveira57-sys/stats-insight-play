@@ -171,6 +171,31 @@ function buildSvg(args: {
     ? `<image href="${stadium}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`
     : "";
 
+  const matchupBlock = hasMatch
+    ? `
+  <text x="${W/2}" y="${H/2 - 27}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tc}</text>
+  <text x="${W/2}" y="${H/2 - 30}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tc}</text>
+
+  <text x="${W/2}" y="${H/2 + 43}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#000000" opacity="0.45" letter-spacing="8">VS</text>
+  <text x="${W/2}" y="${H/2 + 40}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#22D3EE" letter-spacing="8">VS</text>
+
+  <text x="${W/2}" y="${H/2 + 113}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tf}</text>
+  <text x="${W/2}" y="${H/2 + 110}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tf}</text>`
+    : (() => {
+        const lines = wrapLines(titulo || "Statball", 26, 3);
+        const fontSize = lines.length === 1 ? 78 : lines.length === 2 ? 66 : 56;
+        const lineHeight = fontSize + 12;
+        const totalH = lines.length * lineHeight;
+        const startY = H/2 - totalH/2 + fontSize - 8;
+        return lines.map((ln, i) => {
+          const y = startY + i * lineHeight;
+          const t = escapeXml(ln);
+          return `
+  <text x="${W/2}" y="${y + 3}" text-anchor="middle" font-family="Inter" font-size="${fontSize}" font-weight="900" fill="#000000" opacity="0.5">${t}</text>
+  <text x="${W/2}" y="${y}" text-anchor="middle" font-family="Inter" font-size="${fontSize}" font-weight="900" fill="#FFFFFF">${t}</text>`;
+        }).join("");
+      })();
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="teamOverlay" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -193,15 +218,7 @@ function buildSvg(args: {
   <text x="60" y="80" font-family="Inter" font-size="28" font-weight="700" fill="#22D3EE" letter-spacing="2">${lg}</text>
   <text x="60" y="115" font-family="Inter" font-size="22" font-weight="600" fill="#E2E8F0" opacity="0.9">${dt}</text>
 
-  <!-- Center matchup with subtle text shadow via duplicate dark text -->
-  <text x="${W/2}" y="${H/2 - 27}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tc}</text>
-  <text x="${W/2}" y="${H/2 - 30}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tc}</text>
-
-  <text x="${W/2}" y="${H/2 + 43}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#000000" opacity="0.45" letter-spacing="8">VS</text>
-  <text x="${W/2}" y="${H/2 + 40}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#22D3EE" letter-spacing="8">VS</text>
-
-  <text x="${W/2}" y="${H/2 + 113}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tf}</text>
-  <text x="${W/2}" y="${H/2 + 110}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tf}</text>
+  ${matchupBlock}
 
   <!-- Footer brand -->
   <text x="60" y="${H - 50}" font-family="Inter" font-size="24" font-weight="700" fill="#FFFFFF" opacity="0.95">statball.com.br</text>
