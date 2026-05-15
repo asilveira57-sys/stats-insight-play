@@ -4209,7 +4209,11 @@ export type Database = {
       }
       partidas: {
         Row: {
+          api_events: Json | null
           api_id: number | null
+          api_lineups: Json | null
+          api_source: string | null
+          api_statistics: Json | null
           created_at: string | null
           data: string
           detalhes_sincronizados: boolean | null
@@ -4228,7 +4232,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          api_events?: Json | null
           api_id?: number | null
+          api_lineups?: Json | null
+          api_source?: string | null
+          api_statistics?: Json | null
           created_at?: string | null
           data: string
           detalhes_sincronizados?: boolean | null
@@ -4247,7 +4255,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          api_events?: Json | null
           api_id?: number | null
+          api_lineups?: Json | null
+          api_source?: string | null
+          api_statistics?: Json | null
           created_at?: string | null
           data?: string
           detalhes_sincronizados?: boolean | null
