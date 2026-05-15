@@ -39,7 +39,10 @@ async function getFontBuffers(): Promise<Uint8Array[]> {
 
 // ---- Stadium image cache (8 backgrounds as base64 data URIs) ----
 const STADIUM_BASE = "https://wlvwcbxegrmobefloikr.supabase.co/storage/v1/object/public/card-backgrounds";
-const STADIUM_FILES = ["01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg","07.jpg","08.jpg"];
+const STADIUM_FILES = [
+  "01.jpg","02.jpg","03.jpg","04.jpg","05.jpg","06.jpg","07.jpg","08.jpg",
+  "09.jpg","10.jpg","11.jpg","12.jpg","13.jpg","14.jpg","15.jpg","16.jpg",
+];
 let stadiumCache: Map<string, string> = new Map();
 let stadiumLoadPromise: Promise<void> | null = null;
 
@@ -171,42 +174,36 @@ function buildSvg(args: {
     ? `<image href="${stadium}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`
     : "";
 
+// Impactful thumbnail-style text: triple shadow + thick black stroke + white fill
+const punchText = (x: number, y: number, size: number, content: string, fill = "#FFFFFF", letterSpacing = 0) => `
+  <text x="${x}" y="${y + 6}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="#000000" opacity="0.55" letter-spacing="${letterSpacing}">${content}</text>
+  <text x="${x}" y="${y + 3}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="#000000" opacity="0.85" letter-spacing="${letterSpacing}">${content}</text>
+  <text x="${x}" y="${y}" text-anchor="middle" font-family="Inter" font-size="${size}" font-weight="900" fill="${fill}" stroke="#000000" stroke-width="4" paint-order="stroke fill" letter-spacing="${letterSpacing}">${content}</text>`;
+
   const matchupBlock = hasMatch
-    ? `
-  <text x="${W/2}" y="${H/2 - 27}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tc}</text>
-  <text x="${W/2}" y="${H/2 - 30}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tc}</text>
-
-  <text x="${W/2}" y="${H/2 + 43}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#000000" opacity="0.45" letter-spacing="8">VS</text>
-  <text x="${W/2}" y="${H/2 + 40}" text-anchor="middle" font-family="Inter" font-size="42" font-weight="700" fill="#22D3EE" letter-spacing="8">VS</text>
-
-  <text x="${W/2}" y="${H/2 + 113}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#000000" opacity="0.45">${tf}</text>
-  <text x="${W/2}" y="${H/2 + 110}" text-anchor="middle" font-family="Inter" font-size="68" font-weight="900" fill="#FFFFFF">${tf}</text>`
+    ? `${punchText(W/2, H/2 - 30, 78, tc)}
+${punchText(W/2, H/2 + 40, 48, "VS", "#22D3EE", 10)}
+${punchText(W/2, H/2 + 118, 78, tf)}`
     : (() => {
-        const lines = wrapLines(titulo || "Statball", 26, 3);
-        const fontSize = lines.length === 1 ? 78 : lines.length === 2 ? 66 : 56;
-        const lineHeight = fontSize + 12;
+        const lines = wrapLines(titulo || "Statball", 22, 3);
+        const fontSize = lines.length === 1 ? 90 : lines.length === 2 ? 76 : 62;
+        const lineHeight = fontSize + 14;
         const totalH = lines.length * lineHeight;
         const startY = H/2 - totalH/2 + fontSize - 8;
-        return lines.map((ln, i) => {
-          const y = startY + i * lineHeight;
-          const t = escapeXml(ln);
-          return `
-  <text x="${W/2}" y="${y + 3}" text-anchor="middle" font-family="Inter" font-size="${fontSize}" font-weight="900" fill="#000000" opacity="0.5">${t}</text>
-  <text x="${W/2}" y="${y}" text-anchor="middle" font-family="Inter" font-size="${fontSize}" font-weight="900" fill="#FFFFFF">${t}</text>`;
-        }).join("");
+        return lines.map((ln, i) => punchText(W/2, startY + i * lineHeight, fontSize, escapeXml(ln))).join("");
       })();
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="teamOverlay" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${corCasa}" stop-opacity="0.75"/>
-      <stop offset="50%" stop-color="#0F172A" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="${corFora}" stop-opacity="0.75"/>
+      <stop offset="0%" stop-color="${corCasa}" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#000000" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="${corFora}" stop-opacity="0.45"/>
     </linearGradient>
     <linearGradient id="darkOverlay" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#000000" stop-opacity="0.35"/>
-      <stop offset="60%" stop-color="#000000" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.25"/>
+      <stop offset="55%" stop-color="#000000" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
     </linearGradient>
   </defs>
 
