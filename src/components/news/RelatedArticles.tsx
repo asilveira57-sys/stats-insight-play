@@ -46,7 +46,7 @@ export function RelatedArticles({ currentArticleId, ligaNome }: RelatedArticlesP
     queryFn: async (): Promise<RelatedArticle[]> => {
       const { data, error } = await supabase
         .from("noticias")
-        .select("id, titulo, resumo, slug, data_publicacao, imagem_url")
+        .select("id, titulo, resumo, slug, data_publicacao, imagem_url, imagem_alt")
         .eq("publicada", true)
         .neq("id", currentArticleId)
         .order("data_publicacao", { ascending: false })
