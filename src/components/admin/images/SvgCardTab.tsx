@@ -127,6 +127,7 @@ export function SvgCardTab() {
         setProgress({ totalFixed, lastBatchFixed: r.fixed, lastBatchErrors: r.errors });
         queryClient.invalidateQueries({ queryKey: ["svg-card-pending"] });
         queryClient.invalidateQueries({ queryKey: ["svg-card-done"] });
+        queryClient.invalidateQueries({ queryKey: ["svg-card-latest-10"] });
         if (r.fixed === 0 || r.pending === 0) break;
         await new Promise(res => setTimeout(res, 500));
       }
