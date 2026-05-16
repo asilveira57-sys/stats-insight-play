@@ -187,32 +187,31 @@ REGRAS CRÍTICAS:
 - Tom: natural, analítico, sem parecer robótico
 - Mínimo 1200 palavras`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_tokens: 8000,
-      temperature: 0.75,
-    }),
-  });
+  // Chamada direta à Google Generative Language API (chave própria do usuário)
+  const model = "gemini-2.5-flash";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.75, maxOutputTokens: 8000 },
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
     if (response.status === 429) throw new Error(`AI API error 429: Rate limit exceeded`);
-    if (response.status === 402) throw new Error(`AI API error 402: Payment required`);
+    if (response.status === 402 || response.status === 403) throw new Error(`AI API error ${response.status}: Payment/Quota issue`);
     throw new Error(`AI API error ${response.status}: ${errorText}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "";
+  const content =
+    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") || "";
 
   // Generate title (max 60 chars)
   const title = `${timeCasa} x ${timeFora}: Análise - ${liga}`.slice(0, 60);
