@@ -78,6 +78,7 @@ const menuGroups = [
     items: [
       { title: "Analytics", url: "/admin/integracoes/analytics", icon: BarChart3 },
       { title: "Sitemap", url: "/admin/sitemap", icon: Map },
+      { title: "RSS & Automação", url: "/admin/rss", icon: Rss },
       { title: "LGPD / Privacidade", url: "/admin/privacidade/lgpd", icon: Shield },
     ],
   },
