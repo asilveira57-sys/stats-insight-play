@@ -275,7 +275,8 @@ serve(async (req) => {
     if (articleIds && articleIds.length) {
       q = q.in("id", articleIds);
     } else {
-      q = q.or("image_regenerated_at.is.null,imagem_url.is.null,imagem_url.like.%unsplash%");
+      // Pega tudo que ainda NÃO é SVG card (inclui fotos AI antigas com bola de futebol americano)
+      q = q.or("image_source.is.null,image_source.neq.svg,imagem_url.is.null,imagem_url.like.%unsplash%");
     }
 
     const { data: articles, error } = await q.order("data_publicacao", { ascending: false }).limit(limit);
@@ -285,7 +286,7 @@ serve(async (req) => {
       .from("noticias")
       .select("*", { count: "exact", head: true })
       .eq("publicada", true)
-      .or("image_regenerated_at.is.null,imagem_url.is.null,imagem_url.like.%unsplash%");
+      .or("image_source.is.null,image_source.neq.svg,imagem_url.is.null,imagem_url.like.%unsplash%");
 
     if (mode === "preview") {
       return new Response(JSON.stringify({ success: true, mode, pending: pending || 0, count: articles?.length || 0 }),
