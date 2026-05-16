@@ -74,6 +74,7 @@ import HubLogs from "./pages/hub/Logs";
 import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
 import AdminImageManager from "./pages/AdminImageManager";
+import AdminRss from "./pages/AdminRss";
 
 const queryClient = new QueryClient();
 
