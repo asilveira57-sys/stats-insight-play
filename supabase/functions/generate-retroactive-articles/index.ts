@@ -538,22 +538,9 @@ serve(async (req) => {
           // Could retry here, but for now we'll accept it with a warning
         }
 
-        // Generate thumbnail with SEO filename and retry
-        let thumbnailUrl: string | null = null;
-        if (!skipImages) {
-          const seoFileName = `${slugify(timeCasa)}-vs-${slugify(timeFora)}-${formatDateForSlug(matchData.data)}.png`;
-          thumbnailUrl = await generateThumbnailWithSeoName(matchData, supabase, geminiApiKey, seoFileName);
-          if (!thumbnailUrl) {
-            // Retry once after 3s
-            console.log("Thumbnail failed, retrying in 3s...");
-            await new Promise(r => setTimeout(r, 3000));
-            thumbnailUrl = await generateThumbnailWithSeoName(matchData, supabase, geminiApiKey, seoFileName);
-            if (!thumbnailUrl) {
-              console.log("Thumbnail retry also failed, saving with null image");
-            }
-          }
-        }
-        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
+        // Thumbnail é gerado depois pelo job SVG (admin/imagens → generate-article-card-svg).
+        // Aqui salvamos null para não consumir créditos de imagem da Lovable AI.
+        const thumbnailUrl: string | null = null;
 
         // Calculate publication date (2 days before match)
         const publicationDate = calculatePublicationDate(matchData.data);
