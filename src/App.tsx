@@ -152,6 +152,7 @@ const App = () => (
             <Route path="/admin/kaggle" element={<AdminKaggle />} />
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="/admin/imagens" element={<AdminImageManager />} />
+            <Route path="/admin/rss" element={<AdminRss />} />
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
             <Route path="/configuracoes/perfil" element={<Configuracoes />} />
