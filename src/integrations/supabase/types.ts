@@ -4055,6 +4055,7 @@ export type Database = {
           resumo: string | null
           slug: string | null
           texto: string
+          tipo: string | null
           titulo: string
           updated_at: string | null
         }
@@ -4074,6 +4075,7 @@ export type Database = {
           resumo?: string | null
           slug?: string | null
           texto: string
+          tipo?: string | null
           titulo: string
           updated_at?: string | null
         }
@@ -4093,6 +4095,7 @@ export type Database = {
           resumo?: string | null
           slug?: string | null
           texto?: string
+          tipo?: string | null
           titulo?: string
           updated_at?: string | null
         }
