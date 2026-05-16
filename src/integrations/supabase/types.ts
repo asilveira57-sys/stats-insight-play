@@ -4579,6 +4579,78 @@ export type Database = {
         }
         Relationships: []
       }
+      rss_feed_stats: {
+        Row: {
+          feed: string
+          last_error: string | null
+          last_generated_at: string | null
+          last_item_count: number | null
+          last_status: number | null
+          total_errors: number
+          total_requests: number
+          updated_at: string
+        }
+        Insert: {
+          feed: string
+          last_error?: string | null
+          last_generated_at?: string | null
+          last_item_count?: number | null
+          last_status?: number | null
+          total_errors?: number
+          total_requests?: number
+          updated_at?: string
+        }
+        Update: {
+          feed?: string
+          last_error?: string | null
+          last_generated_at?: string | null
+          last_item_count?: number | null
+          last_status?: number | null
+          total_errors?: number
+          total_requests?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rss_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          event: string
+          feed: string
+          id: string
+          item_count: number | null
+          origin: string | null
+          status: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event: string
+          feed: string
+          id?: string
+          item_count?: number | null
+          origin?: string | null
+          status?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event?: string
+          feed?: string
+          id?: string
+          item_count?: number | null
+          origin?: string | null
+          status?: number | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       season_aliases: {
         Row: {
           canonical_year: number | null
