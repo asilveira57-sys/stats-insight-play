@@ -32,7 +32,8 @@ export function SvgCardTab() {
   const [results, setResults] = useState<ResultItem[]>([]);
   const [progress, setProgress] = useState({ totalFixed: 0, lastBatchFixed: 0, lastBatchErrors: 0 });
 
-  // Pendentes: nunca regenerados OU sem imagem OU unsplash
+  // Pendentes: somente artigos publicados que ainda não têm SVG na imagem atual.
+  // Isso preserva os 2k+ SVGs já prontos e troca PNG/JPG/Unsplash/IA antiga por SVG.
   const { data: pendingCount, isLoading: countLoading } = useQuery({
     queryKey: ["svg-card-pending"],
     queryFn: async () => {
@@ -40,7 +41,7 @@ export function SvgCardTab() {
         .from("noticias")
         .select("*", { count: "exact", head: true })
         .eq("publicada", true)
-        .or("image_regenerated_at.is.null,imagem_url.is.null,imagem_url.like.%unsplash%");
+        .or("imagem_url.is.null,imagem_url.not.like.%.svg%");
       return count || 0;
     },
     staleTime: 5_000,
@@ -54,8 +55,8 @@ export function SvgCardTab() {
       const { count } = await supabase
         .from("noticias")
         .select("*", { count: "exact", head: true })
-        .eq("image_source", "svg")
-        .not("image_regenerated_at", "is", null);
+        .eq("publicada", true)
+        .like("imagem_url", "%.svg%");
       return count || 0;
     },
     staleTime: 5_000,
