@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 import { Layout } from "@/components/layout/Layout";
 import { PredictionCard } from "@/components/cards/PredictionCard";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,8 @@ export default function Palpites() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"date" | "confidence" | "league">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 24;
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
     leagueId: selectedLeague !== 'all' ? selectedLeague : undefined,
@@ -96,6 +99,16 @@ export default function Palpites() {
       return sortDir === "asc" ? comparison : -comparison;
     });
   }, [predictions, existingPalpites, selectedPalpiteStatus, sortBy, sortDir]);
+
+  // Reset to page 1 whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedLeague, selectedConfidence, selectedPalpiteStatus, sortBy, sortDir]);
+
+  const pagedPredictions = useMemo(
+    () => filteredPredictions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredPredictions, page]
+  );
 
   // Count predictions by status
   const palpiteStatusCounts = useMemo(() => {
