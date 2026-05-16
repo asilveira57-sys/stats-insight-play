@@ -178,6 +178,29 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const { kind, param } = parseFeed(url);
   const selfUrl = url.toString();
+  const feedKey = param ? `${kind}/${param}` : kind;
+  const startedAt = Date.now();
+  const refresh = url.searchParams.get("refresh") === "1";
+  const origin = req.headers.get("referer") || req.headers.get("origin") || "direct";
+  const ua = req.headers.get("user-agent") || "";
+
+  const logEvent = async (
+    event: "generated" | "regenerated" | "error",
+    payload: { item_count?: number; status?: number; error_message?: string },
+  ) => {
+    try {
+      await supabase.from("rss_logs").insert({
+        feed: feedKey,
+        event,
+        item_count: payload.item_count ?? null,
+        status: payload.status ?? null,
+        error_message: payload.error_message ?? null,
+        duration_ms: Date.now() - startedAt,
+        origin,
+        user_agent: ua,
+      });
+    } catch (_) {/* swallow log errors */}
+  };
 
   try {
     let items: FeedItem[] = [];
@@ -203,36 +226,29 @@ Deno.serve(async (req) => {
       description = "Conteúdos públicos do Statball para automações externas";
     } else if (TYPE_MAP[kind]) {
       const t = TYPE_MAP[kind];
-      const items_ = await queryItems(
+      items = await queryItems(
         (q) => (Array.isArray(t) ? q.in("tipo", t) : q.eq("tipo", t)),
         100,
       );
-      items = items_;
       title = `Statball — ${TIPO_CATEGORIA[Array.isArray(t) ? t[0] : t] || kind}`;
       description = `Últimas publicações: ${kind}`;
     } else if (kind === "times" || kind === "ligas") {
-      // Catálogo: traz qualquer notícia com partida vinculada (proxy)
       items = await queryItems((q) => q.not("partida_id", "is", null), 100);
       title = `Statball — ${kind === "times" ? "Times" : "Ligas"}`;
     } else if (kind === "time" && param) {
       const { data: t } = await supabase
-        .from("times")
-        .select("id,nome,slug")
-        .eq("slug", param)
-        .maybeSingle();
-      if (!t) return new Response("Time não encontrado", { status: 404, headers: corsHeaders });
-      // Buscar partida_ids do time, então noticias
+        .from("times").select("id,nome,slug").eq("slug", param).maybeSingle();
+      if (!t) {
+        await logEvent("error", { status: 404, error_message: "Time não encontrado" });
+        return new Response("Time não encontrado", { status: 404, headers: corsHeaders });
+      }
       const { data: partidasIds } = await supabase
-        .from("partidas")
-        .select("id")
+        .from("partidas").select("id")
         .or(`time_casa_id.eq.${t.id},time_fora_id.eq.${t.id}`)
-        .order("data", { ascending: false })
-        .limit(500);
+        .order("data", { ascending: false }).limit(500);
       const ids = (partidasIds || []).map((p: any) => p.id);
-      if (ids.length === 0) {
-        items = [];
-      } else {
-        // chunk para evitar URL gigante
+      if (ids.length === 0) items = [];
+      else {
         const chunks: string[][] = [];
         for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
         const results: FeedItem[] = [];
@@ -247,21 +263,17 @@ Deno.serve(async (req) => {
       description = `Últimas publicações sobre ${t.nome}`;
     } else if (kind === "liga" && param) {
       const { data: l } = await supabase
-        .from("ligas")
-        .select("id,nome,slug")
-        .eq("slug", param)
-        .maybeSingle();
-      if (!l) return new Response("Liga não encontrada", { status: 404, headers: corsHeaders });
+        .from("ligas").select("id,nome,slug").eq("slug", param).maybeSingle();
+      if (!l) {
+        await logEvent("error", { status: 404, error_message: "Liga não encontrada" });
+        return new Response("Liga não encontrada", { status: 404, headers: corsHeaders });
+      }
       const { data: partidasIds } = await supabase
-        .from("partidas")
-        .select("id")
-        .eq("liga_id", l.id)
-        .order("data", { ascending: false })
-        .limit(500);
+        .from("partidas").select("id").eq("liga_id", l.id)
+        .order("data", { ascending: false }).limit(500);
       const ids = (partidasIds || []).map((p: any) => p.id);
-      if (ids.length === 0) {
-        items = [];
-      } else {
+      if (ids.length === 0) items = [];
+      else {
         const chunks: string[][] = [];
         for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
         const results: FeedItem[] = [];
@@ -277,37 +289,38 @@ Deno.serve(async (req) => {
     } else if (kind === "temporada" && param) {
       const year = parseInt(param, 10);
       if (!Number.isFinite(year)) {
+        await logEvent("error", { status: 400, error_message: "Temporada inválida" });
         return new Response("Temporada inválida", { status: 400, headers: corsHeaders });
       }
       items = await queryItems(
-        (q) =>
-          q
-            .gte("data_publicacao", `${year}-01-01`)
-            .lte("data_publicacao", `${year}-12-31T23:59:59`),
+        (q) => q.gte("data_publicacao", `${year}-01-01`).lte("data_publicacao", `${year}-12-31T23:59:59`),
         100,
       );
       title = `Statball — Temporada ${year}`;
       description = `Publicações da temporada ${year}`;
     } else {
+      await logEvent("error", { status: 404, error_message: `Feed desconhecido: ${feedKey}` });
       return new Response("Feed desconhecido", { status: 404, headers: corsHeaders });
     }
 
     const xml = buildRss({ title, description, selfUrl, items });
+    await logEvent(refresh ? "regenerated" : "generated", { item_count: items.length, status: 200 });
 
     return new Response(xml, {
       status: 200,
       headers: {
         ...corsHeaders,
         "Content-Type": "application/rss+xml; charset=utf-8",
-        // Cache: 10 min CDN, 5 min browser; auto-invalida via TTL curto
-        "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=1800",
+        "Cache-Control": refresh
+          ? "no-store, must-revalidate"
+          : "public, max-age=300, s-maxage=600, stale-while-revalidate=1800",
       },
     });
   } catch (err) {
+    const msg = (err as Error).message;
     console.error("[rss] error", err);
-    return new Response(`Erro gerando feed: ${(err as Error).message}`, {
-      status: 500,
-      headers: corsHeaders,
-    });
+    await logEvent("error", { status: 500, error_message: msg });
+    return new Response(`Erro gerando feed: ${msg}`, { status: 500, headers: corsHeaders });
   }
 });
+
