@@ -1,99 +1,73 @@
-## Diagnóstico do print que você mandou
+# Plano: acelerar Notícias, Validação e Palpites
 
-Os 6 cards saíram **idênticos** (gradiente azul→vermelho, badge ciano, sem texto). O motivo real:
+## Diagnóstico (causa real da lentidão)
 
-1. **`@resvg/resvg-wasm` não tem fonte carregada por padrão.** Quando o SVG tem `<text>`, ele é renderizado **vazio** se nenhuma fonte foi registrada. Por isso nem o nome dos times, nem a liga, nem o badge "PRÉVIA" apareceram. O que você vê é só o gradiente + o `<rect>` do badge (a forma sem o texto dentro).
-2. **Sem imagem de fundo**, o card vira só "duas cores em diagonal" — visualmente parece tudo igual mesmo entre confrontos diferentes, porque sem texto você não percebe a variação de cores (e cores default `#1e3a8a` / `#7f1d1d` predominam quando o time não tem `cores` cadastradas, o que parece ser o caso da maioria).
-3. **O thumb no admin não é clicável** — só o ícone de "abrir imagem em tamanho real" abre o PNG, sem link pro artigo.
+Investiguei o código e o banco. O problema **não é sua internet** nem o peso das imagens (já são SVGs leves e com `loading="lazy"`). São três gargalos de dados:
 
-Resolver os 3 pontos é o que esse plano faz, mantendo **custo zero**.
+1. **Notícias** (`useNoticias`): hoje busca **todas as 4.611 notícias publicadas** com `select("*")` — incluindo o campo `texto` (corpo completo do artigo) — e **ignora o parâmetro `limit`**. Em cada abertura da tela, o navegador baixa vários MB de JSON e renderiza milhares de cards de uma vez.
+2. **Palpites** (`usePalpitesDB`): para cada partida exibida, chama `getTeamStats` que faz `fetchAllRecords` de **todo o histórico de jogos** dos dois times. Com muitas partidas na tela, são dezenas de queries pesadas em paralelo (N+1).
+3. **Validação Semanal**: já seleciona colunas certas, mas também carrega o lote inteiro sem paginação nem filtro.
 
----
+Sem paginação e sem filtros, qualquer melhoria de imagem teria efeito marginal — o gargalo está no volume de dados e na quantidade de cards renderizados.
 
-## Parte 1 — Fonte real embutida no edge function
+## O que vou implementar
 
-**Problema:** resvg-wasm não tem fontes do sistema; precisa receber TTF explicitamente.
+### 1. Paginação real (servidor)
 
-**Solução:**
-- No `generate-article-card-svg/index.ts`, baixar **uma vez por cold-start** uma fonte open-source da Google Fonts via CDN (ex: `Inter-Bold.ttf` + `Inter-Black.ttf` da `fonts.gstatic.com`) como `ArrayBuffer`.
-- Passar via `new Resvg(svg, { font: { fontBuffers: [interBold, interBlack], defaultFontFamily: "Inter" } })`.
-- Trocar `font-family="Helvetica, Arial, sans-serif"` por `font-family="Inter"` no SVG.
-- Cachear em variável module-level pra não baixar a cada request.
+Trocar os `select` que trazem tudo por `range(from, to)` com `count: 'exact'`, retornando `{ items, total }`.
 
-Isso sozinho já faz o **nome dos times, VS, liga, data, badge "PRÉVIA/ANÁLISE/PÓS-JOGO" e marca Statball aparecerem**. Por si só, dois cards de jogos diferentes ficam visivelmente distintos (texto + cores).
+- **Notícias**: 30 por página (3 colunas × 10 linhas no desktop, vira 2 colunas no tablet e 1 no mobile).
+- **Validação Semanal**: 20 por página.
+- **Palpites**: 24 por página (paginação por partida; estatísticas calculadas só para a página atual).
 
----
+Componente de paginação reutilizável (`Pagination` do shadcn já existe) com Anterior / Próxima e indicador "Página X de Y".
 
-## Parte 2 — Imagem de estádio como fundo (zero custo)
+### 2. Busca avançada com filtros (server-side)
 
-**Estratégia:** banco fixo de ~12 fotos genéricas de estádio (sem identificação de clube — só arquibancada, gramado iluminado, vista aérea, holofotes). Usadas como background com overlay escuro pra texto continuar legível.
+Barra de filtros unificada nas três telas, com os campos relevantes para cada uma:
 
-**Implementação:**
-1. **Bucket `card-backgrounds`** (público) com 12 imagens 1200x630 JPG pré-otimizadas (~80KB cada). Faço o seed copiando 12 imagens livres de direitos (Pexels/Unsplash CC0) ou geradas via `imagegen`.
-2. **Seleção determinística por jogo** para garantir variedade sem aleatoriedade entre rodadas:  
-   `idx = hash(partida_id || titulo) % 12`  
-   → Mesmo confronto sempre cai no mesmo estádio (estável). Confrontos diferentes caem em estádios diferentes.
-3. **No SVG**, embutir a imagem como `<image href="data:image/jpeg;base64,..." width="1200" height="630"/>` na primeira camada, **antes** do gradiente — que vira overlay semi-transparente colorido com as cores dos times. Resultado: foto real visível por baixo + tom dos times por cima + texto branco legível.
-4. **Pré-carrega** as 12 imagens em base64 uma única vez (cache module-level), assim cada request só pega a do índice escolhido.
+| Filtro | Notícias | Validação | Palpites |
+|---|---|---|---|
+| Busca por texto (título / time) | ✅ | ✅ | ✅ |
+| Data exata da partida | ✅ | ✅ | ✅ |
+| Intervalo de datas (de / até) | ✅ | ✅ | ✅ |
+| Campeonato (dropdown) | ✅ | ✅ | ✅ |
+| Temporada (dropdown dependente do campeonato) | ✅ | ✅ | ✅ |
+| Nome do time (autocomplete) | ✅ | ✅ | ✅ |
+| Status (a confirmar / confirmado / errado) | – | ✅ | – |
 
-```text
-┌─────────────────────────────────────────────┐
-│  [foto estádio]                             │
-│  [overlay diagonal cor casa→cor fora 60%]   │
-│  [overlay vertical preto 0→0.55]            │
-│  LIGA            [PRÉVIA]                   │
-│  data                                       │
-│         FLAMENGO                            │
-│            VS                               │
-│         PALMEIRAS                           │
-│  statball.com.br             [logo liga]    │
-└─────────────────────────────────────────────┘
-```
+Todos os filtros aplicados via SQL (`.eq`, `.gte`, `.lte`, `.ilike`, `.in`) — nada de filtrar em memória. Debounce de 300ms na busca por texto. Filtros persistem na URL (querystring) para o usuário poder compartilhar/voltar.
 
----
+### 3. Payload menor
 
-## Parte 3 — Card admin clicável
+- `useNoticias` passa a selecionar só: `id, titulo, resumo, slug, imagem_url, data_publicacao, partida_id` (sem o `texto` gigante). O corpo continua sendo carregado em `useNoticia`/`useNoticiaBySlug` na página de detalhe.
+- `usePalpitesDB`: substituir o N+1 atual por **um único agregado** que traz todas as estatísticas necessárias dos times da página de uma só vez (via RPC ou query agrupada com `IN (...)`).
 
-**Em `SvgCardTab.tsx`**, no bloco "Últimos 10 gerados" (linhas 285–325):
-- Envolver a imagem inteira em `<Link to={"/noticia/" + n.slug} target="_blank">` (rota correta: vou conferir no `App.tsx`, mas pelo `useNoticiaBySlug` é `/noticias/:slug` ou `/noticia/:slug` — uso o que já está em produção).
-- Manter o ícone "abrir imagem PNG raw" como botão secundário no canto.
-- Adicionar mais um botão pequeno "↻ Regenerar este" que invoca `generate-article-card-svg` com `{ article_ids: [n.id] }` — útil pra você corrigir um caso ruim sem rodar o lote todo.
+### 4. Imagens
 
----
+- Já estão otimizadas (SVG ~15–40 KB, `loading="lazy"`).
+- Adiciono `decoding="async"` e `width`/`height` explícitos para evitar layout shift.
+- Sem necessidade de processar/redimensionar — o ganho real vem dos itens 1–3.
 
-## Parte 4 — Estratégia de re-execução
+## Detalhes técnicos
 
-Como os ~4.600 cards atuais saíram quebrados (sem texto), o fluxo certo é:
-1. Deploy das mudanças (fonte + estádio).
-2. **Resetar o backlog**: marcar todos os SVGs atuais como "pendentes de novo" via SQL (`UPDATE noticias SET image_regenerated_at = NULL WHERE image_source = 'svg'`).
-3. Rodar Auto-run de novo. Cada batch agora gera card de verdade, com texto e estádio.
+- Hooks novos: `useNoticiasPaginated({ page, pageSize, filters })`, `usePalpitesPaginated(...)`, `useValidacoesPaginated(...)`. React Query com `keepPreviousData` para transições suaves entre páginas.
+- Componente compartilhado `AdvancedFilters` em `src/components/filters/` (recebe um schema indicando quais filtros mostrar).
+- Índices a verificar/criar via migration se faltarem: `noticias(publicada, data_publicacao desc)`, `partidas(data, liga_id, status)`, `partidas(time_casa_id)`, `partidas(time_fora_id)`. Confirmo por `pg_indexes` antes de criar.
+- RPC `get_team_stats_bulk(team_ids uuid[])` para resolver o N+1 dos palpites em uma chamada só.
+- URL state via `useSearchParams` para os filtros.
 
-Vou pedir confirmação antes do reset, porque é destrutivo do estado atual.
+## Arquivos afetados (resumo)
 
----
+- `src/hooks/useNoticias.ts` — paginação + select enxuto
+- `src/hooks/usePalpitesDB.ts` — bulk stats, eliminar N+1
+- novo `src/hooks/useValidacoesPaginated.ts`
+- novo `src/components/filters/AdvancedFilters.tsx` + `src/components/ui/PaginationBar.tsx`
+- `src/pages/Noticias.tsx`, `src/pages/Palpites.tsx`, `src/pages/ValidacaoSemanal.tsx`
+- migration: índices + RPC `get_team_stats_bulk` (se necessário)
 
-## Ordem técnica de implementação
+## Resultado esperado
 
-1. Editar `supabase/functions/generate-article-card-svg/index.ts`:
-   - carregar Inter-Bold + Inter-Black (cache module-level)
-   - carregar 12 estádios em base64 (cache module-level)
-   - função `pickStadium(seed)` determinística
-   - SVG novo: `<image>` estádio + overlay gradiente cores + overlay preto + textos com `font-family="Inter"`
-2. Criar bucket `card-backgrounds` (público) via migration + seed das 12 imagens (uso `imagegen` premium pra ficar bom — feito uma vez só, custo único de ~$0.50 que vale para sempre).
-3. Editar `src/components/admin/images/SvgCardTab.tsx`:
-   - thumb vira link pro artigo (`/noticia/:slug` ou `/noticias/:slug` — confirmo na implementação)
-   - botão "↻ Regerar este" por card
-4. Deploy edge function + perguntar se reseta backlog dos 4.600 antigos.
-
-## Custo
-
-- **Recorrente:** $0 (fontes via CDN, estádios em storage do projeto).
-- **Único, no setup:** ~$0.50 pra gerar as 12 fotos de estádio com `imagegen` em qualidade boa. Alternativa $0: baixar de Pexels/Unsplash CC0 via curl. **Quer que eu use Pexels grátis ou gere com imagegen pra ter controle total do estilo?**
-
-## Dúvida pra você decidir
-
-A foto de estádio deve ser:
-- **(A)** Genérica sempre (12 ambientes diferentes, sem identidade de clube) — seguro, $0 recorrente, atende copyright.
-- **(B)** Tentar usar foto do estádio do mandante quando soubermos (ex: Maracanã pro Flamengo) — mais bonito, mas exige mapeamento manual time→estádio e fotos sem direitos. Mais trabalho, mais risco.
-
-Recomendo **(A)** pra subir rápido e iterar pra (B) depois se valer a pena.
+- Notícias: tempo de carga inicial cai de "vários segundos com travamento" para **<500ms** (payload ~30 itens em vez de 4.611).
+- Palpites: deixa de fazer dezenas de queries por abertura — uma só chamada agregada.
+- Navegação por filtros e páginas instantânea graças ao `keepPreviousData` + cache do React Query.
