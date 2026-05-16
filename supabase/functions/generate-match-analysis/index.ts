@@ -587,53 +587,10 @@ serve(async (req) => {
         const textContent = await generateLongFormContent(matchData, GEMINI_API_KEY);
         console.log(`Text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail with SEO filename + retry
-        let imageUrl: string | null = null;
-        const seoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}.png`;
-        const thumbnailBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
-        
-        if (thumbnailBase64) {
-          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, seoFileName);
-          console.log(`Thumbnail uploaded: ${imageUrl}`);
-        } else {
-          // Retry once after 3s
-          console.log("Thumbnail failed, retrying in 3s...");
-          await new Promise(r => setTimeout(r, 3000));
-          const retryBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
-          if (retryBase64) {
-            imageUrl = await uploadImage(supabaseAdmin, retryBase64, seoFileName);
-            console.log(`Thumbnail uploaded on retry: ${imageUrl}`);
-          } else {
-            console.log("Thumbnail retry also failed, saving with null image");
-          }
-        }
-        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
-
-        // Generate and upload internal image with SEO filename
-        let internalImageUrl: string | null = null;
-        const internalSeoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
-        const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
-        
-        if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
-          console.log(`Internal image uploaded: ${internalImageUrl}`);
-        }
-
-        // Inject internal image into text if available
-        let finalText = textContent.texto;
-        if (internalImageUrl) {
-          // Find the middle CTA and add image before it
-          const ctaIndex = finalText.indexOf('<div class="premium-cta">');
-          if (ctaIndex > 0) {
-            const imageHtml = `<figure class="internal-image">
-              <img src="${internalImageUrl}" alt="Análise estatística do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome} pela ${matchData.liga.nome}" loading="lazy" />
-              <figcaption>Visualização analítica do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome}</figcaption>
-            </figure>`;
-            finalText = finalText.slice(0, ctaIndex) + imageHtml + finalText.slice(ctaIndex);
-          }
-        }
-
-        // Generate slug
+        // Images are generated separately as SVG cards via admin/imagens.
+        // Leave imageUrl null so the SVG batch job picks it up.
+        const imageUrl: string | null = null;
+        const finalText = textContent.texto;
         const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.data, matchData.liga.nome);
 
         // Insert news article
