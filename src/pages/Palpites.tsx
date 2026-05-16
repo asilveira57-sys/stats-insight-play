@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 import { Layout } from "@/components/layout/Layout";
 import { PredictionCard } from "@/components/cards/PredictionCard";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,8 @@ export default function Palpites() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"date" | "confidence" | "league">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 24;
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
     leagueId: selectedLeague !== 'all' ? selectedLeague : undefined,
@@ -96,6 +99,16 @@ export default function Palpites() {
       return sortDir === "asc" ? comparison : -comparison;
     });
   }, [predictions, existingPalpites, selectedPalpiteStatus, sortBy, sortDir]);
+
+  // Reset to page 1 whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedLeague, selectedConfidence, selectedPalpiteStatus, sortBy, sortDir]);
+
+  const pagedPredictions = useMemo(
+    () => filteredPredictions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredPredictions, page]
+  );
 
   // Count predictions by status
   const palpiteStatusCounts = useMemo(() => {
@@ -452,7 +465,7 @@ export default function Palpites() {
             ) : filteredPredictions && filteredPredictions.length > 0 ? (
               viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredPredictions.map((prediction) => (
+                  {pagedPredictions.map((prediction) => (
                     <PredictionCard
                       key={prediction.id}
                       {...prediction}
@@ -475,7 +488,7 @@ export default function Palpites() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPredictions.map((prediction) => {
+                      {pagedPredictions.map((prediction) => {
                         const hasPalpite = existingPalpites?.get(prediction.matchId) || false;
                         const confidenceColors: Record<string, string> = {
                           high: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -557,7 +570,23 @@ export default function Palpites() {
                   </Table>
                 </div>
               )
-            ) : (
+            ) : null}
+
+            {!loadingPredictions && filteredPredictions.length > PAGE_SIZE && (
+              <div className="mt-6">
+                <PaginationBar
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  total={filteredPredictions.length}
+                  onPageChange={(p) => {
+                    setPage(p);
+                    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+              </div>
+            )}
+
+            {!loadingPredictions && filteredPredictions.length === 0 && (
               <div className="space-y-6">
                 {/* Retrospectiva for BSA */}
                 {selectedLeague === 'BSA' && <BrasileiraoRetrospectiva />}
