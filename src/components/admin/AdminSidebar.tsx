@@ -20,6 +20,7 @@ import {
   HardDrive,
   Image,
   Map,
+  Rss,
 } from "lucide-react";
 import {
   Sidebar,
