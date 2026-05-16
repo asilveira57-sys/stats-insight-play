@@ -5916,6 +5916,22 @@ export type Database = {
           vitorias: number
         }[]
       }
+      get_team_stats_bulk: {
+        Args: { p_team_ids: string[] }
+        Returns: {
+          away_matches: number
+          away_wins: number
+          draws: number
+          goals_conceded: number
+          goals_scored: number
+          home_matches: number
+          home_wins: number
+          losses: number
+          team_id: string
+          total_matches: number
+          wins: number
+        }[]
+      }
       get_teams_with_aliases: {
         Args: {
           p_limit?: number
