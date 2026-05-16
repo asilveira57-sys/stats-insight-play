@@ -197,35 +197,31 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${GEMINI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { 
-          role: "system", 
-          content: "Você é um analista esportivo brasileiro de elite, especializado em análise estatística de futebol. Seu conteúdo deve parecer escrito por humano especialista, nunca genérico ou automático. Interprete dados — não apenas repita números. Responda sempre em JSON válido com campos titulo, resumo e texto. O texto deve ter no mínimo 1500 palavras." 
-        },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.75,
-    }),
-  });
+  const systemInstruction = "Você é um analista esportivo brasileiro de elite, especializado em análise estatística de futebol. Seu conteúdo deve parecer escrito por humano especialista, nunca genérico ou automático. Interprete dados — não apenas repita números. Responda sempre em JSON válido com campos titulo, resumo e texto. O texto deve ter no mínimo 1500 palavras.";
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.75, maxOutputTokens: 8000 },
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("AI Gateway text generation error:", response.status, errorText);
+    console.error("Gemini API text generation error:", response.status, errorText);
     if (response.status === 429) throw new Error("Rate limit exceeded. Try again later.");
-    if (response.status === 402) throw new Error("Credits exhausted. Add funds to workspace.");
+    if (response.status === 402 || response.status === 403) throw new Error("Gemini API key sem cota/inválida. Verifique sua chave.");
     throw new Error(`Text generation failed: ${response.status}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
   
   if (!content) {
     throw new Error("No content in AI response");
@@ -440,12 +436,12 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!GEMINI_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -591,53 +587,10 @@ serve(async (req) => {
         const textContent = await generateLongFormContent(matchData, GEMINI_API_KEY);
         console.log(`Text generated: ${textContent.titulo} (${textContent.texto.length} chars)`);
 
-        // Generate and upload thumbnail with SEO filename + retry
-        let imageUrl: string | null = null;
-        const seoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}.png`;
-        const thumbnailBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
-        
-        if (thumbnailBase64) {
-          imageUrl = await uploadImage(supabaseAdmin, thumbnailBase64, seoFileName);
-          console.log(`Thumbnail uploaded: ${imageUrl}`);
-        } else {
-          // Retry once after 3s
-          console.log("Thumbnail failed, retrying in 3s...");
-          await new Promise(r => setTimeout(r, 3000));
-          const retryBase64 = await generateThumbnail(matchData, GEMINI_API_KEY);
-          if (retryBase64) {
-            imageUrl = await uploadImage(supabaseAdmin, retryBase64, seoFileName);
-            console.log(`Thumbnail uploaded on retry: ${imageUrl}`);
-          } else {
-            console.log("Thumbnail retry also failed, saving with null image");
-          }
-        }
-        // NEVER use Unsplash placeholder — null triggers frontend CSS fallback
-
-        // Generate and upload internal image with SEO filename
-        let internalImageUrl: string | null = null;
-        const internalSeoFileName = `${slugifyForFile(matchData.time_casa.nome)}-vs-${slugifyForFile(matchData.time_fora.nome)}-${matchData.data}-internal.png`;
-        const internalImageBase64 = await generateInternalImage(matchData, GEMINI_API_KEY);
-        
-        if (internalImageBase64) {
-          internalImageUrl = await uploadImage(supabaseAdmin, internalImageBase64, internalSeoFileName);
-          console.log(`Internal image uploaded: ${internalImageUrl}`);
-        }
-
-        // Inject internal image into text if available
-        let finalText = textContent.texto;
-        if (internalImageUrl) {
-          // Find the middle CTA and add image before it
-          const ctaIndex = finalText.indexOf('<div class="premium-cta">');
-          if (ctaIndex > 0) {
-            const imageHtml = `<figure class="internal-image">
-              <img src="${internalImageUrl}" alt="Análise estatística do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome} pela ${matchData.liga.nome}" loading="lazy" />
-              <figcaption>Visualização analítica do confronto ${matchData.time_casa.nome} x ${matchData.time_fora.nome}</figcaption>
-            </figure>`;
-            finalText = finalText.slice(0, ctaIndex) + imageHtml + finalText.slice(ctaIndex);
-          }
-        }
-
-        // Generate slug
+        // Images are generated separately as SVG cards via admin/imagens.
+        // Leave imageUrl null so the SVG batch job picks it up.
+        const imageUrl: string | null = null;
+        const finalText = textContent.texto;
         const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.data, matchData.liga.nome);
 
         // Insert news article
