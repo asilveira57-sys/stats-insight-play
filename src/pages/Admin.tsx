@@ -118,14 +118,30 @@ export default function Admin() {
 
       const matchIds = matchesData?.map(m => m.id) || [];
 
-      // Fetch news and palpites separately for more reliable results
-      const [newsResult, palpitesResult] = await Promise.all([
-        supabase.from("noticias").select("partida_id").in("partida_id", matchIds),
-        supabase.from("palpites").select("partida_id").in("partida_id", matchIds)
-      ]);
+      // Chunk .in() queries to avoid URI Too Long errors when matchIds is large
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+      const idChunks = chunk(matchIds, 100);
 
-      const newsMatchIds = new Set(newsResult.data?.map(n => n.partida_id) || []);
-      const palpiteMatchIds = new Set(palpitesResult.data?.map(p => p.partida_id) || []);
+      const newsMatchIds = new Set<string>();
+      const palpiteMatchIds = new Set<string>();
+      try {
+        await Promise.all(
+          idChunks.flatMap(ids => [
+            supabase.from("noticias").select("partida_id").in("partida_id", ids).then(r => {
+              (r.data || []).forEach((n: any) => newsMatchIds.add(n.partida_id));
+            }),
+            supabase.from("palpites").select("partida_id").in("partida_id", ids).then(r => {
+              (r.data || []).forEach((p: any) => palpiteMatchIds.add(p.partida_id));
+            }),
+          ])
+        );
+      } catch (e) {
+        console.error("Error fetching news/palpites:", e);
+      }
 
       const formattedMatches: ScheduledMatch[] = (matchesData || []).map(m => {
         const timeCasa = Array.isArray(m.time_casa) ? m.time_casa[0] : m.time_casa;
