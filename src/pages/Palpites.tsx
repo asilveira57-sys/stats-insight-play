@@ -465,7 +465,7 @@ export default function Palpites() {
             ) : filteredPredictions && filteredPredictions.length > 0 ? (
               viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredPredictions.map((prediction) => (
+                  {pagedPredictions.map((prediction) => (
                     <PredictionCard
                       key={prediction.id}
                       {...prediction}
@@ -488,7 +488,7 @@ export default function Palpites() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPredictions.map((prediction) => {
+                      {pagedPredictions.map((prediction) => {
                         const hasPalpite = existingPalpites?.get(prediction.matchId) || false;
                         const confidenceColors: Record<string, string> = {
                           high: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -570,7 +570,23 @@ export default function Palpites() {
                   </Table>
                 </div>
               )
-            ) : (
+            ) : null}
+
+            {!loadingPredictions && filteredPredictions.length > PAGE_SIZE && (
+              <div className="mt-6">
+                <PaginationBar
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  total={filteredPredictions.length}
+                  onPageChange={(p) => {
+                    setPage(p);
+                    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+              </div>
+            )}
+
+            {!loadingPredictions && filteredPredictions.length === 0 && (
               <div className="space-y-6">
                 {/* Retrospectiva for BSA */}
                 {selectedLeague === 'BSA' && <BrasileiraoRetrospectiva />}
