@@ -480,7 +480,7 @@ export default function Admin() {
     }
   };
 
-  if (authLoading || checkingRole) {
+  if (adminLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
@@ -490,8 +490,33 @@ export default function Admin() {
     );
   }
 
+  if (adminAccessFailed) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>Não foi possível validar o acesso admin</CardTitle>
+              <CardDescription>A sessão ou o backend demorou para responder. Tente novamente.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button onClick={retryAdminAccess}>
+                <RefreshCw className="w-4 h-4 mr-2" /> Tentar novamente
+              </Button>
+              {user && (
+                <Button variant="outline" onClick={() => supabase.auth.signOut({ scope: 'local' })}>
+                  Limpar sessão local
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   if (!isAdmin) {
-    return null;
+    return <AdminLayout><div className="container mx-auto px-4 py-10 text-muted-foreground">Acesso negado.</div></AdminLayout>;
   }
 
   const selectedMatchData = matches.find(m => m.id === selectedMatch);
