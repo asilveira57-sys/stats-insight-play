@@ -75,7 +75,8 @@ export function useSystemHealth(enabled = true) {
         .from('sync_logs')
         .select('*')
         .gte('created_at', yesterday)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 499);
 
       // Fetch last sync
       const { data: lastSyncData } = await supabase
@@ -85,13 +86,6 @@ export function useSystemHealth(enabled = true) {
         .order('completed_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      // Count content queue (news pending)
-      const { count: pendingContent } = await supabase
-        .from('partidas')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'scheduled')
-        .is('detalhes_sincronizados', false);
 
       const activeCount = sources?.filter(s => s.status === 'active').length || 0;
       const errorCount = sources?.filter(s => s.status === 'error').length || 0;
@@ -118,7 +112,7 @@ export function useSystemHealth(enabled = true) {
         processedToday,
         errorsLast24h,
         contentQueue: {
-          pending: pendingContent || 0,
+          pending: 0,
           processing: 0,
           failed: 0
         },
