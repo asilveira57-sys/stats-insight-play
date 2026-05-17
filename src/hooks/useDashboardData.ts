@@ -143,8 +143,8 @@ export function useUserPredictionStats() {
 
       const [totalPalpites, gamification, streak] = await Promise.all([
         safe(countAllRecords('palpites_usuarios', q => q.eq('user_id', user.id)), 0),
-        safe(supabase.from('user_gamification_stats').select('*').eq('user_id', user.id).maybeSingle(), { data: null } as any),
-        safe(supabase.from('user_xp').select('current_streak_days, total_xp, level').eq('user_id', user.id).maybeSingle(), { data: null } as any),
+        safe(Promise.resolve(supabase.from('user_gamification_stats').select('*').eq('user_id', user.id).maybeSingle()), { data: null } as any),
+        safe(Promise.resolve(supabase.from('user_xp').select('current_streak_days, total_xp, level').eq('user_id', user.id).maybeSingle()), { data: null } as any),
       ]);
 
       const stats = gamification.data;
@@ -235,10 +235,10 @@ export function useIntegrityAlerts(enabled: boolean = false) {
         safe(countAllRecords('partidas', q => q.eq('status', 'finished').is('gols_casa', null)), 0),
         safe(countAllRecords('partidas', q => q.is('api_id', null)), 0),
         safe(countAllRecords('times', q => q.is('slug', null)), 0),
-        safe(supabase.from('sync_logs').select('id', { count: 'exact', head: true })
+        safe(Promise.resolve(supabase.from('sync_logs').select('id', { count: 'exact', head: true })
           .eq('status', 'failed')
           .gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-          .then(r => r.count || 0), 0),
+          .then(r => r.count || 0)), 0),
       ]);
 
       return { noScore, noApiId, noSlug, failedSyncs };
