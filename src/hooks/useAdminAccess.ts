@@ -14,10 +14,12 @@ export function useAdminAccess() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const retry = () => {
     setFailed(false);
     setCheckingRole(true);
+    setRetryCount((count) => count + 1);
   };
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export function useAdminAccess() {
     }
 
     return () => { cancelled = true; };
-  }, [user, authLoading]);
+  }, [user, authLoading, retryCount]);
 
   useEffect(() => {
     // Only redirect when we've confirmed the user is NOT admin (not on transient failure)
