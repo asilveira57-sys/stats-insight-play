@@ -57,7 +57,7 @@ export interface SyncLog {
   details: any;
 }
 
-export function useSystemHealth() {
+export function useSystemHealth(enabled = true) {
   return useQuery({
     queryKey: ['admin-system-health'],
     queryFn: async (): Promise<SystemHealth> => {
@@ -128,11 +128,12 @@ export function useSystemHealth() {
         }
       };
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    enabled,
+    refetchInterval: enabled ? 30000 : false // Refresh every 30 seconds
   });
 }
 
-export function useSyncSources() {
+export function useSyncSources(enabled = true) {
   return useQuery({
     queryKey: ['admin-sync-sources'],
     queryFn: async (): Promise<SyncSource[]> => {
@@ -147,7 +148,8 @@ export function useSyncSources() {
       const { data: logs } = await supabase
         .from('sync_logs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 299);
 
       const logsBySource = new Map<string, SyncLog[]>();
       logs?.forEach(log => {
@@ -188,7 +190,8 @@ export function useSyncSources() {
           rateLimitPerDay: source.rate_limit_per_day
         };
       });
-    }
+    },
+    enabled
   });
 }
 
@@ -200,7 +203,7 @@ export function useSyncLogs(filters?: {
   status?: string;
   search?: string;
   limit?: number;
-}) {
+}, enabled = true) {
   return useQuery({
     queryKey: ['admin-sync-logs', filters],
     queryFn: async (): Promise<SyncLog[]> => {
@@ -225,6 +228,9 @@ export function useSyncLogs(filters?: {
         query = query.eq('status', filters.status);
       }
 
+      const pageSize = Math.min(Math.max(filters?.limit || 50, 1), 200);
+      query = query.range(0, pageSize - 1);
+
       const { data, error } = await query;
       if (error) throw error;
 
@@ -232,7 +238,8 @@ export function useSyncLogs(filters?: {
         ...log,
         source_name: (log as any).data_sources?.name
       }));
-    }
+    },
+    enabled
   });
 }
 
