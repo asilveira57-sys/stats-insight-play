@@ -188,7 +188,7 @@ function LogEntry({ log, onReprocess }: { log: any; onReprocess: () => void }) {
 function DatabaseHealthTab() {
   const { toast } = useToast();
   const [healthData, setHealthData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [fixingMerges, setFixingMerges] = useState(false);
   const [dedupRunning, setDedupRunning] = useState(false);
   const [rebuildingArt, setRebuildingArt] = useState(false);
@@ -201,10 +201,11 @@ function DatabaseHealthTab() {
       const dupMatches = dupData?.[0]?.dup_records || 0;
       const dupGroups = dupData?.[0]?.dup_groups || 0;
 
-      // Get inverted merges count
+      // Get a bounded sample so the control center never locks on large tables
       const { data: teams } = await supabase
         .from('times')
-        .select('id, slug, status');
+        .select('id, slug, status')
+        .range(0, 499);
 
       let invertedMerges = 0;
       const teamsBySlug = new Map<string, any[]>();
@@ -223,12 +224,16 @@ function DatabaseHealthTab() {
       // Get leagues without matches
       const { data: leagues } = await supabase
         .from('ligas')
-        .select('id, nome, ativa');
+        .select('id, nome, ativa')
+        .eq('ativa', true)
+        .range(0, 199);
 
-      const activeLeagues = (leagues || []).filter(l => l.ativa);
+      const activeLeagues = leagues || [];
       const { data: leagueMatchCounts } = await supabase
         .from('partidas')
-        .select('liga_id');
+        .select('liga_id')
+        .not('liga_id', 'is', null)
+        .range(0, 999);
 
       const leaguesWithMatches = new Set((leagueMatchCounts || []).map(m => m.liga_id));
       const emptyLeagues = activeLeagues.filter(l => !leaguesWithMatches.has(l.id));
@@ -249,8 +254,6 @@ function DatabaseHealthTab() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { fetchHealth(); }, []);
 
   const handleFixMerges = async () => {
     setFixingMerges(true);
