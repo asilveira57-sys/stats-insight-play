@@ -591,6 +591,8 @@ export default function AdminControlCenter() {
 
   // Sync background_jobs table → loopState via realtime
   useEffect(() => {
+    if (!adminQueriesEnabled) return;
+
     const syncJob = (job: any) => {
       if (!job) return;
       const p = job.progress || {};
@@ -623,7 +625,7 @@ export default function AdminControlCenter() {
     };
 
     // Initial fetch
-    (supabase as any).from('background_jobs').select('*').then(({ data }: any) => {
+    (supabase as any).from('background_jobs').select('*').range(0, 49).then(({ data }: any) => {
       (data || []).forEach(syncJob);
     });
 
@@ -636,7 +638,7 @@ export default function AdminControlCenter() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [adminQueriesEnabled]);
 
   const startJob = async (jobType: string) => {
     const { error } = await (supabase as any).from('background_jobs')
