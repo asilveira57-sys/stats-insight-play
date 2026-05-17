@@ -188,7 +188,7 @@ function LogEntry({ log, onReprocess }: { log: any; onReprocess: () => void }) {
 function DatabaseHealthTab() {
   const { toast } = useToast();
   const [healthData, setHealthData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [fixingMerges, setFixingMerges] = useState(false);
   const [dedupRunning, setDedupRunning] = useState(false);
   const [rebuildingArt, setRebuildingArt] = useState(false);
@@ -201,10 +201,11 @@ function DatabaseHealthTab() {
       const dupMatches = dupData?.[0]?.dup_records || 0;
       const dupGroups = dupData?.[0]?.dup_groups || 0;
 
-      // Get inverted merges count
+      // Get a bounded sample so the control center never locks on large tables
       const { data: teams } = await supabase
         .from('times')
-        .select('id, slug, status');
+        .select('id, slug, status')
+        .range(0, 499);
 
       let invertedMerges = 0;
       const teamsBySlug = new Map<string, any[]>();
@@ -223,12 +224,16 @@ function DatabaseHealthTab() {
       // Get leagues without matches
       const { data: leagues } = await supabase
         .from('ligas')
-        .select('id, nome, ativa');
+        .select('id, nome, ativa')
+        .eq('ativa', true)
+        .range(0, 199);
 
-      const activeLeagues = (leagues || []).filter(l => l.ativa);
+      const activeLeagues = leagues || [];
       const { data: leagueMatchCounts } = await supabase
         .from('partidas')
-        .select('liga_id');
+        .select('liga_id')
+        .not('liga_id', 'is', null)
+        .range(0, 999);
 
       const leaguesWithMatches = new Set((leagueMatchCounts || []).map(m => m.liga_id));
       const emptyLeagues = activeLeagues.filter(l => !leaguesWithMatches.has(l.id));
@@ -249,8 +254,6 @@ function DatabaseHealthTab() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { fetchHealth(); }, []);
 
   const handleFixMerges = async () => {
     setFixingMerges(true);
@@ -437,14 +440,16 @@ function DatabaseHealthTab() {
 }
 
 export default function AdminControlCenter() {
-  const { isAdmin, isLoading } = useAdminAccess();
+  const { isAdmin, isLoading, failed: adminAccessFailed, retry: retryAdminAccess, user } = useAdminAccess();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('health');
+  const adminQueriesEnabled = isAdmin && !isLoading;
   
-  const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  const { data: sources, isLoading: sourcesLoading, refetch: refetchSources } = useSyncSources();
-  const { data: userStats } = useUserStats();
-  const { data: contentStats } = useContentStats();
-  const { data: priorityStats } = usePriorityStats();
+  const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth(adminQueriesEnabled);
+  const { data: sources, isLoading: sourcesLoading, refetch: refetchSources } = useSyncSources(adminQueriesEnabled && activeTab === 'syncs');
+  const { data: userStats } = useUserStats(adminQueriesEnabled && activeTab === 'users');
+  const { data: contentStats } = useContentStats(adminQueriesEnabled && (activeTab === 'content' || activeTab === 'seo'));
+  const { data: priorityStats } = usePriorityStats(adminQueriesEnabled && activeTab === 'priority');
   
   // Retroactive articles generation
   const {
@@ -455,11 +460,11 @@ export default function AdminControlCenter() {
     lastResults,
     startGeneration,
     refetchProgress: refetchRetroactive,
-  } = useRetroactiveArticles();
+  } = useRetroactiveArticles(adminQueriesEnabled && activeTab === 'content');
   const [batchSize, setBatchSize] = useState(10);
   
   const [logFilters, setLogFilters] = useState({ status: '', type: '', limit: 50 });
-  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useSyncLogs(logFilters);
+  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useSyncLogs(logFilters, adminQueriesEnabled && activeTab === 'logs');
   
   const [syncingSource, setSyncingSource] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
@@ -589,6 +594,8 @@ export default function AdminControlCenter() {
 
   // Sync background_jobs table → loopState via realtime
   useEffect(() => {
+    if (!adminQueriesEnabled) return;
+
     const syncJob = (job: any) => {
       if (!job) return;
       const p = job.progress || {};
@@ -621,7 +628,7 @@ export default function AdminControlCenter() {
     };
 
     // Initial fetch
-    (supabase as any).from('background_jobs').select('*').then(({ data }: any) => {
+    (supabase as any).from('background_jobs').select('*').range(0, 49).then(({ data }: any) => {
       (data || []).forEach(syncJob);
     });
 
@@ -634,7 +641,7 @@ export default function AdminControlCenter() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [adminQueriesEnabled]);
 
   const startJob = async (jobType: string) => {
     const { error } = await (supabase as any).from('background_jobs')
@@ -796,7 +803,44 @@ export default function AdminControlCenter() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (adminAccessFailed) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Não foi possível validar o acesso admin
+              </CardTitle>
+              <CardDescription>
+                A sessão ou o backend demorou para responder. A página foi liberada do loading infinito.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button onClick={retryAdminAccess}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Tentar novamente
+              </Button>
+              {user && (
+                <Button variant="outline" onClick={() => supabase.auth.signOut({ scope: 'local' })}>
+                  Limpar sessão local
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 text-muted-foreground">Acesso negado.</div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <>
@@ -923,7 +967,7 @@ export default function AdminControlCenter() {
           </div>
 
           {/* Main Tabs */}
-          <Tabs defaultValue="health" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid grid-cols-7 w-full max-w-4xl">
               <TabsTrigger value="health" className="flex items-center gap-1">
                 <Activity className="w-4 h-4" /> Saúde

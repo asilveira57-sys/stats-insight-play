@@ -6,6 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Tempo esgotado ao validar acesso admin')), ms);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+};
+
 export function useAdminAccess() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -14,27 +27,41 @@ export function useAdminAccess() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = () => {
+    setFailed(false);
+    setCheckingRole(true);
+    setRetryCount((count) => count + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
 
     async function checkAdminRole() {
       if (!user) {
+        setIsAdmin(false);
         setCheckingRole(false);
         return;
       }
+
+      setCheckingRole(true);
+      setFailed(false);
 
       // Retry with backoff to survive transient backend timeouts
       let hasAdminRole = false;
       let lastErr: any = null;
       for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
         try {
-          const { data, error } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin")
-            .maybeSingle();
+          const { data, error } = await withTimeout(
+            supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", user.id)
+              .eq("role", "admin")
+              .maybeSingle(),
+            5000
+          );
 
           if (error) throw error;
           hasAdminRole = !!data;
@@ -81,7 +108,7 @@ export function useAdminAccess() {
     }
 
     return () => { cancelled = true; };
-  }, [user, authLoading]);
+  }, [user, authLoading, retryCount]);
 
   useEffect(() => {
     // Only redirect when we've confirmed the user is NOT admin (not on transient failure)
@@ -99,6 +126,7 @@ export function useAdminAccess() {
     isAdmin,
     isLoading: authLoading || checkingRole,
     failed,
+    retry,
     user
   };
 }

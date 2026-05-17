@@ -57,7 +57,7 @@ export interface SyncLog {
   details: any;
 }
 
-export function useSystemHealth() {
+export function useSystemHealth(enabled = true) {
   return useQuery({
     queryKey: ['admin-system-health'],
     queryFn: async (): Promise<SystemHealth> => {
@@ -75,7 +75,8 @@ export function useSystemHealth() {
         .from('sync_logs')
         .select('*')
         .gte('created_at', yesterday)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 499);
 
       // Fetch last sync
       const { data: lastSyncData } = await supabase
@@ -85,13 +86,6 @@ export function useSystemHealth() {
         .order('completed_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      // Count content queue (news pending)
-      const { count: pendingContent } = await supabase
-        .from('partidas')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'scheduled')
-        .is('detalhes_sincronizados', false);
 
       const activeCount = sources?.filter(s => s.status === 'active').length || 0;
       const errorCount = sources?.filter(s => s.status === 'error').length || 0;
@@ -118,7 +112,7 @@ export function useSystemHealth() {
         processedToday,
         errorsLast24h,
         contentQueue: {
-          pending: pendingContent || 0,
+          pending: 0,
           processing: 0,
           failed: 0
         },
@@ -128,11 +122,12 @@ export function useSystemHealth() {
         }
       };
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    enabled,
+    refetchInterval: enabled ? 30000 : false // Refresh every 30 seconds
   });
 }
 
-export function useSyncSources() {
+export function useSyncSources(enabled = true) {
   return useQuery({
     queryKey: ['admin-sync-sources'],
     queryFn: async (): Promise<SyncSource[]> => {
@@ -147,7 +142,8 @@ export function useSyncSources() {
       const { data: logs } = await supabase
         .from('sync_logs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 299);
 
       const logsBySource = new Map<string, SyncLog[]>();
       logs?.forEach(log => {
@@ -188,7 +184,8 @@ export function useSyncSources() {
           rateLimitPerDay: source.rate_limit_per_day
         };
       });
-    }
+    },
+    enabled
   });
 }
 
@@ -200,7 +197,7 @@ export function useSyncLogs(filters?: {
   status?: string;
   search?: string;
   limit?: number;
-}) {
+}, enabled = true) {
   return useQuery({
     queryKey: ['admin-sync-logs', filters],
     queryFn: async (): Promise<SyncLog[]> => {
@@ -225,6 +222,9 @@ export function useSyncLogs(filters?: {
         query = query.eq('status', filters.status);
       }
 
+      const pageSize = Math.min(Math.max(filters?.limit || 50, 1), 200);
+      query = query.range(0, pageSize - 1);
+
       const { data, error } = await query;
       if (error) throw error;
 
@@ -232,11 +232,12 @@ export function useSyncLogs(filters?: {
         ...log,
         source_name: (log as any).data_sources?.name
       }));
-    }
+    },
+    enabled
   });
 }
 
-export function useUserStats() {
+export function useUserStats(enabled = true) {
   return useQuery({
     queryKey: ['admin-user-stats'],
     queryFn: async () => {
@@ -266,11 +267,12 @@ export function useUserStats() {
         activeSubscriptions: activeSubscriptions || 0,
         cancelledSubscriptions: cancelledSubscriptions || 0
       };
-    }
+    },
+    enabled
   });
 }
 
-export function useContentStats() {
+export function useContentStats(enabled = true) {
   return useQuery({
     queryKey: ['admin-content-stats'],
     queryFn: async () => {
@@ -312,11 +314,12 @@ export function useContentStats() {
         teamPillars: teamPillars || 0,
         leaguePillars: leaguePillars || 0
       };
-    }
+    },
+    enabled
   });
 }
 
-export function usePriorityStats() {
+export function usePriorityStats(enabled = true) {
   return useQuery({
     queryKey: ['admin-priority-stats'],
     queryFn: async () => {
@@ -324,18 +327,21 @@ export function usePriorityStats() {
         .from('ligas')
         .select('id, nome, priority_score, score_updated_at')
         .not('priority_score', 'is', null)
-        .order('priority_score', { ascending: false });
+        .order('priority_score', { ascending: false })
+        .range(0, 24);
 
       const { data: topTeams } = await supabase
         .from('times')
         .select('id, nome, priority_score, score_updated_at, cores')
         .not('priority_score', 'is', null)
-        .order('priority_score', { ascending: false });
+        .order('priority_score', { ascending: false })
+        .range(0, 24);
 
       return {
         topLeagues: topLeagues || [],
         topTeams: topTeams || []
       };
-    }
+    },
+    enabled
   });
 }

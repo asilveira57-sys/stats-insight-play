@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +9,7 @@ import { Loader2, Wand2, FileText, Shield, Calendar, Sparkles, History, RefreshC
 import { useToast } from "@/hooks/use-toast";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { useLeaguesByPriority, useTeamsByPriority, useRecalculatePriorityScores, getPriorityLevel } from "@/hooks/usePriorityScores";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 
 interface ScheduledMatch {
   id: string;
@@ -30,12 +29,9 @@ interface FinishedMatchStats {
 }
 
 export default function Admin() {
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { isAdmin, isLoading: adminLoading, failed: adminAccessFailed, retry: retryAdminAccess, user } = useAdminAccess();
   const { toast } = useToast();
   
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingRole, setCheckingRole] = useState(true);
   const [matches, setMatches] = useState<ScheduledMatch[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<string>("");
@@ -51,72 +47,6 @@ export default function Admin() {
   const [finishedStats, setFinishedStats] = useState<FinishedMatchStats>({ total: 0, withPalpite: 0, withoutPalpite: 0 });
   const [validationStats, setValidationStats] = useState({ withComparativo: 0, withValidationArticle: 0 });
   const [weeklyValidationStats, setWeeklyValidationStats] = useState({ total: 0 });
-
-  // Check if user is admin (with retry to survive transient backend timeouts)
-  useEffect(() => {
-    let cancelled = false;
-    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-    async function checkAdminRole() {
-      if (!user) {
-        setCheckingRole(false);
-        return;
-      }
-
-      let hasAdminRole = false;
-      let lastErr: any = null;
-      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
-        try {
-          const { data, error } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin")
-            .maybeSingle();
-          if (error) throw error;
-          hasAdminRole = !!data;
-          lastErr = null;
-          break;
-        } catch (err) {
-          lastErr = err;
-          console.warn(`Admin role check failed (attempt ${attempt + 1}/3):`, err);
-          await sleep(500 * Math.pow(2, attempt));
-        }
-      }
-
-      if (cancelled) return;
-
-      if (lastErr) {
-        console.error("Error checking admin role:", lastErr);
-        // Do NOT auto-redirect on transient backend failure — keep user in place
-        setIsAdmin(false);
-        setCheckingRole(false);
-        toast({
-          title: "Não foi possível verificar permissão",
-          description: "O servidor está sobrecarregado. Recarregue a página em alguns segundos.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setIsAdmin(hasAdminRole);
-      setCheckingRole(false);
-    }
-
-    if (!authLoading) {
-      checkAdminRole();
-    }
-
-    return () => { cancelled = true; };
-  }, [user, authLoading]);
-
-  // Redirect non-admin users (only when role check completed without failure)
-  useEffect(() => {
-    if (!authLoading && !checkingRole && !isAdmin && user) {
-      // Only redirect if we have a user but they're confirmed non-admin
-      // (transient failure path already toasts and stays put)
-    }
-  }, [authLoading, checkingRole, isAdmin, navigate, user]);
 
   // Fetch scheduled matches
   useEffect(() => {
@@ -550,7 +480,7 @@ export default function Admin() {
     }
   };
 
-  if (authLoading || checkingRole) {
+  if (adminLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
@@ -560,8 +490,33 @@ export default function Admin() {
     );
   }
 
+  if (adminAccessFailed) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>Não foi possível validar o acesso admin</CardTitle>
+              <CardDescription>A sessão ou o backend demorou para responder. Tente novamente.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button onClick={retryAdminAccess}>
+                <RefreshCw className="w-4 h-4 mr-2" /> Tentar novamente
+              </Button>
+              {user && (
+                <Button variant="outline" onClick={() => supabase.auth.signOut({ scope: 'local' })}>
+                  Limpar sessão local
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   if (!isAdmin) {
-    return null;
+    return <AdminLayout><div className="container mx-auto px-4 py-10 text-muted-foreground">Acesso negado.</div></AdminLayout>;
   }
 
   const selectedMatchData = matches.find(m => m.id === selectedMatch);

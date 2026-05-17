@@ -28,7 +28,7 @@ interface GenerationResult {
   error?: string;
 }
 
-export function useRetroactiveArticles() {
+export function useRetroactiveArticles(enabled = false) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,6 +60,7 @@ export function useRetroactiveArticles() {
       };
     },
     staleTime: 1000 * 30, // 30 seconds
+    enabled,
   });
 
   // Get recent generation logs
@@ -70,11 +71,13 @@ export function useRetroactiveArticles() {
         .from("sync_logs")
         .select("*")
         .eq("entity_type", "retroactive_articles")
-        .order("started_at", { ascending: false });
+        .order("started_at", { ascending: false })
+        .range(0, 49);
 
       return data || [];
     },
     staleTime: 1000 * 60, // 1 minute
+    enabled,
   });
 
   // Generate articles mutation
