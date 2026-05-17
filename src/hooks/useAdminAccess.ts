@@ -15,14 +15,23 @@ export function useAdminAccess() {
   const [checkingRole, setCheckingRole] = useState(true);
   const [failed, setFailed] = useState(false);
 
+  const retry = () => {
+    setFailed(false);
+    setCheckingRole(true);
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     async function checkAdminRole() {
       if (!user) {
+        setIsAdmin(false);
         setCheckingRole(false);
         return;
       }
+
+      setCheckingRole(true);
+      setFailed(false);
 
       // Retry with backoff to survive transient backend timeouts
       let hasAdminRole = false;
@@ -99,6 +108,7 @@ export function useAdminAccess() {
     isAdmin,
     isLoading: authLoading || checkingRole,
     failed,
+    retry,
     user
   };
 }
