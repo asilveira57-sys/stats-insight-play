@@ -52,40 +52,71 @@ export default function Admin() {
   const [validationStats, setValidationStats] = useState({ withComparativo: 0, withValidationArticle: 0 });
   const [weeklyValidationStats, setWeeklyValidationStats] = useState({ total: 0 });
 
-  // Check if user is admin
+  // Check if user is admin (with retry to survive transient backend timeouts)
   useEffect(() => {
+    let cancelled = false;
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
     async function checkAdminRole() {
       if (!user) {
         setCheckingRole(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error checking admin role:", error);
+      let hasAdminRole = false;
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          const { data, error } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+          if (error) throw error;
+          hasAdminRole = !!data;
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Admin role check failed (attempt ${attempt + 1}/3):`, err);
+          await sleep(500 * Math.pow(2, attempt));
+        }
       }
 
-      setIsAdmin(!!data);
+      if (cancelled) return;
+
+      if (lastErr) {
+        console.error("Error checking admin role:", lastErr);
+        // Do NOT auto-redirect on transient backend failure — keep user in place
+        setIsAdmin(false);
+        setCheckingRole(false);
+        toast({
+          title: "Não foi possível verificar permissão",
+          description: "O servidor está sobrecarregado. Recarregue a página em alguns segundos.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsAdmin(hasAdminRole);
       setCheckingRole(false);
     }
 
     if (!authLoading) {
       checkAdminRole();
     }
+
+    return () => { cancelled = true; };
   }, [user, authLoading]);
 
-  // Redirect non-admin users
+  // Redirect non-admin users (only when role check completed without failure)
   useEffect(() => {
-    if (!authLoading && !checkingRole && !isAdmin) {
-      navigate("/");
+    if (!authLoading && !checkingRole && !isAdmin && user) {
+      // Only redirect if we have a user but they're confirmed non-admin
+      // (transient failure path already toasts and stays put)
     }
-  }, [authLoading, checkingRole, isAdmin, navigate]);
+  }, [authLoading, checkingRole, isAdmin, navigate, user]);
 
   // Fetch scheduled matches
   useEffect(() => {
@@ -216,8 +247,10 @@ export default function Admin() {
 
     if (isAdmin) {
       fetchMatches();
-      fetchFinishedStats();
-      fetchValidationStats();
+      // Defer heavy stats so they don't compete with the matches fetch and overload the DB
+      const t1 = setTimeout(() => { fetchFinishedStats().catch((e) => console.warn('finished stats failed:', e)); }, 2000);
+      const t2 = setTimeout(() => { fetchValidationStats().catch((e) => console.warn('validation stats failed:', e)); }, 3500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [isAdmin]);
 
