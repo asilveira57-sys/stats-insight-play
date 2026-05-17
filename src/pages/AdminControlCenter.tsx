@@ -800,7 +800,44 @@ export default function AdminControlCenter() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (adminAccessFailed) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Não foi possível validar o acesso admin
+              </CardTitle>
+              <CardDescription>
+                A sessão ou o backend demorou para responder. A página foi liberada do loading infinito.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button onClick={retryAdminAccess}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Tentar novamente
+              </Button>
+              {user && (
+                <Button variant="outline" onClick={() => supabase.auth.signOut({ scope: 'local' })}>
+                  Limpar sessão local
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-10 text-muted-foreground">Acesso negado.</div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <>
@@ -927,7 +964,7 @@ export default function AdminControlCenter() {
           </div>
 
           {/* Main Tabs */}
-          <Tabs defaultValue="health" className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid grid-cols-7 w-full max-w-4xl">
               <TabsTrigger value="health" className="flex items-center gap-1">
                 <Activity className="w-4 h-4" /> Saúde
