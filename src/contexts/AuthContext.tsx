@@ -19,9 +19,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
+    const finishWithoutSession = () => {
+      if (!mounted) return;
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+    };
+
+    const timeout = window.setTimeout(() => {
+      console.warn('Auth session check timed out; releasing app loading state.');
+      finishWithoutSession();
+    }, 8000);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        window.clearTimeout(timeout);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -29,13 +45,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
+        window.clearTimeout(timeout);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Error restoring auth session:', error);
+        window.clearTimeout(timeout);
+        supabase.auth.signOut({ scope: 'local' }).finally(finishWithoutSession);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, nome?: string) => {
