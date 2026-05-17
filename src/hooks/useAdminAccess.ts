@@ -6,6 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Tempo esgotado ao validar acesso admin')), ms);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+};
+
 export function useAdminAccess() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -40,12 +53,15 @@ export function useAdminAccess() {
       let lastErr: any = null;
       for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
         try {
-          const { data, error } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin")
-            .maybeSingle();
+          const { data, error } = await withTimeout(
+            supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", user.id)
+              .eq("role", "admin")
+              .maybeSingle(),
+            5000
+          );
 
           if (error) throw error;
           hasAdminRole = !!data;
