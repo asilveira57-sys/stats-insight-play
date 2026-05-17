@@ -15,7 +15,16 @@ export function useDashboardKPIs() {
         countAllRecords('artilharia_agregada'),
         countAllRecords('partidas', q => q.eq('status', 'live')),
         countAllRecords('partidas', q => q.eq('data', new Date().toISOString().split('T')[0])),
-        supabase.from('sync_logs').select('completed_at').order('completed_at', { ascending: false }).limit(1).then(r => r.data?.[0]?.completed_at || null),
+        (async () => {
+          try {
+            const r = await supabase.from('sync_logs')
+              .select('completed_at')
+              .not('completed_at', 'is', null)
+              .order('completed_at', { ascending: false })
+              .limit(1);
+            return r.data?.[0]?.completed_at || null;
+          } catch { return null; }
+        })(),
       ]);
       return { leagues, matches, teams, scorers, liveMatches, todayMatches, lastSync };
     },
