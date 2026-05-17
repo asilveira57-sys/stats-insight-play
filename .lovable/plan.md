@@ -1,73 +1,93 @@
-# Plano: acelerar Notícias, Validação e Palpites
+# Destravar Dashboard e Admin
 
-## Diagnóstico (causa real da lentidão)
+## Diagnóstico
 
-Investiguei o código e o banco. O problema **não é sua internet** nem o peso das imagens (já são SVGs leves e com `loading="lazy"`). São três gargalos de dados:
+Os 503 que você vê (`PGRST002 — Could not query the database for the schema cache`) acontecem quando o Postgres do Lovable Cloud fica sobrecarregado e reinicia o cache interno. A causa é uma combinação de:
 
-1. **Notícias** (`useNoticias`): hoje busca **todas as 4.611 notícias publicadas** com `select("*")` — incluindo o campo `texto` (corpo completo do artigo) — e **ignora o parâmetro `limit`**. Em cada abertura da tela, o navegador baixa vários MB de JSON e renderiza milhares de cards de uma vez.
-2. **Palpites** (`usePalpitesDB`): para cada partida exibida, chama `getTeamStats` que faz `fetchAllRecords` de **todo o histórico de jogos** dos dois times. Com muitas partidas na tela, são dezenas de queries pesadas em paralelo (N+1).
-3. **Validação Semanal**: já seleciona colunas certas, mas também carrega o lote inteiro sem paginação nem filtro.
+1. Várias páginas (Dashboard, Admin, Hub) disparam **HEAD com `count=exact`** em tabelas grandes (`partidas`, `times`, `sync_logs`) sem índice adequado → cada count vira full scan.
+2. `sync_logs` (~40k linhas) sem índice em `completed_at` / `started_at`.
+3. `partidas` sem índices para `status`, `data`, `gols_casa IS NULL`, `api_id IS NULL`.
+4. O Dashboard roda tudo em paralelo no `mount`, então 10+ queries pesadas batem ao mesmo tempo.
+5. Não há filtro regional — sempre lê o mundo inteiro.
 
-Sem paginação e sem filtros, qualquer melhoria de imagem teria efeito marginal — o gargalo está no volume de dados e na quantidade de cards renderizados.
+## Escopo
 
-## O que vou implementar
+Apenas **Dashboard (`/dashboard`) + Admin (`/admin`)**. RSS, geração de análises e conteúdo ficam de fora.
 
-### 1. Paginação real (servidor)
+## Plano
 
-Trocar os `select` que trazem tudo por `range(from, to)` com `count: 'exact'`, retornando `{ items, total }`.
+### 1. Migration — índices que faltam
 
-- **Notícias**: 30 por página (3 colunas × 10 linhas no desktop, vira 2 colunas no tablet e 1 no mobile).
-- **Validação Semanal**: 20 por página.
-- **Palpites**: 24 por página (paginação por partida; estatísticas calculadas só para a página atual).
+```text
+partidas:
+  - (status)
+  - (data)
+  - (liga_id, data)
+  - (status) WHERE gols_casa IS NULL                  -- "finalizadas sem placar"
+  - (api_id) WHERE api_id IS NULL                     -- "sem api_id"
+  - (data) WHERE status = 'live'                      -- ao vivo
 
-Componente de paginação reutilizável (`Pagination` do shadcn já existe) com Anterior / Próxima e indicador "Página X de Y".
+sync_logs:
+  - (completed_at DESC NULLS LAST) WHERE completed_at IS NOT NULL
+  - (status, started_at DESC)
 
-### 2. Busca avançada com filtros (server-side)
+times:
+  - (slug) WHERE slug IS NULL
 
-Barra de filtros unificada nas três telas, com os campos relevantes para cada uma:
+ligas:
+  - (ativa)
+  - (pais)
+```
 
-| Filtro | Notícias | Validação | Palpites |
-|---|---|---|---|
-| Busca por texto (título / time) | ✅ | ✅ | ✅ |
-| Data exata da partida | ✅ | ✅ | ✅ |
-| Intervalo de datas (de / até) | ✅ | ✅ | ✅ |
-| Campeonato (dropdown) | ✅ | ✅ | ✅ |
-| Temporada (dropdown dependente do campeonato) | ✅ | ✅ | ✅ |
-| Nome do time (autocomplete) | ✅ | ✅ | ✅ |
-| Status (a confirmar / confirmado / errado) | – | ✅ | – |
+Mais função SQL `public.estimated_count(table_name text)` que lê `pg_class.reltuples` — para totais "aproximados" no Dashboard sem full scan.
 
-Todos os filtros aplicados via SQL (`.eq`, `.gte`, `.lte`, `.ilike`, `.in`) — nada de filtrar em memória. Debounce de 300ms na busca por texto. Filtros persistem na URL (querystring) para o usuário poder compartilhar/voltar.
+### 2. Dashboard — quebrar em ondas
 
-### 3. Payload menor
+**Onda 1 (mount, rápido, só com índice):**
+- ligas ativas, jogos de hoje, ao vivo, última sync.
 
-- `useNoticias` passa a selecionar só: `id, titulo, resumo, slug, imagem_url, data_publicacao, partida_id` (sem o `texto` gigante). O corpo continua sendo carregado em `useNoticia`/`useNoticiaBySlug` na página de detalhe.
-- `usePalpitesDB`: substituir o N+1 atual por **um único agregado** que traz todas as estatísticas necessárias dos times da página de uma só vez (via RPC ou query agrupada com `IN (...)`).
+**Onda 2 (lazy, só quando entra no viewport via IntersectionObserver):**
+- totais de partidas/times/artilheiros → usar `estimated_count()` em vez de `count=exact`.
 
-### 4. Imagens
+**Onda 3 (sob demanda, botão "Verificar integridade"):**
+- `useIntegrityAlerts` muda para `enabled: false` por padrão.
 
-- Já estão otimizadas (SVG ~15–40 KB, `loading="lazy"`).
-- Adiciono `decoding="async"` e `width`/`height` explícitos para evitar layout shift.
-- Sem necessidade de processar/redimensionar — o ganho real vem dos itens 1–3.
+### 3. Filtro regional (servidor, não cliente)
 
-## Detalhes técnicos
+Novo seletor no `DashboardFilters` com 3 estados:
 
-- Hooks novos: `useNoticiasPaginated({ page, pageSize, filters })`, `usePalpitesPaginated(...)`, `useValidacoesPaginated(...)`. React Query com `keepPreviousData` para transições suaves entre páginas.
-- Componente compartilhado `AdvancedFilters` em `src/components/filters/` (recebe um schema indicando quais filtros mostrar).
-- Índices a verificar/criar via migration se faltarem: `noticias(publicada, data_publicacao desc)`, `partidas(data, liga_id, status)`, `partidas(time_casa_id)`, `partidas(time_fora_id)`. Confirmo por `pg_indexes` antes de criar.
-- RPC `get_team_stats_bulk(team_ids uuid[])` para resolver o N+1 dos palpites em uma chamada só.
-- URL state via `useSearchParams` para os filtros.
+- **🇧🇷 Brasil** (default) → `liga.pais IN ('Brazil','Brasil')`.
+- **🌎 Nacional** → detecta por `Intl.DateTimeFormat().resolvedOptions().timeZone` + `navigator.language` (Itália → Serie A, Espanha → La Liga…). Zero APIs externas.
+- **🌐 Global** → sem filtro, com aviso "modo mais lento".
 
-## Arquivos afetados (resumo)
+Preferência salva em `user_preferences.dashboard_focus`. Hoje o filtro é só client-side (já vi no `DashboardHome.tsx`); vai virar parâmetro real nas queries.
 
-- `src/hooks/useNoticias.ts` — paginação + select enxuto
-- `src/hooks/usePalpitesDB.ts` — bulk stats, eliminar N+1
-- novo `src/hooks/useValidacoesPaginated.ts`
-- novo `src/components/filters/AdvancedFilters.tsx` + `src/components/ui/PaginationBar.tsx`
-- `src/pages/Noticias.tsx`, `src/pages/Palpites.tsx`, `src/pages/ValidacaoSemanal.tsx`
-- migration: índices + RPC `get_team_stats_bulk` (se necessário)
+### 4. Admin — destravar a landing
 
-## Resultado esperado
+- `Admin.tsx`: queries iniciais com `.limit(50)` + filtro de ligas prioritárias por padrão, com toggle "ver tudo".
+- Blocos pesados (estatísticas de finalizadas, validação, retroativo) viram `<Collapsible>` que só busca quando expande.
+- Guarda de timeout: se um bloco passar de 8s, mostra erro com botão "Tentar novamente" em vez de travar a página.
+- `useAdminAccess` ganha retry com backoff (3 tentativas) — hoje uma falha de timeout já bloqueia o acesso ao painel.
 
-- Notícias: tempo de carga inicial cai de "vários segundos com travamento" para **<500ms** (payload ~30 itens em vez de 4.611).
-- Palpites: deixa de fazer dezenas de queries por abertura — uma só chamada agregada.
-- Navegação por filtros e páginas instantânea graças ao `keepPreviousData` + cache do React Query.
+### 5. Hub Dashboard
+
+`src/pages/hub/Dashboard.tsx` faz um loop paginado em `sync_logs` 24h sem filtro de índice — vai usar a mesma query indexada de `sync_logs(status, started_at)`.
+
+## Arquivos afetados
+
+- Migration nova (índices + função `estimated_count`).
+- `src/hooks/useDashboardData.ts`
+- `src/pages/DashboardHome.tsx`
+- `src/components/dashboard/DashboardFilters.tsx`
+- `src/pages/Admin.tsx`
+- `src/hooks/useAdminAccess.ts`
+- `src/hooks/useUserPreferences.ts`
+- `src/pages/hub/Dashboard.tsx`
+
+## Fora do escopo
+
+RSS, geração de análises, conteúdo, design.
+
+## Próximo passo
+
+Aprove com **Implement plan** e eu já mando a migration dos índices primeiro (é o que mais alivia o banco) e na sequência refatoro o Dashboard e o Admin.
