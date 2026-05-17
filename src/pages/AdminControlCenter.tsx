@@ -437,14 +437,16 @@ function DatabaseHealthTab() {
 }
 
 export default function AdminControlCenter() {
-  const { isAdmin, isLoading } = useAdminAccess();
+  const { isAdmin, isLoading, failed: adminAccessFailed, retry: retryAdminAccess, user } = useAdminAccess();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('health');
+  const adminQueriesEnabled = isAdmin && !isLoading;
   
-  const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  const { data: sources, isLoading: sourcesLoading, refetch: refetchSources } = useSyncSources();
-  const { data: userStats } = useUserStats();
-  const { data: contentStats } = useContentStats();
-  const { data: priorityStats } = usePriorityStats();
+  const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth(adminQueriesEnabled);
+  const { data: sources, isLoading: sourcesLoading, refetch: refetchSources } = useSyncSources(adminQueriesEnabled && activeTab === 'syncs');
+  const { data: userStats } = useUserStats(adminQueriesEnabled && activeTab === 'users');
+  const { data: contentStats } = useContentStats(adminQueriesEnabled && (activeTab === 'content' || activeTab === 'seo'));
+  const { data: priorityStats } = usePriorityStats(adminQueriesEnabled && activeTab === 'priority');
   
   // Retroactive articles generation
   const {
@@ -455,11 +457,11 @@ export default function AdminControlCenter() {
     lastResults,
     startGeneration,
     refetchProgress: refetchRetroactive,
-  } = useRetroactiveArticles();
+  } = useRetroactiveArticles(adminQueriesEnabled && activeTab === 'content');
   const [batchSize, setBatchSize] = useState(10);
   
   const [logFilters, setLogFilters] = useState({ status: '', type: '', limit: 50 });
-  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useSyncLogs(logFilters);
+  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useSyncLogs(logFilters, adminQueriesEnabled && activeTab === 'logs');
   
   const [syncingSource, setSyncingSource] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
