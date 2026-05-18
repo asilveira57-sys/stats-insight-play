@@ -108,7 +108,7 @@ export function RegenerateNanoBananaTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Regenerar Imagens (Nano Banana)
+            Regenerar Imagens (SVG)
           </CardTitle>
           <CardDescription>
             Gera imagens únicas via Lovable AI Gateway usando os times da partida, cores e
