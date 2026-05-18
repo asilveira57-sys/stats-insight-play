@@ -203,7 +203,7 @@ export default function AdminImageManager() {
               <Zap className="h-4 w-4" /> SVG Cards (custo zero)
             </TabsTrigger>
             <TabsTrigger value="regenerate" className="gap-2">
-              <Wand2 className="h-4 w-4" /> IA Premium (Nano Banana)
+              <Wand2 className="h-4 w-4" /> Regenerar via SVG
             </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <Image className="h-4 w-4" /> Imagens
