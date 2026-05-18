@@ -5,103 +5,107 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const SAFETY_TIMEOUT_MS = 120_000
+
+async function runJob() {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+  const startTime = Date.now()
+
+  try {
+    console.log('Starting automatic prediction generation...')
+
+    // Existing predictions (paginated to avoid 1000-row cap)
+    const existingPartidaIds = new Set<string>()
+    let offset = 0
+    const PAGE = 1000
+    while (true) {
+      const { data, error } = await supabase
+        .from('palpites')
+        .select('partida_id')
+        .range(offset, offset + PAGE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      data.forEach((p: any) => existingPartidaIds.add(p.partida_id))
+      if (data.length < PAGE) break
+      offset += PAGE
+    }
+    console.log(`Found ${existingPartidaIds.size} existing predictions`)
+
+    // Scheduled matches (paginated)
+    const today = new Date().toISOString().split('T')[0]
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+    offset = 0
+
+    outer: while (true) {
+      if (Date.now() - startTime > SAFETY_TIMEOUT_MS) {
+        console.log('Safety timeout reached, stopping')
+        break
+      }
+      const { data: matches, error } = await supabase
+        .from('partidas')
+        .select('id')
+        .eq('status', 'scheduled')
+        .gte('data', today)
+        .order('data', { ascending: true })
+        .range(offset, offset + PAGE - 1)
+      if (error) throw error
+      if (!matches || matches.length === 0) break
+
+      for (const match of matches) {
+        if (Date.now() - startTime > SAFETY_TIMEOUT_MS) break outer
+        if (existingPartidaIds.has(match.id)) continue
+        try {
+          const { error: rpcErr } = await supabase.rpc('gerar_palpite_sistema', {
+            p_partida_id: match.id,
+          })
+          if (rpcErr) {
+            errors.push(`Match ${match.id}: ${rpcErr.message}`)
+            errorCount++
+          } else {
+            successCount++
+          }
+        } catch (e: any) {
+          errors.push(`Match ${match.id}: ${e?.message || String(e)}`)
+          errorCount++
+        }
+      }
+      if (matches.length < PAGE) break
+      offset += PAGE
+    }
+
+    console.log('Prediction generation complete:', {
+      generated: successCount,
+      failed: errorCount,
+      duration_ms: Date.now() - startTime,
+      errors: errors.slice(0, 10),
+    })
+  } catch (error: any) {
+    console.error('Error in generate-predictions background job:', error)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  // @ts-ignore EdgeRuntime is provided at runtime
+  EdgeRuntime.waitUntil(runJob())
 
-    console.log('Starting automatic prediction generation...')
-
-    // Get all scheduled matches without predictions
-    const { data: matches, error: matchesError } = await supabase
-      .from('partidas')
-      .select('id, data, hora, time_casa_id, time_fora_id')
-      .eq('status', 'scheduled')
-      .gte('data', new Date().toISOString().split('T')[0])
-
-    if (matchesError) {
-      console.error('Error fetching matches:', matchesError)
-      throw matchesError
-    }
-
-    console.log(`Found ${matches?.length || 0} scheduled matches`)
-
-    // Get existing predictions
-    const { data: existingPalpites, error: palpitesError } = await supabase
-      .from('palpites')
-      .select('partida_id')
-
-    if (palpitesError) {
-      console.error('Error fetching existing predictions:', palpitesError)
-      throw palpitesError
-    }
-
-    const existingPartidaIds = new Set(existingPalpites?.map(p => p.partida_id) || [])
-
-    // Filter matches without predictions
-    const matchesWithoutPredictions = matches?.filter(m => !existingPartidaIds.has(m.id)) || []
-
-    console.log(`${matchesWithoutPredictions.length} matches need predictions`)
-
-    let successCount = 0
-    let errorCount = 0
-    const errors: string[] = []
-
-    // Generate predictions for each match
-    for (const match of matchesWithoutPredictions) {
-      try {
-        const { data, error } = await supabase.rpc('gerar_palpite_sistema', {
-          p_partida_id: match.id
-        })
-
-        if (error) {
-          console.error(`Error generating prediction for match ${match.id}:`, error)
-          errors.push(`Match ${match.id}: ${error.message}`)
-          errorCount++
-        } else {
-          console.log(`Generated prediction ${data} for match ${match.id}`)
-          successCount++
-        }
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : String(e)
-        console.error(`Exception generating prediction for match ${match.id}:`, e)
-        errors.push(`Match ${match.id}: ${errorMessage}`)
-        errorCount++
-      }
-    }
-
-    const result = {
+  return new Response(
+    JSON.stringify({
       success: true,
-      totalScheduled: matches?.length || 0,
-      alreadyHadPredictions: existingPartidaIds.size,
-      generated: successCount,
-      failed: errorCount,
-      errors: errors.length > 0 ? errors : undefined,
-      timestamp: new Date().toISOString()
-    }
-
-    console.log('Prediction generation complete:', result)
-
-    return new Response(JSON.stringify(result), {
+      accepted: true,
+      message: 'Geração de palpites iniciada em background. Acompanhe pelos logs.',
+    }),
+    {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
-    })
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('Error in generate-predictions function:', error)
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: errorMessage 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
-    })
-  }
+      status: 202,
+    },
+  )
 })
