@@ -274,29 +274,25 @@ export default function Admin() {
 
   const generateMissingPalpites = async () => {
     setGeneratingPalpites(true);
-    
     try {
-      const response = await supabase.functions.invoke("generate-predictions", {
-        body: {}
-      });
+      const { error } = await (supabase as any).from('background_jobs')
+        .update({
+          status: 'running',
+          progress: {},
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('job_type', 'predictions');
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
+      if (error) throw error;
 
-      const result = response.data;
-      
       toast({
-        title: "Palpites gerados!",
-        description: `${result.generated || 0} palpites criados, ${result.failed || 0} falhas.`,
+        title: "Job iniciado!",
+        description: "Palpites faltantes serão gerados em background até zerar. Pode navegar livremente.",
       });
-
-      // Refresh matches list
-      window.location.reload();
     } catch (error) {
-      console.error("Error generating predictions:", error);
       toast({
-        title: "Erro ao gerar palpites",
+        title: "Erro ao iniciar job",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
@@ -307,29 +303,25 @@ export default function Admin() {
 
   const generateRetroactivePredictions = async () => {
     setGeneratingRetroactive(true);
-    
     try {
-      const response = await supabase.functions.invoke("generate-retroactive-predictions", {
-        body: { limit: 500 }
-      });
+      const { error } = await (supabase as any).from('background_jobs')
+        .update({
+          status: 'running',
+          progress: {},
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('job_type', 'retro_predictions');
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
+      if (error) throw error;
 
-      const result = response.data;
-      
       toast({
-        title: "Palpites retroativos gerados!",
-        description: `${result.generated || 0} palpites criados, ${result.failed || 0} falhas. ${result.matchesSample ? `Amostra: ${result.matchesSample.length} IDs` : ''}`,
+        title: "Job iniciado!",
+        description: `Palpites retroativos rodando em background. Restam ${finishedStats.withoutPalpite} — vai zerar sozinho.`,
       });
-
-      // Refresh stats
-      window.location.reload();
     } catch (error) {
-      console.error("Error generating retroactive predictions:", error);
       toast({
-        title: "Erro ao gerar palpites retroativos",
+        title: "Erro ao iniciar job",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
@@ -337,6 +329,7 @@ export default function Admin() {
       setGeneratingRetroactive(false);
     }
   };
+
 
   const syncFootballData = async () => {
     setSyncingFootballData(true);
