@@ -457,7 +457,7 @@ serve(async (req) => {
         const slug = generateSlug(matchData.time_casa.nome, matchData.time_fora.nome, matchData.data, matchData.liga.nome);
 
         // Insert news article
-        const { error: insertError } = await supabaseAdmin
+        const { data: inserted, error: insertError } = await supabaseAdmin
           .from('noticias')
           .insert({
             titulo: textContent.titulo,
@@ -468,7 +468,9 @@ serve(async (req) => {
             publicada: true,
             data_publicacao: new Date().toISOString(),
             slug: slug
-          });
+          })
+          .select('id')
+          .single();
 
         if (insertError) {
           console.error(`Error inserting news for match ${match.id}:`, insertError);
@@ -476,6 +478,13 @@ serve(async (req) => {
         } else {
           console.log(`News created for match ${match.id} with slug: ${slug}`);
           results.created++;
+
+          // Fire-and-forget SVG card generation (zero AI cost)
+          if (inserted?.id) {
+            supabaseAdmin.functions.invoke('generate-article-card-svg', {
+              body: { article_ids: [inserted.id], mode: 'execute' },
+            }).catch((e) => console.warn(`SVG card invoke failed for ${inserted.id}:`, e));
+          }
         }
 
       } catch (error) {
