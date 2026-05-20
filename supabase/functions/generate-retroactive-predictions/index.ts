@@ -5,108 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SAFETY_TIMEOUT_MS = 120_000 // stop work before platform 150s idle limit
-
 async function runJob(limit: number, jobId: string | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
-  const startTime = Date.now()
 
   try {
-    console.log(`[job ${jobId}] Starting retroactive prediction generation (limit: ${limit})...`)
-
-    // Existing predictions
-    const existingPartidaIds = new Set<string>()
-    let offset = 0
-    const batchSize = 1000
-    while (true) {
-      const { data, error } = await supabase
-        .from('palpites')
-        .select('partida_id')
-        .range(offset, offset + batchSize - 1)
-      if (error) throw error
-      if (!data || data.length === 0) break
-      data.forEach((p: any) => existingPartidaIds.add(p.partida_id))
-      if (data.length < batchSize) break
-      offset += batchSize
-    }
-    console.log(`[job ${jobId}] Found ${existingPartidaIds.size} existing predictions`)
-
-    let successCount = 0
-    let errorCount = 0
-    const generated: string[] = []
-    const errors: string[] = []
-
-    // Stream finished matches page by page; stop when limit reached or time runs out
-    offset = 0
-    outer: while (successCount + errorCount < limit) {
-      if (Date.now() - startTime > SAFETY_TIMEOUT_MS) {
-        console.log(`[job ${jobId}] Safety timeout reached, stopping`)
-        break
-      }
-
-      const { data: matches, error } = await supabase
-        .from('partidas')
-        .select('id, data')
-        .eq('status', 'finished')
-        .not('gols_casa', 'is', null)
-        .not('gols_fora', 'is', null)
-        .order('data', { ascending: true })
-        .range(offset, offset + batchSize - 1)
-      if (error) throw error
-      if (!matches || matches.length === 0) break
-
-      for (const match of matches) {
-        if (successCount + errorCount >= limit) break outer
-        if (Date.now() - startTime > SAFETY_TIMEOUT_MS) break outer
-        if (existingPartidaIds.has(match.id)) continue
-
-        try {
-          const { data, error: rpcErr } = await supabase.rpc('gerar_palpite_sistema', {
-            p_partida_id: match.id,
-          })
-          if (rpcErr) {
-            errors.push(`Match ${match.id}: ${rpcErr.message}`)
-            errorCount++
-          } else {
-            generated.push(match.id)
-            successCount++
-            try {
-              await supabase.rpc('processar_resultado_partida', { p_partida_id: match.id })
-            } catch (procError) {
-              console.error(`Error processing result for match ${match.id}:`, procError)
-            }
-          }
-        } catch (e: any) {
-          errors.push(`Match ${match.id}: ${e?.message || String(e)}`)
-          errorCount++
-        }
-      }
-
-      if (matches.length < batchSize) break
-      offset += batchSize
-    }
-
-    const result = {
-      generated: successCount,
-      failed: errorCount,
-      matchIdsGenerated: generated.slice(0, 10),
-      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
-      duration_ms: Date.now() - startTime,
-      timestamp: new Date().toISOString(),
-    }
+    console.log(`[job ${jobId}] Starting retroactive prediction batch (limit: ${limit})...`)
+    const { data: result, error } = await supabase.rpc('gerar_palpites_sistema_lote', {
+      p_status: 'finished',
+      p_limit: limit,
+      p_process_results: true,
+    })
+    if (error) throw error
     console.log(`[job ${jobId}] Complete:`, result)
 
     if (jobId) {
       await supabase.from('sync_logs').update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        records_processed: successCount,
-        records_failed: errorCount,
+        records_processed: result?.generated || 0,
+        records_failed: result?.failed || 0,
         details: result,
       }).eq('id', jobId)
     }
+    return result
   } catch (error: any) {
     console.error(`[job ${jobId}] Fatal error:`, error)
     if (jobId) {
@@ -116,6 +39,7 @@ async function runJob(limit: number, jobId: string | null) {
         error_message: error?.message || String(error),
       }).eq('id', jobId)
     }
+    throw error
   }
 }
 
@@ -149,20 +73,24 @@ Deno.serve(async (req) => {
       console.error('Could not create sync_log:', e)
     }
 
-    // Fire and forget — survives the 150s response timeout
-    // @ts-ignore EdgeRuntime is provided at runtime
-    EdgeRuntime.waitUntil(runJob(limit, jobId))
+    const safeLimit = Math.min(Math.max(Number(limit) || 1000, 1), 2000)
+    const result = await runJob(safeLimit, jobId)
 
     return new Response(
       JSON.stringify({
         success: true,
-        accepted: true,
         job_id: jobId,
-        message: `Geração iniciada em background (limite: ${limit}). Acompanhe pelos logs.`,
+        generated: result?.generated || 0,
+        failed: result?.failed || 0,
+        remaining: result?.remaining || 0,
+        totalFinished: (result?.generated || 0) + (result?.remaining || 0),
+        duration_ms: result?.duration_ms || 0,
+        errors: result?.errors || undefined,
+        message: `Lote processado: ${result?.generated || 0} palpites, restam ${result?.remaining || 0}.`,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 202,
+        status: 200,
       }
     )
   } catch (error: any) {

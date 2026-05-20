@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const SAFETY_TIMEOUT = 25_000;
+  const SAFETY_TIMEOUT = 55_000;
   const startTime = Date.now();
 
   // ── Load automation kill-switches from configuracoes ──
@@ -94,8 +94,12 @@ Deno.serve(async (req) => {
         results.push({ job_type: job.job_type, ...result });
         if (!result.isDone) madeProgress = true;
 
-        // Delay between calls to respect rate limits
-        const delayMs = job.job_type === 'image_fix' ? 8000 : 3000;
+        // Delay only where external/AI rate limits matter. Math-only prediction jobs can run continuously.
+        const delayMs = ['predictions', 'retro_predictions'].includes(job.job_type)
+          ? 250
+          : job.job_type === 'image_fix'
+            ? 8000
+            : 3000;
         if ((Date.now() - startTime + delayMs) < SAFETY_TIMEOUT) {
           await new Promise(r => setTimeout(r, delayMs));
         }
@@ -146,8 +150,8 @@ Deno.serve(async (req) => {
 
 async function processJobItem(job: any, supabaseUrl: string, serviceKey: string, supabase: any, reviewMode: boolean) {
   const functionMap: Record<string, { fn: string; body: any }> = {
-    predictions: { fn: 'generate-predictions', body: {} },
-    retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 100 } },
+    predictions: { fn: 'generate-predictions', body: { limit: 500 } },
+    retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 200 } },
     analyses: { fn: 'generate-match-analysis', body: { limit: 1 } },
     retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1, skip_images: true } },
     validations: { fn: 'generate-validation-article', body: { limit: 1, skip_images: true } },
@@ -160,8 +164,9 @@ async function processJobItem(job: any, supabaseUrl: string, serviceKey: string,
   const config = functionMap[job.job_type];
   if (!config) throw new Error(`Unknown job type: ${job.job_type}`);
 
-  // In review mode, force limit=1 for all content generation
-  if (reviewMode && config.body.limit !== undefined) {
+  // In review mode, force limit=1 only for content/image generation. Prediction jobs are deterministic math and must keep batching.
+  const reviewLimitedJobs = new Set(['analyses', 'retro_articles', 'validations', 'image_fix', 'weekly_validations']);
+  if (reviewMode && reviewLimitedJobs.has(job.job_type) && config.body.limit !== undefined) {
     config.body.limit = 1;
   }
 

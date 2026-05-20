@@ -5950,6 +5950,14 @@ export type Database = {
         Returns: string
       }
       gerar_palpite_sistema: { Args: { p_partida_id: string }; Returns: string }
+      gerar_palpites_sistema_lote: {
+        Args: {
+          p_limit?: number
+          p_process_results?: boolean
+          p_status?: string
+        }
+        Returns: Json
+      }
       get_suggested_duplicates: {
         Args: { p_limit?: number }
         Returns: {
