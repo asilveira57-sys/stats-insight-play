@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
 
 async function processJobItem(job: any, supabaseUrl: string, serviceKey: string, supabase: any, reviewMode: boolean) {
   const functionMap: Record<string, { fn: string; body: any }> = {
-    predictions: { fn: 'generate-predictions', body: { limit: 1000 } },
-    retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 1000 } },
+    predictions: { fn: 'generate-predictions', body: { limit: 500 } },
+    retro_predictions: { fn: 'generate-retroactive-predictions', body: { limit: 200 } },
     analyses: { fn: 'generate-match-analysis', body: { limit: 1 } },
     retro_articles: { fn: 'generate-retroactive-articles', body: { limit: 1, skip_images: true } },
     validations: { fn: 'generate-validation-article', body: { limit: 1, skip_images: true } },
