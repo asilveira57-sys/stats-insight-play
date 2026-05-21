@@ -65,6 +65,7 @@ export default function AdminApiFootball() {
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [refreshingApi, setRefreshingApi] = useState(false);
   const [enqueuing, setEnqueuing] = useState(false);
+  const [enqueuingAll, setEnqueuingAll] = useState(false);
   const [runningWorker, setRunningWorker] = useState(false);
 
   const [depths, setDepths] = useState<Record<Depth, boolean>>({
@@ -72,6 +73,8 @@ export default function AdminApiFootball() {
   });
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<number, Set<number>>>({});
+  const [queuePage, setQueuePage] = useState(1);
+  const PAGE_SIZE = 50;
 
   async function loadInventory() {
     setLoadingInventory(true);
