@@ -343,12 +343,16 @@ export default function AdminApiFootball() {
               </CardContent>
             </Card>
 
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
               <Input placeholder="Filtrar por liga ou país..." value={search} onChange={e => setSearch(e.target.value)} className="max-w-sm" />
               <Button variant="outline" onClick={selectStatballPriority}>
                 <Star className="h-4 w-4 mr-2" /> Prioridade Statball
               </Button>
               <Button variant="outline" onClick={() => setSelected({})}>Limpar seleção</Button>
+              <Button variant="secondary" onClick={enqueueAll} disabled={enqueuingAll || inventory.length === 0}>
+                {enqueuingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ListPlus className="h-4 w-4 mr-2" />}
+                Enfileirar TUDO (todas ligas × temporadas × 4 profundidades)
+              </Button>
               <Button className="ml-auto" onClick={enqueue} disabled={enqueuing || totals.leagueSeasons === 0}>
                 {enqueuing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ListPlus className="h-4 w-4 mr-2" />}
                 Adicionar {totals.leagueSeasons * totals.depthsSelected.length} jobs à fila
