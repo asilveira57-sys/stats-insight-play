@@ -206,6 +206,42 @@ export default function AdminApiFootball() {
     } finally { setEnqueuing(false); }
   }
 
+  async function enqueueAll() {
+    if (inventory.length === 0) {
+      toast({ title: "Inventário vazio", description: "Atualize o inventário primeiro", variant: "destructive" });
+      return;
+    }
+    const totalJobs = inventory.reduce((acc, l) => acc + l.seasons.length * 4, 0);
+    if (!confirm(`Enfileirar TUDO: ${inventory.length} ligas × todas temporadas × 4 profundidades = ~${totalJobs.toLocaleString()} jobs. Jobs já existentes serão pulados. Continuar?`)) return;
+    setEnqueuingAll(true);
+    try {
+      const allDepths: Depth[] = ["fixtures", "events", "lineups", "stats"];
+      const selections = inventory
+        .filter(l => l.seasons.length > 0)
+        .map(l => ({
+          league_id: l.league_id,
+          league_name: l.league_name,
+          seasons: l.seasons.map(s => s.year),
+          depths: allDepths,
+        }));
+      // enviar em lotes de 200 ligas para não estourar payload
+      let enqueued = 0, skipped = 0, requested = 0;
+      const BATCH = 200;
+      for (let i = 0; i < selections.length; i += BATCH) {
+        const slice = selections.slice(i, i + BATCH);
+        const { data, error } = await supabase.functions.invoke("apifootball-enqueue", { body: { selections: slice } });
+        if (error) throw error;
+        enqueued += data?.enqueued ?? 0;
+        skipped += data?.skipped_existing ?? 0;
+        requested += data?.total_requested ?? 0;
+      }
+      toast({ title: "Fila atualizada", description: `${enqueued} novos · ${skipped} já existiam · ${requested} avaliados` });
+      await loadJobs();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally { setEnqueuingAll(false); }
+  }
+
   async function runWorkerNow() {
     setRunningWorker(true);
     try {
