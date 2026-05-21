@@ -407,45 +407,66 @@ export default function AdminApiFootball() {
           </TabsContent>
 
           <TabsContent value="queue" className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center flex-wrap">
               {Object.entries(stats).map(([k, v]) => (
                 <Badge key={k} variant={k === "failed" ? "destructive" : k === "done" ? "default" : "secondary"}>
                   {k}: {v}
                 </Badge>
               ))}
+              <span className="text-xs text-muted-foreground ml-auto">
+                Total: {jobs.length.toLocaleString()} jobs
+              </span>
             </div>
-            <ScrollArea className="h-[600px] border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="text-left p-2">Liga</th>
-                    <th className="text-left p-2">Temporada</th>
-                    <th className="text-left p-2">Profundidade</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Progresso</th>
-                    <th className="text-left p-2">Reqs</th>
-                    <th className="text-left p-2">Erro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobs.map(j => (
-                    <tr key={j.id} className="border-t">
-                      <td className="p-2">{j.league_name ?? j.league_id}</td>
-                      <td className="p-2">{j.season}</td>
-                      <td className="p-2">{DEPTH_LABEL[j.depth]}</td>
-                      <td className="p-2">
-                        <Badge variant={j.status === "failed" ? "destructive" : j.status === "done" ? "default" : "secondary"}>
-                          {j.status}
-                        </Badge>
-                      </td>
-                      <td className="p-2">{j.fixtures_processed ?? 0}/{j.fixtures_total ?? 0}</td>
-                      <td className="p-2">{j.requests_used ?? 0}</td>
-                      <td className="p-2 text-destructive max-w-xs truncate">{j.error ?? ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </ScrollArea>
+            {(() => {
+              const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+              const page = Math.min(queuePage, totalPages);
+              const slice = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+              return (
+                <>
+                  <ScrollArea className="h-[600px] border rounded-md">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2">Liga</th>
+                          <th className="text-left p-2">Temporada</th>
+                          <th className="text-left p-2">Profundidade</th>
+                          <th className="text-left p-2">Status</th>
+                          <th className="text-left p-2">Progresso</th>
+                          <th className="text-left p-2">Reqs</th>
+                          <th className="text-left p-2">Erro</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slice.map(j => (
+                          <tr key={j.id} className="border-t">
+                            <td className="p-2">{j.league_name ?? j.league_id}</td>
+                            <td className="p-2">{j.season}</td>
+                            <td className="p-2">{DEPTH_LABEL[j.depth]}</td>
+                            <td className="p-2">
+                              <Badge variant={j.status === "failed" ? "destructive" : j.status === "done" ? "default" : "secondary"}>
+                                {j.status}
+                              </Badge>
+                            </td>
+                            <td className="p-2">{j.fixtures_processed ?? 0}/{j.fixtures_total ?? 0}</td>
+                            <td className="p-2">{j.requests_used ?? 0}</td>
+                            <td className="p-2 text-destructive max-w-xs truncate">{j.error ?? ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </ScrollArea>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Página {page} de {totalPages}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setQueuePage(p => Math.max(1, p - 1))}>Anterior</Button>
+                      <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setQueuePage(p => p + 1)}>Próxima</Button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>
