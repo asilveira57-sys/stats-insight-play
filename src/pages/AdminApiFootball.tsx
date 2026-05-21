@@ -85,12 +85,22 @@ export default function AdminApiFootball() {
   }
 
   async function loadJobs() {
-    const { data } = await supabase
-      .from("api_football_import_jobs" as any)
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    setJobs((data ?? []) as any);
+    const all: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("api_football_import_jobs" as any)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      if (!data?.length) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    setJobs(all as any);
   }
 
   async function loadQuota() {
