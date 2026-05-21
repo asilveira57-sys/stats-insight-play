@@ -72,28 +72,13 @@ Deno.serve(async (req) => {
     const collected = new Map<number, any>();
     let requestsUsed = 0;
 
-    // Por país
-    for (const country of TARGET_COUNTRIES) {
-      const data = await fetchAF(`/leagues?country=${encodeURIComponent(country)}`, apiKey);
-      requestsUsed++;
-      for (const item of data.response || []) {
-        const lid = item.league?.id;
-        if (!lid) continue;
-        collected.set(lid, item);
-      }
-    }
-    // Mundo (por id, mais barato e seletivo)
-    for (const id of WORLD_LEAGUE_IDS) {
-      if (collected.has(id)) continue;
-      try {
-        const data = await fetchAF(`/leagues?id=${id}`, apiKey);
-        requestsUsed++;
-        for (const item of data.response || []) {
-          if (item.league?.id) collected.set(item.league.id, item);
-        }
-      } catch (e) {
-        console.warn(`league id=${id}`, e);
-      }
+    // Catálogo global: 1 chamada retorna TODAS as ligas disponíveis
+    const all = await fetchAF('/leagues', apiKey);
+    requestsUsed++;
+    for (const item of all.response || []) {
+      const lid = item.league?.id;
+      if (!lid) continue;
+      collected.set(lid, item);
     }
 
     // Persiste

@@ -42,16 +42,35 @@ Deno.serve(async (req) => {
             depth,
             status: 'queued',
             priority: sel.priority ?? 100,
-            requests_estimated: depth === 'fixtures' ? 1 : 380, // estimativa grosseira; refinada quando fixtures rodar
+            requests_estimated: depth === 'fixtures' ? 1 : 380,
           });
         }
       }
     }
 
-    const chunk = 500;
+    // Paginação completa para listar jobs já existentes (queued/running/done)
+    const existing = new Set<string>();
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data: page, error } = await supabase
+        .from('api_football_import_jobs')
+        .select('league_id, season, depth, status')
+        .in('status', ['queued', 'running', 'done'])
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!page?.length) break;
+      for (const r of page) existing.add(`${r.league_id}|${r.season}|${r.depth}`);
+      if (page.length < PAGE) break;
+      from += PAGE;
+    }
+
+    const filtered = rows.filter(r => !existing.has(`${r.league_id}|${r.season}|${r.depth}`));
+
+    const chunk = 1000;
     let inserted = 0;
-    for (let i = 0; i < rows.length; i += chunk) {
-      const slice = rows.slice(i, i + chunk);
+    for (let i = 0; i < filtered.length; i += chunk) {
+      const slice = filtered.slice(i, i + chunk);
       const { error, data } = await supabase
         .from('api_football_import_jobs')
         .upsert(slice, { onConflict: 'league_id,season,depth', ignoreDuplicates: true })
@@ -60,7 +79,12 @@ Deno.serve(async (req) => {
       inserted += data?.length ?? 0;
     }
 
-    return new Response(JSON.stringify({ ok: true, enqueued: inserted, total_requested: rows.length }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      enqueued: inserted,
+      skipped_existing: rows.length - filtered.length,
+      total_requested: rows.length,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

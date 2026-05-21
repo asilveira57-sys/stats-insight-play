@@ -65,6 +65,7 @@ export default function AdminApiFootball() {
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [refreshingApi, setRefreshingApi] = useState(false);
   const [enqueuing, setEnqueuing] = useState(false);
+  const [enqueuingAll, setEnqueuingAll] = useState(false);
   const [runningWorker, setRunningWorker] = useState(false);
 
   const [depths, setDepths] = useState<Record<Depth, boolean>>({
@@ -72,6 +73,8 @@ export default function AdminApiFootball() {
   });
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<number, Set<number>>>({});
+  const [queuePage, setQueuePage] = useState(1);
+  const PAGE_SIZE = 50;
 
   async function loadInventory() {
     setLoadingInventory(true);
@@ -85,12 +88,22 @@ export default function AdminApiFootball() {
   }
 
   async function loadJobs() {
-    const { data } = await supabase
-      .from("api_football_import_jobs" as any)
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    setJobs((data ?? []) as any);
+    const all: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("api_football_import_jobs" as any)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      if (!data?.length) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    setJobs(all as any);
   }
 
   async function loadQuota() {
@@ -191,6 +204,42 @@ export default function AdminApiFootball() {
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     } finally { setEnqueuing(false); }
+  }
+
+  async function enqueueAll() {
+    if (inventory.length === 0) {
+      toast({ title: "Inventário vazio", description: "Atualize o inventário primeiro", variant: "destructive" });
+      return;
+    }
+    const totalJobs = inventory.reduce((acc, l) => acc + l.seasons.length * 4, 0);
+    if (!confirm(`Enfileirar TUDO: ${inventory.length} ligas × todas temporadas × 4 profundidades = ~${totalJobs.toLocaleString()} jobs. Jobs já existentes serão pulados. Continuar?`)) return;
+    setEnqueuingAll(true);
+    try {
+      const allDepths: Depth[] = ["fixtures", "events", "lineups", "stats"];
+      const selections = inventory
+        .filter(l => l.seasons.length > 0)
+        .map(l => ({
+          league_id: l.league_id,
+          league_name: l.league_name,
+          seasons: l.seasons.map(s => s.year),
+          depths: allDepths,
+        }));
+      // enviar em lotes de 200 ligas para não estourar payload
+      let enqueued = 0, skipped = 0, requested = 0;
+      const BATCH = 200;
+      for (let i = 0; i < selections.length; i += BATCH) {
+        const slice = selections.slice(i, i + BATCH);
+        const { data, error } = await supabase.functions.invoke("apifootball-enqueue", { body: { selections: slice } });
+        if (error) throw error;
+        enqueued += data?.enqueued ?? 0;
+        skipped += data?.skipped_existing ?? 0;
+        requested += data?.total_requested ?? 0;
+      }
+      toast({ title: "Fila atualizada", description: `${enqueued} novos · ${skipped} já existiam · ${requested} avaliados` });
+      await loadJobs();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally { setEnqueuingAll(false); }
   }
 
   async function runWorkerNow() {
@@ -294,12 +343,16 @@ export default function AdminApiFootball() {
               </CardContent>
             </Card>
 
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
               <Input placeholder="Filtrar por liga ou país..." value={search} onChange={e => setSearch(e.target.value)} className="max-w-sm" />
               <Button variant="outline" onClick={selectStatballPriority}>
                 <Star className="h-4 w-4 mr-2" /> Prioridade Statball
               </Button>
               <Button variant="outline" onClick={() => setSelected({})}>Limpar seleção</Button>
+              <Button variant="secondary" onClick={enqueueAll} disabled={enqueuingAll || inventory.length === 0}>
+                {enqueuingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ListPlus className="h-4 w-4 mr-2" />}
+                Enfileirar TUDO (todas ligas × temporadas × 4 profundidades)
+              </Button>
               <Button className="ml-auto" onClick={enqueue} disabled={enqueuing || totals.leagueSeasons === 0}>
                 {enqueuing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ListPlus className="h-4 w-4 mr-2" />}
                 Adicionar {totals.leagueSeasons * totals.depthsSelected.length} jobs à fila
@@ -354,45 +407,66 @@ export default function AdminApiFootball() {
           </TabsContent>
 
           <TabsContent value="queue" className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center flex-wrap">
               {Object.entries(stats).map(([k, v]) => (
                 <Badge key={k} variant={k === "failed" ? "destructive" : k === "done" ? "default" : "secondary"}>
                   {k}: {v}
                 </Badge>
               ))}
+              <span className="text-xs text-muted-foreground ml-auto">
+                Total: {jobs.length.toLocaleString()} jobs
+              </span>
             </div>
-            <ScrollArea className="h-[600px] border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="text-left p-2">Liga</th>
-                    <th className="text-left p-2">Temporada</th>
-                    <th className="text-left p-2">Profundidade</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Progresso</th>
-                    <th className="text-left p-2">Reqs</th>
-                    <th className="text-left p-2">Erro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobs.map(j => (
-                    <tr key={j.id} className="border-t">
-                      <td className="p-2">{j.league_name ?? j.league_id}</td>
-                      <td className="p-2">{j.season}</td>
-                      <td className="p-2">{DEPTH_LABEL[j.depth]}</td>
-                      <td className="p-2">
-                        <Badge variant={j.status === "failed" ? "destructive" : j.status === "done" ? "default" : "secondary"}>
-                          {j.status}
-                        </Badge>
-                      </td>
-                      <td className="p-2">{j.fixtures_processed ?? 0}/{j.fixtures_total ?? 0}</td>
-                      <td className="p-2">{j.requests_used ?? 0}</td>
-                      <td className="p-2 text-destructive max-w-xs truncate">{j.error ?? ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </ScrollArea>
+            {(() => {
+              const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+              const page = Math.min(queuePage, totalPages);
+              const slice = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+              return (
+                <>
+                  <ScrollArea className="h-[600px] border rounded-md">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2">Liga</th>
+                          <th className="text-left p-2">Temporada</th>
+                          <th className="text-left p-2">Profundidade</th>
+                          <th className="text-left p-2">Status</th>
+                          <th className="text-left p-2">Progresso</th>
+                          <th className="text-left p-2">Reqs</th>
+                          <th className="text-left p-2">Erro</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slice.map(j => (
+                          <tr key={j.id} className="border-t">
+                            <td className="p-2">{j.league_name ?? j.league_id}</td>
+                            <td className="p-2">{j.season}</td>
+                            <td className="p-2">{DEPTH_LABEL[j.depth]}</td>
+                            <td className="p-2">
+                              <Badge variant={j.status === "failed" ? "destructive" : j.status === "done" ? "default" : "secondary"}>
+                                {j.status}
+                              </Badge>
+                            </td>
+                            <td className="p-2">{j.fixtures_processed ?? 0}/{j.fixtures_total ?? 0}</td>
+                            <td className="p-2">{j.requests_used ?? 0}</td>
+                            <td className="p-2 text-destructive max-w-xs truncate">{j.error ?? ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </ScrollArea>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Página {page} de {totalPages}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setQueuePage(p => Math.max(1, p - 1))}>Anterior</Button>
+                      <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setQueuePage(p => p + 1)}>Próxima</Button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>

@@ -1,78 +1,54 @@
-# Plano: Automação do Painel Admin
+## Objetivo
 
-## Diagnóstico (o que está realmente acontecendo)
+Importar **tudo** da API-Football (todos os países, todas as ligas, todas as temporadas, com fixtures + eventos + escalações + estatísticas), pular o que já está integrado e remover qualquer limite que esconda jobs na fila.
 
-### 1. Imagem repetida (bola na grama) nas análises
-- `generate-match-analysis` **já está correto**: insere `imagem_url: null` (não chama mais Gemini/Nano Banana).
-- **Mas**: após o insert, não dispara `generate-article-card-svg`. Então o artigo nasce sem capa, e o card de listagem cai num fallback Unsplash genérico (a imagem "bola na grama" que aparece nos prints).
-- Existem **3.405 notícias antigas** ainda com URL não-SVG (gerações Gemini antes da migração). São essas que aparecem repetidas no `/analises`.
+## Mudanças
 
-### 2. "Gerar Palpites Faltantes" e "Gerar Análises Pendentes" não rodam até zerar
-- O sistema correto (`background_jobs` + `process-queue`) existe e funciona em loop, MAS:
-  - O botão **"Gerar Palpites Faltantes"** chama `generate-predictions` direto (1 shot, síncrono) — não usa a fila.
-  - O botão **"Gerar Todas as Análises Pendentes"** usa a fila corretamente, **porém** `automation_analyses_enabled = false` em `configuracoes`, então o `process-queue` mata o job no primeiro tick com "🛑 Automação desligada".
-  - Todos os killswitches estão `false`: `analyses`, `retro_articles`, `validations`, `weekly`, `image_fix`.
-- Não há cron visível chamando `process-queue` periodicamente — o loop depende de o orquestrador ser invocado.
+### 1. Inventário global (todos os países, não só 11)
 
-### 3. "Palpites Retroativos" (92.368 pendentes) precisa cliques repetidos
-- O botão chama `generate-retroactive-predictions` direto com `limit:500` (1 shot, `window.location.reload()`).
-- `retro_predictions` **não tem killswitch** no `process-queue`, ou seja, se for enfileirado em `background_jobs` ele roda livre — basta enfileirar e ter o cron.
+`supabase/functions/apifootball-inventory/index.ts`
+- Substituir o loop por país + lista fixa de ligas mundiais por **uma única chamada** `GET /leagues` (sem filtro), que retorna todas as ~1.100 ligas globais em 1 requisição.
+- Manter `PRIORITY_LEAGUE_IDS` apenas para marcar `is_priority = true` (Brasil, Conmebol, Big-5 etc.), sem filtrar.
+- Continuar atualizando `api_football_quota_log` ao final.
 
----
+Resultado: a tabela `api_football_inventory` passa a conter o catálogo completo da API.
 
-## Plano de execução
+### 2. Botão "Enfileirar TUDO disponível"
 
-### Etapa 1 — Corrigir imagens (zero custo, sem Gemini)
+`src/pages/AdminApiFootball.tsx`
+- Adicionar botão **"Enfileirar tudo (todas ligas × todas temporadas × 4 profundidades)"** ao lado de "Prioridade Statball".
+- Ele monta `selections` com **todas as ligas** do inventário, **todas as temporadas** de cada uma e **todas as 4 profundidades** (`fixtures`, `events`, `lineups`, `stats`) e chama `apifootball-enqueue`.
+- Mostrar um aviso com o total estimado de jobs (liga-temporada-profundidade) antes de confirmar.
 
-**1.1** Em `generate-match-analysis/index.ts`, após cada `insert` bem-sucedido em `noticias`, disparar (fire-and-forget) `supabase.functions.invoke('generate-article-card-svg', { body: { article_ids: [novoId], mode: 'execute' } })`. Isso resolve **novas** análises individuais.
+### 3. Pular o que já foi importado
 
-**1.2** Enfileirar um job único `image_fix` em `background_jobs` para limpar os 3.405 artigos antigos via `fix-article-thumbnails` (já delega 100% ao SVG). O loop continua até zerar.
+`supabase/functions/apifootball-enqueue/index.ts`
+- Continua usando `upsert ... onConflict: 'league_id,season,depth', ignoreDuplicates: true` — isso já evita recriar jobs existentes.
+- **Adicionar**: antes do upsert, fazer `SELECT league_id, season, depth FROM api_football_import_jobs WHERE status IN ('done','running','queued')` paginando em lotes de 1000 (sem `.limit(1000)` fixo) e filtrar `rows` para remover combinações já presentes — assim nem enviamos para o banco o que já está feito ou em andamento.
+- Aumentar `chunk` de 500 para 1000 no upsert.
 
-**1.3** Garantir `automation_image_fix_enabled = true` (ver Etapa 3).
+### 4. Fila sem limite na UI
 
-### Etapa 2 — Botões viram "enfileirar job" (não execução síncrona)
+`src/pages/AdminApiFootball.tsx`
+- Remover `.limit(200)` em `loadJobs()`.
+- Implementar paginação completa: loop com `.range(from, from + 1000 - 1)` até esgotar (mesmo padrão usado em `historical-batch-pipeline`).
+- Atualizar contadores `stats` (queued/running/done/failed) a partir do total real, não dos 200 primeiros.
+- Como a fila pode ter dezenas de milhares de linhas, renderizar a tabela com **paginação client-side** (50/página) usando `PaginationBar` já existente, para não travar o DOM (mem://technical/performance/render-optimization).
 
-Reescrever 3 handlers em `src/pages/Admin.tsx` para apenas fazer `UPDATE background_jobs SET status='running'` (mesmo padrão que `generateAllAnalyses` já usa):
+### 5. Worker continua rodando sozinho
 
-| Botão | Job atual | Job correto |
-|---|---|---|
-| Gerar Palpites Faltantes | invoke direto `generate-predictions` | enfileirar `predictions` |
-| Gerar Todas as Análises Pendentes | já enfileira `analyses` (ok) | manter |
-| Gerar Palpites Históricos | invoke direto `generate-retroactive-predictions` | enfileirar `retro_predictions` |
-
-Cada botão mostra toast "Job iniciado em background, acompanhe no Control Center" e para de fazer `window.location.reload()`.
-
-### Etapa 3 — Tornar o loop verdadeiramente automático
-
-**3.1** Ligar killswitches (UPDATE em `configuracoes`):
-- `automation_analyses_enabled = true`
-- `automation_retro_articles_enabled = true`
-- `automation_image_fix_enabled = true`
-- (deixar `validations` e `weekly` como o usuário quiser)
-
-**3.2** Criar/ativar cron `pg_cron` chamando `process-queue` a cada **1 minuto**:
-- O `process-queue` já roda round-robin em todos os jobs `running`, com backoff e até 10 erros consecutivos antes de parar.
-- Com o cron ativo, qualquer job enfileirado roda até zerar sem novos cliques.
-
-**3.3** Retry automático após falha não-fatal:
-- Adicionar segundo cron a cada **15 min** que faz `UPDATE background_jobs SET status='running', progress = progress - 'consecutive_errors' WHERE status='failed' AND (progress->>'circuit_breaker')::bool IS NOT TRUE AND (progress->>'stopped_by_killswitch')::bool IS NOT TRUE`.
-- Isso garante que erros transitórios (timeout, 5xx) reiniciam sozinhos. Falhas de crédito (402) e killswitch manual continuam parados (proteção de custo).
-
-### Etapa 4 — Feedback no Admin
-
-- Em `Admin.tsx`, exibir o `progress.last_log` de cada job na seção correspondente, com auto-refresh a cada 5s (já existe pattern no `AdminControlCenter`).
-- Mostrar "🟢 Rodando em background — restam X" em vez de spinner travado.
-
----
+Não mudar `apifootball-worker` nem os crons existentes — já processam a fila respeitando a quota de 75k/dia da API-Football Ultra.
 
 ## Detalhes técnicos
 
-- **Arquivos editados**: `supabase/functions/generate-match-analysis/index.ts`, `src/pages/Admin.tsx`.
-- **Migração SQL**: `UPDATE configuracoes` para killswitches + 2 `cron.schedule` (process-queue 1min e auto-retry 15min) usando `net.http_post` com a service URL e anon key.
-- **Sem novo custo de IA**: imagens 100% SVG, palpites usam RPC `gerar_palpite_sistema` (matemático, sem IA).
-- **Riscos**: ligar killswitches reativa também jobs antigos parados — vamos limpar (`UPDATE background_jobs SET status='stopped'` nos antigos `failed`) antes de ativar os crons.
+- Nenhuma migração de schema necessária.
+- O `ON CONFLICT (league_id, season, depth)` da tabela `api_football_import_jobs` garante idempotência mesmo se o usuário clicar "Enfileirar tudo" várias vezes.
+- A chamada `GET /leagues` sem filtro custa **1 requisição** da quota diária.
+- O custo real da importação completa é controlado pelo worker (não pelo enqueue), então enfileirar 100k+ jobs é seguro — eles serão drenados ao longo dos dias respeitando 75k req/dia.
 
-## Resultado esperado
-- 1 clique em cada botão → processo roda em background até zerar (palpites futuros, palpites retroativos 92k, análises 282 pendentes, 3.405 imagens antigas).
-- Erros transitórios reiniciam sozinhos a cada 15 min.
-- Erros de crédito (402) param e avisam — proteção contra estouro de gasto.
+## Resumo das ações esperadas após implementação
+
+1. Usuário clica **"Atualizar inventário"** → recebe todas as ligas do mundo.
+2. Usuário clica **"Enfileirar tudo"** → todos os jobs faltantes (excluindo done/running/queued) entram em `queued`.
+3. Aba **Fila** mostra a contagem real (não trava em 200) com paginação.
+4. Cron existente continua chamando `apifootball-worker` periodicamente até zerar.
