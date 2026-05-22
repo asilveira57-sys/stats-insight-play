@@ -56,6 +56,7 @@ import PagamentoPendente from "./pages/PagamentoPendente";
 import NotFound from "./pages/NotFound";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
+import Sobre from "./pages/Sobre";
 import TimePilar from "./pages/TimePilar";
 import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
@@ -132,6 +133,7 @@ const App = () => (
             <Route path="/clubes/:slug" element={<ClubProfile />} />
             <Route path="/privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/termos" element={<TermosUso />} />
+            <Route path="/sobre" element={<Sobre />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/sitemap" element={<AdminSitemap />} />
