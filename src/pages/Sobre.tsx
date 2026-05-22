@@ -179,8 +179,8 @@ const Sobre = () => {
               Notícias
             </Link>
             <span className="text-muted-foreground">•</span>
-            <Link to="/contato" className="text-primary hover:underline">
-              Contato
+            <Link to="/termos" className="text-primary hover:underline">
+              Termos de Uso
             </Link>
           </div>
         </div>
