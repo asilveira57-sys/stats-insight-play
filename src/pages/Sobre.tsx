@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import {
   BarChart3,
   Brain,
+  Cpu,
   Globe,
   History,
   LineChart,
@@ -11,7 +12,9 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Trophy,
   User,
+  Zap,
 } from "lucide-react";
 
 const recursos = [
@@ -32,29 +35,58 @@ const recursos = [
   },
   {
     icon: BarChart3,
-    title: "Desempenho de Equipes",
-    desc: "Dashboards interativos mostrando evolução de clubes ao longo de temporadas e competições.",
+    title: "Desempenho de Clubes e Seleções",
+    desc: "Dashboards interativos mostrando evolução de equipes ao longo de temporadas e competições.",
   },
   {
     icon: TrendingUp,
-    title: "Comparativos e Tendências",
+    title: "Comparativos entre Equipes",
     desc: "Ferramentas de comparação lado a lado e identificação de padrões em séries temporais.",
   },
   {
+    icon: Zap,
+    title: "Tendências Estatísticas",
+    desc: "Identificação de padrões e movimentos em séries temporais de desempenho esportivo.",
+  },
+  {
+    icon: Trophy,
+    title: "Rankings",
+    desc: "Classificações e listas baseadas em critérios estatísticos objetivos e atualizados.",
+  },
+  {
     icon: Brain,
-    title: "Conteúdo Automatizado por IA",
-    desc: "Notícias, resumos e insights gerados automaticamente a partir de eventos em tempo real.",
+    title: "Probabilidades",
+    desc: "Cálculos e projeções matemáticas baseadas em modelos estatísticos aplicados ao futebol.",
   },
   {
     icon: Globe,
-    title: "Páginas Especiais",
-    desc: "Perfis dedicados de clubes, ligas e competições com histórico, elencos e títulos.",
+    title: "Acompanhamento de Competições",
+    desc: "Cobertura contínua de ligas, campeonatos e torneios com dados atualizados.",
   },
   {
     icon: Newspaper,
-    title: "Conteúdo Editorial",
-    desc: "Artigos, opiniões e análises de especialistas para complementar os dados brutos.",
+    title: "Páginas Especiais de Clubes, Ligas e Campeonatos",
+    desc: "Perfis dedicados com histórico, elencos, títulos e estatísticas consolidadas.",
   },
+  {
+    icon: Cpu,
+    title: "Conteúdos Automatizados por Inteligência Artificial",
+    desc: "Notícias, resumos e insights gerados automaticamente a partir de eventos e dados esportivos.",
+  },
+  {
+    icon: Sparkles,
+    title: "Análises Baseadas em Dados Históricos e Desempenho Recente",
+    desc: "Interpretação cruzada entre histórico e momento atual para insights mais completos.",
+  },
+];
+
+const compromissos = [
+  "Transparência das informações",
+  "Melhoria da qualidade editorial",
+  "Clareza na apresentação dos dados",
+  "Evolução constante da experiência do usuário",
+  "Estabilidade técnica da plataforma",
+  "Responsabilidade no uso de análises automatizadas",
 ];
 
 const Sobre = () => {
@@ -76,23 +108,29 @@ const Sobre = () => {
           {/* Introdução */}
           <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
             <p className="text-muted-foreground leading-relaxed mb-4">
-              O Statball é uma plataforma dedicada à{" "}
+              O Statball é uma plataforma digital especializada em{" "}
               <strong className="text-foreground">
-                análise esportiva, estatísticas de futebol, tendências, desempenho
-                de equipes, comparativos históricos e conteúdo automatizado baseado
-                em dados
+                análise esportiva, estatísticas de futebol, tendências,
+                desempenho de equipes, comparativos históricos e conteúdos
+                automatizados baseados em dados
               </strong>
               .
             </p>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Nosso objetivo é transformar informações esportivas em conteúdo
-              acessível, organizado e útil para fãs de futebol, pesquisadores,
-              criadores de conteúdo e apaixonados por estatísticas.
+              Criado com foco em tecnologia, inteligência artificial e análise
+              estatística, o projeto nasceu com a proposta de transformar grandes
+              volumes de informações esportivas em conteúdo acessível, organizado e
+              útil para fãs de futebol, pesquisadores, criadores de conteúdo, analistas
+              esportivos e apaixonados por estatísticas.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              A plataforma segue em constante evolução, com novos recursos,
-              análises e ferramentas sendo desenvolvidos continuamente para ampliar
-              a qualidade das informações disponibilizadas aos usuários.
+              A plataforma reúne diversos tipos de conteúdo e recursos voltados ao
+              universo do futebol, incluindo análises pré-jogo e pós-jogo,
+              estatísticas históricas, desempenho de clubes e seleções, comparativos
+              entre equipes, tendências estatísticas, rankings, probabilidades,
+              acompanhamento de competições, páginas especiais de clubes, ligas e
+              campeonatos, conteúdos automatizados por inteligência artificial e
+              análises baseadas em dados históricos e desempenho recente.
             </p>
           </section>
 
@@ -141,27 +179,99 @@ const Sobre = () => {
                 .
               </p>
               <p>
-                Alexandre Silveira atua há anos com tecnologia, automação,
-                inteligência artificial, marketplaces e desenvolvimento de
-                plataformas digitais voltadas para análise de dados,
-                produtividade e sistemas inteligentes.
+                Alexandre Silveira atua há anos nas áreas de tecnologia, automação,
+                inteligência artificial, marketplaces, ecommerce, desenvolvimento de
+                sistemas e plataformas digitais voltadas para produtividade, análise
+                de dados e escalabilidade de operações online.
+              </p>
+              <p>
+                Com experiência em desenvolvimento de soluções inteligentes e projetos
+                digitais de grande volume de dados, Alexandre idealizou o Statball como
+                uma plataforma capaz de unir tecnologia, automação e informação esportiva
+                em uma experiência moderna, rápida e transparente.
               </p>
             </div>
           </section>
 
-          {/* Missão */}
+          {/* Automação e IA */}
+          <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-primary" />
+              Automação e Inteligência Artificial
+            </h2>
+            <div className="space-y-4 text-muted-foreground leading-relaxed">
+              <p>
+                Grande parte da estrutura do Statball utiliza recursos automatizados
+                para coleta, processamento, organização e apresentação de dados
+                esportivos, permitindo a geração contínua de análises, tendências e
+                conteúdos estatísticos em larga escala.
+              </p>
+              <p>
+                A plataforma também utiliza inteligência artificial como apoio na
+                estruturação de conteúdos, interpretação de dados, geração de insights
+                e organização das informações apresentadas aos usuários.
+              </p>
+            </div>
+          </section>
+
+          {/* Compromissos */}
           <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
             <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              Nossa Proposta
+              Nossos Compromissos
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Mesmo com forte utilização de tecnologia e automação, o Statball busca
+              manter compromisso contínuo com:
+            </p>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {compromissos.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                >
+                  <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Disclaimer */}
+          <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              Independência e Transparência
+            </h2>
+            <div className="space-y-4 text-muted-foreground leading-relaxed">
+              <p>
+                O Statball{" "}
+                <strong className="text-foreground">
+                  não possui vínculo oficial com clubes, federações, emissoras,
+                  organizadores de competições ou plataformas de apostas
+                </strong>
+                , salvo quando explicitamente informado em páginas institucionais ou
+                parcerias públicas oficiais.
+              </p>
+              <p>
+                As informações disponibilizadas possuem caráter informativo, estatístico
+                e recreativo, podendo sofrer atualizações, correções ou ajustes conforme
+                alterações das fontes de dados utilizadas pela plataforma.
+              </p>
+            </div>
+          </section>
+
+          {/* Evolução contínua */}
+          <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Evolução Contínua
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              O Statball nasceu com a proposta de unir{" "}
-              <strong className="text-foreground">
-                tecnologia, estatística e automação
-              </strong>{" "}
-              para criar uma experiência moderna, rápida e transparente para toda
-              a comunidade esportiva.
+              O projeto segue em constante evolução, com desenvolvimento contínuo de
+              novos recursos, ferramentas, análises e melhorias técnicas, buscando
+              ampliar cada vez mais a qualidade das informações disponibilizadas para
+              toda a comunidade esportiva.
             </p>
           </section>
 
