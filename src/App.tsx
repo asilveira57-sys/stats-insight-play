@@ -58,7 +58,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import Sobre from "./pages/Sobre";
 import TransparenciaEditorial from "./pages/TransparenciaEditorial";
-import Contato from "./pages/Contato";
+import Lgpd from "./pages/Lgpd";
 import TimePilar from "./pages/TimePilar";
 import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
