@@ -58,6 +58,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import Sobre from "./pages/Sobre";
 import TransparenciaEditorial from "./pages/TransparenciaEditorial";
+import Contato from "./pages/Contato";
 import TimePilar from "./pages/TimePilar";
 import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
@@ -136,6 +137,7 @@ const App = () => (
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/sobre" element={<Sobre />} />
             <Route path="/transparencia" element={<TransparenciaEditorial />} />
+            <Route path="/contato" element={<Contato />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/sitemap" element={<AdminSitemap />} />
