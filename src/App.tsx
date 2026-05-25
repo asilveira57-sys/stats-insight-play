@@ -137,6 +137,7 @@ const App = () => (
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/sobre" element={<Sobre />} />
             <Route path="/transparencia" element={<TransparenciaEditorial />} />
+            <Route path="/contato" element={<Contato />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/sitemap" element={<AdminSitemap />} />
