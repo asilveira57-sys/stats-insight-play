@@ -141,6 +141,7 @@ const App = () => (
             <Route path="/transparencia" element={<TransparenciaEditorial />} />
             <Route path="/contato" element={<Contato />} />
             <Route path="/lgpd" element={<Lgpd />} />
+            <Route path="/cookies" element={<PoliticaCookies />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/control-center" element={<AdminControlCenter />} />
             <Route path="/admin/sitemap" element={<AdminSitemap />} />
