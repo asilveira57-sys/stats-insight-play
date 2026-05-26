@@ -60,6 +60,7 @@ import Sobre from "./pages/Sobre";
 import TransparenciaEditorial from "./pages/TransparenciaEditorial";
 import Contato from "./pages/Contato";
 import Lgpd from "./pages/Lgpd";
+import PoliticaCookies from "./pages/PoliticaCookies";
 import TimePilar from "./pages/TimePilar";
 import TimeAnalises from "./pages/TimeAnalises";
 import Times from "./pages/Times";
