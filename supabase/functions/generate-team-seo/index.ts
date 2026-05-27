@@ -1,5 +1,6 @@
 // Generate SEO descriptive content for team/league/season using Lovable AI
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isContentGenerationEnabled, disabledResponse } from "../_shared/killswitch.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +39,11 @@ interface ReqBody {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // === KILL-SWITCH: cost control ===
+  if (!(await isContentGenerationEnabled())) {
+    return disabledResponse(corsHeaders, "generate-team-seo");
+  }
+
 
   try {
     const body = (await req.json()) as ReqBody;

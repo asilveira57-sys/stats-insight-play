@@ -1,100 +1,124 @@
+# Plano: parar geração de conteúdo e manter só pré-jogo brasileiro
 
-# Plano: Limpeza Cirúrgica SEM Parar a API-Football
+## Objetivo
+Cortar custo de IA imediatamente: **parar tudo** que gera artigos/imagens retroativamente ou em massa. Manter apenas um fluxo: para cada partida **brasileira futura** (não iniciada), o sistema gera palpite + análise pré-jogo + artigo pré-jogo. Pós-jogo, retroativo e regeneração de imagens ficam **desligados** até você reativar manualmente.
 
-## Diagnóstico real (importante)
+## O que será desligado
 
-Verifiquei `db_health` + tamanho de tabelas. O cenário não é o que aparece no print:
+### 1. Cron jobs (pg_cron) — desativar via `UPDATE cron.job SET active=false`
+- `generate-analysis-job` (roda 08h e 20h) — gera análises em lote
+- Mantém `process-queue-every-minute` e `process-background-jobs` **ativos**, mas com kill-switch nos workers de artigo/imagem (ver item 2)
 
-- **Disco de dados: 19% usado** (banco tem 1.13 GB). Você NÃO está com armazenamento estourado.
-- O que está em 100% no print é **"Disk read and write — IO budget"** (taxa de leitura/escrita por segundo). Está saturado porque a API-Football está bombando jogos + worker processando + gerar palpites + gerar artigos, tudo ao mesmo tempo.
-- Conclusão: o gargalo é **IO**, não espaço. Limpar dados ajuda (índices menores = menos IO por query), mas o que realmente destrava o sistema agora é **reduzir bloat e podar logs** sem mexer em uma única partida da API-Football.
+### 2. Background jobs — marcar `stopped_by_killswitch` no `progress`
+Parar os workers que rodam dentro da fila:
+- `retro_articles` (já stopped — confirmar)
+- `retro_predictions` (running → stopped)
+- `analyses` em modo retroativo (running → stopped)
+- `image_fix`, `weekly_validations`, `validations`
 
-## Princípios deste plano
+### 3. Edge functions — bloquear na entrada (retornar 200 + `{disabled:true}`)
+Adicionar flag global `CONTENT_GENERATION_ENABLED=false` lida de `app_settings` (tabela já existente) ou de uma constante. Funções afetadas:
+- `generate-retroactive-articles`
+- `generate-retroactive-predictions`
+- `reprocess-articles`
+- `regenerate-article-images`
+- `generate-article-card-svg` (quando chamada em lote)
+- `generate-svg-thumbnails`
+- `fix-article-thumbnails`
+- `generate-validation-article`
+- `generate-weekly-validation`
+- `generate-league-pillar`, `generate-team-pillar`, `generate-team-seo` (SEO em massa)
+- `generate-match-analysis` quando o input **não** for partida brasileira futura
 
-1. **Não parar a importação.** O worker `apifootball-worker` continua rodando o tempo todo.
-2. **API-Football é verdade absoluta.** Nada que veio dela é tocado. Qualquer dedup mantém o registro `api_source = 'api-football'`.
-3. **Limpeza em paralelo**, em janelas curtas, sem `VACUUM FULL` durante o pico (ele trava a tabela).
-4. **Cortes só atingem fontes não-API-Football, bloat e logs.**
+### 4. UI Admin
+Esconder/desabilitar botões de:
+- Reprocessamento de artigos
+- Regeneração de imagens (Nano Banana / SVG em lote)
+- Artigos retroativos
+- Pilares SEO em massa
 
-## Onde está o espaço/IO hoje
+Exibir banner "Geração de conteúdo pausada — modo economia ativo".
 
-| Tabela | Tamanho | Vivos | Mortos | Status |
-|---|---|---|---|---|
-| `partidas` | 435 MB | 429k | 76k | Mantida 100%, apenas remover bloat |
-| `cron.job_run_details` | 153 MB | 184k execuções | — | **Podar** (não mexe em dado real) |
-| `kaggle_staging_matches` | 150 MB | **0** | — | **Truncar** (já consumido) |
-| `palpites` | 89 MB | 283k | 40k | Reindex/vacuum (sem deletar) |
-| `comparativo_resultados` | 68 MB | 257k | 30k | Reindex/vacuum |
-| `noticias` | 61 MB | 4.984 | 506 | Manter |
-| `historical_staging_matches` | 39 MB | **0** | — | **Truncar** |
-| `sync_logs` | 35 MB | 2.246 | 1.872 | **Podar antigos** |
-| `cartola_scouts_rodada` | 30 MB | **0** | — | **Truncar** |
-| `kaggle_raw_assets`, `historical_raw_documents`, `kaggle_staging_rows`, `kaggle_match_links`, `kaggle_import_logs`, `historical_import_logs`, `cartola_partidas`, `cartola_atletas`, `team_merge_analysis_cache` | ~45 MB | 0 cada | — | **Truncar** |
-| `partidas` com `api_source IS NULL` | 38.385 linhas | — | — | **Mover para API-Football ou deletar** (etapa 4) |
+## O que continua funcionando (whitelist)
 
-Importante: as 404.605 partidas com `api_source = 'api-football'` permanecem intactas — incluindo as antigas. A API-Football é a sua biblioteca histórica e fica.
+Fluxo único permitido — disparado pelo `process-queue` a cada minuto:
 
-## Etapas (em ordem, todas seguras com worker rodando)
+```text
+Partida BR futura detectada (status='scheduled' AND liga BR AND data > now())
+        │
+        ▼
+generate-predictions  ──► palpite salvo (probabilidades, placar, força)
+        │
+        ▼
+generate-match-analysis ──► análise técnica pré-jogo
+        │
+        ▼
+gerar artigo pré-jogo (1 chamada IA) + thumbnail SVG (sem IA de imagem)
+        │
+        ▼
+salvar em `noticias` com tipo='pre_jogo'
+```
 
-### Etapa 1 — Esvaziar staging e caches já consumidos  *(ganho ~300 MB, zero risco)*
-- `TRUNCATE` em: `kaggle_staging_matches`, `kaggle_staging_rows`, `kaggle_raw_assets`, `kaggle_match_links`, `kaggle_import_logs`, `historical_staging_matches`, `historical_raw_documents`, `historical_import_logs`, `cartola_scouts_rodada`, `cartola_partidas`, `cartola_atletas`, `team_merge_analysis_cache`.
-- Todas estão com **0 linhas vivas** — é só casco inchado de imports passados.
-- Roda em segundos, não trava a API-Football.
+Regras do whitelist:
+- **Somente ligas brasileiras** (filtro por `liga.pais='Brasil'` ou lista de IDs BR já usada no projeto)
+- **Somente partidas futuras** (`data > now()` e `status IN ('scheduled','timed')`)
+- **Uma vez por partida** (skip se já existe `noticias.partida_id` com `tipo='pre_jogo'`)
+- **Sem geração de imagem por IA** — usa só o SVG card gerador (zero custo)
+- **Sem reprocessamento** — artigo gerado uma vez e fica
 
-### Etapa 2 — Podar logs operacionais  *(ganho ~180 MB)*
-- `DELETE FROM cron.job_run_details WHERE end_time < now() - interval '3 days'`.
-- `DELETE FROM sync_logs WHERE created_at < now() - interval '7 days'`.
-- `DELETE FROM net._http_response WHERE created < now() - interval '1 day'`.
-- Criar **cron semanal** que repete essa poda automaticamente — assim o problema não volta sozinho.
+## Como reativar depois
+Você diz "pode voltar a gerar X" e eu:
+1. Inverto a flag `CONTENT_GENERATION_ENABLED` ou
+2. Reativo o cron job específico (`UPDATE cron.job SET active=true WHERE jobname=...`) ou
+3. Reabilito o worker específico no background_jobs
 
-### Etapa 3 — `VACUUM` (não `FULL`) nas tabelas "quentes"
-- `VACUUM (ANALYZE) partidas, palpites, comparativo_resultados, noticias, times`.
-- `VACUUM` normal **não trava** — pode rodar com worker ativo. Devolve espaço lógico (reaproveitado pelos próximos inserts da API-Football, então cabe muito mais sem crescer o disco).
-- `VACUUM FULL` fica para a janela noturna **opcional** (>=23h), tabela por tabela, e só se quisermos devolver disco ao SO.
+## Implementação técnica
 
-### Etapa 4 — Deduplicação priorizando API-Football  *(sem perder histórico)*
-Hoje há 38.385 partidas com `api_source IS NULL` (CSV/Kaggle/Cartola). A maioria provavelmente tem irmã `api-football` cobrindo o mesmo jogo. Estratégia:
+### Migration 1 — kill-switch global
+```sql
+INSERT INTO app_settings(key, value) VALUES
+  ('content_generation_enabled', 'false'),
+  ('content_generation_whitelist', '{"pre_game_br_only": true}')
+ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
+```
 
-1. Criar tabela temporária `tmp_dedup_partidas` com pares `(api_id, sem_api_id)` que coincidem em `(liga_id, data, time_casa_id, time_fora_id)`.
-2. Para cada par: mover `palpites`, `comparativo_resultados`, `gols_partida`, `noticias` que apontam para o `sem_api_id` → passa a apontar para o `api_id`.
-3. `DELETE` apenas o duplicado **sem** `api_source = 'api-football'`.
-4. Para as partidas órfãs (sem irmã API-Football), **manter** — você pediu o maior banco do mundo, então não jogamos fora dado único só porque veio de CSV.
+### Migration 2 — pausar crons e jobs
+```sql
+UPDATE cron.job SET active=false WHERE jobname IN ('generate-analysis-job');
+UPDATE background_jobs
+  SET status='stopped',
+      progress = progress || '{"stopped_by_killswitch": true, "stopped_reason": "cost_control_2026_05"}'::jsonb
+  WHERE job_type IN ('retro_articles','retro_predictions','analyses','image_fix','validations','weekly_validations')
+    AND status IN ('running','failed');
+```
 
-Tudo embrulhado em função `dedup_partidas_apifootball_first(p_batch_size int)` que roda em lotes pequenos (500/vez), evitando lock longo enquanto o worker insere novos jogos.
+### Edge function guard (adicionar no topo de cada função listada)
+```ts
+const { data: setting } = await supabase
+  .from('app_settings').select('value')
+  .eq('key','content_generation_enabled').single();
+if (setting?.value !== 'true' && !isWhitelistedPreGameBR(body)) {
+  return new Response(JSON.stringify({ disabled: true, reason: 'cost_control' }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type':'application/json' }});
+}
+```
 
-### Etapa 5 — Times duplicados
-Mesma lógica via `merge_teams` (função já existe): para cada par detectado por `get_suggested_duplicates`, manter o time com `api_id` da API-Football, migrar partidas/aliases/external_ids para ele, marcar o outro como `merged`. Lotes pequenos, processo já tem hook `useAutoResolveDuplicates`.
+### Nova função: `generate-pregame-br-articles`
+Orquestrador chamado pelo `process-queue`:
+1. Busca partidas BR scheduled nas próximas 7 dias sem artigo
+2. Garante palpite (chama `generate-predictions` se faltar)
+3. Garante análise (chama `generate-match-analysis`)
+4. Gera artigo pré-jogo (1 prompt único, ~400 palavras)
+5. Gera thumbnail via `generate-article-card-svg` (SVG, sem IA)
+6. Marca em `noticias` com `tipo='pre_jogo'`
 
-### Etapa 6 — Worker e geração de artigos respiram em ritmo controlado (não param)
-- Manter `apifootball-worker` rodando, mas reduzir `MAX_JOBS_PER_INVOCATION` de 8 → 4 **só enquanto o cleanup roda**. Depois volta a 8.
-- Geração de artigos pós-jogo e palpites retroativos: continuam, mas o cron desses processos roda **escalonado** (não no mesmo minuto do worker) para distribuir IO.
-- Resultado: importação não para; o sistema só deixa de ter três coisas pesadas competindo pelo mesmo segundo.
+### UI — `src/components/admin/...`
+Banner global em `AdminLayout` quando `content_generation_enabled=false`. Botões de regeneração ficam desabilitados com tooltip "Pausado por economia — peça ao Lovable para reativar".
 
-### Etapa 7 — Quando faz sentido fazer upgrade
-- Se mesmo com tudo isso o IO continuar em 100% (porque você quer "maior banco do mundo" rodando 24/7), aí sim **upgrade de instância** (não de disco — o gargalo é IOPS/CPU). Caminho: Backend → Advanced settings → Upgrade instance.
-- Documentação: https://docs.lovable.dev/features/cloud#advanced-settings-upgrade-instance
-- Mas só recomendo confirmar isso **depois** das etapas 1–3 (que sozinhas costumam derrubar o uso de IO em 40–60%).
+## Estimativa de impacto no custo
+- **Hoje**: análises 2x/dia em lote + retroativos + regeneração imagens + reprocess = centenas de chamadas Gemini/dia
+- **Depois**: ~10-30 partidas BR/semana → ~3-5 chamadas Gemini/dia
+- **Imagens IA**: 0 (só SVG)
 
-## Ganho esperado
-
-- Espaço: banco cai de **1.13 GB → ~0.75 GB** sem perder nenhuma partida da API-Football.
-- IO: queda significativa porque índices de `partidas`, `palpites`, `comparativo_resultados` ficam menores e logs param de crescer.
-- Importação API-Football: **continua ininterrupta** o tempo todo.
-
-## O que NÃO toco
-
-- Nenhuma partida com `api_source = 'api-football'` (404.605 linhas).
-- `auth.*`, `storage.*`, `realtime.*`, `vault.*`.
-- Dados de usuário (`palpites_usuarios`, `xp_events`, perfis, assinaturas).
-- O fluxo de enqueue/worker da API-Football descrito em `.lovable/plan.md`.
-
-## Próximo passo (o que vou fazer assim que você aprovar)
-
-1. **Migration A** — Etapa 1 (truncar staging/caches). É a maior vitória imediata e zero risco.
-2. **Migration B** — Etapa 2 (podar cron/sync/http logs) + cron semanal de poda recorrente.
-3. **Migration C** — Etapa 3 (`VACUUM ANALYZE` nas tabelas quentes).
-4. Medir IO e tamanho. Te mostro o resultado.
-5. Se quiser seguir, **Migration D + E** — função de dedup priorizando API-Football, rodada em lotes via background job.
-6. Pequeno ajuste no worker (Etapa 6) para escalonar carga sem parar.
-
-Posso seguir nessa ordem?
+## Aprovação
+Confirme para eu seguir. Quando aprovar, executo migração + flag + edits nas edge functions + UI banner em uma única passada.
