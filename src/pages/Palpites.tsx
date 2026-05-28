@@ -41,12 +41,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHasActiveAccess } from "@/hooks/usePayments";
 import { useToast } from "@/hooks/use-toast";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
+
+const isBrazilianLeague = (pais: string | null | undefined) =>
+  pais === "Brasil" || pais === "Brazil";
 
 export default function Palpites() {
   const { user } = useAuth();
   const { hasAccess } = useHasActiveAccess();
   const { toast } = useToast();
   const [selectedLeague, setSelectedLeague] = useState("all");
+  const [selectedRegion, setSelectedRegion] = useState<"all" | "BR" | "INT">("all");
   const [selectedConfidence, setSelectedConfidence] = useState("all");
   const [selectedPalpiteStatus, setSelectedPalpiteStatus] = useState("all");
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
@@ -316,9 +321,34 @@ export default function Palpites() {
               <div className="flex flex-col md:flex-row gap-4">
                 {/* League Filter */}
                 <div className="glass-card p-4 flex-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Filter className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Liga</span>
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">Liga</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {([
+                        { id: "all", label: "Todas" },
+                        { id: "BR", label: "🇧🇷 Brasil" },
+                        { id: "INT", label: "🌍 Internacional" },
+                      ] as const).map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => {
+                            setSelectedRegion(r.id);
+                            setSelectedLeague("all");
+                          }}
+                          className={cn(
+                            "px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                            selectedRegion === r.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                          )}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -335,7 +365,13 @@ export default function Palpites() {
                     {loadingLeagues ? (
                       <Skeleton className="h-9 w-32" />
                     ) : (
-                      leagues?.map((league) => {
+                      leagues
+                        ?.filter((league) => {
+                          if (selectedRegion === "all") return true;
+                          const br = isBrazilianLeague(league.pais);
+                          return selectedRegion === "BR" ? br : !br;
+                        })
+                        .map((league) => {
                         const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || 0;
                         const isSelected = selectedLeague === league.id;
                         return (
@@ -349,13 +385,12 @@ export default function Palpites() {
                                 : "bg-muted hover:bg-muted/80 text-muted-foreground"
                             )}
                           >
-                            {league.logo_url && (
-                              <img
-                                src={league.logo_url}
-                                alt={league.nome}
-                                className="w-4 h-4 object-contain"
-                              />
-                            )}
+                            <LeagueLogo
+                              logoUrl={league.logo_url}
+                              name={league.nome}
+                              country={league.pais}
+                              size="sm"
+                            />
                             <span className="hidden sm:inline">{league.nome}</span>
                             {matchCount > 0 && (
                               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
@@ -368,6 +403,7 @@ export default function Palpites() {
                     )}
                   </div>
                 </div>
+
 
                 {/* Confidence Filter */}
                 <div className="glass-card p-4">
