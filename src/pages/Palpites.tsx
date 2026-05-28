@@ -276,49 +276,90 @@ export default function Palpites() {
                 )}
               </div>
 
-              {/* Right Controls */}
-              <div className="flex items-center gap-2">
-                {/* Export Button */}
-                {filteredPredictions && filteredPredictions.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!user || !hasAccess) {
-                        toast({
-                          title: "Recurso Premium",
-                          description: "Contrate um plano ativo para exportar os dados em CSV.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      handleExportCSV();
-                    }}
-                    className={cn("gap-2", (!user || !hasAccess) && "opacity-50 cursor-not-allowed")}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Exportar CSV</span>
-                  </Button>
-                )}
+              {/* Right Controls moved into Status do Palpite bar */}
 
-                {/* Bulk Accept Button */}
-                {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setBulkModalOpen(true)}
-                    className="gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span className="hidden sm:inline">Aceitar Todos da IA</span>
-                  </Button>
-                )}
-              </div>
             </div>
+
+            {/* Palpite Status Filter + Actions (top bar) */}
+            {user && (
+              <div className="glass-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-secondary" />
+                    <span className="text-sm font-medium">Status do Palpite</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {filteredPredictions && filteredPredictions.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!user || !hasAccess) {
+                            toast({
+                              title: "Recurso Premium",
+                              description: "Contrate um plano ativo para exportar os dados em CSV.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          handleExportCSV();
+                        }}
+                        className={cn("gap-2", (!user || !hasAccess) && "opacity-50 cursor-not-allowed")}
+                      >
+                        <Download className="w-4 h-4" />
+                        <span className="hidden sm:inline">Exportar CSV</span>
+                      </Button>
+                    )}
+                    {predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBulkModalOpen(true)}
+                        className="gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span className="hidden sm:inline">Aceitar Todos da IA</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {palpiteStatusFilters.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setSelectedPalpiteStatus(filter.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        selectedPalpiteStatus === filter.id
+                          ? filter.id === "done"
+                            ? "bg-secondary text-secondary-foreground"
+                            : filter.id === "pending"
+                              ? "bg-neon-orange text-white"
+                              : "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      )}
+                    >
+                      {filter.icon && <filter.icon className="w-3 h-3" />}
+                      {filter.label}
+                      <span className={cn(
+                        "px-1.5 py-0.5 text-xs rounded-full",
+                        selectedPalpiteStatus === filter.id
+                          ? "bg-white/20"
+                          : "bg-primary/20 text-primary"
+                      )}>
+                        {filter.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-col gap-4">
               {/* League and Confidence Filters */}
               <div className="flex flex-col md:flex-row gap-4">
+
                 {/* League Filter */}
                 <div className="glass-card p-4 flex-1">
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -429,46 +470,8 @@ export default function Palpites() {
                   </div>
                 </div>
               </div>
-
-              {/* Palpite Status Filter */}
-              {user && (
-                <div className="glass-card p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle className="w-4 h-4 text-secondary" />
-                    <span className="text-sm font-medium">Status do Palpite</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {palpiteStatusFilters.map((filter) => (
-                      <button
-                        key={filter.id}
-                        onClick={() => setSelectedPalpiteStatus(filter.id)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          selectedPalpiteStatus === filter.id
-                            ? filter.id === "done" 
-                              ? "bg-secondary text-secondary-foreground"
-                              : filter.id === "pending"
-                                ? "bg-neon-orange text-white"
-                                : "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                        )}
-                      >
-                        {filter.icon && <filter.icon className="w-3 h-3" />}
-                        {filter.label}
-                        <span className={cn(
-                          "px-1.5 py-0.5 text-xs rounded-full",
-                          selectedPalpiteStatus === filter.id
-                            ? "bg-white/20"
-                            : "bg-primary/20 text-primary"
-                        )}>
-                          {filter.count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
+
 
             {/* Predictions Grid */}
             {loadingPredictions ? (
