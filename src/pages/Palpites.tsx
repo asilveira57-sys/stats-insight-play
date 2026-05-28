@@ -51,6 +51,7 @@ export default function Palpites() {
   const { hasAccess } = useHasActiveAccess();
   const { toast } = useToast();
   const [selectedLeague, setSelectedLeague] = useState("all");
+  const [selectedRegion, setSelectedRegion] = useState<"all" | "BR" | "INT">("all");
   const [selectedConfidence, setSelectedConfidence] = useState("all");
   const [selectedPalpiteStatus, setSelectedPalpiteStatus] = useState("all");
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
