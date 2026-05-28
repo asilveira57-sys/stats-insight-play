@@ -470,46 +470,8 @@ export default function Palpites() {
                   </div>
                 </div>
               </div>
-
-              {/* Palpite Status Filter */}
-              {user && (
-                <div className="glass-card p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle className="w-4 h-4 text-secondary" />
-                    <span className="text-sm font-medium">Status do Palpite</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {palpiteStatusFilters.map((filter) => (
-                      <button
-                        key={filter.id}
-                        onClick={() => setSelectedPalpiteStatus(filter.id)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          selectedPalpiteStatus === filter.id
-                            ? filter.id === "done" 
-                              ? "bg-secondary text-secondary-foreground"
-                              : filter.id === "pending"
-                                ? "bg-neon-orange text-white"
-                                : "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                        )}
-                      >
-                        {filter.icon && <filter.icon className="w-3 h-3" />}
-                        {filter.label}
-                        <span className={cn(
-                          "px-1.5 py-0.5 text-xs rounded-full",
-                          selectedPalpiteStatus === filter.id
-                            ? "bg-white/20"
-                            : "bg-primary/20 text-primary"
-                        )}>
-                          {filter.count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
+
 
             {/* Predictions Grid */}
             {loadingPredictions ? (
