@@ -276,43 +276,8 @@ export default function Palpites() {
                 )}
               </div>
 
-              {/* Right Controls */}
-              <div className="flex items-center gap-2">
-                {/* Export Button */}
-                {filteredPredictions && filteredPredictions.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!user || !hasAccess) {
-                        toast({
-                          title: "Recurso Premium",
-                          description: "Contrate um plano ativo para exportar os dados em CSV.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      handleExportCSV();
-                    }}
-                    className={cn("gap-2", (!user || !hasAccess) && "opacity-50 cursor-not-allowed")}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Exportar CSV</span>
-                  </Button>
-                )}
+              {/* Right Controls moved into Status do Palpite bar */}
 
-                {/* Bulk Accept Button */}
-                {user && predictions && predictions.length > 0 && palpiteStatusCounts.pending > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setBulkModalOpen(true)}
-                    className="gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span className="hidden sm:inline">Aceitar Todos da IA</span>
-                  </Button>
-                )}
-              </div>
             </div>
 
             {/* Filters */}
