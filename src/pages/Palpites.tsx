@@ -41,6 +41,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHasActiveAccess } from "@/hooks/usePayments";
 import { useToast } from "@/hooks/use-toast";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
+
+const isBrazilianLeague = (pais: string | null | undefined) =>
+  pais === "Brasil" || pais === "Brazil";
 
 export default function Palpites() {
   const { user } = useAuth();
