@@ -146,7 +146,7 @@ serve(async (req) => {
   } catch { /* defaults */ }
 
   const startTime = Date.now();
-  const SAFETY_MS = 120_000;
+  const SAFETY_MS = 280_000;
   const hasTimeLeft = () => Date.now() - startTime < SAFETY_MS;
 
   try {
