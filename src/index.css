@@ -176,8 +176,9 @@
   }
 
   .nav-link {
-    @apply relative px-4 py-2 text-muted-foreground hover:text-foreground transition-colors duration-300;
+    @apply relative px-4 py-2 text-foreground hover:text-primary hover:bg-primary/10 hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] rounded-md transition-all duration-200;
   }
+
 
   .nav-link-active {
     @apply text-primary;
