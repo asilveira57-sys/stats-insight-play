@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllRecords } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Target, TrendingUp, Calendar, Award } from "lucide-react";
@@ -15,29 +15,26 @@ interface RetrospectiveStats {
 
 export function BrasileiraoRetrospectiva() {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['brasileirao-retrospective'],
+    queryKey: ['brasileirao-retrospective-summary'],
     queryFn: async () => {
-      const data = await fetchAllRecords<{ sistema_acertou_resultado: boolean | null; sistema_acertou_placar: boolean | null; sistema_prob_resultado: number | null }>(
-        'comparativo_resultados',
-        `sistema_acertou_resultado, sistema_acertou_placar, sistema_prob_resultado,
-         partidas!inner(liga_id, ligas!inner(codigo_api))`,
-        (q) => q.eq('partidas.ligas.codigo_api', 'BSA')
-      );
-
-      const total = data?.length || 0;
-      const acertosResultado = data?.filter(d => d.sistema_acertou_resultado).length || 0;
-      const acertosPlacar = data?.filter(d => d.sistema_acertou_placar).length || 0;
-      const probMedia = data?.reduce((acc, d) => acc + (d.sistema_prob_resultado || 0), 0) / (total || 1);
-
+      const { data, error } = await supabase.rpc('get_brasileirao_retrospectiva', {
+        p_season: 'all',
+        p_rodada: null,
+        p_page: 1,
+        p_page_size: 1,
+      });
+      if (error) throw error;
+      const s = (data as any)?.summary;
       return {
-        total_partidas: total,
-        acertos_resultado: acertosResultado,
-        acertos_placar: acertosPlacar,
-        prob_media: probMedia
+        total_partidas: s?.total ?? 0,
+        acertos_resultado: s?.acertos_resultado ?? 0,
+        acertos_placar: s?.acertos_placar ?? 0,
+        prob_media: s?.prob_media != null ? Number(s.prob_media) : null,
       } as RetrospectiveStats;
     },
     staleTime: 1000 * 60 * 10, // 10 minutes cache
   });
+
 
   if (isLoading) {
     return (
