@@ -5979,6 +5979,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_brasileirao_retrospectiva: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_rodada?: number
+          p_season?: string
+        }
+        Returns: Json
+      }
       get_suggested_duplicates: {
         Args: { p_limit?: number }
         Returns: {
