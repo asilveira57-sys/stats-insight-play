@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useCampeonatos, type CategoriaLigas } from "@/hooks/useCampeonatos";
+import { LeagueLogo } from "@/components/ui/LeagueLogo";
 
 // Map icon names to components
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -46,17 +47,15 @@ function CategoriaSection({ categoria, getStats }: {
             <Card className="h-full transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  {liga.logo_url ? (
-                    <img 
-                      src={liga.logo_url} 
-                      alt={liga.nome}
-                      className="w-10 h-10 object-contain"
+                  <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <LeagueLogo
+                      logoUrl={liga.logo_url}
+                      name={liga.nome}
+                      country={liga.pais}
+                      size="lg"
+                      className="w-8 h-8"
                     />
-                  ) : (
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                      <Trophy className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  )}
+                  </div>
                   
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
