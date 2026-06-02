@@ -231,7 +231,7 @@ serve(async (req) => {
         const baseSlug = `${slugify(timeCasa)}-x-${slugify(timeFora)}-${formatDateForSlug((match as any).data)}-analise-pre-jogo`;
         const slug = `${baseSlug}-${(match as any).id.slice(0, 12)}`;
 
-        const { error: insErr } = await supabase.from("noticias").insert({
+        const { data: insData, error: insErr } = await supabase.from("noticias").insert({
           titulo: title,
           resumo: summary,
           texto: content,
@@ -240,10 +240,21 @@ serve(async (req) => {
           data_publicacao: new Date().toISOString(),
           partida_id: (match as any).id,
           publicada: true,
-        });
+        }).select("id").maybeSingle();
 
         if (insErr && !(insErr.message?.includes("duplicate") || insErr.code === "23505")) {
           throw new Error(`Insert: ${insErr.message}`);
+        }
+
+        // Gera thumbnail SVG imediatamente — sem isso o card cai no placeholder verde compartilhado.
+        if (insData?.id) {
+          try {
+            await supabase.functions.invoke("generate-article-card-svg", {
+              body: { article_ids: [insData.id], limit: 1, mode: "execute" },
+            });
+          } catch (svgErr) {
+            console.error(`[${FN_NAME}] svg thumb falhou ${insData.id}:`, svgErr);
+          }
         }
 
         existingIds.add((match as any).id);
