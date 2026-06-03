@@ -20,6 +20,7 @@ import {
   useIntegrityAlerts,
   useSystemLog,
 } from "@/hooks/useDashboardData";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 export default function DashboardHome() {
   const { user } = useAuth();
@@ -90,6 +91,11 @@ export default function DashboardHome() {
           <div className="flex items-center gap-4">
             {user && <DashboardUserPerformance stats={userStats || null} />}
           </div>
+        </div>
+
+        {/* Pesquisa Inteligente */}
+        <div className="py-2">
+          <SmartSearchBar size="default" />
         </div>
 
         {/* Filters */}
