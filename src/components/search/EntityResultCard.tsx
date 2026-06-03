@@ -24,7 +24,12 @@ export function EntityResultCard({ result }: { result: SearchResultRow }) {
         <CardContent className="p-4 flex items-center gap-3">
           <div className="shrink-0">
             {result.entity_type === "team" ? (
-              <TeamBadge name={result.name} cores={result.extra?.cores} size="md" />
+              <TeamBadge
+                name={result.name}
+                primaryColor={result.extra?.cores?.primary}
+                secondaryColor={result.extra?.cores?.secondary}
+                size="md"
+              />
             ) : result.entity_type === "league" ? (
               <LeagueLogo logoUrl={result.extra?.logo_url} name={result.name} country={result.extra?.pais} size="md" />
             ) : (
