@@ -80,6 +80,8 @@ import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
 import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
+import Pesquisa from "./pages/Pesquisa";
+import Trends from "./pages/Trends";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +118,8 @@ const App = () => (
             <Route path="/estatisticas/:liga/:time/:ano" element={<EstatisticasTeam />} />
             <Route path="/estatisticas/:liga/:time/:ano/:view" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
+            <Route path="/pesquisa" element={<Pesquisa />} />
+            <Route path="/trends" element={<Trends />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
             <Route path="/precos" element={<Precos />} />

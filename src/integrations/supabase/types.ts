@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_answers_log: {
+        Row: {
+          answer: string
+          confidence_score: number
+          created_at: string
+          data_sources_used: Json
+          has_enough_data: boolean
+          id: string
+          normalized_question: string
+          question: string
+          user_id: string | null
+        }
+        Insert: {
+          answer: string
+          confidence_score?: number
+          created_at?: string
+          data_sources_used?: Json
+          has_enough_data?: boolean
+          id?: string
+          normalized_question: string
+          question: string
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string
+          confidence_score?: number
+          created_at?: string
+          data_sources_used?: Json
+          has_enough_data?: boolean
+          id?: string
+          normalized_question?: string
+          question?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analytics_config: {
         Row: {
           ga4_enabled: boolean | null
@@ -4442,6 +4478,36 @@ export type Database = {
           },
         ]
       }
+      popular_entities: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id: string
+          period: string
+          search_count: number
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id?: string
+          period?: string
+          search_count?: number
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_name?: string
+          entity_type?: string
+          id?: string
+          period?: string
+          search_count?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -4669,6 +4735,84 @@ export type Database = {
           origin?: string | null
           status?: number | null
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      search_queries: {
+        Row: {
+          created_at: string
+          detected_entities: Json
+          id: string
+          normalized_query: string
+          query_text: string
+          query_type: string
+          response_status: string
+          result_count: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detected_entities?: Json
+          id?: string
+          normalized_query: string
+          query_text: string
+          query_type?: string
+          response_status?: string
+          result_count?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detected_entities?: Json
+          id?: string
+          normalized_query?: string
+          query_text?: string
+          query_type?: string
+          response_status?: string
+          result_count?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      search_trends: {
+        Row: {
+          created_at: string
+          daily_searches: number
+          entity_id: string | null
+          entity_type: string
+          id: string
+          last_searched_at: string
+          monthly_searches: number
+          term: string
+          total_searches: number
+          updated_at: string
+          weekly_searches: number
+        }
+        Insert: {
+          created_at?: string
+          daily_searches?: number
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          last_searched_at?: string
+          monthly_searches?: number
+          term: string
+          total_searches?: number
+          updated_at?: string
+          weekly_searches?: number
+        }
+        Update: {
+          created_at?: string
+          daily_searches?: number
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          last_searched_at?: string
+          monthly_searches?: number
+          term?: string
+          total_searches?: number
+          updated_at?: string
+          weekly_searches?: number
         }
         Relationships: []
       }
@@ -5786,6 +5930,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_search_history: {
+        Row: {
+          clicked_result_id: string | null
+          clicked_result_type: string | null
+          created_at: string
+          id: string
+          query_text: string
+          query_type: string
+          user_id: string
+        }
+        Insert: {
+          clicked_result_id?: string | null
+          clicked_result_type?: string | null
+          created_at?: string
+          id?: string
+          query_text: string
+          query_type?: string
+          user_id: string
+        }
+        Update: {
+          clicked_result_id?: string | null
+          clicked_result_type?: string | null
+          created_at?: string
+          id?: string
+          query_text?: string
+          query_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_xp: {
         Row: {
           best_streak_days: number
@@ -6129,6 +6303,30 @@ export type Database = {
         Returns: undefined
       }
       recalculate_user_access: { Args: { p_user_id: string }; Returns: Json }
+      record_ai_answer: {
+        Args: {
+          p_answer: string
+          p_confidence: number
+          p_has_enough: boolean
+          p_normalized: string
+          p_question: string
+          p_sources: Json
+          p_user_id?: string
+        }
+        Returns: string
+      }
+      register_search: {
+        Args: {
+          p_entities?: Json
+          p_normalized: string
+          p_query: string
+          p_result_count?: number
+          p_status?: string
+          p_type: string
+          p_user_id?: string
+        }
+        Returns: string
+      }
       resolve_or_create_league: {
         Args: {
           p_api_id?: number
@@ -6164,6 +6362,16 @@ export type Database = {
           p_provider_id?: string
         }
         Returns: string
+      }
+      search_global: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          entity_id: string
+          entity_type: string
+          extra: Json
+          name: string
+          score: number
+        }[]
       }
       slugify: { Args: { input_text: string }; Returns: string }
       slugify_player_name: { Args: { name: string }; Returns: string }

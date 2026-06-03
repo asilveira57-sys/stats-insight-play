@@ -79,6 +79,8 @@ const menuStructure = {
 // Links para mobile
 const mobileLinks = [
   { href: "/", label: "Início", icon: Zap },
+  { href: "/pesquisa", label: "Pesquisa", icon: Search },
+  { href: "/trends", label: "Tendências", icon: TrendingUp },
   { href: "/resultados", label: "Jogos", icon: Calendar },
   { href: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
   { href: "/noticias", label: "Análises", icon: FileText },
