@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Library, ArrowRight } from "lucide-react";
 import statballLogo from "@/assets/statball-logo.png";
 import heroBackground from "@/assets/hero-background.jpg";
+import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
 export function HeroSection() {
   return (
@@ -47,6 +48,11 @@ export function HeroSection() {
             Uma plataforma que organiza dados reais, valida análises e acompanha a evolução do futebol jogo após jogo.
           </p>
           
+          {/* Smart search */}
+          <div className="mb-8">
+            <SmartSearchBar size="lg" />
+          </div>
+
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="xl" className="text-lg shadow-lg shadow-primary/20">
