@@ -59,7 +59,8 @@ function extractScope(q: string): "home" | "away" | null {
 
 const SUBTEAM_RE = /(\s|^)(U-?17|U-?20|U-?23|Sub-?\d+|Women|Feminin|W)(\s|$|-)/i;
 
-async function fetchAllPartidas(supabase: any, teamId: string, year: number | null, scope: "home" | "away" | null) {
+async function fetchSide(supabase: any, side: "home" | "away", teamId: string, year: number | null) {
+  const col = side === "home" ? "time_casa_id" : "time_fora_id";
   const all: any[] = [];
   const PAGE = 1000;
   let from = 0;
@@ -67,21 +68,27 @@ async function fetchAllPartidas(supabase: any, teamId: string, year: number | nu
     let q = supabase
       .from("partidas")
       .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
-      .eq("status", "finished");
-    if (scope === "home") q = q.eq("time_casa_id", teamId);
-    else if (scope === "away") q = q.eq("time_fora_id", teamId);
-    else q = q.or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`);
-    if (year) {
-      q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
-    }
+      .eq("status", "finished")
+      .eq(col, teamId);
+    if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
     const { data, error } = await q.order("data", { ascending: false }).range(from, from + PAGE - 1);
-    if (error) { console.error("fetchAllPartidas", error); break; }
+    if (error) { console.error("fetchSide", side, error); break; }
     if (!data || data.length === 0) break;
     all.push(...data);
     if (data.length < PAGE) break;
     from += PAGE;
   }
   return all;
+}
+
+async function fetchAllPartidas(supabase: any, teamId: string, year: number | null, scope: "home" | "away" | null) {
+  if (scope === "home") return fetchSide(supabase, "home", teamId, year);
+  if (scope === "away") return fetchSide(supabase, "away", teamId, year);
+  const [h, a] = await Promise.all([
+    fetchSide(supabase, "home", teamId, year),
+    fetchSide(supabase, "away", teamId, year),
+  ]);
+  return [...h, ...a].sort((x, y) => (y.data || "").localeCompare(x.data || ""));
 }
 
 function aggregate(matches: any[], teamId: string) {
