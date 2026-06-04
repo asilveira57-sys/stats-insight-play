@@ -1,103 +1,88 @@
-# Pesquisa Inteligente Statball
 
-Módulo completo de busca unificada (times, jogadores, campeonatos, estatísticas) + pergunta em linguagem natural respondida por IA usando exclusivamente dados do banco.
+## Problema observado
 
-## 1. Banco de dados (1 migration)
+Pergunta: "quantos jogos do fluminense em 2025"
+- A IA respondeu sobre **Fluminense de Feira-BA** (2 jogos) em vez do **Fluminense-RJ** (38 jogos em 2025).
+- Causas reais:
+  1. `search_global` dá score 80 para todos os times que começam com "fluminense" — sem desempate por popularidade/canonicidade, então o primeiro da lista vira o "topTeam".
+  2. A edge function pega `results[0]` como entidade principal, sem critério.
+  3. Não extrai filtros da pergunta (ano `2025`, competição, "casa/fora").
+  4. O contexto enviado à IA são stats agregadas totais — não filtra por ano, então a IA inventa/responde sobre o dataset errado.
 
-Cria 5 tabelas no schema `public` com GRANTs + RLS:
+## Solução
 
-- **search_queries** — log de toda busca (auth e anônima). RLS: insert público, select só admin.
-- **search_trends** — agregado por termo/entidade com contadores diário/semanal/mensal/total. RLS: select público (dados agregados, sem PII), write só service_role.
-- **user_search_history** — histórico individual. RLS: usuário vê/edita só o próprio.
-- **ai_answers_log** — todas as respostas da IA, com `has_enough_data`, `confidence_score`, `data_sources_used`. RLS: insert público, select admin.
-- **popular_entities** — ranking pré-agregado por período (`day`/`week`/`month`/`all`). RLS: select público.
+### 1. Ranking inteligente em `search_global` (migration)
 
-Índices: `normalized_query`, `(entity_type, entity_id)`, `(user_id, created_at desc)`, `(period, search_count desc)`.
+Reescrever a função adicionando desempate determinístico:
 
-RPCs:
-- `register_search(query, type, entities, user)` — insere em `search_queries` + atualiza `search_trends` (upsert + increment).
-- `get_search_trends(period, entity_type, limit)` — retorna top termos/entidades.
-- `record_ai_answer(...)` — insere em `ai_answers_log`.
-- `search_global(q, limit)` — busca fuzzy (ILIKE/unaccent) em `times`, `jogadores` (se existir), `ligas`. Retorna união tipada.
+- **Boost de canonicidade**: `+30` se `slug` é exatamente igual ao termo normalizado (ex.: `fluminense` → `fluminense-rj` perde; mas `flamengo` → `flamengo` ganha). Adicionar boost `+20` quando o nome do time, sem sufixos de estado (`-RJ`, `-SP`, `-BA`, ` U20`, ` U17`, ` U23`, ` W`), bate exato com o termo.
+- **Boost de popularidade**: `+ LEAST(20, log10(1 + count_partidas) * 5)` — usar contagem de `partidas` (pré-calculada via materialized view ou subquery cacheada em coluna `times.match_count`). Como alternativa simples sem MV: `LEFT JOIN (SELECT time_id, count) team_match_counts`.
+- **Boost de time principal**: se `times.is_main = true` (já existe em alguns projetos), +15. Se não existir a coluna, pular.
+- **Penalidade de sub-categoria**: `-15` se nome contém ` U17`, ` U20`, ` U23`, ` W`, ` Sub`.
+- Ordenar por `score DESC, popularity DESC, name ASC`.
 
-Sem `LIMIT 1000` em lugar nenhum — paginação via `range` quando necessário (memory: Zero Limits).
+Mesma lógica para `ligas` (boost se for liga BR principal) e `players`.
 
-## 2. Edge function `intelligent-search`
+### 2. Edge function `intelligent-search` — extração de filtros e seleção de entidade
 
-Endpoint único, `verify_jwt = false`, recebe `{ query, user_id?, mode? }`.
+Adicionar antes da chamada à IA:
 
-Fluxo:
-1. Normaliza texto (lowercase, unaccent).
-2. **Classifica intenção** via heurística rápida + fallback Lovable AI Gateway (`google/gemini-3-flash-preview`):
-   - `entity` (nome de time/jogador/competição)
-   - `stat` (palavras tipo "artilheiros", "média", "ranking", "mais gols")
-   - `question` (perguntas em linguagem natural)
-3. Resolve entidades no banco (RPC `search_global`).
-4. Monta **contexto factual** (top jogos, stats agregadas, artilheiros, etc).
-5. Se `question`: chama Gemini com system prompt rígido — "responda APENAS com base nos dados fornecidos; se insuficiente, diga 'Ainda não há dados suficientes no Statball para responder com precisão.'". Resposta JSON estruturada: `{ answer, explanation, data_used, tables, related_links, has_enough_data, confidence }`.
-6. Registra em `search_queries`, atualiza `search_trends`, salva em `ai_answers_log` e `user_search_history` (se logado).
-7. Retorna `{ type, entities, results, ai_answer?, related }`.
+- **Extrair ano**: regex `\b(19|20)\d{2}\b` na query. Suportar "este ano", "ano passado", "temporada atual".
+- **Extrair competição**: matching contra `ligas.nome` normalizado nos tokens (já temos resultados `league` em `search_global`).
+- **Extrair escopo**: "em casa", "fora", "como mandante/visitante".
+- **Selecionar topTeam**: já vem ordenado corretamente após o fix do `search_global`. Manter `results[0]` do tipo `team`, mas adicionar log do score para debug.
 
-CORS + zod validation + tratamento 402/429.
+### 3. Contexto factual real (com filtros aplicados)
 
-## 3. Frontend
+Substituir o bloco atual que só chama `get_team_stats_bulk` por uma consulta SQL direta a `partidas` com os filtros extraídos:
 
-### Componentes (`src/components/search/`)
-- `SmartSearchBar.tsx` — input grande estilo Google, autocomplete debounced (300ms), atalho `/`.
-- `RecentSearchesList.tsx` — últimas buscas globais.
-- `TrendingCards.tsx` — grid: termos populares, times, jogadores, campeonatos.
-- `AIAnswerCard.tsx` — render da resposta IA com markdown, fontes de dados, links internos, badge "Dados insuficientes" quando aplicável.
-- `EntityResultCard.tsx` — card para time/jogador/competição com últimos jogos, stats, link.
-- `SearchResultsTable.tsx` — tabela de resultados estatísticos.
-- `UserSearchHistory.tsx` — histórico do usuário logado.
-- `GlobalSearchRanking.tsx` — top buscas globais.
+```ts
+const { count: total } = await supabase
+  .from("partidas")
+  .select("*", { count: "exact", head: true })
+  .or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`)
+  .gte("data", `${year}-01-01`)
+  .lte("data", `${year}-12-31`)
+  .eq("status", "finished");
+```
 
-### Hook `useIntelligentSearch.ts`
-Wrap `supabase.functions.invoke('intelligent-search')` + React Query.
+Depois agregar W/D/L/GF/GA pelo lado (casa/fora) num único `select` paginado (respeitando Zero Limits — usar `range` em lotes de 1000 até esgotar; somar em JS). Resultado vira contexto:
 
-### Páginas novas
-- **`/pesquisa`** (`src/pages/Pesquisa.tsx`) — busca completa com filtros (entidade, temporada, tipo de stat), histórico, tendências, resultados.
-- **`/trends`** (`src/pages/Trends.tsx`) — rankings de termos/times/jogadores/campeonatos com seletor de período (dia/semana/mês) e gráfico de crescimento.
+```
+Time: Fluminense-RJ (id: ...)
+Ano consultado: 2025
+Jogos finalizados em 2025: 38
+Vitórias: 18 | Empates: 11 | Derrotas: 9
+Gols marcados: 52 | Gols sofridos: 41
+Últimas 5 partidas em 2025: ...
+```
 
-### Home (`src/pages/Index.tsx`)
-Adiciona seção hero com `SmartSearchBar` em destaque + `TrendingCards` e `RecentSearchesList` logo abaixo. Mantém o restante da home.
+Se o usuário pediu time específico mas só veio sub-time (U17/W), pular para o próximo `team` do resultado.
 
-### Rotas (`src/App.tsx`)
-Adiciona `/pesquisa` e `/trends`.
+### 4. Prompt da IA reforçado
 
-### Navbar
-Adiciona link "Pesquisa" e ícone de lupa no topo (abre `/pesquisa`).
+Adicionar à system prompt:
+- "Os dados do CONTEXTO já vêm filtrados pelo ano/competição mencionados na pergunta. Use os números exatos."
+- "Se a pergunta mencionar um ano e o CONTEXTO mostrar `Ano consultado:`, sua resposta deve usar esses números."
+- "Sempre confirme qual entidade foi consultada (ex.: 'O Fluminense-RJ teve...')".
 
-## 4. SEO + futura monetização
-- `<head>` dinâmico nas páginas `/pesquisa` e `/trends` (title, description, canonical).
-- Estrutura `popular_entities` permite gerar páginas SEO futuras tipo `/pesquisa/flamengo` (já compatível — só renderiza resultado pré-cacheado).
-- Hook reservado `isPremium` no componente IA para futuro gating (sem bloqueio agora).
+### 5. Hardening do registro
 
-## 5. Regras respeitadas
-- Sem `.limit(1000)` (Zero Limits).
-- UTC-3 nas datas exibidas.
-- Sem brasões de time — usa `TeamBadge`.
-- Lovable AI Gateway (não Google direto).
-- AdSense fora desta página (página de conversão/IA).
-- Idioma PT-BR.
+- Salvar em `ai_answers_log.data_sources_used` o objeto `{ team_id, team_name, year, total_matches }` para auditoria.
+- Logar warning quando `entities.length > 3` com mesmo prefixo (ambiguidade alta) — futuro: pedir desambiguação ao usuário.
 
-## Detalhes técnicos
+## Arquivos afetados
 
-- Edge function: `supabase/functions/intelligent-search/index.ts` + entrada em `supabase/config.toml`? Não — já é default Lovable-managed, sem config extra.
-- Migration única com todas as tabelas + RPCs + GRANTs + RLS na ordem correta (CREATE → GRANT → ENABLE RLS → POLICY).
-- Tipos do Supabase serão regenerados após a migration.
-- Render markdown na resposta IA com `react-markdown` (já no projeto? checar; se não, `bun add react-markdown`).
-- Sem mudanças destrutivas em código existente; apenas adições + edição mínima de `Index.tsx`, `App.tsx`, `Navbar.tsx`.
+1. **Nova migration** (`supabase/migrations/..._search_global_ranking.sql`): reescrever `search_global` com boosts e desempates; opcionalmente adicionar coluna `times.match_count` + trigger de atualização (ou subselect inline se preferir simplicidade).
+2. **`supabase/functions/intelligent-search/index.ts`**:
+   - Adicionar `extractYear`, `extractCompetition`, `extractScope`.
+   - Substituir bloco de contexto factual por agregação real filtrada.
+   - Filtrar sub-times (U17/U20/W) ao escolher topTeam.
+   - Atualizar system prompt.
+3. Sem mudanças de frontend.
 
-## Entregáveis nesta tarefa
-1. Migration (aprovar).
-2. Edge function `intelligent-search`.
-3. Componentes em `src/components/search/`.
-4. Hook `useIntelligentSearch`.
-5. Páginas `Pesquisa.tsx` e `Trends.tsx` + rotas.
-6. Integração na Home + Navbar.
+## Fora de escopo
 
-## Fora de escopo (futuro)
-- Páginas SEO geradas automaticamente (estrutura pronta, geração depois).
-- Gating premium efetivo (estrutura pronta).
-- Indexação full-text dedicada (`pg_trgm`/`tsvector`) — começa com ILIKE/unaccent, evolui se necessário.
+- UI de desambiguação ("Você quis dizer Fluminense-RJ ou Fluminense-PI?") — fica para próximo passo.
+- Indexação `pg_trgm`/`tsvector` para fuzzy match com erros de digitação.
+- Cache de respostas frequentes.
