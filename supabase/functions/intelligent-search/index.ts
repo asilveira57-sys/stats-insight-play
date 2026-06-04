@@ -124,12 +124,40 @@ Deno.serve(async (req) => {
     const normalized = normalize(query);
     const type = classify(query);
 
-    // 1. Resolve entidades
-    const { data: results, error: searchErr } = await supabase.rpc("search_global", {
-      p_query: query,
-      p_limit: 20,
-    });
-    if (searchErr) console.error("search_global", searchErr);
+    // 1. Resolve entidades — para perguntas, extrai tokens significativos
+    const STOPWORDS = new Set([
+      "quantos","quantas","quanto","qual","quais","quem","como","quando","onde",
+      "por","porque","que","de","do","da","dos","das","o","a","os","as","um","uma",
+      "no","na","nos","nas","em","e","ou","com","sem","para","pra","pelo","pela",
+      "jogo","jogos","jogou","jogar","partida","partidas","fez","feito","tem",
+      "ja","já","mais","menos","melhor","pior","time","times","liga","campeonato",
+    ]);
+    const tokens = normalized
+      .replace(/[?!.,;:()"]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+
+    const queriesToTry: string[] = [query];
+    if (type !== "entity" && tokens.length > 0) {
+      queriesToTry.push(tokens.join(" "));
+      for (const t of tokens) queriesToTry.push(t);
+    }
+
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const q of queriesToTry) {
+      const { data, error } = await supabase.rpc("search_global", { p_query: q, p_limit: 20 });
+      if (error) { console.error("search_global", q, error); continue; }
+      for (const r of (data || [])) {
+        const k = `${r.entity_type}:${r.entity_id}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        merged.push(r);
+        if (merged.length >= 30) break;
+      }
+      if (merged.length >= 30) break;
+    }
+    const results = merged;
 
     const entities = (results || []).slice(0, 8).map((r: any) => ({
       type: r.entity_type,

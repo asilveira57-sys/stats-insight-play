@@ -220,9 +220,17 @@ export function Navbar() {
             {/* Theme Toggle */}
             <ThemeToggle className="hidden sm:flex" />
             
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
-              <Search className="w-5 h-5" />
-            </Button>
+            <Link to="/pesquisa" className="hidden sm:flex">
+              <Button variant="ghost" size="icon" title="Pesquisa Inteligente">
+                <Search className="w-5 h-5" />
+              </Button>
+            </Link>
+            <Link to="/trends" className="hidden md:flex">
+              <Button variant="ghost" size="sm" className="gap-1.5" title="Tendências">
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden lg:inline">Tendências</span>
+              </Button>
+            </Link>
             <Link to="/precos">
               <Button variant="premium" size="sm" className="hidden sm:flex">
                 <Crown className="w-4 h-4" />
