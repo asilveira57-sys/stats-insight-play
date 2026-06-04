@@ -40,6 +40,64 @@ function classify(q: string): "entity" | "stat" | "question" {
   return "entity";
 }
 
+function extractYear(q: string): number | null {
+  const n = normalize(q);
+  const m = q.match(/\b(19|20)\d{2}\b/);
+  if (m) return parseInt(m[0], 10);
+  const now = new Date();
+  if (/\bano passado\b|\btemporada passada\b/.test(n)) return now.getUTCFullYear() - 1;
+  if (/\beste ano\b|\bano atual\b|\btemporada atual\b/.test(n)) return now.getUTCFullYear();
+  return null;
+}
+
+function extractScope(q: string): "home" | "away" | null {
+  const n = normalize(q);
+  if (/\bem casa\b|\bcomo mandante\b|\bmandante\b/.test(n)) return "home";
+  if (/\bfora de casa\b|\bcomo visitante\b|\bvisitante\b/.test(n)) return "away";
+  return null;
+}
+
+const SUBTEAM_RE = /(\s|^)(U-?17|U-?20|U-?23|Sub-?\d+|Women|Feminin|W)(\s|$|-)/i;
+
+async function fetchAllPartidas(supabase: any, teamId: string, year: number | null, scope: "home" | "away" | null) {
+  const all: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("partidas")
+      .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
+      .eq("status", "finished");
+    if (scope === "home") q = q.eq("time_casa_id", teamId);
+    else if (scope === "away") q = q.eq("time_fora_id", teamId);
+    else q = q.or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`);
+    if (year) {
+      q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+    }
+    const { data, error } = await q.order("data", { ascending: false }).range(from, from + PAGE - 1);
+    if (error) { console.error("fetchAllPartidas", error); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+function aggregate(matches: any[], teamId: string) {
+  let w = 0, d = 0, l = 0, gf = 0, ga = 0;
+  for (const m of matches) {
+    const isHome = m.time_casa_id === teamId;
+    const my = isHome ? (m.gols_casa ?? 0) : (m.gols_fora ?? 0);
+    const op = isHome ? (m.gols_fora ?? 0) : (m.gols_casa ?? 0);
+    gf += my; ga += op;
+    if (my > op) w++;
+    else if (my === op) d++;
+    else l++;
+  }
+  return { total: matches.length, w, d, l, gf, ga };
+}
+
 async function callAI(context: string, question: string): Promise<{
   answer: string;
   explanation: string;
@@ -56,11 +114,13 @@ async function callAI(context: string, question: string): Promise<{
   }
   const system = `Você é o assistente do Statball, uma plataforma de estatísticas de futebol.
 Regras INVIOLÁVEIS:
-1. Responda APENAS com base nos dados fornecidos no CONTEXTO abaixo.
+1. Responda APENAS com base nos dados fornecidos no CONTEXTO abaixo. Os números do CONTEXTO já vêm filtrados pelo ano/escopo da pergunta — use-os exatamente como estão.
 2. NUNCA invente nomes, números, datas ou fatos que não estejam no contexto.
-3. Se o contexto não tiver dados suficientes para responder, retorne EXATAMENTE: "Ainda não há dados suficientes no Statball para responder com precisão."
-4. Seja conciso, em português do Brasil.
-5. Responda em JSON puro com as chaves: answer (string), explanation (string curta), has_enough_data (boolean), confidence (0-100).`;
+3. Sempre confirme qual entidade foi consultada na resposta (ex.: "O Fluminense-RJ teve...").
+4. Se o CONTEXTO trouxer "Ano consultado:", a resposta DEVE usar os números daquele ano.
+5. Se o contexto não tiver dados suficientes para responder, retorne EXATAMENTE: "Ainda não há dados suficientes no Statball para responder com precisão."
+6. Seja conciso, em português do Brasil.
+7. Responda em JSON puro com as chaves: answer (string), explanation (string curta), has_enough_data (boolean), confidence (0-100).`;
 
   const user = `CONTEXTO (dados do banco Statball):\n${context}\n\nPERGUNTA: ${question}\n\nResponda em JSON.`;
 
@@ -123,19 +183,23 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const normalized = normalize(query);
     const type = classify(query);
+    const year = extractYear(query);
+    const scope = extractScope(query);
 
-    // 1. Resolve entidades — para perguntas, extrai tokens significativos
+    // 1. Resolve entidades — extrai tokens significativos
     const STOPWORDS = new Set([
       "quantos","quantas","quanto","qual","quais","quem","como","quando","onde",
       "por","porque","que","de","do","da","dos","das","o","a","os","as","um","uma",
       "no","na","nos","nas","em","e","ou","com","sem","para","pra","pelo","pela",
       "jogo","jogos","jogou","jogar","partida","partidas","fez","feito","tem",
       "ja","já","mais","menos","melhor","pior","time","times","liga","campeonato",
+      "ano","anos","temporada","atual","passado","passada","este","esse","essa",
+      "casa","fora","mandante","visitante",
     ]);
     const tokens = normalized
       .replace(/[?!.,;:()"]/g, " ")
       .split(/\s+/)
-      .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+      .filter((t) => t.length >= 3 && !STOPWORDS.has(t) && !/^\d{4}$/.test(t));
 
     const queriesToTry: string[] = [query];
     if (type !== "entity" && tokens.length > 0) {
@@ -168,33 +232,37 @@ Deno.serve(async (req) => {
     let ai_answer: any = null;
     let contextStr = "";
 
-    // 2. Monta contexto factual para a IA (se for pergunta)
+    // 2. Monta contexto factual real (com filtros aplicados) para a IA
     if (type === "question" || type === "stat") {
-      const topTeam = results?.find((r: any) => r.entity_type === "team");
-      const topLeague = results?.find((r: any) => r.entity_type === "league");
-      const topPlayer = results?.find((r: any) => r.entity_type === "player");
+      // pula sub-times se houver alternativa principal
+      const teamCandidates = results.filter((r: any) => r.entity_type === "team");
+      const topTeam = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+      const topLeague = results.find((r: any) => r.entity_type === "league");
+      const topPlayer = results.find((r: any) => r.entity_type === "player");
 
       if (topTeam) {
-        const { data: stats } = await supabase.rpc("get_team_stats_bulk", {
-          p_team_ids: [topTeam.entity_id],
-        });
-        if (stats?.[0]) {
-          const s = stats[0];
-          contextStr += `Time: ${topTeam.name}\n- Jogos: ${s.total_matches}, Vitórias: ${s.wins}, Empates: ${s.draws}, Derrotas: ${s.losses}\n- Gols marcados: ${s.goals_scored}, Gols sofridos: ${s.goals_conceded}\n`;
+        const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
+        const agg = aggregate(matches, topTeam.entity_id);
+        const scopeStr = scope === "home" ? " (apenas como mandante)" : scope === "away" ? " (apenas como visitante)" : "";
+        const yearStr = year ? `Ano consultado: ${year}\n` : "Período: todos os dados disponíveis\n";
+        contextStr += `Time consultado: ${topTeam.name} (id: ${topTeam.entity_id})\n${yearStr}`;
+        contextStr += `Jogos finalizados${scopeStr}: ${agg.total}\n`;
+        contextStr += `Vitórias: ${agg.w} | Empates: ${agg.d} | Derrotas: ${agg.l}\n`;
+        contextStr += `Gols marcados: ${agg.gf} | Gols sofridos: ${agg.ga}\n`;
+        if (matches.length > 0) {
+          const last = matches.slice(0, 5).map((m: any) => {
+            const isHome = m.time_casa_id === topTeam.entity_id;
+            return `${m.data?.slice(0,10)} ${isHome ? "(casa)" : "(fora)"} ${m.gols_casa}x${m.gols_fora}`;
+          }).join("; ");
+          contextStr += `Últimas partidas no período: ${last}\n`;
         }
-        const { data: lastMatches } = await supabase
-          .from("partidas")
-          .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id")
-          .or(`time_casa_id.eq.${topTeam.entity_id},time_fora_id.eq.${topTeam.entity_id}`)
-          .eq("status", "finished")
-          .order("data", { ascending: false })
-          .range(0, 4);
-        if (lastMatches?.length) {
-          contextStr += `Últimas 5 partidas: ${lastMatches.map((m: any) => `${m.data} ${m.gols_casa}x${m.gols_fora}`).join("; ")}\n`;
+        if (teamCandidates.length > 1) {
+          const others = teamCandidates.slice(0, 5).filter((t: any) => t.entity_id !== topTeam.entity_id).map((t: any) => t.name);
+          if (others.length) contextStr += `Outros times com nome similar (não consultados): ${others.join(", ")}\n`;
         }
       }
-      if (topLeague) contextStr += `Liga encontrada: ${topLeague.name}\n`;
-      if (topPlayer) contextStr += `Jogador encontrado: ${topPlayer.name}\n`;
+      if (topLeague) contextStr += `Liga relacionada: ${topLeague.name}\n`;
+      if (topPlayer) contextStr += `Jogador relacionado: ${topPlayer.name}\n`;
 
       if (type === "question") {
         const ai = await callAI(contextStr || "Sem dados internos relacionados.", query);
@@ -236,6 +304,8 @@ Deno.serve(async (req) => {
         type,
         query,
         normalized,
+        year,
+        scope,
         entities,
         results: results ?? [],
         ai_answer,
