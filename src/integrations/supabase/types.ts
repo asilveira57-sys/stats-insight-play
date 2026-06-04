@@ -5585,6 +5585,7 @@ export type Database = {
           slug: string | null
           slug_locked: boolean
           status: string
+          total_matches: number
           updated_at: string | null
         }
         Insert: {
@@ -5607,6 +5608,7 @@ export type Database = {
           slug?: string | null
           slug_locked?: boolean
           status?: string
+          total_matches?: number
           updated_at?: string | null
         }
         Update: {
@@ -5629,6 +5631,7 @@ export type Database = {
           slug?: string | null
           slug_locked?: boolean
           status?: string
+          total_matches?: number
           updated_at?: string | null
         }
         Relationships: [
