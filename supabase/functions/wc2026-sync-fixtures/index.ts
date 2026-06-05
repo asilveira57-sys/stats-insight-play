@@ -1,0 +1,104 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const API_BASE = "https://v3.football.api-sports.io";
+const WORLD_CUP_LEAGUE_ID = 1;
+
+function slugify(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  const apiKey = Deno.env.get("API_FOOTBALL_KEY");
+  let season = 2026;
+  try { const b = await req.json(); if (b.season) season = b.season; } catch {}
+
+  const { data: logRow } = await supabase.from("world_cup_2026_sync_logs").insert({
+    sync_type: "fixtures", provider: "api-football", status: "running",
+  }).select().single();
+  const logId = logRow?.id;
+
+  try {
+    if (!apiKey) throw new Error("API_FOOTBALL_KEY not configured");
+
+    const res = await fetch(`${API_BASE}/fixtures?league=${WORLD_CUP_LEAGUE_ID}&season=${season}`, {
+      headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": "v3.football.api-sports.io" },
+    });
+    if (!res.ok) throw new Error(`API-Football ${res.status}`);
+    const data = await res.json();
+    const fixtures = data.response ?? [];
+
+    let processed = 0;
+    for (const fx of fixtures) {
+      const homeName = fx.teams.home.name;
+      const awayName = fx.teams.away.name;
+
+      // Upsert teams
+      const teams: Record<string, string> = {};
+      for (const t of [fx.teams.home, fx.teams.away]) {
+        const slug = slugify(t.name);
+        const { data: existing } = await supabase.from("world_cup_2026_teams")
+          .select("id").eq("slug", slug).maybeSingle();
+        if (existing?.id) {
+          teams[t.name] = existing.id;
+        } else {
+          const { data: created } = await supabase.from("world_cup_2026_teams").insert({
+            name: t.name, slug, flag_url: t.logo, external_team_id: t.id, status: "active",
+          }).select("id").single();
+          teams[t.name] = created!.id;
+        }
+      }
+
+      const round: string = fx.league.round ?? "";
+      const groupMatch = round.match(/Group ([A-L])/i);
+      const stage = /final/i.test(round) ? (round.match(/quarter/i) ? "qf" : round.match(/semi/i) ? "sf" : /3rd|third/i.test(round) ? "third" : "final")
+        : /round of 32/i.test(round) ? "r32"
+        : /round of 16/i.test(round) ? "r16"
+        : "group";
+
+      await supabase.from("world_cup_2026_matches").upsert({
+        external_fixture_id: fx.fixture.id,
+        home_team_id: teams[homeName],
+        away_team_id: teams[awayName],
+        group_letter: groupMatch ? groupMatch[1].toUpperCase() : null,
+        stage, round,
+        match_date: fx.fixture.date,
+        stadium: fx.fixture.venue?.name ?? null,
+        city: fx.fixture.venue?.city ?? null,
+        status: fx.fixture.status.short === "FT" ? "finished" : fx.fixture.status.short === "NS" ? "scheduled" : "live",
+        home_score: fx.goals.home,
+        away_score: fx.goals.away,
+      }, { onConflict: "external_fixture_id" });
+      processed++;
+    }
+
+    await supabase.from("world_cup_2026_sync_logs").update({
+      status: "success", finished_at: new Date().toISOString(),
+      records_processed: processed, payload_snapshot: { total: fixtures.length },
+    }).eq("id", logId);
+
+    return new Response(JSON.stringify({ success: true, processed }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await supabase.from("world_cup_2026_sync_logs").update({
+      status: "error", finished_at: new Date().toISOString(), error_message: msg,
+    }).eq("id", logId);
+    return new Response(JSON.stringify({ success: false, error: msg }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

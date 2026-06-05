@@ -82,6 +82,13 @@ import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
 import Pesquisa from "./pages/Pesquisa";
 import Trends from "./pages/Trends";
+import Copa2026Home from "./pages/Copa2026Home";
+import Copa2026Selecoes from "./pages/Copa2026Selecoes";
+import Copa2026SelecaoDetalhe from "./pages/Copa2026SelecaoDetalhe";
+import Copa2026Jogos from "./pages/Copa2026Jogos";
+import Copa2026JogoDetalhe from "./pages/Copa2026JogoDetalhe";
+import Copa2026Posts from "./pages/Copa2026Posts";
+import AdminCopa2026 from "./pages/AdminCopa2026";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +127,13 @@ const App = () => (
             <Route path="/palpites" element={<Palpites />} />
             <Route path="/pesquisa" element={<Pesquisa />} />
             <Route path="/trends" element={<Trends />} />
+            <Route path="/copa-2026" element={<Copa2026Home />} />
+            <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
+            <Route path="/copa-2026/selecoes/:slug" element={<Copa2026SelecaoDetalhe />} />
+            <Route path="/copa-2026/jogos" element={<Copa2026Jogos />} />
+            <Route path="/copa-2026/jogos/:id" element={<Copa2026JogoDetalhe />} />
+            <Route path="/copa-2026/posts" element={<Copa2026Posts />} />
+            <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
             <Route path="/precos" element={<Precos />} />
