@@ -127,6 +127,13 @@ const App = () => (
             <Route path="/palpites" element={<Palpites />} />
             <Route path="/pesquisa" element={<Pesquisa />} />
             <Route path="/trends" element={<Trends />} />
+            <Route path="/copa-2026" element={<Copa2026Home />} />
+            <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
+            <Route path="/copa-2026/selecoes/:slug" element={<Copa2026SelecaoDetalhe />} />
+            <Route path="/copa-2026/jogos" element={<Copa2026Jogos />} />
+            <Route path="/copa-2026/jogos/:id" element={<Copa2026JogoDetalhe />} />
+            <Route path="/copa-2026/posts" element={<Copa2026Posts />} />
+            <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
             <Route path="/precos" element={<Precos />} />
