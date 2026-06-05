@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     if (match_id) {
       const { data: m } = await supabase.from("world_cup_2026_matches")
-        .select(`*, home:home_team_id(name,group_letter,status), away:away_team_id(name,group_letter,status)`)
+        .select(`*, home:world_cup_2026_teams!home_team_id(name,group_letter,status), away:world_cup_2026_teams!away_team_id(name,group_letter,status)`)
         .eq("id", match_id).maybeSingle();
       if (!m) throw new Error("Partida não encontrada");
       const homeName = (m as any).home?.name ?? "Time da casa";

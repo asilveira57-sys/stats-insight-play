@@ -38,7 +38,7 @@ export function useWC2026Matches(filters?: { stage?: string; group?: string; sta
     queryKey: ["wc2026", "matches", filters],
     queryFn: async () => {
       let q = supabase.from("world_cup_2026_matches")
-        .select("*, home:home_team_id(name,flag_url,slug), away:away_team_id(name,flag_url,slug)")
+        .select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)")
         .order("match_date");
       if (filters?.stage) q = q.eq("stage", filters.stage);
       if (filters?.group) q = q.eq("group_letter", filters.group);
@@ -57,7 +57,7 @@ export function useWC2026Match(id: string | undefined) {
     queryKey: ["wc2026", "match", id],
     queryFn: async () => {
       const { data: match } = await supabase.from("world_cup_2026_matches")
-        .select("*, home:home_team_id(*), away:away_team_id(*)").eq("id", id!).maybeSingle();
+        .select("*, home:world_cup_2026_teams!home_team_id(*), away:world_cup_2026_teams!away_team_id(*)").eq("id", id!).maybeSingle();
       if (!match) return null;
       const [{ data: lineups }, { data: events }, { data: analyses }] = await Promise.all([
         supabase.from("world_cup_2026_lineups").select("*, player:player_id(name,position,shirt_number)").eq("match_id", id!),
@@ -103,11 +103,11 @@ export function useWC2026Overview() {
       const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
       const [todayMatches, nextMatch, posts] = await Promise.all([
         supabase.from("world_cup_2026_matches")
-          .select("*, home:home_team_id(name,flag_url,slug), away:away_team_id(name,flag_url,slug)")
+          .select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)")
           .gte("match_date", today.toISOString()).lt("match_date", tomorrow.toISOString())
           .order("match_date"),
         supabase.from("world_cup_2026_matches")
-          .select("*, home:home_team_id(name,flag_url,slug), away:away_team_id(name,flag_url,slug)")
+          .select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)")
           .gte("match_date", new Date().toISOString()).eq("status", "scheduled")
           .order("match_date"),
         supabase.from("world_cup_2026_posts").select("*").eq("status","published").order("published_at",{ascending:false}),
