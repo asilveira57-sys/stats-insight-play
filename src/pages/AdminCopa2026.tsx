@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 
 export default function AdminCopa2026() {
-  const { isAdmin, loading } = useAdminAccess();
+  const { isAdmin, isLoading: loading } = useAdminAccess();
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
