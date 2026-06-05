@@ -26,7 +26,7 @@ export function useWC2026Team(slug: string | undefined) {
       const [{ data: history }, { data: players }, { data: matches }] = await Promise.all([
         supabase.from("world_cup_2026_team_history").select("*").eq("team_id", team.id).order("year", { ascending: false }),
         supabase.from("world_cup_2026_players").select("*").eq("team_id", team.id).order("shirt_number"),
-        supabase.from("world_cup_2026_matches").select("*, home:home_team_id(name,flag_url,slug), away:away_team_id(name,flag_url,slug)").or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`).order("match_date"),
+        supabase.from("world_cup_2026_matches").select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)").or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`).order("match_date"),
       ]);
       return { team, history: history ?? [], players: players ?? [], matches: matches ?? [] };
     },
