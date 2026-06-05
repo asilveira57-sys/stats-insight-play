@@ -82,6 +82,13 @@ import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
 import Pesquisa from "./pages/Pesquisa";
 import Trends from "./pages/Trends";
+import Copa2026Home from "./pages/Copa2026Home";
+import Copa2026Selecoes from "./pages/Copa2026Selecoes";
+import Copa2026SelecaoDetalhe from "./pages/Copa2026SelecaoDetalhe";
+import Copa2026Jogos from "./pages/Copa2026Jogos";
+import Copa2026JogoDetalhe from "./pages/Copa2026JogoDetalhe";
+import Copa2026Posts from "./pages/Copa2026Posts";
+import AdminCopa2026 from "./pages/AdminCopa2026";
 
 const queryClient = new QueryClient();
 
