@@ -1,88 +1,124 @@
+## Módulo Copa 2026 - Plano de Implementação
 
-## Problema observado
+Cobertura completa da Copa do Mundo 2026 com páginas públicas, sincronização via API-Football, análises por IA (Lovable AI Gateway / Gemini) e geração automática de posts.
 
-Pergunta: "quantos jogos do fluminense em 2025"
-- A IA respondeu sobre **Fluminense de Feira-BA** (2 jogos) em vez do **Fluminense-RJ** (38 jogos em 2025).
-- Causas reais:
-  1. `search_global` dá score 80 para todos os times que começam com "fluminense" — sem desempate por popularidade/canonicidade, então o primeiro da lista vira o "topTeam".
-  2. A edge function pega `results[0]` como entidade principal, sem critério.
-  3. Não extrai filtros da pergunta (ano `2025`, competição, "casa/fora").
-  4. O contexto enviado à IA são stats agregadas totais — não filtra por ano, então a IA inventa/responde sobre o dataset errado.
+### Fase 1 — Banco de Dados (migration única)
 
-## Solução
+Criar 10 tabelas em `public` com GRANTs corretos, RLS e policies de leitura pública / escrita service_role:
 
-### 1. Ranking inteligente em `search_global` (migration)
+- `world_cup_2026_teams` (seleções, grupo, técnico, histórico resumido, status)
+- `world_cup_2026_team_history` (participações anteriores)
+- `world_cup_2026_players` (elenco convocado, titular provável)
+- `world_cup_2026_matches` (fixtures, fase, grupo, placar)
+- `world_cup_2026_lineups` (escalação provável e oficial — flag `is_official`)
+- `world_cup_2026_match_events` (gols, cartões, substituições)
+- `world_cup_2026_standings` (tabela dos 12 grupos)
+- `world_cup_2026_ai_analyses` (pre_match, prediction, post_match, elimination, qualification, group_preview, team_profile, final_recap)
+- `world_cup_2026_posts` (central de posts automáticos)
+- `world_cup_2026_sync_logs` (logs obrigatórios de sync, IA, posts, erros)
 
-Reescrever a função adicionando desempate determinístico:
+Índices em `slug`, `match_date`, `group_letter`, `stage`, `status`, `team_id`, `match_id`.
 
-- **Boost de canonicidade**: `+30` se `slug` é exatamente igual ao termo normalizado (ex.: `fluminense` → `fluminense-rj` perde; mas `flamengo` → `flamengo` ganha). Adicionar boost `+20` quando o nome do time, sem sufixos de estado (`-RJ`, `-SP`, `-BA`, ` U20`, ` U17`, ` U23`, ` W`), bate exato com o termo.
-- **Boost de popularidade**: `+ LEAST(20, log10(1 + count_partidas) * 5)` — usar contagem de `partidas` (pré-calculada via materialized view ou subquery cacheada em coluna `times.match_count`). Como alternativa simples sem MV: `LEFT JOIN (SELECT time_id, count) team_match_counts`.
-- **Boost de time principal**: se `times.is_main = true` (já existe em alguns projetos), +15. Se não existir a coluna, pular.
-- **Penalidade de sub-categoria**: `-15` se nome contém ` U17`, ` U20`, ` U23`, ` W`, ` Sub`.
-- Ordenar por `score DESC, popularity DESC, name ASC`.
+RLS:
+- SELECT público (`anon` + `authenticated`) em todas as tabelas exceto `sync_logs` (apenas admin).
+- INSERT/UPDATE/DELETE apenas `service_role` (sync via edge functions) e role `admin`.
 
-Mesma lógica para `ligas` (boost se for liga BR principal) e `players`.
+**Sem `.limit()` em queries** (memória Zero Limits).
 
-### 2. Edge function `intelligent-search` — extração de filtros e seleção de entidade
+### Fase 2 — Edge Functions de Sincronização
 
-Adicionar antes da chamada à IA:
+Todas com logging obrigatório em `world_cup_2026_sync_logs` (start, finish, records_processed, error_message, payload_snapshot):
 
-- **Extrair ano**: regex `\b(19|20)\d{2}\b` na query. Suportar "este ano", "ano passado", "temporada atual".
-- **Extrair competição**: matching contra `ligas.nome` normalizado nos tokens (já temos resultados `league` em `search_global`).
-- **Extrair escopo**: "em casa", "fora", "como mandante/visitante".
-- **Selecionar topTeam**: já vem ordenado corretamente após o fix do `search_global`. Manter `results[0]` do tipo `team`, mas adicionar log do score para debug.
+1. `wc2026-sync-fixtures` — calendário e resultados (API-Football league=1, season=2026)
+2. `wc2026-sync-teams` — seleções + grupos
+3. `wc2026-sync-squads` — jogadores convocados
+4. `wc2026-sync-lineups` — escalações oficiais (executar próximo à partida)
+5. `wc2026-sync-events-live` — eventos e placar ao vivo
+6. `wc2026-update-standings` — recalcula tabela após cada partida finalizada; marca seleções como `eliminated` / `qualified`
+7. `wc2026-ai-generate` — gera análises (pre_match, post_match, prediction) via Lovable AI Gateway (`google/gemini-2.5-flash`). Verifica dados disponíveis; se insuficiente, marca `confidence_score=0` e sinaliza cobertura parcial. Nunca inventa escalação oficial.
+8. `wc2026-generate-post` — cria post automático a partir de análise IA (match preview, recap, qualification, elimination)
 
-### 3. Contexto factual real (com filtros aplicados)
+Agendamento via `pg_cron` (sync de fixtures a cada 6h; standings após partidas; lineups 2h antes do jogo; live a cada 1min durante janelas de jogo). Schedule criado via `supabase--insert` (não migration).
 
-Substituir o bloco atual que só chama `get_team_stats_bulk` por uma consulta SQL direta a `partidas` com os filtros extraídos:
+### Fase 3 — Rotas e Páginas
 
-```ts
-const { count: total } = await supabase
-  .from("partidas")
-  .select("*", { count: "exact", head: true })
-  .or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`)
-  .gte("data", `${year}-01-01`)
-  .lte("data", `${year}-12-31`)
-  .eq("status", "finished");
-```
+Adicionar em `src/App.tsx`:
+- `/copa-2026` → `Copa2026Home`
+- `/copa-2026/selecoes` → `Copa2026Selecoes`
+- `/copa-2026/selecoes/:slug` → `Copa2026SelecaoDetalhe`
+- `/copa-2026/jogos` → `Copa2026Jogos`
+- `/copa-2026/jogos/:id` → `Copa2026JogoDetalhe`
+- `/copa-2026/posts` → `Copa2026Posts`
 
-Depois agregar W/D/L/GF/GA pelo lado (casa/fora) num único `select` paginado (respeitando Zero Limits — usar `range` em lotes de 1000 até esgotar; somar em JS). Resultado vira contexto:
+Cada página com `Layout`, SEO (title, meta, JSON-LD SportsEvent), responsiva, semantic tokens.
 
-```
-Time: Fluminense-RJ (id: ...)
-Ano consultado: 2025
-Jogos finalizados em 2025: 38
-Vitórias: 18 | Empates: 11 | Derrotas: 9
-Gols marcados: 52 | Gols sofridos: 41
-Últimas 5 partidas em 2025: ...
-```
+### Fase 4 — Componentes Visuais
 
-Se o usuário pediu time específico mas só veio sub-time (U17/W), pular para o próximo `team` do resultado.
+Em `src/components/copa2026/`:
+- `HeroCopa2026` (hero visual, contador regressivo até abertura)
+- `CountdownTimer`
+- `MatchOfTheDayCard`
+- `NextMatchHighlight`
+- `GroupsTable` (12 grupos elegantes)
+- `KnockoutBracket` (chaveamento mata-mata SVG)
+- `TeamCard` (bandeira, grupo, status badge)
+- `TeamStatusBadge` (ativa / classificada / eliminada / live)
+- `ScorersTable`, `AssistsTable`, `CardsTable`
+- `MatchEventsTimeline`
+- `LineupField` (escalação visual 4-3-3 etc.)
+- `AIAnalysisBlock` (pré-jogo, palpite, pós-jogo — sempre marcado como "previsão editorial esportiva, não relacionado a apostas")
+- `AIAvailabilityNotice` (cobertura parcial quando faltam dados)
+- `PostCard`, `PostsList`
 
-### 4. Prompt da IA reforçado
+Bandeiras: usar emoji flag ou CDN público de bandeiras nacionais (não cai na restrição de logos de clubes — bandeiras de seleções são domínio público).
 
-Adicionar à system prompt:
-- "Os dados do CONTEXTO já vêm filtrados pelo ano/competição mencionados na pergunta. Use os números exatos."
-- "Se a pergunta mencionar um ano e o CONTEXTO mostrar `Ano consultado:`, sua resposta deve usar esses números."
-- "Sempre confirme qual entidade foi consultada (ex.: 'O Fluminense-RJ teve...')".
+### Fase 5 — Hooks de Dados
 
-### 5. Hardening do registro
+Em `src/hooks/`:
+- `useCopa2026Overview` — agrega home (próximo jogo, jogos do dia, grupos, top scorers, posts recentes)
+- `useCopa2026Teams` (filtros: grupo, confederação, status)
+- `useCopa2026Team(slug)` — detalhe + history + players + matches
+- `useCopa2026Matches` (filtros: data, grupo, fase, seleção, status)
+- `useCopa2026Match(id)` — detalhe + lineups + events + AI analyses
+- `useCopa2026Standings`, `useCopa2026Posts`, `useCopa2026TopScorers`
 
-- Salvar em `ai_answers_log.data_sources_used` o objeto `{ team_id, team_name, year, total_matches }` para auditoria.
-- Logar warning quando `entities.length > 3` com mesmo prefixo (ambiguidade alta) — futuro: pedir desambiguação ao usuário.
+Todas sem `.limit()`.
 
-## Arquivos afetados
+### Fase 6 — Navbar
 
-1. **Nova migration** (`supabase/migrations/..._search_global_ranking.sql`): reescrever `search_global` com boosts e desempates; opcionalmente adicionar coluna `times.match_count` + trigger de atualização (ou subselect inline se preferir simplicidade).
-2. **`supabase/functions/intelligent-search/index.ts`**:
-   - Adicionar `extractYear`, `extractCompetition`, `extractScope`.
-   - Substituir bloco de contexto factual por agregação real filtrada.
-   - Filtrar sub-times (U17/U20/W) ao escolher topTeam.
-   - Atualizar system prompt.
-3. Sem mudanças de frontend.
+Adicionar link "Copa 2026" no `Navbar` desktop e mobile com badge `LIVE` quando houver jogo em andamento.
 
-## Fora de escopo
+### Fase 7 — Admin
 
-- UI de desambiguação ("Você quis dizer Fluminense-RJ ou Fluminense-PI?") — fica para próximo passo.
-- Indexação `pg_trgm`/`tsvector` para fuzzy match com erros de digitação.
-- Cache de respostas frequentes.
+- `/admin/copa-2026` — dashboard com botões manuais para invocar cada edge function de sync e visualizar `world_cup_2026_sync_logs` (apenas admin via `has_role`).
+
+### Regras de IA (sistema prompt)
+- Texto jornalístico, claro, informativo.
+- Palpite = previsão editorial esportiva (proibido linguagem de apostas).
+- Usar apenas dados reais do banco; se insuficiente → marcar `has_enough_data=false`, mostrar aviso na UI.
+- Nunca inventar escalação oficial antes da confirmação API (`is_official=true` exige fonte = 'api-football').
+
+### Fora do escopo (nesta fase)
+- Apostas / odds
+- Push notifications
+- Comentários de usuários nos posts
+- App mobile nativo
+- Tradução multi-idioma (PT-BR only)
+
+### Detalhes Técnicos
+
+**Stack:** React + Vite + Tailwind + TanStack Query + Supabase + Lovable AI Gateway (Gemini).
+**Provider primário:** API-Football (`API_FOOTBALL_KEY` já existe — World Cup league_id=1, season=2026). Fallback histórico: OpenFootball / dados manuais.
+**Quotas:** API-Football Ultra (75k/dia) — respeitar `api_football_quota_log`.
+**Timezone:** dados UTC no banco; exibição UTC-3.
+**Performance:** paginação client-side para listas longas; React Query stale 60s; live polling 30s só em páginas de jogo ao vivo.
+
+### Ordem de execução
+1. Migration (10 tabelas + RLS + GRANTs + índices)
+2. Edge functions de sync + AI + posts
+3. Cron schedules
+4. Hooks + páginas + componentes
+5. Navbar + Admin
+6. Seed mínimo (32 seleções classificadas, grupos A–L) via `supabase--insert` para a UI ter conteúdo antes do primeiro sync
+
+Aprova para começar pela migration?

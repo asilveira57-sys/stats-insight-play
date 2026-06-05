@@ -6035,6 +6035,591 @@ export type Database = {
         }
         Relationships: []
       }
+      world_cup_2026_ai_analyses: {
+        Row: {
+          analysis_type: string
+          confidence_score: number | null
+          content: string | null
+          generated_at: string
+          has_enough_data: boolean | null
+          id: string
+          match_id: string | null
+          model_used: string | null
+          predicted_away_score: number | null
+          predicted_home_score: number | null
+          team_id: string | null
+          title: string | null
+        }
+        Insert: {
+          analysis_type: string
+          confidence_score?: number | null
+          content?: string | null
+          generated_at?: string
+          has_enough_data?: boolean | null
+          id?: string
+          match_id?: string | null
+          model_used?: string | null
+          predicted_away_score?: number | null
+          predicted_home_score?: number | null
+          team_id?: string | null
+          title?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          confidence_score?: number | null
+          content?: string | null
+          generated_at?: string
+          has_enough_data?: boolean | null
+          id?: string
+          match_id?: string | null
+          model_used?: string | null
+          predicted_away_score?: number | null
+          predicted_home_score?: number | null
+          team_id?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_ai_analyses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_ai_analyses_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_lineups: {
+        Row: {
+          created_at: string
+          formation: string | null
+          id: string
+          is_official: boolean | null
+          is_starter: boolean | null
+          match_id: string
+          player_id: string | null
+          position: string | null
+          source: string | null
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          formation?: string | null
+          id?: string
+          is_official?: boolean | null
+          is_starter?: boolean | null
+          match_id: string
+          player_id?: string | null
+          position?: string | null
+          source?: string | null
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          formation?: string | null
+          id?: string
+          is_official?: boolean | null
+          is_starter?: boolean | null
+          match_id?: string
+          player_id?: string | null
+          position?: string | null
+          source?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_lineups_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_lineups_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_lineups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_match_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          extra_minute: number | null
+          id: string
+          match_id: string
+          minute: number | null
+          player_id: string | null
+          team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          extra_minute?: number | null
+          id?: string
+          match_id: string
+          minute?: number | null
+          player_id?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          extra_minute?: number | null
+          id?: string
+          match_id?: string
+          minute?: number | null
+          player_id?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_match_events_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_match_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_matches: {
+        Row: {
+          attendance: number | null
+          away_score: number | null
+          away_team_id: string | null
+          city: string | null
+          created_at: string
+          external_fixture_id: number | null
+          group_letter: string | null
+          home_score: number | null
+          home_team_id: string | null
+          id: string
+          match_date: string | null
+          round: string | null
+          stadium: string | null
+          stage: string
+          status: string
+          updated_at: string
+          winner_team_id: string | null
+        }
+        Insert: {
+          attendance?: number | null
+          away_score?: number | null
+          away_team_id?: string | null
+          city?: string | null
+          created_at?: string
+          external_fixture_id?: number | null
+          group_letter?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          match_date?: string | null
+          round?: string | null
+          stadium?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Update: {
+          attendance?: number | null
+          away_score?: number | null
+          away_team_id?: string | null
+          city?: string | null
+          created_at?: string
+          external_fixture_id?: number | null
+          group_letter?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          match_date?: string | null
+          round?: string | null
+          stadium?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_matches_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_matches_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_matches_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_players: {
+        Row: {
+          birth_date: string | null
+          club: string | null
+          created_at: string
+          external_player_id: number | null
+          id: string
+          is_called_up: boolean | null
+          is_probable_starter: boolean | null
+          name: string
+          photo_url: string | null
+          position: string | null
+          shirt_number: number | null
+          slug: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          club?: string | null
+          created_at?: string
+          external_player_id?: number | null
+          id?: string
+          is_called_up?: boolean | null
+          is_probable_starter?: boolean | null
+          name: string
+          photo_url?: string | null
+          position?: string | null
+          shirt_number?: number | null
+          slug: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          club?: string | null
+          created_at?: string
+          external_player_id?: number | null
+          id?: string
+          is_called_up?: boolean | null
+          is_probable_starter?: boolean | null
+          name?: string
+          photo_url?: string | null
+          position?: string | null
+          shirt_number?: number | null
+          slug?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_players_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_posts: {
+        Row: {
+          content: string | null
+          cover_image_url: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          post_type: string
+          published_at: string | null
+          related_match_id: string | null
+          related_team_id: string | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          post_type: string
+          published_at?: string | null
+          related_match_id?: string | null
+          related_team_id?: string | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          post_type?: string
+          published_at?: string | null
+          related_match_id?: string | null
+          related_team_id?: string | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_posts_related_match_id_fkey"
+            columns: ["related_match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_posts_related_team_id_fkey"
+            columns: ["related_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_standings: {
+        Row: {
+          draws: number | null
+          goal_difference: number | null
+          goals_against: number | null
+          goals_for: number | null
+          group_letter: string
+          id: string
+          losses: number | null
+          played: number | null
+          points: number | null
+          position: number | null
+          status: string | null
+          team_id: string
+          updated_at: string
+          wins: number | null
+        }
+        Insert: {
+          draws?: number | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          group_letter: string
+          id?: string
+          losses?: number | null
+          played?: number | null
+          points?: number | null
+          position?: number | null
+          status?: string | null
+          team_id: string
+          updated_at?: string
+          wins?: number | null
+        }
+        Update: {
+          draws?: number | null
+          goal_difference?: number | null
+          goals_against?: number | null
+          goals_for?: number | null
+          group_letter?: string
+          id?: string
+          losses?: number | null
+          played?: number | null
+          points?: number | null
+          position?: number | null
+          status?: string | null
+          team_id?: string
+          updated_at?: string
+          wins?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_standings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_sync_logs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          payload_snapshot: Json | null
+          provider: string | null
+          records_processed: number | null
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          payload_snapshot?: Json | null
+          provider?: string | null
+          records_processed?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          payload_snapshot?: Json | null
+          provider?: string | null
+          records_processed?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: []
+      }
+      world_cup_2026_team_history: {
+        Row: {
+          created_at: string
+          draws: number | null
+          final_position: string | null
+          goals_against: number | null
+          goals_for: number | null
+          id: string
+          losses: number | null
+          source: string | null
+          stage_reached: string | null
+          team_id: string
+          wins: number | null
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          draws?: number | null
+          final_position?: string | null
+          goals_against?: number | null
+          goals_for?: number | null
+          id?: string
+          losses?: number | null
+          source?: string | null
+          stage_reached?: string | null
+          team_id: string
+          wins?: number | null
+          year: number
+        }
+        Update: {
+          created_at?: string
+          draws?: number | null
+          final_position?: string | null
+          goals_against?: number | null
+          goals_for?: number | null
+          id?: string
+          losses?: number | null
+          source?: string | null
+          stage_reached?: string | null
+          team_id?: string
+          wins?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_cup_2026_team_history_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_cup_2026_teams: {
+        Row: {
+          best_campaign: string | null
+          coach_name: string | null
+          confederation: string | null
+          country_code: string | null
+          created_at: string
+          external_team_id: number | null
+          flag_url: string | null
+          group_letter: string | null
+          historical_summary: string | null
+          id: string
+          name: string
+          participations_count: number | null
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          best_campaign?: string | null
+          coach_name?: string | null
+          confederation?: string | null
+          country_code?: string | null
+          created_at?: string
+          external_team_id?: number | null
+          flag_url?: string | null
+          group_letter?: string | null
+          historical_summary?: string | null
+          id?: string
+          name: string
+          participations_count?: number | null
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          best_campaign?: string | null
+          coach_name?: string | null
+          confederation?: string | null
+          country_code?: string | null
+          created_at?: string
+          external_team_id?: number | null
+          flag_url?: string | null
+          group_letter?: string | null
+          historical_summary?: string | null
+          id?: string
+          name?: string
+          participations_count?: number | null
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       xp_events: {
         Row: {
           competition_id: string | null
