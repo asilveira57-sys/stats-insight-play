@@ -37,8 +37,47 @@ export default function AdminCopa2026() {
   const fns = [
     { id: "wc2026-sync-fixtures", label: "Sincronizar fixtures (API-Football)" },
     { id: "wc2026-update-standings", label: "Recalcular tabela dos grupos" },
+    { id: "wc2026-sync-squads", label: "Sincronizar elencos (API-Football)" },
+    { id: "wc2026-sync-coach", label: "Sincronizar técnicos (API-Football)" },
     { id: "wc2026-ai-generate", label: "Gerar análise IA (exemplo)", body: { analysis_type: "group_preview" } },
   ];
+
+  const seedAllHistory = async () => {
+    setBusy("seed-history-all");
+    try {
+      const idx = await fetch("/data/wc-history/index.json").then(r => r.json());
+      let ok = 0, fail = 0;
+      for (const slug of idx.slugs ?? []) {
+        try {
+          const payload = await fetch(`/data/wc-history/${slug}.json`).then(r => r.json());
+          const { error } = await supabase.functions.invoke("wc2026-seed-history", { body: { slug, payload } });
+          if (error) throw error;
+          ok++;
+        } catch (e) { fail++; console.error("seed", slug, e); }
+      }
+      toast({ title: "Seed concluído", description: `${ok} ok / ${fail} falhas` });
+    } catch (e: any) {
+      toast({ title: "Erro seed", description: e.message ?? String(e), variant: "destructive" });
+    } finally { setBusy(null); loadLogs(); }
+  };
+
+  const generateSeoAll = async () => {
+    setBusy("seo-all");
+    try {
+      const idx = await fetch("/data/wc-history/index.json").then(r => r.json());
+      let ok = 0, fail = 0;
+      for (const slug of idx.slugs ?? []) {
+        try {
+          const { error } = await supabase.functions.invoke("wc2026-generate-team-seo", { body: { slug } });
+          if (error) throw error;
+          ok++;
+        } catch (e) { fail++; console.error("seo", slug, e); }
+      }
+      toast({ title: "SEO gerado", description: `${ok} ok / ${fail} falhas` });
+    } catch (e: any) {
+      toast({ title: "Erro SEO", description: e.message ?? String(e), variant: "destructive" });
+    } finally { setBusy(null); loadLogs(); }
+  };
 
   return (
     <Layout>
@@ -50,6 +89,12 @@ export default function AdminCopa2026() {
               {busy === f.id ? "Executando..." : f.label}
             </Button>
           ))}
+          <Button onClick={seedAllHistory} disabled={busy === "seed-history-all"} variant="default">
+            {busy === "seed-history-all" ? "Seedando..." : "Seed histórico (10 seleções)"}
+          </Button>
+          <Button onClick={generateSeoAll} disabled={busy === "seo-all"} variant="default">
+            {busy === "seo-all" ? "Gerando SEO..." : "Gerar resumo IA + SEO (todas)"}
+          </Button>
         </section>
         <section>
           <h2 className="text-xl font-bold mb-3">Logs de sincronização</h2>

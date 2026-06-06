@@ -158,3 +158,15 @@ verify_jwt = false
 
 [functions.wc2026-generate-post]
 verify_jwt = false
+
+[functions.wc2026-seed-history]
+verify_jwt = false
+
+[functions.wc2026-sync-squads]
+verify_jwt = false
+
+[functions.wc2026-sync-coach]
+verify_jwt = false
+
+[functions.wc2026-generate-team-seo]
+verify_jwt = false

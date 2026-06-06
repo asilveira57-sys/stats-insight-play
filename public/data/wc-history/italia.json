@@ -1,0 +1,31 @@
+{
+  "team": "Itália",
+  "slug": "italia",
+  "nickname": "Azzurra",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1934,
+  "titles_count": 4,
+  "title_years": [1934, 1938, 1982, 2006],
+  "best_campaign": "Tetracampeã mundial (1934, 1938, 1982, 2006)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Italiana em Copas do Mundo",
+  "editions": [
+    { "year": 1934, "host": "Itália", "stage_reached": "Campeão", "final_position": "1º", "coach": "Vittorio Pozzo" },
+    { "year": 1938, "host": "França", "stage_reached": "Campeão (bicampeonato)", "final_position": "1º", "coach": "Vittorio Pozzo" },
+    { "year": 1950, "host": "Brasil", "stage_reached": "Fase de grupos", "final_position": "7º", "coach": "Lajos Czeizler" },
+    { "year": 1954, "host": "Suíça", "stage_reached": "Fase de grupos", "final_position": "10º", "coach": "Lajos Czeizler" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Fase de grupos", "final_position": "9º", "coach": "Giovanni Ferrari / Paolo Mazza" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Fase de grupos", "final_position": "9º", "coach": "Edmondo Fabbri" },
+    { "year": 1970, "host": "México", "stage_reached": "Final", "final_position": "2º", "coach": "Ferruccio Valcareggi" },
+    { "year": 1974, "host": "Alemanha Ocidental", "stage_reached": "Fase de grupos", "final_position": "10º", "coach": "Ferruccio Valcareggi" },
+    { "year": 1978, "host": "Argentina", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Enzo Bearzot" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "Campeão (tricampeonato)", "final_position": "1º", "coach": "Enzo Bearzot" },
+    { "year": 1986, "host": "México", "stage_reached": "Oitavas de final", "final_position": "12º", "coach": "Enzo Bearzot" },
+    { "year": 1990, "host": "Itália", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Azeglio Vicini" },
+    { "year": 1994, "host": "Estados Unidos", "stage_reached": "Final", "final_position": "2º", "coach": "Arrigo Sacchi" },
+    { "year": 1998, "host": "França", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Cesare Maldini" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Oitavas de final", "final_position": "15º", "coach": "Giovanni Trapattoni" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "Campeão (tetracampeonato)", "final_position": "1º", "coach": "Marcello Lippi" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "Fase de grupos", "final_position": "26º", "coach": "Marcello Lippi" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Fase de grupos", "final_position": "22º", "coach": "Cesare Prandelli" }
+  ]
+}

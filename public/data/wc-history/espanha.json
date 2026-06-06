@@ -1,0 +1,29 @@
+{
+  "team": "Espanha",
+  "slug": "espanha",
+  "nickname": "La Roja / La Furia Roja",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1934,
+  "titles_count": 1,
+  "title_years": [2010],
+  "best_campaign": "Campeã mundial em 2010 (África do Sul)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Espanhola em Copas do Mundo",
+  "editions": [
+    { "year": 1934, "host": "Itália", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Amadeo García Salazar" },
+    { "year": 1950, "host": "Brasil", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Guillermo Eizaguirre" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Fase de grupos", "final_position": "12º", "coach": "Helenio Herrera" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Fase de grupos", "final_position": "10º", "coach": "José Villalonga" },
+    { "year": 1978, "host": "Argentina", "stage_reached": "Fase de grupos", "final_position": "10º", "coach": "Ladislao Kubala" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "2ª fase de grupos", "final_position": "12º", "coach": "José Santamaría" },
+    { "year": 1986, "host": "México", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Miguel Muñoz" },
+    { "year": 1990, "host": "Itália", "stage_reached": "Oitavas de final", "final_position": "10º", "coach": "Luis Suárez" },
+    { "year": 1994, "host": "Estados Unidos", "stage_reached": "Quartas de final", "final_position": "8º", "coach": "Javier Clemente" },
+    { "year": 1998, "host": "França", "stage_reached": "Fase de grupos", "final_position": "17º", "coach": "Javier Clemente" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "José Antonio Camacho" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "Oitavas de final", "final_position": "9º", "coach": "Luis Aragonés" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "Campeão", "final_position": "1º", "coach": "Vicente del Bosque" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Fase de grupos", "final_position": "23º", "coach": "Vicente del Bosque" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "Oitavas de final", "final_position": "10º", "coach": "Fernando Hierro" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Oitavas de final", "final_position": "12º", "coach": "Luis Enrique" }
+  ]
+}

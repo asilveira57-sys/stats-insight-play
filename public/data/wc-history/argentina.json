@@ -1,0 +1,31 @@
+{
+  "team": "Argentina",
+  "slug": "argentina",
+  "nickname": "La Albiceleste",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 1930,
+  "titles_count": 3,
+  "title_years": [1978, 1986, 2022],
+  "best_campaign": "Tricampeã mundial (1978, 1986, 2022)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Argentina em Copas do Mundo",
+  "editions": [
+    { "year": 1930, "host": "Uruguai", "stage_reached": "Final", "final_position": "2º", "coach": "Francisco Olazar / Juan José Tramutola" },
+    { "year": 1934, "host": "Itália", "stage_reached": "Oitavas de final", "final_position": "9º", "coach": "Felipe Pascucci" },
+    { "year": 1958, "host": "Suécia", "stage_reached": "Fase de grupos", "final_position": "13º", "coach": "Guillermo Stábile" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Fase de grupos", "final_position": "10º", "coach": "Juan Carlos Lorenzo" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Juan Carlos Lorenzo" },
+    { "year": 1974, "host": "Alemanha Ocidental", "stage_reached": "2ª fase de grupos", "final_position": "8º", "coach": "Vladislao Cap" },
+    { "year": 1978, "host": "Argentina", "stage_reached": "Campeão", "final_position": "1º", "coach": "César Luis Menotti" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "2ª fase de grupos", "final_position": "11º", "coach": "César Luis Menotti" },
+    { "year": 1986, "host": "México", "stage_reached": "Campeão (bicampeonato)", "final_position": "1º", "coach": "Carlos Bilardo" },
+    { "year": 1990, "host": "Itália", "stage_reached": "Final", "final_position": "2º", "coach": "Carlos Bilardo" },
+    { "year": 1994, "host": "Estados Unidos", "stage_reached": "Oitavas de final", "final_position": "10º", "coach": "Alfio Basile" },
+    { "year": 1998, "host": "França", "stage_reached": "Quartas de final", "final_position": "6º", "coach": "Daniel Passarella" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Fase de grupos", "final_position": "18º", "coach": "Marcelo Bielsa" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "Quartas de final", "final_position": "6º", "coach": "José Pekerman" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Diego Maradona" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Final", "final_position": "2º", "coach": "Alejandro Sabella" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "Oitavas de final", "final_position": "16º", "coach": "Jorge Sampaoli" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Campeão (tricampeonato)", "final_position": "1º", "coach": "Lionel Scaloni" }
+  ]
+}
