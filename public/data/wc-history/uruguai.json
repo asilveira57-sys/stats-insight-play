@@ -1,0 +1,27 @@
+{
+  "team": "Uruguai",
+  "slug": "uruguai",
+  "nickname": "La Celeste",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 1930,
+  "titles_count": 2,
+  "title_years": [1930, 1950],
+  "best_campaign": "Bicampeão mundial (1930 em casa e 1950 no Maracanã)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Uruguaia em Copas do Mundo",
+  "editions": [
+    { "year": 1930, "host": "Uruguai", "stage_reached": "Campeão", "final_position": "1º", "coach": "Alberto Suppici" },
+    { "year": 1950, "host": "Brasil", "stage_reached": "Campeão (bicampeonato)", "final_position": "1º", "coach": "Juan López Fontana" },
+    { "year": 1954, "host": "Suíça", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Juan López Fontana" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Fase de grupos", "final_position": "14º", "coach": "Juan Carlos Corazzo" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Ondino Viera" },
+    { "year": 1970, "host": "México", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Juan Hohberg" },
+    { "year": 1974, "host": "Alemanha Ocidental", "stage_reached": "Fase de grupos", "final_position": "13º", "coach": "Roberto Porta" },
+    { "year": 1986, "host": "México", "stage_reached": "Oitavas de final", "final_position": "16º", "coach": "Omar Borrás" },
+    { "year": 1990, "host": "Itália", "stage_reached": "Oitavas de final", "final_position": "16º", "coach": "Óscar Tabárez" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Fase de grupos", "final_position": "21º", "coach": "Víctor Púa" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Óscar Tabárez" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Oitavas de final", "final_position": "12º", "coach": "Óscar Tabárez" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Óscar Tabárez" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Fase de grupos", "final_position": "17º", "coach": "Diego Alonso" }
+  ]
+}

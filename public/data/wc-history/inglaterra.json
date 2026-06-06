@@ -1,0 +1,29 @@
+{
+  "team": "Inglaterra",
+  "slug": "inglaterra",
+  "nickname": "The Three Lions",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1950,
+  "titles_count": 1,
+  "title_years": [1966],
+  "best_campaign": "Campeã mundial em 1966 (em casa)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Inglesa em Copas do Mundo",
+  "editions": [
+    { "year": 1950, "host": "Brasil", "stage_reached": "Fase de grupos", "final_position": "8º", "coach": "Walter Winterbottom" },
+    { "year": 1954, "host": "Suíça", "stage_reached": "Quartas de final", "final_position": "8º", "coach": "Walter Winterbottom" },
+    { "year": 1958, "host": "Suécia", "stage_reached": "Fase de grupos", "final_position": "11º", "coach": "Walter Winterbottom" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Quartas de final", "final_position": "8º", "coach": "Walter Winterbottom" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Campeão", "final_position": "1º", "coach": "Alf Ramsey" },
+    { "year": 1970, "host": "México", "stage_reached": "Quartas de final", "final_position": "8º", "coach": "Alf Ramsey" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "2ª fase de grupos", "final_position": "6º", "coach": "Ron Greenwood" },
+    { "year": 1986, "host": "México", "stage_reached": "Quartas de final", "final_position": "8º", "coach": "Bobby Robson" },
+    { "year": 1990, "host": "Itália", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Bobby Robson" },
+    { "year": 1998, "host": "França", "stage_reached": "Oitavas de final", "final_position": "9º", "coach": "Glenn Hoddle" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Quartas de final", "final_position": "6º", "coach": "Sven-Göran Eriksson" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Sven-Göran Eriksson" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "Oitavas de final", "final_position": "13º", "coach": "Fabio Capello" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Fase de grupos", "final_position": "26º", "coach": "Roy Hodgson" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Gareth Southgate" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Quartas de final", "final_position": "6º", "coach": "Gareth Southgate" }
+  ]
+}

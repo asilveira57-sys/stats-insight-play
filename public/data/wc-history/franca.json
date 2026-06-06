@@ -1,0 +1,29 @@
+{
+  "team": "França",
+  "slug": "franca",
+  "nickname": "Les Bleus",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1930,
+  "titles_count": 2,
+  "title_years": [1998, 2018],
+  "best_campaign": "Bicampeã mundial (1998, 2018)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Francesa em Copas do Mundo",
+  "editions": [
+    { "year": 1930, "host": "Uruguai", "stage_reached": "Fase de grupos", "final_position": "7º", "coach": "Raoul Caudron" },
+    { "year": 1934, "host": "Itália", "stage_reached": "Oitavas de final", "final_position": "11º", "coach": "George Kimpton" },
+    { "year": 1938, "host": "França", "stage_reached": "Quartas de final", "final_position": "6º", "coach": "Gaston Barreau" },
+    { "year": 1954, "host": "Suíça", "stage_reached": "Fase de grupos", "final_position": "11º", "coach": "Pierre Pibarot" },
+    { "year": 1958, "host": "Suécia", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Albert Batteux" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Fase de grupos", "final_position": "13º", "coach": "Henri Guérin" },
+    { "year": 1978, "host": "Argentina", "stage_reached": "Fase de grupos", "final_position": "12º", "coach": "Michel Hidalgo" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Michel Hidalgo" },
+    { "year": 1986, "host": "México", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Henri Michel" },
+    { "year": 1998, "host": "França", "stage_reached": "Campeão", "final_position": "1º", "coach": "Aimé Jacquet" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Fase de grupos", "final_position": "28º", "coach": "Roger Lemerre" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "Final", "final_position": "2º", "coach": "Raymond Domenech" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "Fase de grupos", "final_position": "29º", "coach": "Raymond Domenech" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Didier Deschamps" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "Campeão (bicampeonato)", "final_position": "1º", "coach": "Didier Deschamps" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Final", "final_position": "2º", "coach": "Didier Deschamps" }
+  ]
+}

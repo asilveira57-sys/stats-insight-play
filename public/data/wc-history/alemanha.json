@@ -1,0 +1,33 @@
+{
+  "team": "Alemanha",
+  "slug": "alemanha",
+  "nickname": "Die Mannschaft",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1934,
+  "titles_count": 4,
+  "title_years": [1954, 1974, 1990, 2014],
+  "best_campaign": "Tetracampeã mundial (1954, 1974, 1990, 2014)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção Alemã em Copas do Mundo (inclui Alemanha Ocidental)",
+  "editions": [
+    { "year": 1934, "host": "Itália", "stage_reached": "Semifinal", "final_position": "3º", "coach": "Otto Nerz" },
+    { "year": 1938, "host": "França", "stage_reached": "1ª rodada", "final_position": "10º", "coach": "Sepp Herberger" },
+    { "year": 1954, "host": "Suíça", "stage_reached": "Campeão (Milagre de Berna)", "final_position": "1º", "coach": "Sepp Herberger" },
+    { "year": 1958, "host": "Suécia", "stage_reached": "4º lugar", "final_position": "4º", "coach": "Sepp Herberger" },
+    { "year": 1962, "host": "Chile", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Sepp Herberger" },
+    { "year": 1966, "host": "Inglaterra", "stage_reached": "Final", "final_position": "2º", "coach": "Helmut Schön" },
+    { "year": 1970, "host": "México", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Helmut Schön" },
+    { "year": 1974, "host": "Alemanha Ocidental", "stage_reached": "Campeão (bicampeonato)", "final_position": "1º", "coach": "Helmut Schön" },
+    { "year": 1978, "host": "Argentina", "stage_reached": "2ª fase de grupos", "final_position": "6º", "coach": "Helmut Schön" },
+    { "year": 1982, "host": "Espanha", "stage_reached": "Final", "final_position": "2º", "coach": "Jupp Derwall" },
+    { "year": 1986, "host": "México", "stage_reached": "Final", "final_position": "2º", "coach": "Franz Beckenbauer" },
+    { "year": 1990, "host": "Itália", "stage_reached": "Campeão (tricampeonato)", "final_position": "1º", "coach": "Franz Beckenbauer" },
+    { "year": 1994, "host": "Estados Unidos", "stage_reached": "Quartas de final", "final_position": "5º", "coach": "Berti Vogts" },
+    { "year": 1998, "host": "França", "stage_reached": "Quartas de final", "final_position": "7º", "coach": "Berti Vogts" },
+    { "year": 2002, "host": "Coreia do Sul/Japão", "stage_reached": "Final", "final_position": "2º", "coach": "Rudi Völler" },
+    { "year": 2006, "host": "Alemanha", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Jürgen Klinsmann" },
+    { "year": 2010, "host": "África do Sul", "stage_reached": "3º lugar", "final_position": "3º", "coach": "Joachim Löw" },
+    { "year": 2014, "host": "Brasil", "stage_reached": "Campeão (tetracampeonato)", "final_position": "1º", "coach": "Joachim Löw" },
+    { "year": 2018, "host": "Rússia", "stage_reached": "Fase de grupos", "final_position": "22º", "coach": "Joachim Löw" },
+    { "year": 2022, "host": "Catar", "stage_reached": "Fase de grupos", "final_position": "17º", "coach": "Hansi Flick" }
+  ]
+}
