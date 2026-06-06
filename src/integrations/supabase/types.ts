@@ -6515,13 +6515,16 @@ export type Database = {
       }
       world_cup_2026_team_history: {
         Row: {
+          coach_name: string | null
           created_at: string
           draws: number | null
           final_position: string | null
           goals_against: number | null
           goals_for: number | null
+          host_country: string | null
           id: string
           losses: number | null
+          notes: string | null
           source: string | null
           stage_reached: string | null
           team_id: string
@@ -6529,13 +6532,16 @@ export type Database = {
           year: number
         }
         Insert: {
+          coach_name?: string | null
           created_at?: string
           draws?: number | null
           final_position?: string | null
           goals_against?: number | null
           goals_for?: number | null
+          host_country?: string | null
           id?: string
           losses?: number | null
+          notes?: string | null
           source?: string | null
           stage_reached?: string | null
           team_id: string
@@ -6543,13 +6549,16 @@ export type Database = {
           year: number
         }
         Update: {
+          coach_name?: string | null
           created_at?: string
           draws?: number | null
           final_position?: string | null
           goals_against?: number | null
           goals_for?: number | null
+          host_country?: string | null
           id?: string
           losses?: number | null
+          notes?: string | null
           source?: string | null
           stage_reached?: string | null
           team_id?: string
@@ -6570,52 +6579,76 @@ export type Database = {
         Row: {
           best_campaign: string | null
           coach_name: string | null
+          coach_nationality: string | null
           confederation: string | null
+          confederation_full: string | null
           country_code: string | null
           created_at: string
           external_team_id: number | null
+          fifa_ranking: number | null
+          first_participation_year: number | null
           flag_url: string | null
           group_letter: string | null
           historical_summary: string | null
           id: string
+          meta_description: string | null
           name: string
+          nickname: string | null
           participations_count: number | null
+          seo_keywords: string[] | null
           slug: string
           status: string
+          titles_count: number | null
           updated_at: string
         }
         Insert: {
           best_campaign?: string | null
           coach_name?: string | null
+          coach_nationality?: string | null
           confederation?: string | null
+          confederation_full?: string | null
           country_code?: string | null
           created_at?: string
           external_team_id?: number | null
+          fifa_ranking?: number | null
+          first_participation_year?: number | null
           flag_url?: string | null
           group_letter?: string | null
           historical_summary?: string | null
           id?: string
+          meta_description?: string | null
           name: string
+          nickname?: string | null
           participations_count?: number | null
+          seo_keywords?: string[] | null
           slug: string
           status?: string
+          titles_count?: number | null
           updated_at?: string
         }
         Update: {
           best_campaign?: string | null
           coach_name?: string | null
+          coach_nationality?: string | null
           confederation?: string | null
+          confederation_full?: string | null
           country_code?: string | null
           created_at?: string
           external_team_id?: number | null
+          fifa_ranking?: number | null
+          first_participation_year?: number | null
           flag_url?: string | null
           group_letter?: string | null
           historical_summary?: string | null
           id?: string
+          meta_description?: string | null
           name?: string
+          nickname?: string | null
           participations_count?: number | null
+          seo_keywords?: string[] | null
           slug?: string
           status?: string
+          titles_count?: number | null
           updated_at?: string
         }
         Relationships: []
