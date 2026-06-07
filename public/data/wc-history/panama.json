@@ -1,0 +1,20 @@
+{
+  "team": "Panamá",
+  "nickname": "La Marea Roja",
+  "confederation_full": "CONCACAF (América do Norte e Central)",
+  "first_participation_year": 2018,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Estreia em 2018 (Rússia); eliminado na fase de grupos",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "32º",
+      "coach": "Hernán Darío Gómez"
+    }
+  ],
+  "slug": "panama"
+}

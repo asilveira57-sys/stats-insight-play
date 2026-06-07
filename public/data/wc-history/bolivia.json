@@ -1,0 +1,34 @@
+{
+  "team": "Bolívia",
+  "nickname": "La Verde",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 1930,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Participações em 1930, 1950 e 1994",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1930,
+      "host": "Uruguai",
+      "stage_reached": "Fase de grupos",
+      "final_position": "12º",
+      "coach": "Ulises Saucedo"
+    },
+    {
+      "year": 1950,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "12º",
+      "coach": "Mario Pretto"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Fase de grupos",
+      "final_position": "24º",
+      "coach": "Xabier Azkargorta"
+    }
+  ],
+  "slug": "bolivia"
+}

@@ -1,0 +1,55 @@
+{
+  "team": "Costa Rica",
+  "nickname": "La Sele",
+  "confederation_full": "CONCACAF (América do Norte e Central)",
+  "first_participation_year": 1990,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 2014 (Brasil)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Bora Milutinović"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "19º",
+      "coach": "Alexandre Guimarães"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "31º",
+      "coach": "Alexandre Guimarães"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Quartas de final",
+      "final_position": "8º",
+      "coach": "Jorge Luis Pinto"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "28º",
+      "coach": "Óscar Ramírez"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "29º",
+      "coach": "Luis Fernando Suárez"
+    }
+  ],
+  "slug": "costa-rica"
+}

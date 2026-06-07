@@ -1,0 +1,34 @@
+{
+  "team": "Sérvia",
+  "nickname": "Orlovi",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 2010,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Participações em 2010, 2018 e 2022 (também Iugoslávia/Sérvia e Montenegro em edições anteriores)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Fase de grupos",
+      "final_position": "23º",
+      "coach": "Radomir Antić"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "23º",
+      "coach": "Mladen Krstajić"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "30º",
+      "coach": "Dragan Stojković"
+    }
+  ],
+  "slug": "servia"
+}

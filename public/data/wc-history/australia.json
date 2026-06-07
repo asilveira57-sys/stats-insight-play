@@ -1,0 +1,55 @@
+{
+  "team": "Austrália",
+  "nickname": "Socceroos",
+  "confederation_full": "AFC (Ásia)",
+  "first_participation_year": 1974,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Oitavas de final em 2006 (Alemanha) e 2022 (Catar)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1974,
+      "host": "Alemanha Ocidental",
+      "stage_reached": "Fase de grupos",
+      "final_position": "14º",
+      "coach": "Rale Rasic"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Oitavas de final",
+      "final_position": "16º",
+      "coach": "Guus Hiddink"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Fase de grupos",
+      "final_position": "21º",
+      "coach": "Pim Verbeek"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "30º",
+      "coach": "Ange Postecoglou"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "26º",
+      "coach": "Bert van Marwijk"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Oitavas de final",
+      "final_position": "11º",
+      "coach": "Graham Arnold"
+    }
+  ],
+  "slug": "australia"
+}

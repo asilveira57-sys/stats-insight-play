@@ -1,0 +1,55 @@
+{
+  "team": "Tunísia",
+  "nickname": "Águias de Cartago",
+  "confederation_full": "CAF (África)",
+  "first_participation_year": 1978,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Participações em 1978, 1998, 2002, 2006, 2018 e 2022",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1978,
+      "host": "Argentina",
+      "stage_reached": "Fase de grupos",
+      "final_position": "9º",
+      "coach": "Abdelmajid Chetali"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "26º",
+      "coach": "Henryk Kasperczak"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "29º",
+      "coach": "Ammar Souayah"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "24º",
+      "coach": "Roger Lemerre"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "24º",
+      "coach": "Nabil Maâloul"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Jalel Kadri"
+    }
+  ],
+  "slug": "tunisia"
+}

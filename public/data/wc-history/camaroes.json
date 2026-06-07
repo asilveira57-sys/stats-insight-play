@@ -1,0 +1,69 @@
+{
+  "team": "Camarões",
+  "nickname": "Leões Indomáveis",
+  "confederation_full": "CAF (África)",
+  "first_participation_year": 1982,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 1990 (Itália)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1982,
+      "host": "Espanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "17º",
+      "coach": "Jean Vincent"
+    },
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Quartas de final",
+      "final_position": "7º",
+      "coach": "Valeri Nepomniachi"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Fase de grupos",
+      "final_position": "22º",
+      "coach": "Henri Michel"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Claude Le Roy"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "19º",
+      "coach": "Winfried Schäfer"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Fase de grupos",
+      "final_position": "31º",
+      "coach": "Paul Le Guen"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "32º",
+      "coach": "Volker Finke"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "19º",
+      "coach": "Rigobert Song"
+    }
+  ],
+  "slug": "camaroes"
+}

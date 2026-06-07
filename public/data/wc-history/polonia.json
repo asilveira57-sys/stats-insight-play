@@ -1,0 +1,76 @@
+{
+  "team": "Polônia",
+  "nickname": "Biało-Czerwoni",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1938,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "3º lugar em 1974 (Alemanha Ocidental) e 1982 (Espanha)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1938,
+      "host": "França",
+      "stage_reached": "Oitavas de final",
+      "final_position": "11º",
+      "coach": "Józef Kałuża"
+    },
+    {
+      "year": 1974,
+      "host": "Alemanha Ocidental",
+      "stage_reached": "3º lugar",
+      "final_position": "3º",
+      "coach": "Kazimierz Górski"
+    },
+    {
+      "year": 1978,
+      "host": "Argentina",
+      "stage_reached": "2ª fase de grupos",
+      "final_position": "5º",
+      "coach": "Jacek Gmoch"
+    },
+    {
+      "year": 1982,
+      "host": "Espanha",
+      "stage_reached": "3º lugar",
+      "final_position": "3º",
+      "coach": "Antoni Piechniczek"
+    },
+    {
+      "year": 1986,
+      "host": "México",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Antoni Piechniczek"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Jerzy Engel"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "21º",
+      "coach": "Paweł Janas"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Adam Nawałka"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Czesław Michniewicz"
+    }
+  ],
+  "slug": "polonia"
+}

@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.wc2026-generate-team-seo]
 verify_jwt = false
+
+[functions.wc2026-resolve-team-ids]
+verify_jwt = false

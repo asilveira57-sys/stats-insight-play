@@ -1,0 +1,132 @@
+{
+  "team": "México",
+  "nickname": "El Tri",
+  "confederation_full": "CONCACAF (América do Norte e Central)",
+  "first_participation_year": 1930,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 1970 e 1986 (ambas em casa)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1930,
+      "host": "Uruguai",
+      "stage_reached": "Fase de grupos",
+      "final_position": "13º",
+      "coach": "Juan Luque de Serrallonga"
+    },
+    {
+      "year": 1950,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "13º",
+      "coach": "Octavio Vial"
+    },
+    {
+      "year": 1954,
+      "host": "Suíça",
+      "stage_reached": "Fase de grupos",
+      "final_position": "13º",
+      "coach": "Antonio López Herranz"
+    },
+    {
+      "year": 1958,
+      "host": "Suécia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "16º",
+      "coach": "Antonio López Herranz"
+    },
+    {
+      "year": 1962,
+      "host": "Chile",
+      "stage_reached": "Fase de grupos",
+      "final_position": "11º",
+      "coach": "Ignacio Tréllez"
+    },
+    {
+      "year": 1966,
+      "host": "Inglaterra",
+      "stage_reached": "Fase de grupos",
+      "final_position": "14º",
+      "coach": "Ignacio Tréllez"
+    },
+    {
+      "year": 1970,
+      "host": "México",
+      "stage_reached": "Quartas de final",
+      "final_position": "6º",
+      "coach": "Raúl Cárdenas"
+    },
+    {
+      "year": 1978,
+      "host": "Argentina",
+      "stage_reached": "Fase de grupos",
+      "final_position": "16º",
+      "coach": "José Antonio Roca"
+    },
+    {
+      "year": 1986,
+      "host": "México",
+      "stage_reached": "Quartas de final",
+      "final_position": "6º",
+      "coach": "Bora Milutinović"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Miguel Mejía Barón"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Manuel Lapuente"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Oitavas de final",
+      "final_position": "11º",
+      "coach": "Javier Aguirre"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Oitavas de final",
+      "final_position": "15º",
+      "coach": "Ricardo La Volpe"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Javier Aguirre"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Oitavas de final",
+      "final_position": "11º",
+      "coach": "Miguel Herrera"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Oitavas de final",
+      "final_position": "12º",
+      "coach": "Juan Carlos Osorio"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "22º",
+      "coach": "Gerardo Martino"
+    }
+  ],
+  "slug": "mexico"
+}

@@ -5,7 +5,7 @@ export function useWC2026Teams(filters?: { group?: string; status?: string; conf
   return useQuery({
     queryKey: ["wc2026", "teams", filters],
     queryFn: async () => {
-      let q = supabase.from("world_cup_2026_teams").select("*").order("group_letter").order("name");
+      let q = supabase.from("world_cup_2026_teams").select("*").eq("is_active", true).order("group_letter").order("name");
       if (filters?.group) q = q.eq("group_letter", filters.group);
       if (filters?.status) q = q.eq("status", filters.status);
       if (filters?.confederation) q = q.eq("confederation", filters.confederation);
@@ -23,12 +23,13 @@ export function useWC2026Team(slug: string | undefined) {
     queryFn: async () => {
       const { data: team } = await supabase.from("world_cup_2026_teams").select("*").eq("slug", slug!).maybeSingle();
       if (!team) return null;
-      const [{ data: history }, { data: players }, { data: matches }] = await Promise.all([
+      const [{ data: history }, { data: players }, { data: matches }, { data: analyses }] = await Promise.all([
         supabase.from("world_cup_2026_team_history").select("*").eq("team_id", team.id).order("year", { ascending: false }),
         supabase.from("world_cup_2026_players").select("*").eq("team_id", team.id).order("shirt_number"),
         supabase.from("world_cup_2026_matches").select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)").or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`).order("match_date"),
+        supabase.from("world_cup_2026_ai_analyses").select("*").eq("team_id", team.id),
       ]);
-      return { team, history: history ?? [], players: players ?? [], matches: matches ?? [] };
+      return { team, history: history ?? [], players: players ?? [], matches: matches ?? [], analyses: analyses ?? [] };
     },
   });
 }

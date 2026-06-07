@@ -1,0 +1,62 @@
+{
+  "team": "Japão",
+  "nickname": "Samurai Blue",
+  "confederation_full": "AFC (Ásia)",
+  "first_participation_year": 1998,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Oitavas de final em 2002, 2010, 2018 e 2022",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "31º",
+      "coach": "Takeshi Okada"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "Philippe Troussier"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "29º",
+      "coach": "Zico"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "Takeshi Okada"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "29º",
+      "coach": "Alberto Zaccheroni"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Oitavas de final",
+      "final_position": "15º",
+      "coach": "Akira Nishino"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "Hajime Moriyasu"
+    }
+  ],
+  "slug": "japao"
+}
