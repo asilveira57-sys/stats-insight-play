@@ -6310,6 +6310,7 @@ export type Database = {
           position: string | null
           shirt_number: number | null
           slug: string
+          source: string | null
           team_id: string
           updated_at: string
         }
@@ -6326,6 +6327,7 @@ export type Database = {
           position?: string | null
           shirt_number?: number | null
           slug: string
+          source?: string | null
           team_id: string
           updated_at?: string
         }
@@ -6342,6 +6344,7 @@ export type Database = {
           position?: string | null
           shirt_number?: number | null
           slug?: string
+          source?: string | null
           team_id?: string
           updated_at?: string
         }
@@ -6590,7 +6593,9 @@ export type Database = {
           flag_url: string | null
           group_letter: string | null
           historical_summary: string | null
+          historical_summary_status: string | null
           id: string
+          is_active: boolean
           meta_description: string | null
           name: string
           nickname: string | null
@@ -6615,7 +6620,9 @@ export type Database = {
           flag_url?: string | null
           group_letter?: string | null
           historical_summary?: string | null
+          historical_summary_status?: string | null
           id?: string
+          is_active?: boolean
           meta_description?: string | null
           name: string
           nickname?: string | null
@@ -6640,7 +6647,9 @@ export type Database = {
           flag_url?: string | null
           group_letter?: string | null
           historical_summary?: string | null
+          historical_summary_status?: string | null
           id?: string
+          is_active?: boolean
           meta_description?: string | null
           name?: string
           nickname?: string | null
