@@ -25,16 +25,21 @@ Deno.serve(async (req) => {
   try {
     if (!apiKey) throw new Error("API_FOOTBALL_KEY não configurado");
     const body = await req.json().catch(() => ({}));
-    const { team_slug } = body as { team_slug?: string };
+    const { team_slug, official } = body as { team_slug?: string; official?: boolean };
+    const isOfficial = official === true;
+    const source = isOfficial ? "api-football-official" : "api-football-base";
 
     let teamsQ = supabase.from("world_cup_2026_teams")
-      .select("id,name,slug,external_team_id").not("external_team_id", "is", null);
+      .select("id,name,slug,external_team_id")
+      .eq("is_active", true)
+      .not("external_team_id", "is", null);
     if (team_slug) teamsQ = teamsQ.eq("slug", team_slug);
     const { data: teams } = await teamsQ;
     if (!teams?.length) throw new Error("Nenhuma seleção com external_team_id encontrada");
 
-    console.log(`[sync-squads] processing ${teams.length} team(s)`);
+    console.log(`[sync-squads] processing ${teams.length} team(s) source=${source}`);
     let total = 0;
+    const failures: string[] = [];
 
     for (const t of teams) {
       try {
@@ -43,11 +48,13 @@ Deno.serve(async (req) => {
         });
         if (!res.ok) {
           console.error(`[sync-squads] ${t.slug} HTTP ${res.status}`);
+          failures.push(`${t.slug}: HTTP ${res.status}`);
+          if (res.status === 429) break;
           continue;
         }
         const json = await res.json();
         const squad = json?.response?.[0]?.players ?? [];
-        if (!squad.length) continue;
+        if (!squad.length) { console.warn(`[sync-squads] ${t.slug} empty`); continue; }
 
         // Replace squad
         await supabase.from("world_cup_2026_players").delete().eq("team_id", t.id);
@@ -60,12 +67,14 @@ Deno.serve(async (req) => {
           shirt_number: p.number ?? null,
           photo_url: p.photo ?? null,
           external_player_id: p.id ?? null,
-          is_called_up: true,
+          is_called_up: isOfficial,
+          source,
         }));
         const { error: insErr } = await supabase.from("world_cup_2026_players").insert(rows);
-        if (insErr) { console.error(`[sync-squads] insert ${t.slug}`, insErr.message); continue; }
+        if (insErr) { console.error(`[sync-squads] insert ${t.slug}`, insErr.message); failures.push(`${t.slug}: ${insErr.message}`); continue; }
         total += rows.length;
         console.log(`[sync-squads] ${t.slug} +${rows.length}`);
+        await new Promise((r) => setTimeout(r, 200));
       } catch (inner) {
         console.error(`[sync-squads] ${t.slug} error`, inner instanceof Error ? inner.message : inner);
       }
@@ -73,10 +82,10 @@ Deno.serve(async (req) => {
 
     await supabase.from("world_cup_2026_sync_logs").update({
       status: "success", finished_at: new Date().toISOString(), records_processed: total,
-      payload_snapshot: { teams: teams.length },
+      payload_snapshot: { teams: teams.length, source, failures },
     }).eq("id", logId);
 
-    return new Response(JSON.stringify({ success: true, teams: teams.length, players: total }), {
+    return new Response(JSON.stringify({ success: true, teams: teams.length, players: total, source, failures }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
