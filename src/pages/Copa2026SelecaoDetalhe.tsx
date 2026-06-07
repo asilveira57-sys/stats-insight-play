@@ -143,7 +143,21 @@ export default function Copa2026SelecaoDetalhe() {
         {/* ELENCO */}
         {playersGrouped.length > 0 ? (
           <section>
-            <h2 className="text-2xl font-bold mb-3">Elenco convocado para a Copa 2026</h2>
+            {(() => {
+              const anyOfficial = (data.players ?? []).some((p: any) => p.is_called_up);
+              return (
+                <>
+                  <h2 className="text-2xl font-bold mb-1">
+                    {anyOfficial ? `Convocação oficial — ${team.name} na Copa 2026` : `Elenco-base atual — ${team.name}`}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {anyOfficial
+                      ? "Convocação oficial publicada pela federação."
+                      : "Elenco-base atual segundo a API-Football. A convocação oficial será divulgada pelas federações a partir de maio de 2026."}
+                  </p>
+                </>
+              );
+            })()}
             <div className="space-y-5">
               {playersGrouped.map(group => (
                 <div key={group.key}>
@@ -163,7 +177,7 @@ export default function Copa2026SelecaoDetalhe() {
           </section>
         ) : (
           <section className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Elenco oficial ainda não publicado. As convocações são divulgadas pelas federações a partir de maio de 2026.
+            Elenco em sincronização. O elenco-base é atualizado via API-Football; a convocação oficial será publicada pelas federações a partir de maio de 2026.
           </section>
         )}
 

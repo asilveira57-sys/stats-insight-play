@@ -9,6 +9,7 @@ export default function AdminCopa2026() {
   const { isAdmin, isLoading: loading } = useAdminAccess();
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>("");
 
   const loadLogs = async () => {
     const { data } = await supabase.from("world_cup_2026_sync_logs")
@@ -31,23 +32,16 @@ export default function AdminCopa2026() {
     }
   };
 
-  if (loading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
-  if (!isAdmin) return <Layout><div className="container mx-auto px-4 py-8">Acesso negado.</div></Layout>;
-
-  const fns = [
-    { id: "wc2026-sync-fixtures", label: "Sincronizar fixtures (API-Football)" },
-    { id: "wc2026-update-standings", label: "Recalcular tabela dos grupos" },
-    { id: "wc2026-sync-squads", label: "Sincronizar elencos (API-Football)" },
-    { id: "wc2026-sync-coach", label: "Sincronizar técnicos (API-Football)" },
-    { id: "wc2026-ai-generate", label: "Gerar análise IA (exemplo)", body: { analysis_type: "group_preview" } },
-  ];
-
   const seedAllHistory = async () => {
     setBusy("seed-history-all");
+    setProgress("");
     try {
       const idx = await fetch("/data/wc-history/index.json").then(r => r.json());
+      const slugs: string[] = idx.slugs ?? [];
       let ok = 0, fail = 0;
-      for (const slug of idx.slugs ?? []) {
+      for (let i = 0; i < slugs.length; i++) {
+        const slug = slugs[i];
+        setProgress(`Seed ${i + 1}/${slugs.length}: ${slug}`);
         try {
           const payload = await fetch(`/data/wc-history/${slug}.json`).then(r => r.json());
           const { error } = await supabase.functions.invoke("wc2026-seed-history", { body: { slug, payload } });
@@ -58,44 +52,68 @@ export default function AdminCopa2026() {
       toast({ title: "Seed concluído", description: `${ok} ok / ${fail} falhas` });
     } catch (e: any) {
       toast({ title: "Erro seed", description: e.message ?? String(e), variant: "destructive" });
-    } finally { setBusy(null); loadLogs(); }
+    } finally { setBusy(null); setProgress(""); loadLogs(); }
   };
 
   const generateSeoAll = async () => {
     setBusy("seo-all");
+    setProgress("");
     try {
       const idx = await fetch("/data/wc-history/index.json").then(r => r.json());
+      const slugs: string[] = idx.slugs ?? [];
       let ok = 0, fail = 0;
-      for (const slug of idx.slugs ?? []) {
+      for (let i = 0; i < slugs.length; i++) {
+        const slug = slugs[i];
+        setProgress(`SEO ${i + 1}/${slugs.length}: ${slug}`);
         try {
           const { error } = await supabase.functions.invoke("wc2026-generate-team-seo", { body: { slug } });
           if (error) throw error;
           ok++;
         } catch (e) { fail++; console.error("seo", slug, e); }
+        await new Promise(r => setTimeout(r, 1500)); // rate-limit IA
       }
       toast({ title: "SEO gerado", description: `${ok} ok / ${fail} falhas` });
     } catch (e: any) {
       toast({ title: "Erro SEO", description: e.message ?? String(e), variant: "destructive" });
-    } finally { setBusy(null); loadLogs(); }
+    } finally { setBusy(null); setProgress(""); loadLogs(); }
   };
+
+  if (loading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
+  if (!isAdmin) return <Layout><div className="container mx-auto px-4 py-8">Acesso negado.</div></Layout>;
+
+  const fns = [
+    { id: "wc2026-sync-fixtures", label: "Sincronizar fixtures (API-Football)" },
+    { id: "wc2026-update-standings", label: "Recalcular tabela dos grupos" },
+    { id: "wc2026-resolve-team-ids", label: "Resolver IDs API-Football (todas)" },
+    { id: "wc2026-sync-squads", label: "Sincronizar elenco-base de TODAS" },
+    { id: "wc2026-sync-squads", label: "Sincronizar convocação OFICIAL (mai/2026+)", body: { official: true } },
+    { id: "wc2026-sync-coach", label: "Sincronizar técnicos de TODAS" },
+    { id: "wc2026-ai-generate", label: "Gerar análise IA (exemplo)", body: { analysis_type: "group_preview" } },
+  ];
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 space-y-6">
         <h1 className="text-3xl font-bold">Admin Copa 2026</h1>
+
+        {progress && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm">{progress}</div>
+        )}
+
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {fns.map(f => (
-            <Button key={f.id} onClick={() => run(f.id, f.body)} disabled={busy === f.id} variant="outline">
+          {fns.map((f, i) => (
+            <Button key={`${f.id}-${i}`} onClick={() => run(f.id, f.body)} disabled={!!busy} variant="outline">
               {busy === f.id ? "Executando..." : f.label}
             </Button>
           ))}
-          <Button onClick={seedAllHistory} disabled={busy === "seed-history-all"} variant="default">
-            {busy === "seed-history-all" ? "Seedando..." : "Seed histórico (10 seleções)"}
+          <Button onClick={seedAllHistory} disabled={!!busy} variant="default">
+            {busy === "seed-history-all" ? "Seedando..." : "Seed histórico de TODAS as seleções"}
           </Button>
-          <Button onClick={generateSeoAll} disabled={busy === "seo-all"} variant="default">
-            {busy === "seo-all" ? "Gerando SEO..." : "Gerar resumo IA + SEO (todas)"}
+          <Button onClick={generateSeoAll} disabled={!!busy} variant="default">
+            {busy === "seo-all" ? "Gerando SEO..." : "Gerar resumo IA + SEO de TODAS"}
           </Button>
         </section>
+
         <section>
           <h2 className="text-xl font-bold mb-3">Logs de sincronização</h2>
           <div className="overflow-x-auto rounded-xl border border-border">
