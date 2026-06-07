@@ -1,74 +1,73 @@
+# Plano — Copa 2026: cobertura completa por seleção
 
-## Objetivo
-Transformar `/copa-2026/selecoes/:slug` em uma página completa, com dados **reais** de cada seleção (histórico em Copas, posições por edição, elenco, técnico, próximos jogos) e fortemente otimizada para SEO.
+Objetivo: deixar **toda seleção** com histórico completo de Copas, elenco/convocação real (quando publicada), calendário de jogos e um resumo histórico maior (≥ 800 caracteres) — sem alucinação.
 
-## Fontes de dados reais (sem inventar)
-1. **Histórico de participações em Copas (1930–2022)** — dataset estático curado a partir de fonte oficial (FIFA / Wikipedia em PT-BR), versionado no repo em `src/data/wc-history/*.json` por país. Cada registro: ano, sede, fase alcançada, posição final, J/V/E/D, GP/GC, técnico daquela edição, observações. Esses dados são imutáveis e podem viver no código.
-2. **Elenco atual, técnico, agenda Copa 2026** — API-Football, via novas edge functions de sync (já temos `wc2026-sync-fixtures`). Adicionar:
-   - `wc2026-sync-squads`: popula `world_cup_2026_players` por seleção (jogador, posição, clube, nº camisa, idade).
-   - `wc2026-sync-coach`: atualiza `coach_name` + `coach_nationality` em `world_cup_2026_teams`.
-3. **Resumo histórico textual** — geração única via `wc2026-ai-generate` (Lovable AI Gateway / Gemini) **a partir** dos dados reais do JSON histórico (não invenção livre): grava em `world_cup_2026_teams.historical_summary` e `best_campaign`. Prompt restrito ao JSON enviado para evitar alucinação.
+## 1. Histórico completo (todas as seleções, não apenas 10)
 
-## Mudanças no banco
-Migration única:
-- Seed em `world_cup_2026_team_history` a partir do JSON estático (script de seed em edge function `wc2026-seed-history` lendo o arquivo via fetch público em `/data/wc-history/<slug>.json`).
-- Adicionar colunas em `world_cup_2026_teams`: `fifa_ranking int`, `confederation_full text`, `first_participation_year int`, `titles_count int`, `coach_nationality text`, `meta_description text`, `seo_keywords text[]`.
+### 1a. Curadoria de dados reais
+Hoje existem 10 JSONs em `public/data/wc-history/`. Vou adicionar JSONs curados (Wikipedia PT-BR + FIFA) para **todas as seleções com participação histórica em Copas** que estão no banco da 2026, incluindo: México, EUA, Canadá, Bélgica, Croácia, Portugal, Sérvia, Suíça, Dinamarca, Polônia, Senegal, Marrocos, Camarões, Nigéria, Gana, Costa do Marfim, Argélia, Egito, Tunísia, Japão, Coreia do Sul, Austrália, Irã, Arábia Saudita, Equador, Chile, Colômbia, Paraguai, Costa Rica, Honduras, Catar, etc. Seleções sem histórico de Copa (estreantes em 2026, ex.: Cabo Verde, Curaçao, Jordânia, Uzbequistão) recebem JSON marcando `editions: []` e `first_participation_year: 2026` — a página exibirá "Estreia em 2026".
 
-## Edge functions novas
-- `wc2026-sync-squads` (API-Football `/players/squads?team=`) — logs obrigatórios em `world_cup_2026_sync_logs`.
-- `wc2026-sync-coach` (API-Football `/coachs?team=`) — logs.
-- `wc2026-seed-history` — lê JSONs públicos e popula `world_cup_2026_team_history` + agrega `titles_count`/`first_participation_year`/`best_campaign` na tabela `teams`.
-- `wc2026-generate-team-seo` — usa Gemini para produzir `historical_summary` e `meta_description` **somente** a partir dos dados reais já no banco (prompt fechado, sem web).
+> Saneamento: o banco tem **duplicidades PT/EN** (Brasil/Brazil, França/France, etc.). Vou consolidar usando o slug PT-BR como canônico e remover/marcar duplicatas em EN para o seed não rodar duas vezes a mesma seleção. (Confirmar antes de deletar.)
 
-## Conteúdo estático (repo)
-- `public/data/wc-history/brasil.json`, `argentina.json`, ... (32 seleções confirmadas + principais candidatas a vaga).
-- Cada arquivo: array de edições com campos listados acima.
-- Fonte: Wikipedia PT-BR (artigos "Seleção X em Copas do Mundo FIFA"), revisada manualmente; entregaremos primeiro lote completo para as 10 seleções de maior tráfego (Brasil, Argentina, Alemanha, França, Itália, Inglaterra, Espanha, Portugal, Uruguai, Holanda) e estrutura pronta para as demais.
+### 1b. Index expandido + seed em lote
+`public/data/wc-history/index.json` passa a listar todos os slugs novos. O `wc2026-seed-history` será chamado **uma vez por slug** automaticamente a partir do admin (loop com progresso e logs). Idempotente: re-rodar não duplica linhas.
 
-## Reescrita da página `Copa2026SelecaoDetalhe.tsx`
-Estrutura nova com SEO no topo:
+## 2. Elenco / convocação real
 
-```
-[Hero]
-  Bandeira + Nome + Apelido + Confederação + Ranking FIFA
-  Badges: Grupo 2026, Status, Nº de participações, Nº de títulos
-[Seção 1] Resumo histórico (texto gerado, exibido como artigo, 2-3 parágrafos)
-[Seção 2] Tabela cronológica "Participações em Copas do Mundo"
-  Ano | Sede | Fase | Pos. final | J V E D | GP-GC | Técnico
-[Seção 3] Melhor campanha + curiosidades reais (campos do JSON)
-[Seção 4] Elenco convocado 2026 (agrupado por posição: GOL/DEF/MEI/ATA)
-[Seção 5] Comissão técnica (técnico + nacionalidade)
-[Seção 6] Calendário na Copa 2026 (MatchCard por jogo + status)
-[Seção 7] FAQ (acordeão) — perguntas geradas a partir dos dados, ótimas para rich results
-```
+Hoje `wc2026-sync-squads` chama API-Football `/players/squads?team=ID`, mas:
+- só funciona se a seleção tiver `external_team_id` preenchido (muitas estão NULL);
+- a FIFA só publica convocações oficiais a partir de **maio/2026** — antes disso a API retorna o "elenco base" da seleção (não a convocação oficial).
 
-### SEO técnico
-- Novo componente `Copa2026SelecaoSEO.tsx` (espelha `TeamPillarSEO`):
-  - `<title>`: `"{Seleção} na Copa do Mundo 2026 — Histórico, Elenco, Jogos | Statball"` (< 60 chars quando possível).
-  - `meta description` < 160 chars, usando `meta_description` da tabela.
-  - `<link rel="canonical">`.
-  - Open Graph + Twitter Card com bandeira.
-  - **JSON-LD** múltiplo:
-    - `SportsTeam` (nome, esporte, técnico, atletas).
-    - `BreadcrumbList` (Home › Copa 2026 › Seleções › {Seleção}).
-    - `FAQPage` a partir da Seção 7.
-    - `ItemList` das edições de Copa.
-- Um único `<h1>` (nome da seleção + "na Copa do Mundo 2026").
-- `h2/h3` semânticos por seção, `alt` em todas as imagens, `loading="lazy"`.
-- Sitemap: incluir rotas `/copa-2026/selecoes/:slug` em `public/sitemap-static.xml` (gerador adicionado).
-- Links internos: linkar para `/copa-2026/jogos/:id`, `/copa-2026` e entre seleções do mesmo grupo (boost de crawl).
+Ações:
+- **Preencher `external_team_id`** em massa via nova função `wc2026-resolve-team-ids` que consulta `/teams?country=...&search=...` na API-Football e grava o ID.
+- Rodar `wc2026-sync-squads` para **todas** as seleções (sem `team_slug`, fazendo loop completo) gravando o elenco-base atual com `is_called_up=false` e `source='api-football-base'`. Quando a convocação oficial sair (≥ mai/2026), o mesmo job é re-executado com flag `official=true` e grava `is_called_up=true`.
+- Rodar `wc2026-sync-coach` para todas as seleções em loop.
+- Na página, deixar de mostrar "Elenco oficial ainda não publicado" como bloco vazio: passar a renderizar o **elenco-base atual** com um aviso pequeno no topo ("Elenco-base atual; convocação oficial será publicada pelas federações a partir de maio/2026").
 
-## Admin
-Em `/admin/copa-2026` adicionar 4 botões: "Seed Histórico", "Sync Elencos", "Sync Técnicos", "Gerar SEO por Seleção". Logs visíveis em `world_cup_2026_sync_logs`.
+## 3. Calendário de jogos
 
-## Política anti-invenção
-- Resumo IA recebe **apenas** o JSON real da seleção + instrução: "Use somente os fatos abaixo. Não invente posições, anos ou jogadores. Se faltar dado, omita."
-- Página nunca renderiza seções vazias — se não há dados reais, exibe estado "Em curadoria" em vez de placeholder fictício.
+`wc2026-sync-fixtures` já existe e trouxe 72 jogos. Vou:
+- Garantir que **todos os jogos** (fase de grupos + mata-mata até onde estiver definido pela FIFA) sejam importados — paginar resposta da API-Football sem `.limit()`.
+- Na página da seleção, mostrar a lista de jogos da seleção (já temos `world_cup_2026_matches`) ordenada por data. Quando vazia, exibir "Confrontos da seleção serão publicados após o sorteio da FIFA" em vez do bloco genérico atual.
 
-## Entregáveis
-1. JSONs históricos (10 seleções principais) em `public/data/wc-history/`.
-2. Migration: novas colunas + grants.
-3. 4 edge functions (squads, coach, seed-history, generate-team-seo) registradas em `config.toml`.
-4. `Copa2026SelecaoSEO.tsx` + página `Copa2026SelecaoDetalhe.tsx` reescrita.
-5. Botões admin + logs.
-6. Atualização do `useWC2026Team` para trazer também histórico ordenado e contagens agregadas.
+## 4. Resumo histórico ≥ 800 caracteres (sem inventar)
+
+Hoje o `wc2026-generate-team-seo` pede 300-450 palavras mas o modelo às vezes entrega texto curto. Ajustes:
+- Subir o piso: pedir explicitamente **4 parágrafos, mínimo 900 caracteres e máximo 1600**, cobrindo:
+  1. Trajetória geral (nº de participações, primeira Copa, padrão de desempenho);
+  2. Maiores conquistas e momentos marcantes (anos de título, finais, melhores campanhas, técnicos campeões);
+  3. Resultados das últimas 3 edições (com anos e fases reais);
+  4. Cenário para 2026 (grupo, técnico atual, expectativa baseada apenas nos fatos).
+- **Validação automática**: após receber resposta, contar caracteres. Se `< 800`, refazer chamada uma vez pedindo expansão (mantendo a regra "apenas fatos fornecidos"). Se ainda assim falhar, salvar como `historical_summary_status='short'` e logar — nunca inventar.
+- Reforço anti-alucinação no prompt: lista numerada explícita de fatos permitidos; instrução para **não** citar jogadores, gols ou frases famosas que não estejam nos fatos; proibição de adjetivos especulativos ("certamente buscará", "favorita").
+- Trocar modelo para `google/gemini-2.5-pro` apenas neste endpoint (qualidade > custo, roda 1x por seleção).
+
+## 5. Painel admin — execução em lote
+
+Em `/admin/copa-2026`, adicionar botões:
+- **"Resolver IDs API-Football (todas)"** → roda `wc2026-resolve-team-ids`.
+- **"Seed histórico de TODAS"** → itera `index.json` chamando `wc2026-seed-history` por slug, com barra de progresso.
+- **"Sincronizar elenco-base de TODAS"** → loop `wc2026-sync-squads` sem filtro.
+- **"Sincronizar técnico de TODAS"** → loop `wc2026-sync-coach`.
+- **"Gerar resumo IA + SEO de TODAS"** → loop `wc2026-generate-team-seo`, respeitando rate-limit (delay 1.5s entre chamadas).
+
+Cada execução grava em `world_cup_2026_sync_logs` (já existente) — sucesso, erro, contagem.
+
+## 6. Detalhes técnicos
+
+- **Sem `.limit()`** em nenhuma query (Zero Limits policy).
+- Logs obrigatórios em toda função (`console.log`/tabela `sync_logs`).
+- Migração leve: nova coluna `world_cup_2026_teams.historical_summary_status` (`ok|short|missing`) e `world_cup_2026_players.source` (`api-football-base|api-football-official|manual`).
+- Idempotência: seed usa upsert por `(team_id, year)`; squad faz delete+insert por team.
+- Tratamento de quota API-Football: se 429, parar o loop e gravar onde parou para retomar.
+
+## 7. Entregáveis
+
+- ~40 novos JSONs em `public/data/wc-history/` + index atualizado.
+- 1 nova edge function `wc2026-resolve-team-ids`.
+- Edge functions existentes ajustadas: `wc2026-sync-squads` (loop completo + flag base/oficial), `wc2026-generate-team-seo` (prompt mais longo + validação de tamanho + retry + modelo pro).
+- `AdminCopa2026.tsx` com 5 novos botões em lote e progresso.
+- `Copa2026SelecaoDetalhe.tsx` ajustado para mostrar elenco-base e jogos reais quando existirem (sem fallback "não publicado" quando há dado).
+- Migração: 2 colunas novas.
+
+Confirma que posso seguir — incluindo a consolidação das duplicatas PT/EN (manter slugs em português)?
