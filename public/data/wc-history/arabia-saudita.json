@@ -1,0 +1,55 @@
+{
+  "team": "Arábia Saudita",
+  "nickname": "Green Falcons",
+  "confederation_full": "AFC (Ásia)",
+  "first_participation_year": 1994,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Oitavas de final em 1994 (Estados Unidos)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Oitavas de final",
+      "final_position": "12º",
+      "coach": "Jorge Solari"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "28º",
+      "coach": "Carlos Alberto Parreira"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "32º",
+      "coach": "Nasser Al-Johar"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "28º",
+      "coach": "Marcos Paquetá"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "26º",
+      "coach": "Juan Antonio Pizzi"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "28º",
+      "coach": "Hervé Renard"
+    }
+  ],
+  "slug": "arabia-saudita"
+}

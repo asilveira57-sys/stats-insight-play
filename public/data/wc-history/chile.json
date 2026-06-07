@@ -1,0 +1,76 @@
+{
+  "team": "Chile",
+  "nickname": "La Roja",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 1930,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "3º lugar em 1962 (em casa)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1930,
+      "host": "Uruguai",
+      "stage_reached": "Fase de grupos",
+      "final_position": "5º",
+      "coach": "György Orth"
+    },
+    {
+      "year": 1950,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "9º",
+      "coach": "Arturo Bucciardi"
+    },
+    {
+      "year": 1962,
+      "host": "Chile",
+      "stage_reached": "3º lugar",
+      "final_position": "3º",
+      "coach": "Fernando Riera"
+    },
+    {
+      "year": 1966,
+      "host": "Inglaterra",
+      "stage_reached": "Fase de grupos",
+      "final_position": "13º",
+      "coach": "Luis Álamos"
+    },
+    {
+      "year": 1974,
+      "host": "Alemanha Ocidental",
+      "stage_reached": "Fase de grupos",
+      "final_position": "12º",
+      "coach": "Luis Álamos"
+    },
+    {
+      "year": 1982,
+      "host": "Espanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "22º",
+      "coach": "Luis Santibáñez"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "Nelson Acosta"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Oitavas de final",
+      "final_position": "10º",
+      "coach": "Marcelo Bielsa"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "Jorge Sampaoli"
+    }
+  ],
+  "slug": "chile"
+}

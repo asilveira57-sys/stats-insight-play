@@ -1,0 +1,41 @@
+{
+  "team": "Equador",
+  "nickname": "La Tri",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 2002,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Oitavas de final em 2006 (Alemanha)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Fase de grupos",
+      "final_position": "24º",
+      "coach": "Hernán Darío Gómez"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Oitavas de final",
+      "final_position": "12º",
+      "coach": "Luis Fernando Suárez"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "17º",
+      "coach": "Reinaldo Rueda"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "20º",
+      "coach": "Gustavo Alfaro"
+    }
+  ],
+  "slug": "equador"
+}

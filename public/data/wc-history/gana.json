@@ -1,0 +1,41 @@
+{
+  "team": "Gana",
+  "nickname": "Black Stars",
+  "confederation_full": "CAF (África)",
+  "first_participation_year": 2006,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 2010 (África do Sul)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Ratomir Dujković"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Quartas de final",
+      "final_position": "7º",
+      "coach": "Milovan Rajevac"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Kwesi Appiah"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "28º",
+      "coach": "Otto Addo"
+    }
+  ],
+  "slug": "gana"
+}

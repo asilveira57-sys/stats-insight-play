@@ -1,0 +1,34 @@
+{
+  "team": "Senegal",
+  "nickname": "Lions de la Téranga",
+  "confederation_full": "CAF (África)",
+  "first_participation_year": 2002,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 2002 (Coreia do Sul/Japão)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Quartas de final",
+      "final_position": "7º",
+      "coach": "Bruno Metsu"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "17º",
+      "coach": "Aliou Cissé"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Aliou Cissé"
+    }
+  ],
+  "slug": "senegal"
+}

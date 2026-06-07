@@ -1,0 +1,55 @@
+{
+  "team": "Colômbia",
+  "nickname": "Los Cafeteros",
+  "confederation_full": "CONMEBOL (América do Sul)",
+  "first_participation_year": 1962,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "Quartas de final em 2014 (Brasil)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1962,
+      "host": "Chile",
+      "stage_reached": "Fase de grupos",
+      "final_position": "14º",
+      "coach": "Adolfo Pedernera"
+    },
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Francisco Maturana"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Fase de grupos",
+      "final_position": "19º",
+      "coach": "Francisco Maturana"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "21º",
+      "coach": "Hernán Darío Gómez"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Quartas de final",
+      "final_position": "5º",
+      "coach": "José Pekerman"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "Oitavas de final",
+      "final_position": "9º",
+      "coach": "José Pekerman"
+    }
+  ],
+  "slug": "colombia"
+}

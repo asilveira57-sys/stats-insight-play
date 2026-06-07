@@ -1,0 +1,90 @@
+{
+  "team": "Estados Unidos",
+  "nickname": "USMNT",
+  "confederation_full": "CONCACAF (América do Norte e Central)",
+  "first_participation_year": 1930,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "3º lugar em 1930 (Uruguai)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1930,
+      "host": "Uruguai",
+      "stage_reached": "Semifinal",
+      "final_position": "3º",
+      "coach": "Bob Millar"
+    },
+    {
+      "year": 1934,
+      "host": "Itália",
+      "stage_reached": "Oitavas de final",
+      "final_position": "16º",
+      "coach": "David Gould"
+    },
+    {
+      "year": 1950,
+      "host": "Brasil",
+      "stage_reached": "Fase de grupos",
+      "final_position": "10º",
+      "coach": "Bill Jeffrey"
+    },
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Fase de grupos",
+      "final_position": "23º",
+      "coach": "Bob Gansler"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Bora Milutinović"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "32º",
+      "coach": "Steve Sampson"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Quartas de final",
+      "final_position": "8º",
+      "coach": "Bruce Arena"
+    },
+    {
+      "year": 2006,
+      "host": "Alemanha",
+      "stage_reached": "Fase de grupos",
+      "final_position": "25º",
+      "coach": "Bruce Arena"
+    },
+    {
+      "year": 2010,
+      "host": "África do Sul",
+      "stage_reached": "Oitavas de final",
+      "final_position": "12º",
+      "coach": "Bob Bradley"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Oitavas de final",
+      "final_position": "15º",
+      "coach": "Jürgen Klinsmann"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Gregg Berhalter"
+    }
+  ],
+  "slug": "estados-unidos"
+}

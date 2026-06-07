@@ -1,0 +1,111 @@
+{
+  "team": "Bélgica",
+  "nickname": "Diabos Vermelhos",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1930,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "3º lugar em 2018 (Rússia)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1930,
+      "host": "Uruguai",
+      "stage_reached": "Fase de grupos",
+      "final_position": "11º",
+      "coach": "Hector Goetinck"
+    },
+    {
+      "year": 1934,
+      "host": "Itália",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Hector Goetinck"
+    },
+    {
+      "year": 1938,
+      "host": "França",
+      "stage_reached": "Oitavas de final",
+      "final_position": "13º",
+      "coach": "Jack Butler"
+    },
+    {
+      "year": 1954,
+      "host": "Suíça",
+      "stage_reached": "Fase de grupos",
+      "final_position": "12º",
+      "coach": "Doug Livingstone"
+    },
+    {
+      "year": 1970,
+      "host": "México",
+      "stage_reached": "Fase de grupos",
+      "final_position": "12º",
+      "coach": "Raymond Goethals"
+    },
+    {
+      "year": 1982,
+      "host": "Espanha",
+      "stage_reached": "2ª fase de grupos",
+      "final_position": "10º",
+      "coach": "Guy Thys"
+    },
+    {
+      "year": 1986,
+      "host": "México",
+      "stage_reached": "4º lugar",
+      "final_position": "4º",
+      "coach": "Guy Thys"
+    },
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Oitavas de final",
+      "final_position": "11º",
+      "coach": "Guy Thys"
+    },
+    {
+      "year": 1994,
+      "host": "Estados Unidos",
+      "stage_reached": "Oitavas de final",
+      "final_position": "12º",
+      "coach": "Paul Van Himst"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "26º",
+      "coach": "Georges Leekens"
+    },
+    {
+      "year": 2002,
+      "host": "Coreia do Sul/Japão",
+      "stage_reached": "Oitavas de final",
+      "final_position": "14º",
+      "coach": "Robert Waseige"
+    },
+    {
+      "year": 2014,
+      "host": "Brasil",
+      "stage_reached": "Quartas de final",
+      "final_position": "6º",
+      "coach": "Marc Wilmots"
+    },
+    {
+      "year": 2018,
+      "host": "Rússia",
+      "stage_reached": "3º lugar",
+      "final_position": "3º",
+      "coach": "Roberto Martínez"
+    },
+    {
+      "year": 2022,
+      "host": "Catar",
+      "stage_reached": "Fase de grupos",
+      "final_position": "18º",
+      "coach": "Roberto Martínez"
+    }
+  ],
+  "slug": "belgica"
+}

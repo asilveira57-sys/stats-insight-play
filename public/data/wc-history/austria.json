@@ -1,0 +1,62 @@
+{
+  "team": "Áustria",
+  "nickname": "Das Team",
+  "confederation_full": "UEFA (Europa)",
+  "first_participation_year": 1934,
+  "titles_count": 0,
+  "title_years": [],
+  "best_campaign": "3º lugar em 1954 (Suíça)",
+  "source": "FIFA / Wikipédia PT-BR — Seleção em Copas do Mundo",
+  "editions": [
+    {
+      "year": 1934,
+      "host": "Itália",
+      "stage_reached": "Semifinal",
+      "final_position": "4º",
+      "coach": "Hugo Meisl"
+    },
+    {
+      "year": 1954,
+      "host": "Suíça",
+      "stage_reached": "3º lugar",
+      "final_position": "3º",
+      "coach": "Walter Nausch"
+    },
+    {
+      "year": 1958,
+      "host": "Suécia",
+      "stage_reached": "Fase de grupos",
+      "final_position": "15º",
+      "coach": "Josef Argauer"
+    },
+    {
+      "year": 1978,
+      "host": "Argentina",
+      "stage_reached": "2ª fase de grupos",
+      "final_position": "7º",
+      "coach": "Helmut Senekowitsch"
+    },
+    {
+      "year": 1982,
+      "host": "Espanha",
+      "stage_reached": "2ª fase de grupos",
+      "final_position": "8º",
+      "coach": "Georg Schmidt"
+    },
+    {
+      "year": 1990,
+      "host": "Itália",
+      "stage_reached": "Fase de grupos",
+      "final_position": "18º",
+      "coach": "Josef Hickersberger"
+    },
+    {
+      "year": 1998,
+      "host": "França",
+      "stage_reached": "Fase de grupos",
+      "final_position": "23º",
+      "coach": "Herbert Prohaska"
+    }
+  ],
+  "slug": "austria"
+}
