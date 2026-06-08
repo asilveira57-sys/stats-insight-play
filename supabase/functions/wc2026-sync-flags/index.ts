@@ -11,18 +11,18 @@ const SLUG_TO_ISO2: Record<string, string> = {
   italia: "it", inglaterra: "gb-eng", portugal: "pt", "paises-baixos": "nl",
   belgica: "be", suica: "ch", croacia: "hr", dinamarca: "dk", polonia: "pl",
   servia: "rs", ucrania: "ua", austria: "at", turquia: "tr",
-  scotland: "gb-sct", norway: "no", sweden: "se", "czech-republic": "cz",
+  escocia: "gb-sct", noruega: "no", suecia: "se", "republica-tcheca": "cz",
   "bosnia-herzegovina": "ba",
   mexico: "mx", "estados-unidos": "us", canada: "ca", "costa-rica": "cr",
   panama: "pa", haiti: "ht", curacao: "cw",
   uruguai: "uy", paraguai: "py", chile: "cl", colombia: "co", equador: "ec",
   peru: "pe", bolivia: "bo", venezuela: "ve",
   japao: "jp", "coreia-do-sul": "kr", australia: "au", ira: "ir",
-  "arabia-saudita": "sa", catar: "qa", iraq: "iq", jordan: "jo", uzbekistan: "uz",
+  "arabia-saudita": "sa", catar: "qa", iraque: "iq", jordania: "jo", uzbequistao: "uz",
   "nova-zelandia": "nz",
   "africa-do-sul": "za", argelia: "dz", marrocos: "ma", tunisia: "tn",
   egito: "eg", camaroes: "cm", senegal: "sn", nigeria: "ng", gana: "gh",
-  "costa-do-marfim": "ci", "cape-verde-islands": "cv", "congo-dr": "cd",
+  "costa-do-marfim": "ci", "cabo-verde": "cv", "rd-congo": "cd",
 };
 
 Deno.serve(async (req) => {
