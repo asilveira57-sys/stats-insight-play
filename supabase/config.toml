@@ -173,3 +173,15 @@ verify_jwt = false
 
 [functions.wc2026-resolve-team-ids]
 verify_jwt = false
+
+[functions.wc2026-sync-flags]
+verify_jwt = false
+
+[functions.wc2026-normalize-teams]
+verify_jwt = false
+
+[functions.wc2026-seed-bracket]
+verify_jwt = false
+
+[functions.wc2026-advance-bracket]
+verify_jwt = false
