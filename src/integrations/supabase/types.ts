@@ -6219,6 +6219,7 @@ export type Database = {
           attendance: number | null
           away_score: number | null
           away_team_id: string | null
+          bracket_position: string | null
           city: string | null
           created_at: string
           external_fixture_id: number | null
@@ -6227,6 +6228,8 @@ export type Database = {
           home_team_id: string | null
           id: string
           match_date: string | null
+          next_match_id: string | null
+          next_match_slot: string | null
           round: string | null
           stadium: string | null
           stage: string
@@ -6238,6 +6241,7 @@ export type Database = {
           attendance?: number | null
           away_score?: number | null
           away_team_id?: string | null
+          bracket_position?: string | null
           city?: string | null
           created_at?: string
           external_fixture_id?: number | null
@@ -6246,6 +6250,8 @@ export type Database = {
           home_team_id?: string | null
           id?: string
           match_date?: string | null
+          next_match_id?: string | null
+          next_match_slot?: string | null
           round?: string | null
           stadium?: string | null
           stage?: string
@@ -6257,6 +6263,7 @@ export type Database = {
           attendance?: number | null
           away_score?: number | null
           away_team_id?: string | null
+          bracket_position?: string | null
           city?: string | null
           created_at?: string
           external_fixture_id?: number | null
@@ -6265,6 +6272,8 @@ export type Database = {
           home_team_id?: string | null
           id?: string
           match_date?: string | null
+          next_match_id?: string | null
+          next_match_slot?: string | null
           round?: string | null
           stadium?: string | null
           stage?: string
@@ -6285,6 +6294,13 @@ export type Database = {
             columns: ["home_team_id"]
             isOneToOne: false
             referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_cup_2026_matches_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
             referencedColumns: ["id"]
           },
           {

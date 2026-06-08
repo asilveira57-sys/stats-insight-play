@@ -85,9 +85,13 @@ export default function AdminCopa2026() {
     { id: "wc2026-sync-fixtures", label: "Sincronizar fixtures (API-Football)" },
     { id: "wc2026-update-standings", label: "Recalcular tabela dos grupos" },
     { id: "wc2026-resolve-team-ids", label: "Resolver IDs API-Football (todas)" },
+    { id: "wc2026-sync-flags", label: "🇧🇷 Sincronizar bandeiras coloridas (TODAS)" },
+    { id: "wc2026-normalize-teams", label: "Normalizar seleções (mesclar PT/EN)" },
     { id: "wc2026-sync-squads", label: "Sincronizar elenco-base de TODAS" },
     { id: "wc2026-sync-squads", label: "Sincronizar convocação OFICIAL (mai/2026+)", body: { official: true } },
     { id: "wc2026-sync-coach", label: "Sincronizar técnicos de TODAS" },
+    { id: "wc2026-seed-bracket", label: "🏆 Criar chaveamento (placeholders mata-mata)" },
+    { id: "wc2026-advance-bracket", label: "Avançar chaveamento (recomputar vencedores)" },
     { id: "wc2026-ai-generate", label: "Gerar análise IA (exemplo)", body: { analysis_type: "group_preview" } },
   ];
 
