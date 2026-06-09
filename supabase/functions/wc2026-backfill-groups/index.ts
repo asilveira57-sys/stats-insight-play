@@ -25,9 +25,10 @@ Deno.serve(async (req) => {
     const sorted = [...(matches ?? [])].sort((a: any, b: any) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
     const groupCounters: Record<string, Map<string, number>> = {};
     for (const m of sorted) {
-      const hg = teamGroup.get(m.home_team_id);
-      const ag = teamGroup.get(m.away_team_id);
-      const letter = hg && hg === ag ? hg : null;
+      const hg = teamGroup.get(m.home_team_id) ?? null;
+      const ag = teamGroup.get(m.away_team_id) ?? null;
+      // In group stage, both teams must be in same group. If only one known, use it (the other is likely a still-unassigned add-on team — admin should fix later).
+      const letter = (hg && ag && hg === ag) ? hg : (hg ?? ag ?? null);
       if (!letter) continue;
       // round: per team, count appearances
       groupCounters[letter] ??= new Map();
@@ -56,9 +57,10 @@ Deno.serve(async (req) => {
           goals_for: 0, goals_against: 0, goal_difference: 0,
           points: 0, position: 0,
         },
-        { onConflict: "team_id" },
+        { onConflict: "team_id,group_letter" },
       );
-      if (!error) standingsCreated++;
+      if (error) console.error("standings", t.id, error.message);
+      else standingsCreated++;
     }
 
     return new Response(JSON.stringify({ success: true, matches_updated: updated, standings_seeded: standingsCreated }), {
