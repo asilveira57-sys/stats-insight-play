@@ -4228,33 +4228,36 @@ export type Database = {
           created_at: string | null
           id: string
           palpite_sistema_id: string | null
-          partida_id: string
+          partida_id: string | null
           placar_casa: number
           placar_fora: number
           updated_at: string | null
           user_id: string
+          wc2026_match_id: string | null
         }
         Insert: {
           aceitou_sugestao?: boolean | null
           created_at?: string | null
           id?: string
           palpite_sistema_id?: string | null
-          partida_id: string
+          partida_id?: string | null
           placar_casa: number
           placar_fora: number
           updated_at?: string | null
           user_id: string
+          wc2026_match_id?: string | null
         }
         Update: {
           aceitou_sugestao?: boolean | null
           created_at?: string | null
           id?: string
           palpite_sistema_id?: string | null
-          partida_id?: string
+          partida_id?: string | null
           placar_casa?: number
           placar_fora?: number
           updated_at?: string | null
           user_id?: string
+          wc2026_match_id?: string | null
         }
         Relationships: [
           {
@@ -4269,6 +4272,13 @@ export type Database = {
             columns: ["partida_id"]
             isOneToOne: false
             referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "palpites_usuarios_wc2026_match_id_fkey"
+            columns: ["wc2026_match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
             referencedColumns: ["id"]
           },
         ]
@@ -6228,6 +6238,7 @@ export type Database = {
           home_team_id: string | null
           id: string
           match_date: string | null
+          match_round: number | null
           next_match_id: string | null
           next_match_slot: string | null
           round: string | null
@@ -6250,6 +6261,7 @@ export type Database = {
           home_team_id?: string | null
           id?: string
           match_date?: string | null
+          match_round?: number | null
           next_match_id?: string | null
           next_match_slot?: string | null
           round?: string | null
@@ -6272,6 +6284,7 @@ export type Database = {
           home_team_id?: string | null
           id?: string
           match_date?: string | null
+          match_round?: number | null
           next_match_id?: string | null
           next_match_slot?: string | null
           round?: string | null
