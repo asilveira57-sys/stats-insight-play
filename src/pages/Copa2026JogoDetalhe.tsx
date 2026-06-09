@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useWC2026Match } from "@/hooks/useCopa2026";
 import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { AIAnalysisBlock } from "@/components/copa2026/AIAnalysisBlock";
+import { WC2026PalpiteButton } from "@/components/copa2026/WC2026PalpiteButton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin } from "lucide-react";
 
@@ -34,6 +35,9 @@ export default function Copa2026JogoDetalhe() {
             <div className="flex flex-col items-center gap-2 flex-1"><TeamFlag team={match.home} size="lg" /><span className="font-semibold text-center">{match.home?.name}</span></div>
             <div className="text-4xl sm:text-5xl font-bold tabular-nums">{match.status === "scheduled" ? "vs" : `${match.home_score ?? 0} - ${match.away_score ?? 0}`}</div>
             <div className="flex flex-col items-center gap-2 flex-1"><TeamFlag team={match.away} size="lg" /><span className="font-semibold text-center">{match.away?.name}</span></div>
+          </div>
+          <div className="mt-5 flex justify-center">
+            <WC2026PalpiteButton match={match} />
           </div>
         </header>
 
