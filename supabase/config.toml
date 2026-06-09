@@ -185,3 +185,12 @@ verify_jwt = false
 
 [functions.wc2026-advance-bracket]
 verify_jwt = false
+
+[functions.wc2026-backfill-groups]
+verify_jwt = false
+
+[functions.wc2026-link-bracket]
+verify_jwt = false
+
+[functions.wc2026-generate-match-preview]
+verify_jwt = false
