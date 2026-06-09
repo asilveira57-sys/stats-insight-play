@@ -89,6 +89,7 @@ import Copa2026Jogos from "./pages/Copa2026Jogos";
 import Copa2026JogoDetalhe from "./pages/Copa2026JogoDetalhe";
 import Copa2026Posts from "./pages/Copa2026Posts";
 import Copa2026Chaveamento from "./pages/Copa2026Chaveamento";
+import Copa2026Grupos from "./pages/Copa2026Grupos";
 import AdminCopa2026 from "./pages/AdminCopa2026";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,7 @@ const App = () => (
             <Route path="/copa-2026/jogos/:id" element={<Copa2026JogoDetalhe />} />
             <Route path="/copa-2026/posts" element={<Copa2026Posts />} />
             <Route path="/copa-2026/chaveamento" element={<Copa2026Chaveamento />} />
+            <Route path="/copa-2026/grupos" element={<Copa2026Grupos />} />
             <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
