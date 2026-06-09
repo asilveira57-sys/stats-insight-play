@@ -78,12 +78,39 @@ export default function AdminCopa2026() {
     } finally { setBusy(null); setProgress(""); loadLogs(); }
   };
 
+  const generateAllPreviews = async () => {
+    setBusy("previews-all");
+    setProgress("");
+    try {
+      const { data: matches } = await supabase
+        .from("world_cup_2026_matches")
+        .select("id, home_team_id, away_team_id, stage, match_date")
+        .order("match_date");
+      const list = (matches ?? []).filter((m: any) => m.home_team_id && m.away_team_id);
+      let ok = 0, fail = 0, skipped = 0;
+      for (let i = 0; i < list.length; i++) {
+        setProgress(`Análise ${i+1}/${list.length}`);
+        try {
+          const { data, error } = await supabase.functions.invoke("wc2026-generate-match-preview", { body: { match_id: list[i].id } });
+          if (error) throw error;
+          if ((data as any)?.skipped) skipped++; else ok++;
+        } catch (e) { fail++; console.error(e); }
+        await new Promise(r => setTimeout(r, 1200));
+      }
+      toast({ title: "Análises geradas", description: `${ok} novas / ${skipped} já existiam / ${fail} falhas` });
+    } catch (e: any) {
+      toast({ title: "Erro previews", description: e.message ?? String(e), variant: "destructive" });
+    } finally { setBusy(null); setProgress(""); loadLogs(); }
+  };
+
   if (loading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
   if (!isAdmin) return <Layout><div className="container mx-auto px-4 py-8">Acesso negado.</div></Layout>;
 
   const fns = [
     { id: "wc2026-sync-fixtures", label: "Sincronizar fixtures (API-Football)" },
+    { id: "wc2026-backfill-groups", label: "🧮 Preencher grupos + zerar classificação" },
     { id: "wc2026-update-standings", label: "Recalcular tabela dos grupos" },
+    { id: "wc2026-link-bracket", label: "🔗 Vincular jogos ao chaveamento (R32→Final)" },
     { id: "wc2026-resolve-team-ids", label: "Resolver IDs API-Football (todas)" },
     { id: "wc2026-sync-flags", label: "🇧🇷 Sincronizar bandeiras coloridas (TODAS)" },
     { id: "wc2026-normalize-teams", label: "Normalizar seleções (mesclar PT/EN)" },
@@ -115,6 +142,9 @@ export default function AdminCopa2026() {
           </Button>
           <Button onClick={generateSeoAll} disabled={!!busy} variant="default">
             {busy === "seo-all" ? "Gerando SEO..." : "Gerar resumo IA + SEO de TODAS"}
+          </Button>
+          <Button onClick={generateAllPreviews} disabled={!!busy} variant="default">
+            {busy === "previews-all" ? "Gerando previews..." : "🤖 Análise pré-jogo IA para TODOS os jogos"}
           </Button>
         </section>
 

@@ -1,89 +1,74 @@
-# Plano: Completar a Central Copa 2026
 
-## Diagnóstico atual (banco)
+# Plano — Central Copa 2026 completa
 
-| Item | Status |
+## Diagnóstico atual
+
+Inspeção do banco e do código revelou as causas dos sintomas reportados:
+
+1. **"Só aparece México x África do Sul"** — Existem **72 jogos de grupo** no banco, mas o filtro `stage` da página `/copa-2026/jogos` usa valores antigos (`r32`, `r16`, `qf`...) enquanto o banco grava `round_of_32`, `round_of_16`, `quarter_final`, etc. O default mostra só o próximo, dando a falsa impressão de 1 jogo.
+2. **Tela de grupos vazia** — `group_letter` está **NULL em 100% dos 72 jogos** e a tabela `world_cup_2026_standings` tem **0 linhas**. As 48 seleções já têm `group_letter` correto, mas nada foi propagado para partidas/classificação.
+3. **Chaveamento desalinhado** — `Copa2026Chaveamento.tsx` filtra por posições `R32-1..16`, mas o `wc2026-sync-fixtures` salva stages como `round_of_32` sem preencher `bracket_position`. Os 32 placeholders do mata-mata existem (R32→Final), porém desconectados dos jogos reais.
+4. **IA pré-jogo** — Só 2 análises existem no total. Não há geração em lote para os 72 jogos da fase de grupos.
+5. **Palpites na Copa** — `palpites_usuarios.partida_id` aponta para `partidas`, não para `world_cup_2026_matches`. Hoje é impossível palpitar nos jogos da Copa e filtrar por "Copa 2026".
+
+## O que será entregue
+
+### 1. Correção de fases e grupos (base de tudo)
+- **Migration**: criar enum/constraint padronizando stages como `group | round_of_32 | round_of_16 | quarter_final | semi_final | third_place | final` e adicionar trigger para popular `group_letter` no insert/update das partidas a partir das seleções participantes.
+- **Edge function `wc2026-backfill-groups`**: percorre os 72 jogos atuais, deduz o `group_letter` a partir do `group_letter` dos times, atribui rodada (1/2/3) por ordem de data e cria as 48 linhas iniciais em `world_cup_2026_standings` (zeradas).
+- **Ajuste `Copa2026Jogos.tsx`**: select usando os valores reais do enum, label PT correto, agrupamento visual por **fase → grupo → rodada**, mostrando todos os 12 grupos como no print de referência (mini-cards com bandeira, placar, data UTC-3).
+
+### 2. Tela "Grupos" dedicada (`/copa-2026/grupos`)
+- Replica o layout do print: 12 cards (Grupo A–L), cada um com a tabela P/J/V/E/D/SG **e** a lista dos 3 jogos do grupo (data, mando, placar quando finalizado).
+- Card clicável leva ao detalhe do grupo com chaveamento parcial (top 2 e melhores 3ºs avançam — destaque visual).
+- Link adicionado ao Navbar da Copa 2026 e ao `Copa2026Home`.
+
+### 3. Análise pré-jogo por IA para todos os 72 jogos
+- **Edge function `wc2026-generate-match-preview`** (Lovable AI Gateway, `google/gemini-2.5-pro`):
+  - Entrada: ID do jogo. Carrega histórico das seleções (`team_history`), elencos-base, técnico, confronto direto histórico (se houver em `partidas`), forma recente.
+  - Saída JSON estrita: `headline`, `narrative` (≥900 chars, 4 parágrafos), `key_players` (3 por lado), `tactical_matchup`, `predicted_score`, `confidence` (high/medium/low), `bullet_facts[]`.
+  - Persiste em `world_cup_2026_ai_analyses` com `analysis_type='pre_match'`, antialucinação (só usa fatos fornecidos), retry de tamanho.
+- **Edge function `wc2026-batch-previews`**: roda em lote os 72 jogos com paginação por re-invocação (padrão `edge-functions/timeout-stability-patterns`), registrando progresso em `world_cup_2026_sync_logs`.
+- **Frontend**: `Copa2026JogoDetalhe.tsx` ganha bloco "Análise Statball" (usa `AIAnalysisBlock`) + placar previsto + bullets.
+- **Admin**: botão "Gerar análises pré-jogo de TODOS" em `AdminCopa2026.tsx` com barra de progresso.
+
+### 4. Palpites do usuário em jogos da Copa 2026
+- **Migration**: adicionar coluna nullable `wc2026_match_id UUID REFERENCES world_cup_2026_matches(id)` em `palpites_usuarios`, índice e check `(partida_id IS NOT NULL) <> (wc2026_match_id IS NOT NULL)`. RLS continua scoped a `auth.uid()`.
+- **Hook `useUserPalpitesWC2026`**: leitura/escrita análoga ao existente, filtrando por `wc2026_match_id`.
+- **`UserPalpiteModal`**: aceita prop `wcMatch` e grava no campo correto.
+- **Card de jogo Copa 2026**: botão "Fazer palpite" (logado) com o mesmo fluxo do Brasileirão.
+- **Página `/palpites`**: novo filtro "Competição: Brasileirão / Libertadores / Copa 2026" agrupando por origem; histórico unificado.
+- **Gamificação**: reaproveita `xp_events` (mesmas regras de acerto exato/parcial).
+
+### 5. Chaveamento interativo (oitavas → final)
+- **Mapping**: nova função `wc2026-link-bracket` cria a relação `bracket_position` ↔ `world_cup_2026_matches` a partir das rodadas oficiais ("Round of 32 - 1" → `R32-1`) e plota também a **disputa de 3º lugar**.
+- **`Copa2026Chaveamento.tsx`** refeito com base no print "FASES FINAIS":
+  - Layout horizontal: Segunda Fase (R32) → Oitavas (R16) → Quartas → Semis → Final, com bloco lateral de 3º lugar.
+  - Cada célula: bandeiras, placar (quando finalizado), data/hora UTC-3, status (Agendado / Ao vivo / Encerrado), link para o detalhe.
+  - Linhas SVG conectando os jogos; placeholders mostram critério ("1º A", "2º B", "Vencedor R32-1").
+  - Avanço automático já existente (`wc2026-advance-bracket`) é disparado por trigger ao marcar `status='finished'`.
+- Versão mobile: accordion por fase.
+- JSON-LD `SportsEvent` para SEO.
+
+### 6. Ajustes finais
+- Navbar Copa 2026 com 5 itens: Visão geral · Grupos · Jogos · Chaveamento · Seleções.
+- `Copa2026Home` ganha widget "Próximos 5 jogos" (não só o próximo) e CTA "Faça seu palpite".
+- Atualizar `sitemap-static.xml` com novas rotas.
+
+## Resumo técnico
+
+| Item | Tipo |
 |---|---|
-| Seleções cadastradas | **60** (48 originais PT + 12 novas vindas do `resolve-team-ids` em inglês: Sweden, Norway, Scotland, Czech Republic, Bosnia, Cape Verde, Curaçao, Iraq, Jordan, Haiti, Congo DR) |
-| Bandeiras (`flag_url`) | **apenas 12/60** preenchidas — por isso a UI aparece cinza |
-| Técnicos (`coach_name`) | **apenas 12/60** |
-| Resumo histórico IA | **23/60** |
-| Histórico em Copas (tabela `team_history`) | Só 48 cobertas (faltam as 12 novas) |
-| Jogadores | 2.285 em 86 registros (duplicatas PT/EN ainda existem) |
-| Jogos (`world_cup_2026_matches`) | **72 jogos, todos `group`, 0 finalizados, 0 mata-mata** |
-| Chaveamento (bracket) visual | **Não existe** |
+| Padronização de stages + trigger group_letter | Migration |
+| Backfill grupos/standings | Edge `wc2026-backfill-groups` |
+| Análises pré-jogo IA | Edge `wc2026-generate-match-preview` + `wc2026-batch-previews` |
+| Palpites na Copa | Migration + hook + modal + filtro |
+| Link bracket | Edge `wc2026-link-bracket` |
+| Telas | `Copa2026Grupos` (nova), `Copa2026Jogos` (refeita), `Copa2026Chaveamento` (refeita), `Copa2026JogoDetalhe` (preview IA + palpite) |
+| Admin | Botões: backfill grupos, link bracket, gerar previews em lote |
 
-## O que vamos fazer
+Tudo respeita: zero limits, UTC-3 na UI, sem logos de clubes (bandeiras de seleção via FlagCDN já está OK), Lovable AI Gateway, e nada de linguagem de apostas (cobertura editorial/estatística).
 
-### 1. Limpar e completar o cadastro de seleções (48 → lista oficial 2026)
-- Função `wc2026-normalize-teams`: mescla duplicatas PT/EN (Sweden→suecia, Norway→noruega, etc.), criando os slugs PT que faltam (suécia, noruega, escócia, república-tcheca, bósnia, cabo-verde, curaçao, iraque, jordânia, haiti, rd-congo) e movendo `external_team_id`, jogadores e técnico para o registro canônico.
-- Marca como `is_active=false` os duplicados em inglês.
+## Próximo passo
 
-### 2. Bandeiras coloridas em TODAS as seleções
-- Função `wc2026-sync-flags`: para cada time ativo, popula `flag_url` priorizando:
-  1. `https://flagcdn.com/w320/{country_code}.png` (FlagCDN, livre, SVG/PNG colorido)
-  2. Fallback: bandeira retornada pela API-Football (`teams` endpoint)
-- Garante `country_code` ISO-2 onde estiver faltando (mapa estático no código).
-- `TeamCard`/`Copa2026Selecoes` passa a renderizar `<img src={flag_url}>` com fallback para o `TeamBadge` colorido só se a imagem falhar.
-
-### 3. Técnicos e elencos de TODAS
-- Roda `wc2026-sync-coach` em lote para os 60 → preenche `coach_name` + `coach_nationality`.
-- Roda `wc2026-sync-squads` em lote para as 12 novas, garantindo paridade.
-- Botão admin: "Sincronizar bandeiras + técnicos + elencos (TODAS)" que dispara as 3 em sequência.
-
-### 4. Histórico em Copas para as 12 novas
-- Adiciona JSONs curados em `public/data/wc-history/` para: suécia, noruega, escócia, república-tcheca, bósnia, cabo-verde, curaçao, iraque, jordânia, haiti, rd-congo (curaçao/cabo-verde/jordânia = estreantes em 2026).
-- Roda `wc2026-seed-history` + `wc2026-generate-team-seo` para essas 12.
-
-### 5. Tabela completa de jogos (grupos + mata-mata)
-- `wc2026-sync-fixtures` é estendido para também buscar **knockout** da API-Football (round de 32, oitavas, quartas, semi, disputa de 3º, final) — total esperado: 104 jogos (72 grupos + 32 mata-mata no novo formato 48 seleções).
-- Quando a API ainda não tem os confrontos definidos (antes do sorteio/classificação), cria placeholders por `stage` + `round` (ex.: "R32-1", "QF-2") com `home_team_id`/`away_team_id` nulos.
-- Job/edge `wc2026-advance-bracket` rodando após cada update de resultado: ao detectar `status='finished'` num jogo eliminatório, escreve o vencedor no `home/away_team_id` da próxima fase via mapa de chaveamento FIFA 2026 (R32→R16→QF→SF→3º/Final).
-
-### 6. Página `/copa-2026/chaveamento` (bracket visual)
-- Nova rota + componente `BracketView.tsx`:
-  - Layout horizontal clássico (R32 → R16 → QF → SF → Final), com a disputa de 3º em destaque lateral.
-  - Cada "match cell" mostra bandeira + sigla + placar; vencedor avança visualmente (linha conectora destacada).
-  - Estados: `scheduled` (placeholder cinza com data/hora), `live` (pulse), `finished` (placar + vencedor em negrito).
-  - Responsivo: vira accordion vertical por fase no mobile.
-- Reaproveita `Copa2026SelecaoSEO` para JSON-LD `SportsEvent`.
-- Link no menu Copa 2026 ("Chaveamento") e card de destaque na Home da Copa.
-
-### 7. Admin Copa 2026 — novos botões
-- **Normalizar seleções (mesclar duplicatas)**
-- **Sincronizar bandeiras (TODAS)**
-- **Sincronizar técnicos (TODAS)** *(já existe — manter)*
-- **Sincronizar elencos das 12 novas**
-- **Importar jogos mata-mata (API-Football)**
-- **Avançar chaveamento (recomputar vencedores)**
-
-Cada um com barra de progresso + log em `sync_logs`.
-
-## Detalhes técnicos
-
-- **Bandeiras**: FlagCDN é CDN público, sem chave; URL determinística por ISO-2. Cache no `<img loading="lazy">`.
-- **Anti-alucinação histórico**: mesma regra atual — só fatos do JSON curado entram no prompt do Gemini.
-- **Idempotência**: todas as funções usam upsert por chave natural (slug, external_team_id, external_fixture_id, stage+round).
-- **Zero Limits**: paginação em todos os loops admin (sem `.limit()`).
-- **RLS**: tabelas já existem; nenhuma alteração de schema necessária além de uma coluna opcional `bracket_position TEXT` em `world_cup_2026_matches` para o mapa do chaveamento.
-
-## Migração mínima
-```sql
-ALTER TABLE public.world_cup_2026_matches
-  ADD COLUMN IF NOT EXISTS bracket_position TEXT,           -- ex.: 'R16-1', 'QF-3', 'SF-1', 'F', '3P'
-  ADD COLUMN IF NOT EXISTS next_match_id UUID REFERENCES public.world_cup_2026_matches(id),
-  ADD COLUMN IF NOT EXISTS next_match_slot TEXT;            -- 'home' | 'away'
-CREATE INDEX IF NOT EXISTS idx_wc2026_matches_bracket ON public.world_cup_2026_matches(bracket_position);
-```
-
-## Entregáveis (ordem de execução)
-1. Migração (3 colunas no `matches`).
-2. `wc2026-normalize-teams` + execução.
-3. `wc2026-sync-flags` + execução (resolve o "tudo cinza" imediatamente).
-4. Sync de técnicos/elencos das 12 novas.
-5. JSONs históricos + seed + SEO IA das 12 novas.
-6. `wc2026-sync-fixtures` estendido (mata-mata) + `wc2026-advance-bracket`.
-7. `BracketView.tsx` + rota `/copa-2026/chaveamento` + link no menu.
-8. Botões novos no `/admin/copa-2026`.
-
-Confirma que posso executar nessa ordem?
+Aprove o plano para eu executar na ordem: (1) migrations → (2) backfill → (3) jogos/grupos UI → (4) chaveamento → (5) IA em lote → (6) palpites.
