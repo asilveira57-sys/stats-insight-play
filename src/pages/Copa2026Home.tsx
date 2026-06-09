@@ -32,6 +32,8 @@ export default function Copa2026Home() {
             <CountdownTimer target={opening} />
             <div className="flex flex-wrap gap-3 justify-center mt-8">
               <Button asChild><Link to="/copa-2026/jogos"><Calendar className="w-4 h-4 mr-2" />Ver jogos</Link></Button>
+              <Button asChild variant="outline"><Link to="/copa-2026/grupos">Grupos</Link></Button>
+              <Button asChild variant="outline"><Link to="/copa-2026/chaveamento">Chaveamento</Link></Button>
               <Button asChild variant="outline"><Link to="/copa-2026/selecoes"><Users className="w-4 h-4 mr-2" />Seleções</Link></Button>
               <Button asChild variant="outline"><Link to="/copa-2026/posts"><Newspaper className="w-4 h-4 mr-2" />Cobertura</Link></Button>
             </div>
