@@ -66,6 +66,26 @@ export default function Copa2026JogoDetalhe() {
           </section>
         )}
 
+        {relatedNews && relatedNews.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xl font-bold flex items-center gap-2"><Newspaper className="w-5 h-5" /> Conteúdo relacionado</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {relatedNews.map(n => (
+                <Link key={n.id} to={`/noticias/${n.slug ?? n.id}`} className="rounded-lg border border-border bg-card p-4 hover:border-primary/50 transition-colors">
+                  <h3 className="font-semibold mb-1 line-clamp-2">{n.titulo}</h3>
+                  {n.resumo && <p className="text-sm text-muted-foreground line-clamp-2">{n.resumo}</p>}
+                  {n.data_publicacao && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(n.data_publicacao).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+
         {events.length > 0 && (
           <section>
             <h2 className="text-xl font-bold mb-3">Eventos da partida</h2>
