@@ -78,29 +78,32 @@ export default function AdminCopa2026() {
     } finally { setBusy(null); setProgress(""); loadLogs(); }
   };
 
-  const generateAllPreviews = async () => {
+  const generateAllPreviews = async (force = false) => {
     setBusy("previews-all");
-    setProgress("");
+    setProgress("Disparando batch em background...");
     try {
-      const { data: matches } = await supabase
-        .from("world_cup_2026_matches")
-        .select("id, home_team_id, away_team_id, stage, match_date")
-        .order("match_date");
-      const list = (matches ?? []).filter((m: any) => m.home_team_id && m.away_team_id);
-      let ok = 0, fail = 0, skipped = 0;
-      for (let i = 0; i < list.length; i++) {
-        setProgress(`Análise ${i+1}/${list.length}`);
-        try {
-          const { data, error } = await supabase.functions.invoke("wc2026-generate-match-preview", { body: { match_id: list[i].id } });
-          if (error) throw error;
-          if ((data as any)?.skipped) skipped++; else ok++;
-        } catch (e) { fail++; console.error(e); }
-        await new Promise(r => setTimeout(r, 1200));
-      }
-      toast({ title: "Análises geradas", description: `${ok} novas / ${skipped} já existiam / ${fail} falhas` });
+      const { data, error } = await supabase.functions.invoke("wc2026-batch-previews", { body: { force } });
+      if (error) throw error;
+      toast({
+        title: "Batch iniciado",
+        description: `Rodando em background (concorrência 5). Acompanhe na tabela de logs (tipo: ai_preview_batch). ${(data as any)?.log_id ?? ""}`,
+      });
+      // Poll logs every 5s for ~10 minutes
+      let tries = 0;
+      const poll = setInterval(async () => {
+        tries++;
+        const { data: log } = await supabase.from("world_cup_2026_sync_logs")
+          .select("status, error_message, records_processed")
+          .eq("id", (data as any)?.log_id).maybeSingle();
+        if (log) setProgress(`Batch (${log.status}): ${log.error_message ?? `${log.records_processed} ok`}`);
+        if (!log || log.status !== "running" || tries > 120) {
+          clearInterval(poll);
+          loadLogs();
+        }
+      }, 5000);
     } catch (e: any) {
       toast({ title: "Erro previews", description: e.message ?? String(e), variant: "destructive" });
-    } finally { setBusy(null); setProgress(""); loadLogs(); }
+    } finally { setBusy(null); }
   };
 
   if (loading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
