@@ -1,12 +1,15 @@
 import { Layout } from "@/components/layout/Layout";
 import { Helmet } from "react-helmet-async";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useWC2026Match } from "@/hooks/useCopa2026";
 import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { AIAnalysisBlock } from "@/components/copa2026/AIAnalysisBlock";
 import { WC2026PalpiteButton } from "@/components/copa2026/WC2026PalpiteButton";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, Newspaper } from "lucide-react";
+
 
 export default function Copa2026JogoDetalhe() {
   const { id } = useParams<{ id: string }>();
