@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "google/gemini-2.5-pro";
+const MODEL = "gpt-4o";
 const MIN_CHARS = 900;
 const MAX_CHARS = 1800;
 
@@ -19,8 +19,8 @@ REGRAS RÍGIDAS:
 - Saída em JSON estrito, sem markdown.`;
 
 async function callAI(messages: any[]) {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({

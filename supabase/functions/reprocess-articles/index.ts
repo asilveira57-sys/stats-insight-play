@@ -27,11 +27,11 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
-  if (!LOVABLE_API_KEY) {
+  if (!OPENAI_API_KEY) {
     return new Response(
-      JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
+      JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -189,7 +189,7 @@ serve(async (req) => {
           probFora,
           placarCasa,
           placarFora,
-          apiKey: LOVABLE_API_KEY,
+          apiKey: OPENAI_API_KEY,
         });
 
         const wordCountAfter = countWords(newContent.texto);
@@ -414,7 +414,7 @@ Responda APENAS em JSON válido:
 }`;
 
   const response = await fetch(
-    "https://ai.gateway.lovable.dev/v1/chat/completions",
+    "https://api.openai.com/v1/chat/completions",
     {
       method: "POST",
       headers: {
@@ -422,7 +422,7 @@ Responda APENAS em JSON válido:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
