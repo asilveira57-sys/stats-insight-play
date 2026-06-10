@@ -146,8 +146,11 @@ export default function AdminCopa2026() {
           <Button onClick={generateSeoAll} disabled={!!busy} variant="default">
             {busy === "seo-all" ? "Gerando SEO..." : "Gerar resumo IA + SEO de TODAS"}
           </Button>
-          <Button onClick={generateAllPreviews} disabled={!!busy} variant="default">
-            {busy === "previews-all" ? "Gerando previews..." : "🤖 Análise pré-jogo IA para TODOS os jogos"}
+          <Button onClick={() => generateAllPreviews(false)} disabled={!!busy} variant="default">
+            {busy === "previews-all" ? "Gerando previews..." : "🤖 Análise pré-jogo IA — TODOS (background)"}
+          </Button>
+          <Button onClick={() => generateAllPreviews(true)} disabled={!!busy} variant="destructive">
+            {busy === "previews-all" ? "Regerando..." : "♻️ Regerar TODAS as análises (force)"}
           </Button>
         </section>
 
