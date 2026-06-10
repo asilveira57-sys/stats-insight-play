@@ -152,6 +152,34 @@ export default function AdminCopa2026() {
           <Button onClick={() => generateAllPreviews(true)} disabled={!!busy} variant="destructive">
             {busy === "previews-all" ? "Regerando..." : "♻️ Regerar TODAS as análises (force)"}
           </Button>
+          <Button
+            onClick={async () => {
+              setBusy("publish-news");
+              setProgress("Publicando notícias da Fase 1 em background...");
+              try {
+                const { data, error } = await supabase.functions.invoke("wc2026-publish-news-batch", { body: { stage: "group", force: false } });
+                if (error) throw error;
+                const logId = (data as any)?.log_id;
+                toast({ title: "Publicação iniciada", description: `Acompanhe nos logs (news_publish_batch). ${logId ?? ""}` });
+                let tries = 0;
+                const poll = setInterval(async () => {
+                  tries++;
+                  const { data: log } = await supabase.from("world_cup_2026_sync_logs")
+                    .select("status, error_message, records_processed")
+                    .eq("id", logId).maybeSingle();
+                  if (log) setProgress(`Notícias (${log.status}): ${log.error_message ?? `${log.records_processed} ok`}`);
+                  if (!log || log.status !== "running" || tries > 180) { clearInterval(poll); loadLogs(); }
+                }, 5000);
+              } catch (e: any) {
+                toast({ title: "Erro publicação", description: e.message ?? String(e), variant: "destructive" });
+              } finally { setBusy(null); }
+            }}
+            disabled={!!busy}
+            variant="default"
+          >
+            {busy === "publish-news" ? "Publicando..." : "📰 Publicar notícias pré-jogo — Fase 1 (group)"}
+          </Button>
+
         </section>
 
         <section>

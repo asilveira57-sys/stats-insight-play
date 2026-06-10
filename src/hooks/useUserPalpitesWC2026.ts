@@ -24,17 +24,30 @@ export function useCreateUserPalpiteWC2026() {
   return useMutation({
     mutationFn: async ({ matchId, placarCasa, placarFora }: { matchId: string; placarCasa: number; placarFora: number }) => {
       if (!user) throw new Error('Usuário não autenticado');
-      const { data, error } = await supabase
-        .from('palpites_usuarios').upsert({
-          user_id: user.id,
-          partida_id: null,
-          wc2026_match_id: matchId,
-          placar_casa: placarCasa,
-          placar_fora: placarFora,
-        }, { onConflict: 'user_id,wc2026_match_id' })
-        .select().single();
-      if (error) throw error;
-      return data;
+      // Manual upsert: the unique index on (user_id, wc2026_match_id) is partial
+      // (WHERE wc2026_match_id IS NOT NULL), so PostgREST's ON CONFLICT cannot target it.
+      const { data: existing } = await supabase
+        .from('palpites_usuarios').select('id')
+        .eq('user_id', user.id).eq('wc2026_match_id', matchId).maybeSingle();
+      if (existing?.id) {
+        const { data, error } = await supabase
+          .from('palpites_usuarios')
+          .update({ placar_casa: placarCasa, placar_fora: placarFora })
+          .eq('id', existing.id).select().single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from('palpites_usuarios').insert({
+            user_id: user.id,
+            partida_id: null,
+            wc2026_match_id: matchId,
+            placar_casa: placarCasa,
+            placar_fora: placarFora,
+          }).select().single();
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-palpite-wc2026'] });
@@ -42,6 +55,7 @@ export function useCreateUserPalpiteWC2026() {
     },
   });
 }
+
 
 export function useUserPalpitesWC2026All() {
   const { user } = useAuth();
