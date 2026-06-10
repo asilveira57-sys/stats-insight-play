@@ -4115,6 +4115,7 @@ export type Database = {
           tipo: string | null
           titulo: string
           updated_at: string | null
+          world_cup_2026_match_id: string | null
         }
         Insert: {
           autor_id?: string | null
@@ -4135,6 +4136,7 @@ export type Database = {
           tipo?: string | null
           titulo: string
           updated_at?: string | null
+          world_cup_2026_match_id?: string | null
         }
         Update: {
           autor_id?: string | null
@@ -4155,6 +4157,7 @@ export type Database = {
           tipo?: string | null
           titulo?: string
           updated_at?: string | null
+          world_cup_2026_match_id?: string | null
         }
         Relationships: [
           {
@@ -4162,6 +4165,13 @@ export type Database = {
             columns: ["partida_id"]
             isOneToOne: false
             referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "noticias_world_cup_2026_match_id_fkey"
+            columns: ["world_cup_2026_match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
             referencedColumns: ["id"]
           },
         ]
