@@ -15,9 +15,24 @@ export default function Copa2026JogoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useWC2026Match(id);
 
+  const { data: relatedNews } = useQuery({
+    enabled: !!id,
+    queryKey: ["wc2026", "match-news", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("noticias")
+        .select("id, titulo, slug, resumo, data_publicacao, imagem_url")
+        .eq("world_cup_2026_match_id", id!)
+        .eq("publicada", true)
+        .order("data_publicacao", { ascending: false });
+      return data ?? [];
+    },
+  });
+
   if (isLoading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
   if (!data) return <Layout><div className="container mx-auto px-4 py-8">Partida não encontrada.</div></Layout>;
   const { match, lineups, events, analyses } = data;
+
 
   const d = match.match_date ? new Date(match.match_date) : null;
   const dateStr = d ? d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "long", timeStyle: "short" }) : "";
