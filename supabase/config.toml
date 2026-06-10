@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.wc2026-batch-previews]
 verify_jwt = false
+
+[functions.wc2026-publish-news-batch]
+verify_jwt = false

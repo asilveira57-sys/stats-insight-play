@@ -1,20 +1,38 @@
 import { Layout } from "@/components/layout/Layout";
 import { Helmet } from "react-helmet-async";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useWC2026Match } from "@/hooks/useCopa2026";
 import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { AIAnalysisBlock } from "@/components/copa2026/AIAnalysisBlock";
 import { WC2026PalpiteButton } from "@/components/copa2026/WC2026PalpiteButton";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, Newspaper } from "lucide-react";
+
 
 export default function Copa2026JogoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useWC2026Match(id);
 
+  const { data: relatedNews } = useQuery({
+    enabled: !!id,
+    queryKey: ["wc2026", "match-news", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("noticias")
+        .select("id, titulo, slug, resumo, data_publicacao, imagem_url")
+        .eq("world_cup_2026_match_id", id!)
+        .eq("publicada", true)
+        .order("data_publicacao", { ascending: false });
+      return data ?? [];
+    },
+  });
+
   if (isLoading) return <Layout><div className="container mx-auto px-4 py-8">Carregando...</div></Layout>;
   if (!data) return <Layout><div className="container mx-auto px-4 py-8">Partida não encontrada.</div></Layout>;
   const { match, lineups, events, analyses } = data;
+
 
   const d = match.match_date ? new Date(match.match_date) : null;
   const dateStr = d ? d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "long", timeStyle: "short" }) : "";
@@ -47,6 +65,26 @@ export default function Copa2026JogoDetalhe() {
             {analyses.map(a => <AIAnalysisBlock key={a.id} analysis={a} />)}
           </section>
         )}
+
+        {relatedNews && relatedNews.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xl font-bold flex items-center gap-2"><Newspaper className="w-5 h-5" /> Conteúdo relacionado</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {relatedNews.map(n => (
+                <Link key={n.id} to={`/noticias/${n.slug ?? n.id}`} className="rounded-lg border border-border bg-card p-4 hover:border-primary/50 transition-colors">
+                  <h3 className="font-semibold mb-1 line-clamp-2">{n.titulo}</h3>
+                  {n.resumo && <p className="text-sm text-muted-foreground line-clamp-2">{n.resumo}</p>}
+                  {n.data_publicacao && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {new Date(n.data_publicacao).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
 
         {events.length > 0 && (
           <section>
