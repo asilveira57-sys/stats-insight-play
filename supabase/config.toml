@@ -194,3 +194,6 @@ verify_jwt = false
 
 [functions.wc2026-generate-match-preview]
 verify_jwt = false
+
+[functions.wc2026-batch-previews]
+verify_jwt = false
