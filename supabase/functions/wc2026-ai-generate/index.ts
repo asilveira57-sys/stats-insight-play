@@ -12,11 +12,11 @@ Use APENAS os dados reais fornecidos no contexto. Se faltarem dados, sinalize co
 NUNCA invente escalações oficiais — apenas use as marcadas como oficiais.`;
 
 async function callAI(messages: any[]) {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
+    body: JSON.stringify({ model: "gpt-4o-mini", messages }),
   });
   if (!res.ok) {
     if (res.status === 429) throw new Error("Rate limit. Tente em alguns instantes.");
@@ -99,7 +99,7 @@ Gere uma análise jornalística (3-5 parágrafos). ${analysis_type === "predicti
       title, content,
       predicted_home_score: predictedHome, predicted_away_score: predictedAway,
       confidence_score: hasEnoughData ? 0.75 : 0.4,
-      has_enough_data: hasEnoughData, model_used: "google/gemini-2.5-flash",
+      has_enough_data: hasEnoughData, model_used: "gpt-4o-mini",
     }).select().single();
 
     await supabase.from("world_cup_2026_sync_logs").update({

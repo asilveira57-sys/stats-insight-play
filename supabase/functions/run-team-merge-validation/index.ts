@@ -213,22 +213,22 @@ Deno.serve(async (req) => {
     const topOppsB = getTopOpponents(matchesB, removed_team_id, 10);
 
     // Call OpenAI API for analysis
-    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const aiPrompt = buildAIPrompt(
       teamA, teamB, sampleA, sampleB, evidenceResults,
       leaguesA, leaguesB, topOppsA, topOppsB, strict_mode
     );
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You are a football data analyst. Respond ONLY with valid JSON, no markdown." },
           { role: "user", content: aiPrompt },

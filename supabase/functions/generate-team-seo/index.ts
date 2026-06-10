@@ -70,8 +70,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
     const prompt = `Você é um analista esportivo do Statball. Gere um texto descritivo, factual e variado sobre o desempenho do ${team_name}${league_name ? ` no ${league_name}` : ""} na temporada ${season}.
 
@@ -103,14 +103,14 @@ Retorne JSON com as chaves:
 
 NUNCA invente números. Use APENAS os dados acima. Linguagem analítica, neutra (NÃO é apostas).`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Você gera conteúdo SEO factual em português do Brasil. Sempre responda em JSON válido." },
           { role: "user", content: prompt },

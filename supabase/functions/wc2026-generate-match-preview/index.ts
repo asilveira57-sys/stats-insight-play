@@ -18,8 +18,8 @@ const STAGE_PT: Record<string, string> = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return new Response(JSON.stringify({ error: "Missing LOVABLE_API_KEY" }), { status: 500, headers: cors });
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) return new Response(JSON.stringify({ error: "Missing OPENAI_API_KEY" }), { status: 500, headers: cors });
 
   try {
     const { match_id, force } = await req.json();
@@ -81,11 +81,11 @@ Devolva APENAS um JSON estrito com este formato:
   "bullet_facts": ["3 a 5 bullets factuais extraídos dos dados acima"]
 }`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       }),
@@ -109,7 +109,7 @@ Devolva APENAS um JSON estrito com este formato:
       predicted_away_score: parsed.predicted_away_score ?? null,
       confidence_score: parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.6 : 0.4,
       has_enough_data: (parsed.narrative?.length ?? 0) >= 700,
-      model_used: "google/gemini-2.5-flash",
+      model_used: "gpt-4o-mini",
       generated_at: new Date().toISOString(),
     }, { onConflict: "match_id,analysis_type" });
 

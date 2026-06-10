@@ -244,14 +244,14 @@ Responda APENAS em formato JSON válido:
   "texto": "<h2>...</h2><p>...</p>..."
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { 
           role: "system", 
@@ -311,7 +311,7 @@ VISUAL REQUIREMENTS:
 CRITICAL: No text, no logos, no player faces. Pure photographic scene.`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
@@ -357,7 +357,7 @@ VISUAL REQUIREMENTS:
 CRITICAL: No text, no logos, no player faces.`;
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
@@ -425,12 +425,12 @@ serve(async (req) => {
 
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!GEMINI_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
