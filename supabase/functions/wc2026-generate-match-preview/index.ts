@@ -81,15 +81,25 @@ Devolva APENAS um JSON estrito com este formato:
   "bullet_facts": ["3 a 5 bullets factuais extraídos dos dados acima"]
 }`;
 
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+    let aiRes: Response;
+    try {
+      aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          max_tokens: 1500,
+          temperature: 0.7,
+        }),
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     if (!aiRes.ok) {
       const txt = await aiRes.text();
       throw new Error(`AI ${aiRes.status}: ${txt.slice(0, 200)}`);
