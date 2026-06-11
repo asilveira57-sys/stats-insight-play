@@ -1,0 +1,1 @@
+create unique index if not exists world_cup_2026_ai_analyses_match_type_uq on public.world_cup_2026_ai_analyses (match_id, analysis_type) where match_id is not null;
