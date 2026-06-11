@@ -110,7 +110,7 @@ Devolva APENAS um JSON estrito com este formato:
 
     const fullContent = `## ${parsed.headline}\n\n${parsed.narrative}\n\n### Duelo tático\n${parsed.tactical_matchup ?? ""}\n\n### Pontos-chave\n${(parsed.bullet_facts ?? []).map((b: string) => `- ${b}`).join("\n")}`;
 
-    await supabase.from("world_cup_2026_ai_analyses").upsert({
+    const { error: upsertError } = await supabase.from("world_cup_2026_ai_analyses").upsert({
       match_id,
       analysis_type: "pre_match",
       title: parsed.headline ?? `${match.home?.name} x ${match.away?.name}`,
@@ -122,6 +122,7 @@ Devolva APENAS um JSON estrito com este formato:
       model_used: "gpt-4o-mini",
       generated_at: new Date().toISOString(),
     }, { onConflict: "match_id,analysis_type" });
+    if (upsertError) throw new Error(`save analysis failed: ${upsertError.message}`);
 
     return new Response(JSON.stringify({ success: true, length: parsed.narrative?.length ?? 0 }), {
       headers: { ...cors, "Content-Type": "application/json" },
