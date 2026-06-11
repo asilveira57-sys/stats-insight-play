@@ -180,6 +180,34 @@ export default function AdminCopa2026() {
             {busy === "publish-news" ? "Publicando..." : "📰 Publicar notícias pré-jogo — Fase 1 (group)"}
           </Button>
 
+          <Button
+            onClick={async () => {
+              setBusy("regen-everything");
+              setProgress("REGERANDO TUDO (textos + imagens) da Fase 1 em background...");
+              try {
+                const { data, error } = await supabase.functions.invoke("wc2026-publish-news-batch", { body: { stage: "group", force: true } });
+                if (error) throw error;
+                const logId = (data as any)?.log_id;
+                toast({ title: "Regeneração total iniciada", description: `Textos e imagens. Acompanhe nos logs. ${logId ?? ""}` });
+                let tries = 0;
+                const poll = setInterval(async () => {
+                  tries++;
+                  const { data: log } = await supabase.from("world_cup_2026_sync_logs")
+                    .select("status, error_message, records_processed")
+                    .eq("id", logId).maybeSingle();
+                  if (log) setProgress(`Regerando (${log.status}): ${log.error_message ?? `${log.records_processed} ok`}`);
+                  if (!log || log.status !== "running" || tries > 360) { clearInterval(poll); loadLogs(); }
+                }, 8000);
+              } catch (e: any) {
+                toast({ title: "Erro regen", description: e.message ?? String(e), variant: "destructive" });
+              } finally { setBusy(null); }
+            }}
+            disabled={!!busy}
+            variant="destructive"
+          >
+            {busy === "regen-everything" ? "Regerando..." : "♻️ REGERAR TUDO (textos + imagens únicas) — Fase 1"}
+          </Button>
+
         </section>
 
         <section>
