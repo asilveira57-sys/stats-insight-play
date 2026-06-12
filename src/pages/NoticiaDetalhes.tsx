@@ -17,6 +17,7 @@ import { ArticleSEO } from "@/components/news/ArticleSEO";
 import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { RelatedArticles } from "@/components/news/RelatedArticles";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { ensureHtml } from "@/lib/markdownToHtml";
 
 // Estimate reading time based on word count
 function calculateReadingTime(text: string): number {
@@ -141,8 +142,9 @@ export default function NoticiaDetalhes() {
     );
   }
 
-  const readingTime = calculateReadingTime(noticia.texto);
-  const { intro, sections, hasCta, isLongPost } = processContent(noticia.texto);
+  const articleHtml = ensureHtml(noticia.texto);
+  const readingTime = calculateReadingTime(articleHtml);
+  const { intro, sections, hasCta, isLongPost } = processContent(articleHtml);
   const articleUrl = `${window.location.origin}/noticias/${slug}`;
   
   // Determine where to insert mid-article ad (after ~40% of sections)
@@ -161,6 +163,10 @@ export default function NoticiaDetalhes() {
     [&_figure.internal-image_figcaption]:text-sm [&_figure.internal-image_figcaption]:text-muted-foreground [&_figure.internal-image_figcaption]:text-center [&_figure.internal-image_figcaption]:mt-3 [&_figure.internal-image_figcaption]:italic
     [&_strong]:text-foreground [&_strong]:font-semibold
     [&_em]:text-foreground/90
+    [&_table]:w-full [&_table]:my-6 [&_table]:border-collapse [&_table]:text-sm
+    [&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground
+    [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-foreground/85
+    [&_hr]:my-8 [&_hr]:border-border
     [&_.internal-links]:my-10 [&_.internal-links]:p-6 [&_.internal-links]:rounded-xl [&_.internal-links]:bg-muted/30 [&_.internal-links]:border [&_.internal-links]:border-border/50
     [&_.internal-links_h3]:text-lg [&_.internal-links_h3]:font-semibold [&_.internal-links_h3]:mb-4 [&_.internal-links_h3]:text-foreground
     [&_.internal-links_ul]:space-y-2 [&_.internal-links_ul]:list-none [&_.internal-links_ul]:pl-0

@@ -79,6 +79,55 @@ function extractMeta(content: string): { meta: any; body: string } {
   catch { return { meta: {}, body: content }; }
 }
 
+// ---------- Markdown → HTML (articles must be stored as HTML) ----------
+function inlineMd(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:!?]|$)/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function mdToHtml(md: string): string {
+  if (/<(h[1-6]|p|ul|ol|table|div|blockquote)\b/i.test(md)) return md; // already HTML
+  const lines = md.replace(/\r/g, "").split("\n");
+  const out: string[] = [];
+  let para: string[] = [];
+  let list: string[] | null = null;
+  let table: string[][] | null = null;
+
+  const flushPara = () => { if (para.length) { out.push(`<p>${inlineMd(para.join(" "))}</p>`); para = []; } };
+  const flushList = () => { if (list?.length) out.push(`<ul>${list.map(li => `<li>${inlineMd(li)}</li>`).join("")}</ul>`); list = null; };
+  const flushTable = () => {
+    if (table?.length) {
+      const [head, ...rows] = table;
+      out.push(`<table><thead><tr>${head.map(c => `<th>${inlineMd(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inlineMd(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+    }
+    table = null;
+  };
+  const flushAll = () => { flushPara(); flushList(); flushTable(); };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flushAll(); continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { flushAll(); const lvl = Math.max(2, Math.min(h[1].length, 4)); out.push(`<h${lvl}>${inlineMd(h[2])}</h${lvl}>`); continue; }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) { flushAll(); out.push("<hr />"); continue; }
+    if (line.startsWith("|") && line.endsWith("|")) {
+      flushPara(); flushList();
+      const cells = line.split("|").slice(1, -1).map(c => c.trim());
+      if (cells.length && cells.every(c => /^:?-{2,}:?$/.test(c))) continue;
+      (table ??= []).push(cells);
+      continue;
+    }
+    const li = line.match(/^[-*•]\s+(.*)$/);
+    if (li) { flushPara(); flushTable(); (list ??= []).push(li[1]); continue; }
+    flushList(); flushTable();
+    para.push(line);
+  }
+  flushAll();
+  return out.join("\n");
+}
+
 async function generateImage(supabase: any, match: any, meta: any, slug: string): Promise<string | null> {
   if (!OPENAI_API_KEY) return null;
   const homeName = match.home?.name ?? "Seleção A";
@@ -158,9 +207,9 @@ async function publishOne(supabase: any, match: any, force: boolean) {
 
   const slug = `copa-2026-${slugify(match.home?.slug || homeName)}-x-${slugify(match.away?.slug || awayName)}-${match.stage}${match.group_letter ? `-grupo-${match.group_letter.toLowerCase()}` : ""}`;
 
-  const intro = `*${stageLabel}${groupSuffix} · ${dateStr} (horário de Brasília)${match.stadium ? ` · ${match.stadium}${match.city ? ` — ${match.city}` : ""}` : ""}*\n\n`;
-  const cta = `\n\n---\n[Ver detalhes da partida, palpite do usuário e escalações](/copa-2026/jogos/${match.id})`;
-  const texto = intro + body + cta;
+  const introHtml = `<p><em>${stageLabel}${groupSuffix} · ${dateStr} (horário de Brasília)${match.stadium ? ` · ${match.stadium}${match.city ? ` — ${match.city}` : ""}` : ""}</em></p>`;
+  const ctaHtml = `<hr /><p><a href="/copa-2026/jogos/${match.id}">Ver detalhes da partida, palpite do usuário e escalações</a></p>`;
+  const texto = `${introHtml}\n${mdToHtml(body)}\n${ctaHtml}`;
 
   // 2) Generate unique image (force => always regen; otherwise only if missing)
   let imagem_url: string | undefined;
