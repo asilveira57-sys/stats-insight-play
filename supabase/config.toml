@@ -200,3 +200,10 @@ verify_jwt = false
 
 [functions.wc2026-publish-news-batch]
 verify_jwt = false
+
+[functions.wc2026-sync-live]
+verify_jwt = false
+
+[functions.wc2026-generate-postgame]
+verify_jwt = false
+

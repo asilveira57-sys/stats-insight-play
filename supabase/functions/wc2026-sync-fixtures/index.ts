@@ -1,3 +1,5 @@
+// Sincroniza TODOS os fixtures da Copa 2026 (status, placar, palco) a partir da API-Football.
+// Roda a cada 6h via cron, mas pode ser invocada manualmente.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -11,6 +13,19 @@ const WORLD_CUP_LEAGUE_ID = 1;
 function slugify(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+// API-Football fixture status short codes → nosso status interno.
+function mapStatus(short: string): "scheduled" | "live" | "finished" | "postponed" | "cancelled" {
+  const live = ["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT"];
+  const finished = ["FT", "AET", "PEN"];
+  const cancelled = ["CANC", "ABD", "AWD", "WO"];
+  const postponed = ["PST", "TBD"];
+  if (live.includes(short)) return "live";
+  if (finished.includes(short)) return "finished";
+  if (cancelled.includes(short)) return "cancelled";
+  if (postponed.includes(short)) return "postponed";
+  return "scheduled"; // NS, etc
 }
 
 Deno.serve(async (req) => {
@@ -41,11 +56,11 @@ Deno.serve(async (req) => {
     const fixtures = data.response ?? [];
 
     let processed = 0;
+    const transitionedToFinished: number[] = [];
     for (const fx of fixtures) {
       const homeName = fx.teams.home.name;
       const awayName = fx.teams.away.name;
 
-      // Upsert teams
       const teams: Record<string, string> = {};
       for (const t of [fx.teams.home, fx.teams.away]) {
         const slug = slugify(t.name);
@@ -68,6 +83,22 @@ Deno.serve(async (req) => {
         : /round of 16/i.test(round) ? "r16"
         : "group";
 
+      const newStatus = mapStatus(fx.fixture.status.short);
+
+      // Detect transition scheduled/live → finished to enqueue postgame
+      const { data: prev } = await supabase.from("world_cup_2026_matches")
+        .select("id, status").eq("external_fixture_id", fx.fixture.id).maybeSingle();
+      if (prev && prev.status !== "finished" && newStatus === "finished") {
+        transitionedToFinished.push(fx.fixture.id);
+      }
+
+      // Determinar winner
+      let winner_team_id: string | null = null;
+      if (newStatus === "finished") {
+        if (fx.teams.home.winner === true) winner_team_id = teams[homeName];
+        else if (fx.teams.away.winner === true) winner_team_id = teams[awayName];
+      }
+
       await supabase.from("world_cup_2026_matches").upsert({
         external_fixture_id: fx.fixture.id,
         home_team_id: teams[homeName],
@@ -77,19 +108,42 @@ Deno.serve(async (req) => {
         match_date: fx.fixture.date,
         stadium: fx.fixture.venue?.name ?? null,
         city: fx.fixture.venue?.city ?? null,
-        status: fx.fixture.status.short === "FT" ? "finished" : fx.fixture.status.short === "NS" ? "scheduled" : "live",
+        status: newStatus,
         home_score: fx.goals.home,
         away_score: fx.goals.away,
+        winner_team_id,
+        attendance: fx.fixture.referee ? null : null,
       }, { onConflict: "external_fixture_id" });
       processed++;
     }
 
+    // Disparar pós-jogo para partidas recém-encerradas
+    if (transitionedToFinished.length > 0) {
+      const supaUrl = Deno.env.get("SUPABASE_URL")!;
+      for (const fxId of transitionedToFinished) {
+        const { data: m } = await supabase.from("world_cup_2026_matches")
+          .select("id").eq("external_fixture_id", fxId).maybeSingle();
+        if (m?.id) {
+          // Fire-and-forget
+          fetch(`${supaUrl}/functions/v1/wc2026-generate-postgame`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ match_id: m.id }),
+          }).catch(() => {});
+        }
+      }
+    }
+
     await supabase.from("world_cup_2026_sync_logs").update({
       status: "success", finished_at: new Date().toISOString(),
-      records_processed: processed, payload_snapshot: { total: fixtures.length },
+      records_processed: processed,
+      payload_snapshot: { total: fixtures.length, finished_now: transitionedToFinished.length },
     }).eq("id", logId);
 
-    return new Response(JSON.stringify({ success: true, processed }), {
+    return new Response(JSON.stringify({ success: true, processed, finished_now: transitionedToFinished.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
