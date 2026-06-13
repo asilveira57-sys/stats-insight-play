@@ -17,14 +17,16 @@ export function WC2026PalpiteButton({ match }: { match: any }) {
   const [home, setHome] = useState(existing?.placar_casa ?? 1);
   const [away, setAway] = useState(existing?.placar_fora ?? 1);
 
-  const isClosed = match.status !== "scheduled";
+  // Só mostra o botão se a partida está agendada. Para live/finished, retorna null.
+  if (match.status !== "scheduled") return null;
 
   return (
     <>
-      <Button size="sm" variant="outline" disabled={isClosed} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}>
+      <Button size="sm" variant="outline" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}>
         <Target className="w-3.5 h-3.5 mr-1.5" />
         {existing ? `Seu palpite: ${existing.placar_casa}-${existing.placar_fora}` : "Fazer palpite"}
       </Button>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Palpite — Copa 2026</DialogTitle></DialogHeader>
