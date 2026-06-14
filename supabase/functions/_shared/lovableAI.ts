@@ -185,8 +185,8 @@ export async function generateImage(_apiKey: string, prompt: string): Promise<st
         model: IMAGE_MODEL,
         prompt,
         n: 1,
-        size: "1792x1024",
-        quality: "standard",
+        size: "1536x1024",
+        quality: "low",
       }),
     });
 
