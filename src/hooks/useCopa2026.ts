@@ -100,24 +100,32 @@ export function useWC2026Overview() {
   return useQuery({
     queryKey: ["wc2026", "overview"],
     queryFn: async () => {
+      const now = new Date();
       const today = new Date(); today.setHours(0,0,0,0);
       const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-      const [todayMatches, nextMatch, posts] = await Promise.all([
-        supabase.from("world_cup_2026_matches")
-          .select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)")
+      const baseSelect = "*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)";
+      const [todayMatches, nextMatches, liveMatches, lastResults, posts] = await Promise.all([
+        supabase.from("world_cup_2026_matches").select(baseSelect)
           .gte("match_date", today.toISOString()).lt("match_date", tomorrow.toISOString())
           .order("match_date"),
-        supabase.from("world_cup_2026_matches")
-          .select("*, home:world_cup_2026_teams!home_team_id(name,flag_url,slug), away:world_cup_2026_teams!away_team_id(name,flag_url,slug)")
-          .gte("match_date", new Date().toISOString()).eq("status", "scheduled")
-          .order("match_date"),
+        supabase.from("world_cup_2026_matches").select(baseSelect)
+          .gte("match_date", now.toISOString()).eq("status", "scheduled")
+          .order("match_date").limit(5),
+        supabase.from("world_cup_2026_matches").select(baseSelect)
+          .eq("status", "live").order("match_date"),
+        supabase.from("world_cup_2026_matches").select(baseSelect)
+          .eq("status", "finished").order("match_date", { ascending: false }).limit(6),
         supabase.from("world_cup_2026_posts").select("*").eq("status","published").order("published_at",{ascending:false}),
       ]);
       return {
         todayMatches: todayMatches.data ?? [],
-        nextMatch: (nextMatch.data ?? [])[0] ?? null,
+        nextMatches: nextMatches.data ?? [],
+        nextMatch: (nextMatches.data ?? [])[0] ?? null,
+        liveMatches: liveMatches.data ?? [],
+        lastResults: lastResults.data ?? [],
         recentPosts: (posts.data ?? []).slice(0, 6),
       };
     },
   });
 }
+

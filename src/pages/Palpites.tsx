@@ -209,6 +209,20 @@ export default function Palpites() {
           </div>
         </div>
 
+        {/* Copa 2026 banner */}
+        <Link to="/copa-2026/palpites-ia" className="block mb-8 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-4 hover:border-primary transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-sm">Copa do Mundo 2026 — Palpites IA em lote</div>
+              <div className="text-xs text-muted-foreground">Veja os 104 jogos com placar previsto, confiança e taxa de acerto · exportação em CSV.</div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-primary flex-shrink-0" />
+          </div>
+        </Link>
+
         {/* Tabs */}
         <Tabs defaultValue="predictions" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
