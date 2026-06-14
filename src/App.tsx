@@ -138,6 +138,7 @@ const App = () => (
             <Route path="/copa-2026/posts" element={<Copa2026Posts />} />
             <Route path="/copa-2026/chaveamento" element={<Copa2026Chaveamento />} />
             <Route path="/copa-2026/grupos" element={<Copa2026Grupos />} />
+            <Route path="/copa-2026/palpites-ia" element={<Copa2026PalpitesIA />} />
             <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
