@@ -7,7 +7,7 @@ const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 
 const TEXT_MODEL = "gpt-4o-mini";
-const IMAGE_MODEL = "dall-e-3";
+const IMAGE_MODEL = "gpt-image-1";
 
 // Mapeamento de modelos antigos (Lovable Gateway) -> OpenAI
 function mapModel(model?: string): string {
