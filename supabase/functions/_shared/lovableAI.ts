@@ -7,7 +7,7 @@ const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 
 const TEXT_MODEL = "gpt-4o-mini";
-const IMAGE_MODEL = "dall-e-3";
+const IMAGE_MODEL = "gpt-image-1";
 
 // Mapeamento de modelos antigos (Lovable Gateway) -> OpenAI
 function mapModel(model?: string): string {
@@ -175,7 +175,6 @@ export async function generateImage(_apiKey: string, prompt: string): Promise<st
   }
 
   try {
-    // DALL·E 3 não aceita 16:9 puro — usamos 1792x1024 (≈16:9 widescreen)
     const response = await fetch(OPENAI_IMAGE_URL, {
       method: "POST",
       headers: {
@@ -186,9 +185,8 @@ export async function generateImage(_apiKey: string, prompt: string): Promise<st
         model: IMAGE_MODEL,
         prompt,
         n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        response_format: "b64_json",
+        size: "1536x1024",
+        quality: "low",
       }),
     });
 
@@ -198,17 +196,27 @@ export async function generateImage(_apiKey: string, prompt: string): Promise<st
       if (response.status === 429) throw new Error("RATE_LIMIT");
       if (response.status === 402 || response.status === 401) throw new Error("CREDITS_EXHAUSTED");
       if (response.status === 400 && errorText.includes("insufficient_quota")) throw new Error("CREDITS_EXHAUSTED");
-      // 400 com erro de "content_policy_violation" — apenas pula sem matar o job
       return null;
     }
 
     const imgData = await response.json();
-    const b64 = imgData.data?.[0]?.b64_json;
-    if (!b64) {
-      console.log("DALL·E retornou sem b64_json");
+    const item = imgData.data?.[0];
+    if (item?.b64_json) return item.b64_json;
+    const url = item?.url;
+    if (!url) {
+      console.log("DALL·E retornou sem b64_json nem url");
       return null;
     }
-    return b64;
+    // Faz fetch da URL e converte em b64
+    const imgRes = await fetch(url);
+    if (!imgRes.ok) {
+      console.error("Falha ao baixar imagem da URL DALL·E:", imgRes.status);
+      return null;
+    }
+    const buf = new Uint8Array(await imgRes.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
+    return btoa(binary);
   } catch (error) {
     if (error instanceof Error && (error.message === "RATE_LIMIT" || error.message === "CREDITS_EXHAUSTED")) {
       throw error;
