@@ -168,18 +168,18 @@ ENTREGUE UM ÚNICO JSON válido (sem markdown wrapper), com este formato:
     }
 
     const slug = slugify(`copa-2026-pos-jogo-${match.home?.slug}-${match.home_score}-${match.away_score}-${match.away?.slug}`);
-    await supabase.from("noticias").upsert({
+    const { error: upErr } = await supabase.from("noticias").upsert({
       titulo: parsed.title,
       slug,
       resumo: parsed.meta_description,
       texto: parsed.html,
       imagem_url: imageUrl,
-      categoria: "Copa 2026",
+      tipo: "noticia",
       publicada: true,
       data_publicacao: new Date().toISOString(),
       world_cup_2026_match_id: match_id,
-      autor: "Statball",
     }, { onConflict: "slug" });
+    if (upErr) throw new Error(`noticias upsert: ${upErr.message}`);
 
     return new Response(JSON.stringify({ success: true, slug, has_image: !!imageUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
