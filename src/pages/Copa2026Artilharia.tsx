@@ -6,6 +6,7 @@ import { useCopa2026Artilharia } from "@/hooks/useCopa2026Artilharia";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCountryFlagUrl } from "@/lib/countryFlags";
 
 export default function Copa2026Artilharia() {
   const { data, isLoading } = useCopa2026Artilharia();
