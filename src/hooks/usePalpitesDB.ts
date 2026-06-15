@@ -241,6 +241,13 @@ const LEAGUE_PRIORITY: Record<string, number> = {
   FL1: 10,
 };
 
+// Códigos API-Football das competições brasileiras (fallback quando pais vier nulo)
+const BR_LEAGUE_CODES = new Set([
+  "BSA","BSB","BSC","BSD","CDB","CBR","CTC","CSL","CGA","CMI","CPA","CSP","CCH",
+  "CCA","CPE","CGB","CGS","CGO","CMS","CPI","CER","CRN","CMA","CSE","CRJ","CAM",
+  "CTO","CES","CPB","CAL",
+]);
+
 export function useLeaguesForPredictions() {
   return useQuery({
     queryKey: ["leagues-predictions"],
@@ -250,7 +257,7 @@ export function useLeaguesForPredictions() {
       futureDate.setDate(futureDate.getDate() + 7);
       const future = futureDate.toISOString().split("T")[0];
 
-      // Distinct league IDs from scheduled matches in next 7 days (capped — index makes this cheap)
+      // Ligas com pelo menos 1 jogo agendado com times definidos
       const { data: matchLeagues, error } = await supabase
         .from("partidas")
         .select("liga_id")
@@ -258,7 +265,8 @@ export function useLeaguesForPredictions() {
         .gte("data", today)
         .lte("data", future)
         .not("liga_id", "is", null)
-        .limit(5000);
+        .not("time_casa_id", "is", null)
+        .not("time_fora_id", "is", null);
       if (error) throw error;
 
       const leagueIds = Array.from(new Set((matchLeagues || []).map((m: any) => m.liga_id).filter(Boolean)));
@@ -277,6 +285,11 @@ export function useLeaguesForPredictions() {
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
+      });
+
+      // Enriquecer pais quando vier nulo (fallback por codigo_api)
+      unique.forEach((l: any) => {
+        if (!l.pais && l.codigo_api && BR_LEAGUE_CODES.has(l.codigo_api)) l.pais = "Brasil";
       });
 
       return unique.sort((a: any, b: any) => {
@@ -299,20 +312,23 @@ export function useLeagueMatchCounts() {
 
       const { data, error } = await supabase
         .from("partidas")
-        .select("ligas:liga_id(codigo_api)")
+        .select("liga_id, ligas:liga_id(codigo_api)")
         .eq("status", "scheduled")
         .gte("data", today.toISOString().split("T")[0])
         .lte("data", futureDate.toISOString().split("T")[0])
-        .limit(5000);
+        .not("time_casa_id", "is", null)
+        .not("time_fora_id", "is", null);
       if (error) throw error;
 
       const counts = new Map<string, number>();
       (data || []).forEach((m: any) => {
         const code = m.ligas?.codigo_api;
         if (code) counts.set(code, (counts.get(code) || 0) + 1);
+        if (m.liga_id) counts.set(m.liga_id, (counts.get(m.liga_id) || 0) + 1);
       });
       return counts;
     },
     staleTime: 5 * 60 * 1000,
   });
 }
+
