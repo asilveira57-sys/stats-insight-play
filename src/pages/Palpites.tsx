@@ -428,7 +428,7 @@ export default function Palpites() {
                       leagues
                         ?.filter((league) => {
                           if (selectedRegion === "all") return true;
-                          const br = isBrazilianLeague(league.pais);
+                          const br = isBrazilianLeague(league.pais, league.codigo_api);
                           return selectedRegion === "BR" ? br : !br;
                         })
                         .map((league) => {
