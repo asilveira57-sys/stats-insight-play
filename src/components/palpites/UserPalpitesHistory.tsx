@@ -387,18 +387,18 @@ export function UserPalpitesHistory() {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Trophy className="w-5 h-5 text-primary" />
           Histórico de Palpites
-          {filteredPalpites && filteredPalpites.length > 0 && (
+          {totalPalpites > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
-              ({filteredPalpites.length} palpites)
+              ({totalPalpites.toLocaleString('pt-BR')} palpites)
             </span>
           )}
         </h3>
 
-        {!filteredPalpites || filteredPalpites.length === 0 ? (
+        {filteredPalpites.length === 0 ? (
           <div className="text-center py-8">
             <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
-              {palpites && palpites.length > 0 
+              {totalPalpites > 0 
                 ? 'Nenhum palpite encontrado no período selecionado.'
                 : 'Você ainda não fez nenhum palpite. Clique em um jogo acima para começar!'}
             </p>
@@ -522,6 +522,14 @@ export function UserPalpitesHistory() {
             })}
           </div>
         )}
+
+        <PaginationBar
+          page={page}
+          pageSize={HISTORY_PAGE_SIZE}
+          total={totalPalpites}
+          onPageChange={setPage}
+          className="mt-4"
+        />
       </div>
     </div>
   );
