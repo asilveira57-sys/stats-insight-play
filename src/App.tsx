@@ -38,6 +38,7 @@ import AdminAnalyticsIntegrations from "./pages/AdminAnalyticsIntegrations";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminSlugs from "./pages/AdminSlugs";
 import AdminTeams from "./pages/AdminTeams";
+import AdminTeamCurriculum from "./pages/AdminTeamCurriculum";
 import AdminDataQuality from "./pages/AdminDataQuality";
 import AdminUserProfiles from "./pages/AdminUserProfiles";
 import AdminUserDetail from "./pages/AdminUserDetail";
