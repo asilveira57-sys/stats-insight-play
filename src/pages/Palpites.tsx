@@ -36,15 +36,20 @@ import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHasActiveAccess } from "@/hooks/usePayments";
 import { useToast } from "@/hooks/use-toast";
 import { LeagueLogo } from "@/components/ui/LeagueLogo";
 
-const isBrazilianLeague = (pais: string | null | undefined) =>
-  pais === "Brasil" || pais === "Brazil";
+const BR_LEAGUE_CODES_UI = new Set([
+  "BSA","BSB","BSC","BSD","CDB","CBR","CTC","CSL","CGA","CMI","CPA","CSP","CCH",
+  "CCA","CPE","CGB","CGS","CGO","CMS","CPI","CER","CRN","CMA","CSE","CRJ","CAM",
+  "CTO","CES","CPB","CAL",
+]);
+const isBrazilianLeague = (pais: string | null | undefined, codigo?: string | null) =>
+  pais === "Brasil" || pais === "Brazil" || (!!codigo && BR_LEAGUE_CODES_UI.has(codigo));
 
 export default function Palpites() {
   const { user } = useAuth();
@@ -417,17 +422,25 @@ export default function Palpites() {
                     >
                       Todas
                     </button>
+                    {/* Copa do Mundo 2026 — redireciona pra hub IA dedicado */}
+                    <Link
+                      to="/copa-2026/palpites-ia"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-amber-500/20 to-primary/20 hover:from-amber-500/30 hover:to-primary/30 border border-amber-500/40 text-foreground"
+                    >
+                      🏆 <span className="hidden sm:inline">Copa do Mundo 2026</span>
+                      <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-amber-500/30 text-amber-200">IA</span>
+                    </Link>
                     {loadingLeagues ? (
                       <Skeleton className="h-9 w-32" />
                     ) : (
                       leagues
                         ?.filter((league) => {
                           if (selectedRegion === "all") return true;
-                          const br = isBrazilianLeague(league.pais);
+                          const br = isBrazilianLeague(league.pais, league.codigo_api);
                           return selectedRegion === "BR" ? br : !br;
                         })
                         .map((league) => {
-                        const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || 0;
+                        const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || leagueMatchCounts?.get(league.id) || 0;
                         const isSelected = selectedLeague === league.id;
                         return (
                           <button
