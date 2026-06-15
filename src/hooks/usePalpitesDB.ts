@@ -78,24 +78,40 @@ function buildPrediction(
   awayStats: TeamStatsRow | undefined,
   palpiteId: string | undefined
 ): Prediction | null {
-  if (!homeInfo || !awayInfo || !homeStats || !awayStats) return null;
-  if (homeStats.total_matches < 1 || awayStats.total_matches < 1) return null;
+  if (!homeInfo || !awayInfo) return null;
 
-  const homeAvgScored = homeStats.goals_scored / Math.max(1, homeStats.total_matches);
-  const homeAvgConceded = homeStats.goals_conceded / Math.max(1, homeStats.total_matches);
-  const awayAvgScored = awayStats.goals_scored / Math.max(1, awayStats.total_matches);
-  const awayAvgConceded = awayStats.goals_conceded / Math.max(1, awayStats.total_matches);
+  // Fallback: se um dos times não tem histórico, usar médias de liga.
+  // Isso garante que TODAS as partidas agendadas apareçam (cards e contador "Todos"
+  // batem com a soma dos chips de liga). A confiança fica baixa nesses casos.
   const leagueAvg = 1.3;
+  const safeHome: TeamStatsRow = (homeStats && homeStats.total_matches > 0) ? homeStats : {
+    team_id: match.time_casa_id, total_matches: 1, wins: 0, draws: 1, losses: 0,
+    goals_scored: leagueAvg, goals_conceded: leagueAvg,
+    home_wins: 0, home_matches: 1, away_wins: 0, away_matches: 0,
+  } as TeamStatsRow;
+  const safeAway: TeamStatsRow = (awayStats && awayStats.total_matches > 0) ? awayStats : {
+    team_id: match.time_fora_id, total_matches: 1, wins: 0, draws: 1, losses: 0,
+    goals_scored: leagueAvg, goals_conceded: leagueAvg,
+    home_wins: 0, home_matches: 0, away_wins: 0, away_matches: 1,
+  } as TeamStatsRow;
+
+  const homeAvgScored = safeHome.goals_scored / Math.max(1, safeHome.total_matches);
+  const homeAvgConceded = safeHome.goals_conceded / Math.max(1, safeHome.total_matches);
+  const awayAvgScored = safeAway.goals_scored / Math.max(1, safeAway.total_matches);
+  const awayAvgConceded = safeAway.goals_conceded / Math.max(1, safeAway.total_matches);
 
   const homeExpected = calculateExpectedGoals(homeAvgScored, homeAvgConceded, awayAvgScored, awayAvgConceded, leagueAvg, true);
   const awayExpected = calculateExpectedGoals(awayAvgScored, awayAvgConceded, homeAvgScored, homeAvgConceded, leagueAvg, false);
 
   const probs = calculateMatchProbabilities(homeExpected, awayExpected);
   const likely = calculateMostLikelyScore(homeExpected, awayExpected);
-  const confidence = calculateConfidence(probs.homeWin, probs.draw, probs.awayWin);
+  const hasRealStats = (homeStats?.total_matches ?? 0) > 0 && (awayStats?.total_matches ?? 0) > 0;
+  const confidence = hasRealStats
+    ? calculateConfidence(probs.homeWin, probs.draw, probs.awayWin)
+    : "low";
 
-  const homeStrength = calculateTeamStrength(homeStats.wins, homeStats.draws, homeStats.losses, homeStats.goals_scored, homeStats.goals_conceded);
-  const awayStrength = calculateTeamStrength(awayStats.wins, awayStats.draws, awayStats.losses, awayStats.goals_scored, awayStats.goals_conceded);
+  const homeStrength = calculateTeamStrength(safeHome.wins, safeHome.draws, safeHome.losses, safeHome.goals_scored, safeHome.goals_conceded);
+  const awayStrength = calculateTeamStrength(safeAway.wins, safeAway.draws, safeAway.losses, safeAway.goals_scored, safeAway.goals_conceded);
 
   return {
     id: match.id,
@@ -126,6 +142,7 @@ function buildPrediction(
     time: formatTime(match.hora),
   };
 }
+
 
 export function usePredictions(options?: {
   leagueId?: string;
