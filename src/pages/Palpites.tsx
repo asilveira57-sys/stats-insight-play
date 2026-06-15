@@ -432,7 +432,7 @@ export default function Palpites() {
                           return selectedRegion === "BR" ? br : !br;
                         })
                         .map((league) => {
-                        const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || 0;
+                        const matchCount = leagueMatchCounts?.get(league.codigo_api || '') || leagueMatchCounts?.get(league.id) || 0;
                         const isSelected = selectedLeague === league.id;
                         return (
                           <button
