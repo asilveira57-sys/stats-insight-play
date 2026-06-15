@@ -135,7 +135,9 @@ export function usePredictions(options?: {
   search?: string;
 }) {
   const { leagueId, confidence, days = 7, maxMatches, search } = options || {};
-  const effectiveMax = maxMatches ?? (leagueId ? 300 : 80);
+  // Sem cap artificial: precisamos do total real para que o contador "Todos"
+  // bata com a soma dos chips de liga. 1500 é teto de segurança.
+  const effectiveMax = maxMatches ?? 1500;
 
   return useQuery({
     queryKey: ["predictions", leagueId, confidence, days, effectiveMax, search ?? null],
