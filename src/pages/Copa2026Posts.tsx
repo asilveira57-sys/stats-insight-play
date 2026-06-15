@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useWC2026Posts } from "@/hooks/useCopa2026";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import stadiumFallback from "@/assets/football-stadium-default.jpg";
 
 export default function Copa2026Posts() {
   const { data, isLoading } = useWC2026Posts();
