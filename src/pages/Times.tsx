@@ -213,7 +213,9 @@ export default function Times() {
             <div>
               <h1 className="text-3xl font-display font-bold">Times</h1>
               <p className="text-muted-foreground">
-                Explore estatísticas, análises e histórico de {totalTimes} clubes e seleções
+                {debouncedSearch.length >= 2
+                  ? `${totalTimes} ${totalTimes === 1 ? "resultado" : "resultados"} para "${debouncedSearch}"`
+                  : `Clubes e seleções em destaque · ${totalTimes} times curados. Use a busca para encontrar qualquer outro.`}
               </p>
             </div>
           </div>
@@ -303,7 +305,7 @@ export default function Times() {
                           <CardContent className="p-4">
                             <div className="flex items-center gap-3">
                               <TeamBadge 
-                                name={time.nome} 
+                                name={cleanTeamName(time.nome)} 
                                 primaryColor={time.cores?.primary}
                                 secondaryColor={time.cores?.secondary}
                                 size="md"
@@ -312,7 +314,7 @@ export default function Times() {
                               
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                                  {time.nome}
+                                  {cleanTeamName(time.nome)}
                                 </h3>
                                 {time.pais && (
                                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
