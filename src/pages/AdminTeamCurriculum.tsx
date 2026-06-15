@@ -157,7 +157,7 @@ export default function AdminTeamCurriculum() {
       }
 
       toast.success("Currículo salvo!");
-      (profile as any).__teamId = null;
+      setLoadedTeamId(null);
       await refetch();
       qc.invalidateQueries({ queryKey: ["team-curriculum"] });
     } catch (e: any) {
