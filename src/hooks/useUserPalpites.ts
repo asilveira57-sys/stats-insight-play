@@ -53,21 +53,52 @@ interface ComparativoResultado {
   sistema_acertou_placar: boolean;
 }
 
-export function useUserPalpites(pageSize = 50, offset = 0) {
+export function useUserPalpites(
+  pageSize = 50,
+  offset = 0,
+  startDate?: string,
+  endDate?: string,
+  confidenceFilter: ConfidenceFilter = 'all'
+) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-palpites', user?.id, pageSize, offset],
+    queryKey: ['user-palpites', user?.id, pageSize, offset, startDate, endDate, confidenceFilter],
     queryFn: async () => {
       if (!user) return [];
 
       const { data, error } = await (supabase as any).rpc('get_user_palpites_history', {
         p_limit: pageSize,
         p_offset: offset,
+        p_start_date: startDate || null,
+        p_end_date: endDate || null,
+        p_confidence: confidenceFilter,
       });
 
       if (error) throw error;
       return (data || []) as UserPalpiteWithMatch[];
+    },
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useUserPalpitesCount(startDate?: string, endDate?: string, confidenceFilter: ConfidenceFilter = 'all') {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-palpites-count', user?.id, startDate, endDate, confidenceFilter],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const { data, error } = await (supabase as any).rpc('get_user_palpites_history_count', {
+        p_start_date: startDate || null,
+        p_end_date: endDate || null,
+        p_confidence: confidenceFilter,
+      });
+
+      if (error) throw error;
+      return Number(data || 0);
     },
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
