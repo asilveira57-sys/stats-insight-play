@@ -92,6 +92,7 @@ import Copa2026Chaveamento from "./pages/Copa2026Chaveamento";
 import Copa2026Grupos from "./pages/Copa2026Grupos";
 import Copa2026PalpitesIA from "./pages/Copa2026PalpitesIA";
 import AdminCopa2026 from "./pages/AdminCopa2026";
+import Copa2026Artilharia from "./pages/Copa2026Artilharia";
 
 const queryClient = new QueryClient();
 
@@ -139,6 +140,7 @@ const App = () => (
             <Route path="/copa-2026/chaveamento" element={<Copa2026Chaveamento />} />
             <Route path="/copa-2026/grupos" element={<Copa2026Grupos />} />
             <Route path="/copa-2026/palpites-ia" element={<Copa2026PalpitesIA />} />
+            <Route path="/copa-2026/artilharia" element={<Copa2026Artilharia />} />
             <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />

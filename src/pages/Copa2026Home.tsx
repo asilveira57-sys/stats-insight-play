@@ -5,7 +5,7 @@ import { GroupsTable } from "@/components/copa2026/GroupsTable";
 import { MatchCard } from "@/components/copa2026/MatchCard";
 import { useWC2026Overview } from "@/hooks/useCopa2026";
 import { Link } from "react-router-dom";
-import { Trophy, Users, Calendar, Newspaper, Sparkles, Radio, Brain, GitBranch } from "lucide-react";
+import { Trophy, Users, Calendar, Newspaper, Sparkles, Radio, Brain, GitBranch, Goal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Copa2026Home() {
@@ -37,6 +37,7 @@ export default function Copa2026Home() {
               <Button asChild variant="outline"><Link to="/copa-2026/chaveamento"><GitBranch className="w-4 h-4 mr-2" />Chaveamento</Link></Button>
               <Button asChild variant="outline"><Link to="/copa-2026/palpites-ia"><Brain className="w-4 h-4 mr-2" />Palpites IA</Link></Button>
               <Button asChild variant="outline"><Link to="/copa-2026/selecoes"><Users className="w-4 h-4 mr-2" />Seleções</Link></Button>
+              <Button asChild variant="outline"><Link to="/copa-2026/artilharia"><Goal className="w-4 h-4 mr-2" />Artilharia</Link></Button>
               <Button asChild variant="outline"><Link to="/copa-2026/posts"><Newspaper className="w-4 h-4 mr-2" />Cobertura</Link></Button>
             </div>
           </div>
