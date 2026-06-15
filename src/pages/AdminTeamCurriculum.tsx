@@ -137,9 +137,8 @@ export default function AdminTeamCurriculum() {
     if (!teamId) return;
     setSaving(true);
     try {
-      const { __teamId, ...profClean } = profile as any;
       await supabase.from("team_profiles").upsert(
-        { team_id: teamId, ...profClean, updated_at: new Date().toISOString() },
+        { team_id: teamId, ...profile, updated_at: new Date().toISOString() },
         { onConflict: "team_id" }
       );
 
