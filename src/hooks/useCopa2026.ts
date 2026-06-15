@@ -121,7 +121,11 @@ export function useWC2026Overview() {
           .eq("status", "live").order("match_date"),
         supabase.from("world_cup_2026_matches").select(baseSelect)
           .eq("status", "finished").order("match_date", { ascending: false }).limit(6),
-        supabase.from("world_cup_2026_posts").select("*").eq("status","published").order("published_at",{ascending:false}),
+        supabase.from("noticias")
+          .select("id, slug, titulo, resumo, imagem_url, data_publicacao")
+          .eq("publicada", true)
+          .or("world_cup_2026_match_id.not.is.null,slug.ilike.copa-2026-%")
+          .order("data_publicacao", { ascending: false }).limit(12),
       ]);
       return {
         todayMatches: todayMatches.data ?? [],
