@@ -6972,6 +6972,22 @@ export type Database = {
           slug: string
         }[]
       }
+      get_user_palpites_history: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          aceitou_sugestao: boolean
+          created_at: string
+          id: string
+          palpite_sistema: Json
+          palpite_sistema_id: string
+          partida: Json
+          partida_id: string
+          placar_casa: number
+          placar_fora: number
+          updated_at: string
+          user_id: string
+        }[]
+      }
       grant_days_to_user: {
         Args: {
           p_days: number
