@@ -422,6 +422,14 @@ export default function Palpites() {
                     >
                       Todas
                     </button>
+                    {/* Copa do Mundo 2026 — redireciona pra hub IA dedicado */}
+                    <Link
+                      to="/copa-2026/palpites-ia"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-amber-500/20 to-primary/20 hover:from-amber-500/30 hover:to-primary/30 border border-amber-500/40 text-foreground"
+                    >
+                      🏆 <span className="hidden sm:inline">Copa do Mundo 2026</span>
+                      <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-amber-500/30 text-amber-200">IA</span>
+                    </Link>
                     {loadingLeagues ? (
                       <Skeleton className="h-9 w-32" />
                     ) : (
