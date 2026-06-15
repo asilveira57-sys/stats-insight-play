@@ -147,7 +147,7 @@ ENTREGUE UM ÚNICO JSON válido (sem markdown wrapper), com este formato:
     const city = pickByHash(HOST_CITIES, seed);
     const angle = pickByHash(ANGLES, seed + "a");
     const light = pickByHash(LIGHTS, seed + "l");
-    const imgPrompt = `Editorial sports photography of a packed football stadium at ${city}, ${angle}, ${light}. Cinematic depth of field, dramatic atmosphere, vivid colors. NO text, NO logos, NO player faces. Wide cover image for sports news article.`;
+    const imgPrompt = `Editorial sports photography of an ASSOCIATION FOOTBALL (SOCCER) match — FIFA World Cup atmosphere — inside a packed soccer stadium in ${city}. Show clearly: green grass pitch with painted white lines (penalty box / center circle), a round black-and-white soccer ball on the grass, a rectangular soccer goal with a white net (NO american football uprights). ${angle}. Lighting: ${light}. Cinematic depth of field, vivid colors, dramatic crowd in the background. STRICTLY EXCLUDE: american football, NFL, helmets, shoulder pads, oval/pointed ball, field goal posts with uprights, rugby, baseball, basketball, cricket, hockey. NO text, NO logos, NO recognizable faces. Wide 16:9 cover image for a soccer news article.`;
 
     let imageUrl: string | null = null;
     try {
