@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useWC2026Posts } from "@/hooks/useCopa2026";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import stadiumFallback from "@/assets/football-stadium-default.jpg";
 
 export default function Copa2026Posts() {
   const { data, isLoading } = useWC2026Posts();
@@ -36,18 +37,14 @@ export default function Copa2026Posts() {
                   to={`/noticias/${p.slug}`}
                   className="group block rounded-xl border border-border bg-card hover:border-primary/60 hover:shadow-lg transition-all overflow-hidden"
                 >
-                  {p.imagem_url ? (
-                    <div className="aspect-[16/9] overflow-hidden bg-muted">
-                      <img
-                        src={p.imagem_url}
-                        alt={p.imagem_alt ?? p.titulo}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                  ) : (
-                    <div className="aspect-[16/9] bg-gradient-to-br from-primary/20 to-primary/5" />
-                  )}
+                  <div className="aspect-[16/9] overflow-hidden bg-muted">
+                    <img
+                      src={p.imagem_url || stadiumFallback}
+                      alt={p.imagem_alt ?? p.titulo}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline" className="text-[10px]">{kind}</Badge>
