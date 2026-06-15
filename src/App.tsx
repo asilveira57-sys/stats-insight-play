@@ -38,6 +38,7 @@ import AdminAnalyticsIntegrations from "./pages/AdminAnalyticsIntegrations";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminSlugs from "./pages/AdminSlugs";
 import AdminTeams from "./pages/AdminTeams";
+import AdminTeamCurriculum from "./pages/AdminTeamCurriculum";
 import AdminDataQuality from "./pages/AdminDataQuality";
 import AdminUserProfiles from "./pages/AdminUserProfiles";
 import AdminUserDetail from "./pages/AdminUserDetail";
@@ -176,6 +177,7 @@ const App = () => (
             <Route path="/admin/privacidade/lgpd" element={<AdminLgpdPage />} />
             <Route path="/admin/slugs" element={<AdminSlugs />} />
             <Route path="/admin/times" element={<AdminTeams />} />
+            <Route path="/admin/times/curriculo" element={<AdminTeamCurriculum />} />
             <Route path="/admin/qualidade-dados" element={<AdminDataQuality />} />
             <Route path="/admin/usuarios" element={<AdminUserProfiles />} />
             <Route path="/admin/usuarios/:userId" element={<AdminUserDetail />} />
