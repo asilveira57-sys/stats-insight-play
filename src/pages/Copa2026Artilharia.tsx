@@ -6,6 +6,7 @@ import { useCopa2026Artilharia } from "@/hooks/useCopa2026Artilharia";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCountryFlagUrl } from "@/lib/countryFlags";
 
 export default function Copa2026Artilharia() {
   const { data, isLoading } = useCopa2026Artilharia();
@@ -84,24 +85,36 @@ export default function Copa2026Artilharia() {
                         </td>
                         <td className="px-3 py-3 font-semibold">{r.player}</td>
                         <td className="px-3 py-3">
-                          {r.team_slug ? (
-                            <Link
-                              to={`/copa-2026/selecoes/${r.team_slug}`}
-                              className="inline-flex items-center gap-2 hover:text-primary"
-                            >
-                              {r.team_flag && (
-                                <img src={r.team_flag} alt={r.team_name} className="w-5 h-5 object-contain" />
-                              )}
-                              <span>{r.team_name}</span>
-                            </Link>
-                          ) : (
-                            <span className="inline-flex items-center gap-2">
-                              {r.team_flag && (
-                                <img src={r.team_flag} alt={r.team_name} className="w-5 h-5 object-contain" />
-                              )}
-                              {r.team_name}
-                            </span>
-                          )}
+                          {(() => {
+                            const flag = getCountryFlagUrl(r.team_name, r.team_flag);
+                            const img = flag ? (
+                              <img
+                                src={flag}
+                                alt={r.team_name}
+                                loading="lazy"
+                                className="w-6 h-4 object-cover rounded-sm border border-border/40 flex-shrink-0"
+                                onError={(e) => {
+                                  const fb = getCountryFlagUrl(r.team_name);
+                                  if (fb && e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                                  else e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : null;
+                            return r.team_slug ? (
+                              <Link
+                                to={`/copa-2026/selecoes/${r.team_slug}`}
+                                className="inline-flex items-center gap-2 hover:text-primary"
+                              >
+                                {img}
+                                <span>{r.team_name}</span>
+                              </Link>
+                            ) : (
+                              <span className="inline-flex items-center gap-2">
+                                {img}
+                                {r.team_name}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-3 text-center font-bold text-lg text-primary">{r.goals}</td>
                         <td className="px-3 py-3 text-center hidden sm:table-cell text-muted-foreground">
