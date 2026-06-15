@@ -1,53 +1,74 @@
+## Causa-raiz (medida em produção)
 
-## Correções Copa 2026 + Página de Palpites
+1. **Gargalo principal — `get_team_stats_bulk` leva ~27s** para os ~878 times dos próximos 7 dias. O `EXPLAIN ANALYZE` mostra 138 mil buffers lidos e `Execution Time: 26.893 ms`. A função agrega TODAS as partidas `finished` do histórico de cada time (banco de 1,32 GB, 13 mil times com jogos), sem janela de tempo. Por isso os cards ficam em skeleton e a troca de liga "trava".
+2. **Contador "Todos / A Fazer" não bate com a soma dos chips** porque os chips contam jogos brutos no banco (585 nos próximos 7d), enquanto `predictions.length` (usado em "Todos" e "A Fazer") só conta jogos cujos DOIS times retornaram stats — `buildPrediction` retorna `null` quando `total_matches < 1`. Centenas de times de ligas amadoras/jovens ficam sem stats → o total cai para ~78.
+3. **Ruído extra**: `useDashboardData` chama uma RPC inexistente `estimated_count` (3× 404 por carregamento). Não trava, mas polui rede e logs.
 
-### 1. Escalação oficial sem nome/número (página do jogo, ex.: Alemanha)
+## O que será feito
 
-**Causa:** `wc2026-sync-live` insere linhas em `world_cup_2026_lineups` mas grava `player_id = NULL` (52 linhas no jogo Alemanha × Curaçao confirmam isso). O componente exibe `l.player?.name`, então só aparecem posição (F/G/M/D) e "—".
+### 1. Materializar estatísticas de times (corrige 95% da lentidão)
+Criar tabela cache `team_stats_cache` (uma linha por time, com `total_matches/wins/draws/losses/goals_scored/goals_conceded/home_*` + `away_*`) populada por função `refresh_team_stats_cache()` agendada via `pg_cron` (1× por hora) e também disparada após `wc2026-sync-live`. Índice `PRIMARY KEY (team_id)`.
 
-**Correção em `supabase/functions/wc2026-sync-live/index.ts`:**
-- Antes de inserir lineups, upsert dos jogadores em `world_cup_2026_players` usando `external_player_id` (id vindo da API-Football) com `name`, `shirt_number`, `position`, `team_id`.
-- Buscar os ids internos por `external_player_id` e popular `lineups.player_id`.
-- Mesmo tratamento para `world_cup_2026_match_events` (que também grava `player_id` nulo — descrição já tem o nome via fallback, mas o id padroniza).
-- Reprocessar manualmente o(s) jogo(s) já finalizados (atualmente só Alemanha × Curaçao) chamando a função.
+Reescrever `get_team_stats_bulk(p_team_ids uuid[])` para um simples `SELECT ... FROM team_stats_cache WHERE team_id = ANY(...)` — passa de 27 s para < 50 ms.
 
-### 2. Página `/palpites` — filtros e lentidão
+### 2. Garantir consistência do contador
+Em `usePredictions` (`src/hooks/usePalpitesDB.ts`), devolver TODAS as predições agendadas mesmo sem stats suficientes, marcando `confidence='low'` e usando médias da liga como fallback (em vez de retornar `null` em `buildPrediction`). Assim:
+- "Todos" passa a refletir os ~585 jogos reais.
+- "A Fazer" = "Todos" − "Com Palpite", igual à soma dos chips.
+- Como a tabela cache cobre 100% dos times com qualquer histórico, o fallback é raro.
 
-**2a. Filtro "Todas / Brasil / Internacional" parece quebrado**
-- O `useLeaguesForPredictions` retorna ligas com `pais` às vezes ausente; quando `pais` é null, `isBrazilianLeague` devolve `false`, então a liga some do filtro "Brasil" e fica em "Internacional" mesmo sendo BR.
-- Correção: usar fallback via `codigo_api` (BSA, BSB, CSA, CDB, etc. → BR) e/ou `slug` quando `pais` estiver vazio; e enriquecer `select` da query para garantir `pais` populado.
+Alternativa, caso fallback não seja desejado: derivar "Todos" diretamente de `leagueMatchCounts` (já é a contagem real do banco) em vez de `predictions.length`, mantendo o filtro visual atual.
 
-**2b. "Listar exclusivamente campeonatos com jogos para palpite"**
-- `useLeaguesForPredictions` já filtra ligas com partidas `scheduled` nos próximos 7 dias, mas o `LeagueMatchCounts` usa join (`ligas:liga_id(codigo_api)`) que pode retornar `null` quando a liga não tem `codigo_api`, gerando ligas listadas sem contador.
-- Correção:
-  - Filtrar ligas com pelo menos 1 jogo agendado **com `time_casa_id` e `time_fora_id` não-nulos** (requisito para gerar palpite).
-  - Ordenar por: ligas com palpite do usuário > prioridade (BSA/PL/CL…) > nº de jogos.
-  - Esconder ligas com 0 jogos no contador final.
+### 3. Limpeza
+Remover o `rpc('estimated_count', ...)` em `src/hooks/useDashboardData.ts` e substituir por `select('id', { count: 'exact', head: true })` — elimina 3 erros 404 por load.
 
-**2c. "Não carrega os cards"**
-- Quando `selectedRegion="all"` + `selectedLeague="all"`, `usePredictions` busca 297 partidas e dispara `get_team_stats_bulk` para ~500 times → lento e estoura.
-- Correção:
-  - Reduzir `maxMatches` default para 60 quando `leagueId === undefined`.
-  - Mostrar Skeleton por liga enquanto carrega (já tem `keepPreviousData`).
-  - Bloquear duplicação: deduplicar `teamIds` antes do RPC (já feito) e usar `staleTime` mais agressivo.
+### 4. Verificação
+- Rodar `EXPLAIN ANALYZE` na nova `get_team_stats_bulk` e confirmar < 100 ms.
+- Abrir `/palpites`, conferir que cards aparecem em < 2 s e que `Todos = soma(chips) = Com Palpite + A Fazer`.
+- Trocar liga e medir tempo até cards renderizarem.
 
-**2d. Copa 2026 não aparece em `/palpites`**
-- Partidas da Copa estão em `world_cup_2026_matches`, não em `partidas`, então jamais entram na listagem.
-- Correção: criar um "merge" no `usePredictions` e `useLeaguesForPredictions`:
-  - Carregar em paralelo as próximas partidas WC2026 (próximos 7 dias) e adicionar uma "liga virtual" `WC` (Copa do Mundo 2026, com logo e bandeira BR-friendly).
-  - Mapear cada match WC2026 para o formato `Prediction` reutilizando placar IA já existente em `world_cup_2026_ai_analyses` (campo `predicted_score`) ou usando placeholders quando não houver.
-  - Ao selecionar a liga `WC`, redirecionar para `/copa-2026/palpites-ia` (já existe), evitando lógica duplicada.
+## Detalhes técnicos
 
-### 3. Arquivos afetados
+```sql
+-- 1) Cache materializado
+CREATE TABLE public.team_stats_cache (
+  team_id uuid PRIMARY KEY REFERENCES public.times(id) ON DELETE CASCADE,
+  total_matches int NOT NULL DEFAULT 0,
+  wins int, draws int, losses int,
+  goals_scored int, goals_conceded int,
+  home_wins int, home_matches int,
+  away_wins int, away_matches int,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.team_stats_cache TO authenticated, anon;
+GRANT ALL ON public.team_stats_cache TO service_role;
+ALTER TABLE public.team_stats_cache ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "team_stats_cache_read" ON public.team_stats_cache FOR SELECT USING (true);
 
+-- 2) Função de refresh (popular tudo de uma vez)
+CREATE OR REPLACE FUNCTION public.refresh_team_stats_cache() ...
+-- INSERT ... ON CONFLICT (team_id) DO UPDATE ...
+
+-- 3) Agendar
+SELECT cron.schedule('refresh-team-stats', '7 * * * *',
+  $$ SELECT public.refresh_team_stats_cache(); $$);
+
+-- 4) Reescrever bulk
+CREATE OR REPLACE FUNCTION public.get_team_stats_bulk(p_team_ids uuid[])
+RETURNS TABLE(...) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT team_id, COALESCE(total_matches,0), COALESCE(wins,0), ...
+  FROM unnest(p_team_ids) u(team_id)
+  LEFT JOIN public.team_stats_cache c USING (team_id);
+$$;
 ```
-supabase/functions/wc2026-sync-live/index.ts   (upsert players + link player_id)
-src/hooks/usePalpitesDB.ts                     (fallback pais, filtros, merge WC2026, limite)
-src/pages/Palpites.tsx                         (skeleton por liga, redirect WC)
-```
 
-Nenhuma alteração em schema/migrations — apenas correções de código e reprocessamento de dados.
+Frontend:
+- `src/hooks/usePalpitesDB.ts`: relaxar `buildPrediction` para aceitar `total_matches=0` usando média de liga (1.3 gols).
+- `src/hooks/useDashboardData.ts`: trocar `rpc('estimated_count', ...)` por `head:true count:'exact'`.
 
-### Fora de escopo
-- Não tocar nos demais módulos (Grupos, Seleções listing, Posts) — já corrigidos nas rodadas anteriores.
-- Sem mudanças na lógica de IA / probabilidades.
+## Resultado esperado
+
+- Carregamento de cards: 7,8 s → ~1 s.
+- Troca de liga: 5–8 s → < 500 ms.
+- Soma dos chips bate com "Todos" e "A Fazer".
+- Zero 404 no console.

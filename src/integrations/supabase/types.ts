@@ -5511,6 +5511,59 @@ export type Database = {
           },
         ]
       }
+      team_stats_cache: {
+        Row: {
+          away_matches: number
+          away_wins: number
+          draws: number
+          goals_conceded: number
+          goals_scored: number
+          home_matches: number
+          home_wins: number
+          losses: number
+          team_id: string
+          total_matches: number
+          updated_at: string
+          wins: number
+        }
+        Insert: {
+          away_matches?: number
+          away_wins?: number
+          draws?: number
+          goals_conceded?: number
+          goals_scored?: number
+          home_matches?: number
+          home_wins?: number
+          losses?: number
+          team_id: string
+          total_matches?: number
+          updated_at?: string
+          wins?: number
+        }
+        Update: {
+          away_matches?: number
+          away_wins?: number
+          draws?: number
+          goals_conceded?: number
+          goals_scored?: number
+          home_matches?: number
+          home_wins?: number
+          losses?: number
+          team_id?: string
+          total_matches?: number
+          updated_at?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_stats_cache_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tecnico_partida: {
         Row: {
           created_at: string | null
@@ -6801,6 +6854,7 @@ export type Database = {
         Args: { p_search?: string; p_status?: string }
         Returns: number
       }
+      estimated_count: { Args: { table_name: string }; Returns: number }
       find_match_by_canonical_key: {
         Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
         Returns: string
@@ -6984,6 +7038,7 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_team_stats_cache: { Args: never; Returns: Json }
       register_search: {
         Args: {
           p_entities?: Json
