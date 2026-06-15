@@ -176,6 +176,7 @@ const App = () => (
             <Route path="/admin/privacidade/lgpd" element={<AdminLgpdPage />} />
             <Route path="/admin/slugs" element={<AdminSlugs />} />
             <Route path="/admin/times" element={<AdminTeams />} />
+            <Route path="/admin/times/curriculo" element={<AdminTeamCurriculum />} />
             <Route path="/admin/qualidade-dados" element={<AdminDataQuality />} />
             <Route path="/admin/usuarios" element={<AdminUserProfiles />} />
             <Route path="/admin/usuarios/:userId" element={<AdminUserDetail />} />
