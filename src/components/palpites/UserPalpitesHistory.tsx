@@ -114,7 +114,7 @@ export function UserPalpitesHistory() {
     );
   }
 
-  if (isLoading || loadingCount) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -387,7 +387,7 @@ export function UserPalpitesHistory() {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Trophy className="w-5 h-5 text-primary" />
           Histórico de Palpites
-          {totalPalpites > 0 && (
+          {!loadingCount && totalPalpites > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
               ({totalPalpites.toLocaleString('pt-BR')} palpites)
             </span>
@@ -523,13 +523,15 @@ export function UserPalpitesHistory() {
           </div>
         )}
 
-        <PaginationBar
-          page={page}
-          pageSize={HISTORY_PAGE_SIZE}
-          total={totalPalpites}
-          onPageChange={setPage}
-          className="mt-4"
-        />
+        {!loadingCount && (
+          <PaginationBar
+            page={page}
+            pageSize={HISTORY_PAGE_SIZE}
+            total={totalPalpites}
+            onPageChange={setPage}
+            className="mt-4"
+          />
+        )}
       </div>
     </div>
   );
