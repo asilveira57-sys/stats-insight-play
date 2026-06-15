@@ -124,7 +124,7 @@ export default function AdminTeamCurriculum() {
       if (!data?.success) throw new Error(data?.error || "Falha na geração");
       toast.success(`Currículo gerado: ${data.titles_count} títulos, ${data.participations_count} participações`);
       // refresh
-      (profile as any).__teamId = null;
+      setLoadedTeamId(null);
       await refetch();
     } catch (e: any) {
       toast.error(e.message || "Erro ao gerar");
