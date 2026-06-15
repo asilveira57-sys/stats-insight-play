@@ -109,9 +109,20 @@ Deno.serve(async (req) => {
           // Limpar e regravar (idempotente sem necessidade de unique)
           await supabase.from("world_cup_2026_match_events").delete().eq("match_id", our.id);
           if (evs.length) {
+            // Pre-buscar players desta partida pra linkar player_id quando possível
+            const extIdsEv = Array.from(new Set(evs.map((e: any) => e.player?.id).filter(Boolean).map(String)));
+            const idMapEv = new Map<string, string>();
+            if (extIdsEv.length) {
+              const { data: pRows } = await supabase
+                .from("world_cup_2026_players")
+                .select("id, external_player_id")
+                .in("external_player_id", extIdsEv);
+              (pRows ?? []).forEach((r: any) => idMapEv.set(String(r.external_player_id), r.id));
+            }
             const rows = evs.map((e: any) => ({
               match_id: our.id,
               team_id: e.team?.id === fx.teams.home.id ? our.home_team_id : our.away_team_id,
+              player_id: e.player?.id ? (idMapEv.get(String(e.player.id)) ?? null) : null,
               event_type: (e.type ?? "event").toLowerCase(),
               minute: e.time?.elapsed ?? 0,
               extra_minute: e.time?.extra ?? null,
