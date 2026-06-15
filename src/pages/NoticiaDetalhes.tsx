@@ -220,30 +220,38 @@ export default function NoticiaDetalhes() {
         </div>
 
         {/* Hero Image */}
-        {noticia.imagem_url ? (
-          <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden">
-            <img
-              src={noticia.imagem_url}
-              alt={(noticia as any).imagem_alt || noticia.titulo}
-              className="w-full h-full object-cover"
-              itemProp="image"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-              width={1200}
-              height={630}
-              onError={(e) => {
-                const el = e.target as HTMLImageElement;
-                el.style.display = "none";
-                el.parentElement!.classList.add("bg-muted/50");
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-          </div>
-        ) : (
-          <div className="relative w-full h-[200px] md:h-[250px] overflow-hidden bg-gradient-to-br from-primary/20 via-muted/30 to-background flex items-center justify-center">
-            <Newspaper className="w-16 h-16 text-muted-foreground/30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        {(() => {
+          const isCopa = noticia.slug?.startsWith("copa-2026-") || (noticia as any).world_cup_2026_match_id;
+          const heroSrc = noticia.imagem_url || (isCopa ? stadiumFallback : null);
+          return heroSrc ? (
+            <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden">
+              <img
+                src={heroSrc}
+                alt={(noticia as any).imagem_alt || noticia.titulo}
+                className="w-full h-full object-cover"
+                itemProp="image"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                width={1200}
+                height={630}
+                onError={(e) => {
+                  const el = e.target as HTMLImageElement;
+                  if (el.src !== window.location.origin + stadiumFallback && !el.src.endsWith(stadiumFallback)) {
+                    el.src = stadiumFallback;
+                  } else {
+                    el.style.display = "none";
+                    el.parentElement!.classList.add("bg-muted/50");
+                  }
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+            </div>
+          ) : (
+            <div className="relative w-full h-[200px] md:h-[250px] overflow-hidden bg-gradient-to-br from-primary/20 via-muted/30 to-background flex items-center justify-center">
+              <Newspaper className="w-16 h-16 text-muted-foreground/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+
           </div>
         )}
 
