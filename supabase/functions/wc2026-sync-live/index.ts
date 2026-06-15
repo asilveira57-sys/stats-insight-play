@@ -81,9 +81,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2) Buscar status atual desses fixtures (uma chamada batch)
-    const ids = list.map((m) => m.external_fixture_id).filter(Boolean).join("-");
-    const fixtures = await apiGet(`/fixtures?ids=${ids}`, apiKey);
+    // 2) Buscar status atual desses fixtures (uma chamada por id ou batch)
+    const idList = list.map((m) => m.external_fixture_id).filter(Boolean);
+    const fixtures = idList.length === 1
+      ? await apiGet(`/fixtures?id=${idList[0]}`, apiKey)
+      : await apiGet(`/fixtures?ids=${idList.join("-")}`, apiKey);
+    console.log("[wc2026-sync-live] candidates:", list.length, "fixtures:", fixtures.length);
 
     const transitionedToFinished: string[] = [];
     let updated = 0;
