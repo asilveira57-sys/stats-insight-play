@@ -251,9 +251,9 @@ export default function NoticiaDetalhes() {
             <div className="relative w-full h-[200px] md:h-[250px] overflow-hidden bg-gradient-to-br from-primary/20 via-muted/30 to-background flex items-center justify-center">
               <Newspaper className="w-16 h-16 text-muted-foreground/30" />
               <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* Content */}
         <div className="container mx-auto px-4 -mt-32 relative z-10">
