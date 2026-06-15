@@ -229,6 +229,7 @@ export function usePredictions(options?: {
 }
 
 const LEAGUE_PRIORITY: Record<string, number> = {
+  WC: 0,
   BSA: 1,
   BSB: 2,
   CLI: 3,
@@ -292,6 +293,24 @@ export function useLeaguesForPredictions() {
         if (!l.pais && l.codigo_api && BR_LEAGUE_CODES.has(l.codigo_api)) l.pais = "Brasil";
       });
 
+      // Incluir Copa do Mundo 2026 como liga virtual se houver jogos agendados
+      const { data: wcMatches } = await supabase
+        .from("world_cup_2026_matches")
+        .select("id")
+        .eq("status", "scheduled")
+        .gte("match_date", `${today}T00:00:00Z`)
+        .lte("match_date", `${future}T23:59:59Z`);
+      if ((wcMatches?.length || 0) > 0) {
+        unique.unshift({
+          id: "WC",
+          nome: "Copa do Mundo 2026",
+          logo_url: null,
+          codigo_api: "WC",
+          pais: "Internacional",
+          slug: "copa-do-mundo-2026",
+        });
+      }
+
       return unique.sort((a: any, b: any) => {
         const pa = LEAGUE_PRIORITY[a.codigo_api || ""] ?? 50;
         const pb = LEAGUE_PRIORITY[b.codigo_api || ""] ?? 50;
@@ -326,6 +345,18 @@ export function useLeagueMatchCounts() {
         if (code) counts.set(code, (counts.get(code) || 0) + 1);
         if (m.liga_id) counts.set(m.liga_id, (counts.get(m.liga_id) || 0) + 1);
       });
+
+      // Contar jogos da Copa 2026
+      const { data: wcData } = await supabase
+        .from("world_cup_2026_matches")
+        .select("id")
+        .eq("status", "scheduled")
+        .gte("match_date", today.toISOString().split("T")[0] + "T00:00:00Z")
+        .lte("match_date", futureDate.toISOString().split("T")[0] + "T23:59:59Z");
+      if ((wcData?.length || 0) > 0) {
+        counts.set("WC", wcData.length);
+      }
+
       return counts;
     },
     staleTime: 5 * 60 * 1000,
