@@ -194,25 +194,38 @@ export function usePredictions(options?: {
       });
       const teamIdArr = Array.from(teamIds);
 
-      // Parallel: teams info, bulk stats, existing palpites
-      const [teamsRes, statsRes, palpitesRes] = await Promise.all([
-        supabase.from("times").select("id, nome, cores").in("id", teamIdArr),
+      // Helper: chunk arrays to avoid URL length limits on .in() filters (GET request line limit)
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+      const teamChunks = chunk(teamIdArr, 100);
+      const matchChunks = chunk(matchIds, 200);
+
+      // Parallel: teams info (chunked), bulk stats (RPC = POST, sem limite de URL), palpites (chunked)
+      const [teamsResults, statsRes, palpitesResults] = await Promise.all([
+        Promise.all(teamChunks.map((ids) =>
+          supabase.from("times").select("id, nome, cores").in("id", ids)
+        )),
         supabase.rpc("get_team_stats_bulk", { p_team_ids: teamIdArr }),
-        supabase.from("palpites").select("id, partida_id").in("partida_id", matchIds),
+        Promise.all(matchChunks.map((ids) =>
+          supabase.from("palpites").select("id, partida_id").in("partida_id", ids)
+        )),
       ]);
 
-      if (teamsRes.error) throw teamsRes.error;
+      for (const r of teamsResults) if (r.error) throw r.error;
       if (statsRes.error) throw statsRes.error;
-      if (palpitesRes.error) throw palpitesRes.error;
+      for (const r of palpitesResults) if (r.error) throw r.error;
 
       const teamInfoMap = new Map<string, TeamInfo>();
-      (teamsRes.data || []).forEach((t: any) => teamInfoMap.set(t.id, t as TeamInfo));
+      teamsResults.forEach((r) => (r.data || []).forEach((t: any) => teamInfoMap.set(t.id, t as TeamInfo)));
 
       const statsMap = new Map<string, TeamStatsRow>();
       (statsRes.data || []).forEach((s: any) => statsMap.set(s.team_id, s as TeamStatsRow));
 
       const palpiteMap = new Map<string, string>();
-      (palpitesRes.data || []).forEach((p: any) => palpiteMap.set(p.partida_id, p.id));
+      palpitesResults.forEach((r) => (r.data || []).forEach((p: any) => palpiteMap.set(p.partida_id, p.id)));
 
       let predictions = matches
         .map((m: any) =>
