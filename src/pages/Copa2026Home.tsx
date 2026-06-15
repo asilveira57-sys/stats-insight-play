@@ -120,10 +120,10 @@ export default function Copa2026Home() {
           <section>
             <h2 className="text-xl font-bold mb-4">Últimos posts</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data!.recentPosts.map((p) => (
-                <Link key={p.id} to={`/copa-2026/posts`} className="block rounded-xl border border-border bg-card p-4 hover:border-primary/60">
-                  <h3 className="font-semibold mb-1 line-clamp-2">{p.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3">{p.excerpt}</p>
+              {data!.recentPosts.map((p: any) => (
+                <Link key={p.id} to={`/noticias/${p.slug}`} className="block rounded-xl border border-border bg-card p-4 hover:border-primary/60">
+                  <h3 className="font-semibold mb-1 line-clamp-2">{p.titulo}</h3>
+                  {p.resumo && <p className="text-sm text-muted-foreground line-clamp-3">{p.resumo}</p>}
                 </Link>
               ))}
             </div>
