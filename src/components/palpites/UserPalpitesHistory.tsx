@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useUserPalpites, useUserAccuracyStats, useSystemAccuracyStats, type ConfidenceFilter } from '@/hooks/useUserPalpites';
+import { useEffect, useState } from 'react';
+import { useUserPalpites, useUserPalpitesCount, useUserAccuracyStats, useSystemAccuracyStats, type ConfidenceFilter } from '@/hooks/useUserPalpites';
 import { calculateConfidence } from '@/lib/poisson';
 import { useAuth } from '@/contexts/AuthContext';
+import { PaginationBar } from '@/components/ui/PaginationBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,8 @@ import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
+const HISTORY_PAGE_SIZE = 25;
+
 export function UserPalpitesHistory() {
   const { user } = useAuth();
   
@@ -39,10 +42,17 @@ export function UserPalpitesHistory() {
     format(new Date(), 'yyyy-MM-dd')
   );
   const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>('all');
+  const [page, setPage] = useState(1);
+  const offset = (page - 1) * HISTORY_PAGE_SIZE;
   
-  const { data: palpites, isLoading } = useUserPalpites();
+  const { data: palpites, isLoading } = useUserPalpites(HISTORY_PAGE_SIZE, offset, startDate, endDate, confidenceFilter);
+  const { data: totalPalpites = 0, isLoading: loadingCount } = useUserPalpitesCount(startDate, endDate, confidenceFilter);
   const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats(startDate, endDate, confidenceFilter);
   const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats(startDate, endDate, confidenceFilter);
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate, confidenceFilter]);
 
   // Quick date presets
   const setDatePreset = (preset: 'week' | 'month' | '3months' | 'year' | 'all') => {
@@ -87,20 +97,7 @@ export function UserPalpitesHistory() {
     low: 'bg-red-500/15 text-red-400 border-red-500/30',
   };
 
-  // Filter palpites by date and confidence
-  const filteredPalpites = palpites?.filter(p => {
-    const matchDate = p.partida?.data;
-    if (!matchDate) return true;
-    if (startDate && matchDate < startDate) return false;
-    if (endDate && matchDate > endDate) return false;
-    
-    if (confidenceFilter !== 'all') {
-      const confidence = getConfidence(p);
-      if (confidence !== confidenceFilter) return false;
-    }
-    
-    return true;
-  });
+  const filteredPalpites = palpites || [];
 
   if (!user) {
     return (
@@ -117,7 +114,7 @@ export function UserPalpitesHistory() {
     );
   }
 
-  if (isLoading || loadingUserStats || loadingSystemStats) {
+  if (isLoading || loadingCount) {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
