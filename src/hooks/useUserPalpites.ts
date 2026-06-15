@@ -53,33 +53,55 @@ interface ComparativoResultado {
   sistema_acertou_placar: boolean;
 }
 
-export function useUserPalpites() {
+export function useUserPalpites(
+  pageSize = 50,
+  offset = 0,
+  startDate?: string,
+  endDate?: string,
+  confidenceFilter: ConfidenceFilter = 'all'
+) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-palpites', user?.id],
+    queryKey: ['user-palpites', user?.id, pageSize, offset, startDate, endDate, confidenceFilter],
     queryFn: async () => {
       if (!user) return [];
 
-      const data = await fetchAllRecords<any>(
-        'palpites_usuarios',
-        `*,
-          partida:partidas(
-            id, data, hora, status, gols_casa, gols_fora,
-            time_casa:times!partidas_time_casa_id_fkey(nome, escudo_url, cores),
-            time_fora:times!partidas_time_fora_id_fkey(nome, escudo_url, cores),
-            liga:ligas(nome, logo_url)
-          ),
-          palpite_sistema:palpites(
-            placar_casa_estimado, placar_fora_estimado,
-            prob_casa, prob_empate, prob_fora
-          )`,
-        (q) => q.eq('user_id', user.id),
-        { column: 'created_at', ascending: false }
-      );
-      return data as unknown as UserPalpiteWithMatch[];
+      const { data, error } = await (supabase as any).rpc('get_user_palpites_history', {
+        p_limit: pageSize,
+        p_offset: offset,
+        p_start_date: startDate || null,
+        p_end_date: endDate || null,
+        p_confidence: confidenceFilter,
+      });
+
+      if (error) throw error;
+      return (data || []) as UserPalpiteWithMatch[];
     },
     enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useUserPalpitesCount(startDate?: string, endDate?: string, confidenceFilter: ConfidenceFilter = 'all') {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-palpites-count', user?.id, startDate, endDate, confidenceFilter],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const { data, error } = await (supabase as any).rpc('get_user_palpites_history_count', {
+        p_start_date: startDate || null,
+        p_end_date: endDate || null,
+        p_confidence: confidenceFilter,
+      });
+
+      if (error) throw error;
+      return Number(data || 0);
+    },
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
