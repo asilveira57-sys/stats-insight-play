@@ -69,7 +69,7 @@ export default function Palpites() {
   const PAGE_SIZE = 24;
 
   const { data: predictions, isLoading: loadingPredictions } = usePredictions({
-    leagueId: selectedLeague !== 'all' ? selectedLeague : undefined,
+    leagueId: selectedLeague !== 'all' && selectedLeague !== 'WC' ? selectedLeague : undefined,
     confidence: selectedConfidence,
     days: 7,
   });
