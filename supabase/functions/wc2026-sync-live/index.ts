@@ -131,26 +131,65 @@ Deno.serve(async (req) => {
         try {
           const lns = await apiGet(`/fixtures/lineups?fixture=${fx.fixture.id}`, apiKey);
           if (lns.length) {
-            await supabase.from("world_cup_2026_lineups").delete().eq("match_id", our.id);
-            const rows: any[] = [];
+            // 1) Upsert players por (team_id, external_player_id) para garantir player_id linkado
+            type ApiP = { player: { id: number; name: string; number: number | null; pos: string | null }; teamUuid: string; isStarter: boolean; formation: string | null };
+            const allPlayers: ApiP[] = [];
             for (const team of lns) {
               const teamUuid = team.team.id === fx.teams.home.id ? our.home_team_id : our.away_team_id;
               for (const p of team.startXI ?? []) {
-                rows.push({
-                  match_id: our.id, team_id: teamUuid,
-                  position: p.player.pos, formation: team.formation,
-                  is_starter: true, is_official: true, source: "api-football",
-                  // player_id deixado nulo; nome via description não disponível neste schema
-                });
+                allPlayers.push({ player: p.player, teamUuid, isStarter: true, formation: team.formation });
               }
               for (const p of team.substitutes ?? []) {
-                rows.push({
-                  match_id: our.id, team_id: teamUuid,
-                  position: p.player.pos, formation: team.formation,
-                  is_starter: false, is_official: true, source: "api-football",
-                });
+                allPlayers.push({ player: p.player, teamUuid, isStarter: false, formation: team.formation });
               }
             }
+
+            // Slug helper para satisfazer unique (team_id, slug)
+            const slugify = (s: string, extId: number) =>
+              s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + `-${extId}`;
+
+            const playerUpserts = allPlayers
+              .filter(ap => ap.player?.id && ap.player?.name)
+              .map(ap => ({
+                team_id: ap.teamUuid,
+                external_player_id: String(ap.player.id),
+                name: ap.player.name,
+                slug: slugify(ap.player.name, ap.player.id),
+                shirt_number: ap.player.number ?? null,
+                position: ap.player.pos ?? null,
+                source: "api-football",
+              }));
+
+            if (playerUpserts.length) {
+              await supabase
+                .from("world_cup_2026_players")
+                .upsert(playerUpserts, { onConflict: "team_id,external_player_id", ignoreDuplicates: false });
+            }
+
+            // 2) Buscar ids internos
+            const teamIds = Array.from(new Set(allPlayers.map(a => a.teamUuid)));
+            const extIds = Array.from(new Set(allPlayers.map(a => String(a.player.id))));
+            const { data: pRows } = await supabase
+              .from("world_cup_2026_players")
+              .select("id, team_id, external_player_id")
+              .in("team_id", teamIds)
+              .in("external_player_id", extIds);
+            const idMap = new Map<string, string>();
+            (pRows ?? []).forEach((r: any) => idMap.set(`${r.team_id}::${r.external_player_id}`, r.id));
+
+            // 3) Regravar lineups com player_id
+            await supabase.from("world_cup_2026_lineups").delete().eq("match_id", our.id);
+            const rows = allPlayers.map(ap => ({
+              match_id: our.id,
+              team_id: ap.teamUuid,
+              player_id: idMap.get(`${ap.teamUuid}::${ap.player.id}`) ?? null,
+              position: ap.player?.pos ?? null,
+              formation: ap.formation,
+              is_starter: ap.isStarter,
+              is_official: true,
+              source: "api-football",
+            }));
             if (rows.length) {
               await supabase.from("world_cup_2026_lineups").insert(rows);
               lineupsSynced += rows.length;
