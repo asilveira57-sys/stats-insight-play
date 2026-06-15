@@ -134,10 +134,11 @@ export function usePredictions(options?: {
   maxMatches?: number;
   search?: string;
 }) {
-  const { leagueId, confidence, days = 7, maxMatches = 300, search } = options || {};
+  const { leagueId, confidence, days = 7, maxMatches, search } = options || {};
+  const effectiveMax = maxMatches ?? (leagueId ? 300 : 80);
 
   return useQuery({
-    queryKey: ["predictions", leagueId, confidence, days, maxMatches, search ?? null],
+    queryKey: ["predictions", leagueId, confidence, days, effectiveMax, search ?? null],
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<Prediction[]> => {
       const today = new Date();
@@ -152,9 +153,11 @@ export function usePredictions(options?: {
         .eq("status", "scheduled")
         .gte("data", fromStr)
         .lte("data", toStr)
+        .not("time_casa_id", "is", null)
+        .not("time_fora_id", "is", null)
         .order("data", { ascending: true })
         .order("hora", { ascending: true })
-        .limit(maxMatches);
+        .limit(effectiveMax);
 
       if (leagueId) mq = mq.eq("liga_id", leagueId);
 
