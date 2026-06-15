@@ -48,15 +48,27 @@ Deno.serve(async (req) => {
   try {
     if (!apiKey) throw new Error("API_FOOTBALL_KEY not configured");
 
-    // 1) Pegar candidatos: live no nosso DB OU scheduled nos próximos 90 minutos OU que deveriam ter começado nas últimas 4h
-    const nowIso = new Date().toISOString();
+    // Modo manual: { match_ids: [uuid,...] } força reprocessar mesmo finalizados
+    let forcedIds: string[] | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (Array.isArray(body?.match_ids) && body.match_ids.length) forcedIds = body.match_ids;
+      } catch { /* sem body */ }
+    }
+
     const in90Iso = new Date(Date.now() + 90 * 60 * 1000).toISOString();
     const back4hIso = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
 
-    const { data: candidates } = await supabase
+    let candidatesQ = supabase
       .from("world_cup_2026_matches")
-      .select("id, external_fixture_id, status, match_date, home_team_id, away_team_id")
-      .or(`status.eq.live,and(status.eq.scheduled,match_date.gte.${back4hIso},match_date.lte.${in90Iso})`);
+      .select("id, external_fixture_id, status, match_date, home_team_id, away_team_id");
+    if (forcedIds) {
+      candidatesQ = candidatesQ.in("id", forcedIds);
+    } else {
+      candidatesQ = candidatesQ.or(`status.eq.live,and(status.eq.scheduled,match_date.gte.${back4hIso},match_date.lte.${in90Iso})`);
+    }
+    const { data: candidates } = await candidatesQ;
 
     const list = candidates ?? [];
     if (list.length === 0) {
