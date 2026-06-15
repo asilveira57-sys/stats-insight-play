@@ -1,74 +1,113 @@
-## Causa-raiz (medida em produção)
+## Diagnóstico
 
-1. **Gargalo principal — `get_team_stats_bulk` leva ~27s** para os ~878 times dos próximos 7 dias. O `EXPLAIN ANALYZE` mostra 138 mil buffers lidos e `Execution Time: 26.893 ms`. A função agrega TODAS as partidas `finished` do histórico de cada time (banco de 1,32 GB, 13 mil times com jogos), sem janela de tempo. Por isso os cards ficam em skeleton e a troca de liga "trava".
-2. **Contador "Todos / A Fazer" não bate com a soma dos chips** porque os chips contam jogos brutos no banco (585 nos próximos 7d), enquanto `predictions.length` (usado em "Todos" e "A Fazer") só conta jogos cujos DOIS times retornaram stats — `buildPrediction` retorna `null` quando `total_matches < 1`. Centenas de times de ligas amadoras/jovens ficam sem stats → o total cai para ~78.
-3. **Ruído extra**: `useDashboardData` chama uma RPC inexistente `estimated_count` (3× 404 por carregamento). Não trava, mas polui rede e logs.
+### 1. Por que `/times` (hub) trava
+A página `src/pages/Times.tsx` faz, **em todas as visitas**:
+- `fetchAllRecords('times', ...)` → puxa **14.042 times** do banco (todos os clubes/seleções importados pelas APIs).
+- `fetchAllRecords('partidas', ...)` filtrando jogos finalizados nos últimos 30 dias → **~2.372 partidas**.
+- `fetchAllRecords('partidas', ...)` filtrando agendados a partir de hoje → **~5.973 partidas**.
+- Renderiza **14 mil cards** simultaneamente no DOM (sem paginação/virtualização), agrupados por região.
 
-## O que será feito
+Resultado: payload de vários MB, JS travado por segundos, layout shift gigantesco. O navegador parece congelado. Esse hub não tem propósito real para o usuário — listar 14k clubes amadores/U20/regionais não ajuda ninguém a encontrar nada.
 
-### 1. Materializar estatísticas de times (corrige 95% da lentidão)
-Criar tabela cache `team_stats_cache` (uma linha por time, com `total_matches/wins/draws/losses/goals_scored/goals_conceded/home_*` + `away_*`) populada por função `refresh_team_stats_cache()` agendada via `pg_cron` (1× por hora) e também disparada após `wc2026-sync-live`. Índice `PRIMARY KEY (team_id)`.
+### 2. Por que aparece "Time não encontrado" em `/times/betim---mg`
+O slug `betim---mg` **existe no banco** (id `0cf8cdd5...`, nome "Betim - MG", 7 partidas). O hook `useTeamBySlug` usa `.single()` na query de `times`. Quando o hub ainda está martelando o banco (ou quando o tab fica em segundo plano), a chamada PostgREST pode retornar erro/timeout, `team` vira `null` e o componente cai no fallback "Time não encontrado". Não é problema de dados — é consequência da sobrecarga gerada pelo hub e da falta de cache/fallback resiliente.
 
-Reescrever `get_team_stats_bulk(p_team_ids uuid[])` para um simples `SELECT ... FROM team_stats_cache WHERE team_id = ANY(...)` — passa de 27 s para < 50 ms.
+Além disso, mesmo carregando, o nome "Betim - MG" viola a convenção do projeto (sufixo de estado proibido — ver memória **Team Naming**) e o time não tem absolutamente nenhum conteúdo curatorial (`team_profiles` está **vazio** — 0 linhas; só **17 de 14.042** times têm `pillar_content` preenchido).
 
-### 2. Garantir consistência do contador
-Em `usePredictions` (`src/hooks/usePalpitesDB.ts`), devolver TODAS as predições agendadas mesmo sem stats suficientes, marcando `confidence='low'` e usando médias da liga como fallback (em vez de retornar `null` em `buildPrediction`). Assim:
-- "Todos" passa a refletir os ~585 jogos reais.
-- "A Fazer" = "Todos" − "Com Palpite", igual à soma dos chips.
-- Como a tabela cache cobre 100% dos times com qualquer histórico, o fallback é raro.
+### 3. Conteúdo hoje vs. o que você quer
+A tabela `times` tem: nome, país, cores, escudo_url, slug, priority_score, total_matches. Existe `team_profiles` (history/stadium/culture/rivalries/legacy) — **vazia**. Existe `pillar_content` em `times` (visão geral, estilo de jogo, desempenho) — preenchido em 17 clubes. **Não há tabela de títulos, participações em campeonatos (estadual/nacional/Conmebol), elenco histórico, fundação, etc.** A página `TimePilar` mostra hoje: hero + jogos/aproveitamento/saldo + visão geral em prosa + estilo de jogo + temporada + forma + próximos jogos + resultados + notícias relacionadas. Não há currículo nem títulos.
 
-Alternativa, caso fallback não seja desejado: derivar "Todos" diretamente de `leagueMatchCounts` (já é a contagem real do banco) em vez de `predictions.length`, mantendo o filtro visual atual.
+---
 
-### 3. Limpeza
-Remover o `rpc('estimated_count', ...)` em `src/hooks/useDashboardData.ts` e substituir por `select('id', { count: 'exact', head: true })` — elimina 3 erros 404 por load.
+## Plano
 
-### 4. Verificação
-- Rodar `EXPLAIN ANALYZE` na nova `get_team_stats_bulk` e confirmar < 100 ms.
-- Abrir `/palpites`, conferir que cards aparecem em < 2 s e que `Todos = soma(chips) = Com Palpite + A Fazer`.
-- Trocar liga e medir tempo até cards renderizarem.
+### Parte A — Curadoria de quais times merecem página rica
+Em vez de tentar criar 14 mil páginas, qualificar um subconjunto:
 
-## Detalhes técnicos
+1. **Definir critério de "time elegível"** (campo já existente: `status='active'` e `priority_score`):
+   - Clubes com `total_matches >= 50` **ou** `priority_score >= 70` **ou** que apareceram em campeonatos nacionais/Conmebol/Copa do Mundo no banco.
+   - Estimativa: ~300-800 clubes profissionais reais (Brasil + grandes ligas + seleções) em vez de 14k.
+2. Times fora desse recorte continuam acessíveis por slug (rota viva), mas:
+   - **Não** aparecem no hub `/times`.
+   - Exibem uma página enxuta (header + jogos + aviso "Perfil completo em breve").
 
-```sql
--- 1) Cache materializado
-CREATE TABLE public.team_stats_cache (
-  team_id uuid PRIMARY KEY REFERENCES public.times(id) ON DELETE CASCADE,
-  total_matches int NOT NULL DEFAULT 0,
-  wins int, draws int, losses int,
-  goals_scored int, goals_conceded int,
-  home_wins int, home_matches int,
-  away_wins int, away_matches int,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT ON public.team_stats_cache TO authenticated, anon;
-GRANT ALL ON public.team_stats_cache TO service_role;
-ALTER TABLE public.team_stats_cache ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "team_stats_cache_read" ON public.team_stats_cache FOR SELECT USING (true);
+### Parte B — Consertar o hub `/times` (lentidão)
+1. Trocar `fetchAllRecords('times')` por uma query paginada server-side **só dos times elegíveis** (filtro por `priority_score` ou flag `is_featured`), ordenada por prioridade. Carregar máximo de **~60 cards inicialmente**, com "carregar mais" ou paginação por região.
+2. Remover as duas queries gigantes de partidas (recentes + próximas) do hub. Quem quer ver jogos abre a página do time. Se for indispensável, fazer uma única RPC agregada (`SELECT time_id, count(*) FILTER (...) ...`) retornando só os IDs visíveis na página.
+3. Adicionar busca server-side (debounce) por `nome ILIKE %termo%` para que o usuário ache qualquer time mesmo fora do recorte destacado.
 
--- 2) Função de refresh (popular tudo de uma vez)
-CREATE OR REPLACE FUNCTION public.refresh_team_stats_cache() ...
--- INSERT ... ON CONFLICT (team_id) DO UPDATE ...
+### Parte C — Consertar `/times/:slug` (erro "não encontrado")
+1. Trocar `.single()` por `.maybeSingle()` para distinguir "0 linhas" de "erro de rede".
+2. Em caso de erro de rede, mostrar mensagem "Erro ao carregar — tente novamente" com botão de retry, **não** "Time não encontrado".
+3. `fetchAllRecords` para histórico do time → trocar por query única paginada (50 últimos jogos) com botão "ver mais". Time como Betim só tem 7 jogos, mas Flamengo tem milhares — fetchAllRecords pode pegar 5k+ partidas.
+4. Aplicar a convenção de nome ("Betim - MG" → exibir "Betim"; já há memória **Team Naming**).
 
--- 3) Agendar
-SELECT cron.schedule('refresh-team-stats', '7 * * * *',
-  $$ SELECT public.refresh_team_stats_cache(); $$);
+### Parte D — Novo padrão "página bonita" por clube (currículo)
+Criar duas novas tabelas e estender `team_profiles`:
 
--- 4) Reescrever bulk
-CREATE OR REPLACE FUNCTION public.get_team_stats_bulk(p_team_ids uuid[])
-RETURNS TABLE(...) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT team_id, COALESCE(total_matches,0), COALESCE(wins,0), ...
-  FROM unnest(p_team_ids) u(team_id)
-  LEFT JOIN public.team_stats_cache c USING (team_id);
-$$;
+```text
+public.team_titles
+  team_id (fk times)
+  competition_name        ex: "Campeonato Brasileiro Série A"
+  competition_tier        enum: estadual | regional | nacional | continental | mundial | amistoso
+  edition_year            ex: 2019
+  position                ex: "Campeão" | "Vice" | "3º"
+  confederation           ex: CBF, Conmebol, FIFA, FMF
+  source_url
+
+public.team_participations
+  team_id
+  competition_name
+  competition_tier
+  year_from, year_to
+  total_editions
+  notes
+
+team_profiles (já existe — preencher)
+  history_text, stadium_text, culture_text, rivalries_text, legacy_text
+  + founded_year, stadium_name, stadium_capacity, mascot, anthem_url
 ```
 
-Frontend:
-- `src/hooks/usePalpitesDB.ts`: relaxar `buildPrediction` para aceitar `total_matches=0` usando média de liga (1.3 gols).
-- `src/hooks/useDashboardData.ts`: trocar `rpc('estimated_count', ...)` por `head:true count:'exact'`.
+Estrutura da nova página (`TimePilar` reformulada):
+```text
+┌─────────────────────────────────────────────────┐
+│ HERO: badge + nome + país/estado + fundado em   │
+│       + estádio + cores oficiais (faixa)        │
+├─────────────────────────────────────────────────┤
+│ CURRÍCULO (tabs ou seções)                      │
+│  • Títulos por categoria                        │
+│      Estadual: 35 (último 2024)                 │
+│      Nacional: 8                                │
+│      Continental (Conmebol): 3                  │
+│      Mundial: 1                                 │
+│  • Participações (Brasileirão, Libertadores...) │
+├─────────────────────────────────────────────────┤
+│ DESEMPENHO ATUAL (já existe)                    │
+│  Jogos, aproveitamento, forma, próximos jogos   │
+├─────────────────────────────────────────────────┤
+│ HISTÓRIA / ESTÁDIO / RIVALIDADES / LEGADO       │
+│  (texto curatorial — team_profiles)             │
+├─────────────────────────────────────────────────┤
+│ NOTÍCIAS RELACIONADAS + análises                │
+└─────────────────────────────────────────────────┘
+```
 
-## Resultado esperado
+### Parte E — Como popular o currículo
+1. **Manual via admin** (`/admin/times`): formulários para títulos/participações dos ~50-100 grandes clubes brasileiros primeiro (Flamengo, Palmeiras, Corinthians, São Paulo, Cruzeiro, Atlético-MG, Grêmio, Internacional, Santos, Botafogo, Fluminense, Vasco, Bahia, Atlético-PR, Athletico, Fortaleza, Ceará, Sport, Náutico, etc.).
+2. **Geração assistida por IA** (Lovable AI Gateway / Gemini) opcional: edge function `generate-team-curriculum` que recebe `team_id`, faz prompt estruturado e devolve JSON com títulos por categoria, que o admin revisa antes de publicar.
+3. Para seleções, importar do `world_cup_2026_teams` que já tem `titles_count`, `participations_count`, `historical_summary`, `best_campaign`.
 
-- Carregamento de cards: 7,8 s → ~1 s.
-- Troca de liga: 5–8 s → < 500 ms.
-- Soma dos chips bate com "Todos" e "A Fazer".
-- Zero 404 no console.
+### Parte F — Ordem de execução sugerida
+1. Hotfix urgente: `.maybeSingle()` + filtragem de times elegíveis no hub + remoção das queries de partidas no hub → resolve a lentidão e o "não encontrado".
+2. Criar tabelas `team_titles` e `team_participations` + grants/RLS.
+3. Reformular `TimePilar` com a nova estrutura (sem dados ainda → mostra "Em construção" nas seções vazias).
+4. Tela admin para preencher currículo manualmente.
+5. (Opcional) Edge function de geração via IA.
+
+---
+
+## Decisões que preciso de você antes de implementar
+
+1. **Recorte do hub:** ok limitar `/times` a "times com perfil curado" (~300-800 clubes/seleções) e deixar o resto acessível só por busca/URL direta? Ou prefere paginação simples mantendo todos os 14k visíveis?
+2. **Currículo:** começamos preenchendo manualmente os ~50 grandes clubes brasileiros, ou já criamos o gerador via IA junto?
+3. **Escopo da reforma da página:** mantemos as seções atuais (visão geral, estilo de jogo, próximos jogos) e **adicionamos** currículo/história, ou refazemos a página inteira do zero com nova identidade visual?

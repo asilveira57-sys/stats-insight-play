@@ -5416,36 +5416,101 @@ export type Database = {
         }
         Relationships: []
       }
+      team_participations: {
+        Row: {
+          competition_name: string
+          competition_tier: string
+          created_at: string
+          id: string
+          notes: string | null
+          team_id: string
+          total_editions: number | null
+          updated_at: string
+          year_from: number | null
+          year_to: number | null
+        }
+        Insert: {
+          competition_name: string
+          competition_tier: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          team_id: string
+          total_editions?: number | null
+          updated_at?: string
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Update: {
+          competition_name?: string
+          competition_tier?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          team_id?: string
+          total_editions?: number | null
+          updated_at?: string
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_participations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_profiles: {
         Row: {
+          anthem_url: string | null
           created_at: string
           culture_text: string | null
+          founded_year: number | null
           history_text: string | null
           id: string
           legacy_text: string | null
+          mascot: string | null
+          nickname: string | null
           rivalries_text: string | null
+          stadium_capacity: number | null
+          stadium_name: string | null
           stadium_text: string | null
           team_id: string
           updated_at: string
         }
         Insert: {
+          anthem_url?: string | null
           created_at?: string
           culture_text?: string | null
+          founded_year?: number | null
           history_text?: string | null
           id?: string
           legacy_text?: string | null
+          mascot?: string | null
+          nickname?: string | null
           rivalries_text?: string | null
+          stadium_capacity?: number | null
+          stadium_name?: string | null
           stadium_text?: string | null
           team_id: string
           updated_at?: string
         }
         Update: {
+          anthem_url?: string | null
           created_at?: string
           culture_text?: string | null
+          founded_year?: number | null
           history_text?: string | null
           id?: string
           legacy_text?: string | null
+          mascot?: string | null
+          nickname?: string | null
           rivalries_text?: string | null
+          stadium_capacity?: number | null
+          stadium_name?: string | null
           stadium_text?: string | null
           team_id?: string
           updated_at?: string
@@ -5559,6 +5624,56 @@ export type Database = {
             foreignKeyName: "team_stats_cache_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: true
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_titles: {
+        Row: {
+          competition_name: string
+          competition_tier: string
+          confederation: string | null
+          created_at: string
+          edition_year: number | null
+          id: string
+          notes: string | null
+          position: string
+          source_url: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          competition_name: string
+          competition_tier: string
+          confederation?: string | null
+          created_at?: string
+          edition_year?: number | null
+          id?: string
+          notes?: string | null
+          position?: string
+          source_url?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          competition_name?: string
+          competition_tier?: string
+          confederation?: string | null
+          created_at?: string
+          edition_year?: number | null
+          id?: string
+          notes?: string | null
+          position?: string
+          source_url?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_titles_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "times"
             referencedColumns: ["id"]
           },
