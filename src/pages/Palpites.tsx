@@ -36,15 +36,20 @@ import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHasActiveAccess } from "@/hooks/usePayments";
 import { useToast } from "@/hooks/use-toast";
 import { LeagueLogo } from "@/components/ui/LeagueLogo";
 
-const isBrazilianLeague = (pais: string | null | undefined) =>
-  pais === "Brasil" || pais === "Brazil";
+const BR_LEAGUE_CODES_UI = new Set([
+  "BSA","BSB","BSC","BSD","CDB","CBR","CTC","CSL","CGA","CMI","CPA","CSP","CCH",
+  "CCA","CPE","CGB","CGS","CGO","CMS","CPI","CER","CRN","CMA","CSE","CRJ","CAM",
+  "CTO","CES","CPB","CAL",
+]);
+const isBrazilianLeague = (pais: string | null | undefined, codigo?: string | null) =>
+  pais === "Brasil" || pais === "Brazil" || (!!codigo && BR_LEAGUE_CODES_UI.has(codigo));
 
 export default function Palpites() {
   const { user } = useAuth();
