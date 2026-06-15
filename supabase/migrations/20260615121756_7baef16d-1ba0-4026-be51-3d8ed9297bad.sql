@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS world_cup_2026_players_team_extid_key ON public.world_cup_2026_players (team_id, external_player_id) WHERE external_player_id IS NOT NULL;
