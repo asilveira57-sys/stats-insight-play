@@ -47,8 +47,8 @@ export function UserPalpitesHistory() {
   
   const { data: palpites, isLoading } = useUserPalpites(HISTORY_PAGE_SIZE, offset, startDate, endDate, confidenceFilter);
   const { data: totalPalpites = 0, isLoading: loadingCount } = useUserPalpitesCount(startDate, endDate, confidenceFilter);
-  const { data: userStats, isLoading: loadingUserStats } = useUserAccuracyStats(startDate, endDate, confidenceFilter);
-  const { data: systemStats, isLoading: loadingSystemStats } = useSystemAccuracyStats(startDate, endDate, confidenceFilter);
+  const { data: userStats } = useUserAccuracyStats(startDate, endDate, confidenceFilter);
+  const { data: systemStats } = useSystemAccuracyStats(startDate, endDate, confidenceFilter);
 
   useEffect(() => {
     setPage(1);
