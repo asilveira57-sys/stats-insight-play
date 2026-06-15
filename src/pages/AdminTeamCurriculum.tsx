@@ -196,7 +196,7 @@ export default function AdminTeamCurriculum() {
                     key={t.id}
                     size="sm"
                     variant={teamId === t.id ? "default" : "outline"}
-                    onClick={() => { setTeamId(t.id); (profile as any).__teamId = null; }}
+                    onClick={() => { setTeamId(t.id); setLoadedTeamId(null); }}
                   >
                     {t.nome} {t.pais ? <span className="text-xs opacity-60 ml-1">({t.pais})</span> : null}
                   </Button>
