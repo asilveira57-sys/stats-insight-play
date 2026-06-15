@@ -1,15 +1,31 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
-interface TeamRef { name?: string; flag_url?: string; slug?: string }
+interface TeamRef { name?: string; flag_url?: string | null; slug?: string }
+
+function Initials({ name, dims }: { name?: string; dims: string }) {
+  return (
+    <div className={`${dims} rounded bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground`}>
+      {(name ?? "?").slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
 
 export function TeamFlag({ team, size = "md" }: { team?: TeamRef | null; size?: "sm" | "md" | "lg" }) {
   const dims = size === "sm" ? "w-6 h-6" : size === "lg" ? "w-12 h-12" : "w-8 h-8";
+  const [errored, setErrored] = useState(false);
   if (!team) return <div className={`${dims} rounded bg-muted`} />;
-  if (team.flag_url) {
-    return <img src={team.flag_url} alt={team.name ?? ""} className={`${dims} rounded object-cover`} loading="lazy" />;
-  }
-  return <div className={`${dims} rounded bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground`}>{(team.name ?? "?").slice(0, 2).toUpperCase()}</div>;
+  if (!team.flag_url || errored) return <Initials name={team.name} dims={dims} />;
+  return (
+    <img
+      src={team.flag_url}
+      alt={team.name ?? ""}
+      loading="lazy"
+      onError={() => setErrored(true)}
+      className={`${dims} rounded object-cover bg-muted`}
+    />
+  );
 }
 
 export function TeamCard({ team }: { team: any }) {
