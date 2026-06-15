@@ -18,6 +18,7 @@ import { PremiumCTA } from "@/components/news/PremiumCTA";
 import { RelatedArticles } from "@/components/news/RelatedArticles";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { ensureHtml } from "@/lib/markdownToHtml";
+import stadiumFallback from "@/assets/football-stadium-default.jpg";
 
 // Estimate reading time based on word count
 function calculateReadingTime(text: string): number {
