@@ -87,14 +87,20 @@ export function useWC2026Posts(limit?: number) {
   return useQuery({
     queryKey: ["wc2026", "posts", limit],
     queryFn: async () => {
-      const q = supabase.from("world_cup_2026_posts").select("*")
-        .eq("status", "published").order("published_at", { ascending: false });
-      const { data, error } = await q;
+      // Posts da Copa 2026 são gravados na tabela `noticias` com world_cup_2026_match_id
+      // ou slug começando com "copa-2026-".
+      const { data, error } = await supabase
+        .from("noticias")
+        .select("id, slug, titulo, resumo, imagem_url, imagem_alt, data_publicacao, world_cup_2026_match_id")
+        .eq("publicada", true)
+        .or("world_cup_2026_match_id.not.is.null,slug.ilike.copa-2026-%")
+        .order("data_publicacao", { ascending: false });
       if (error) throw error;
       return limit ? (data ?? []).slice(0, limit) : (data ?? []);
     },
   });
 }
+
 
 export function useWC2026Overview() {
   return useQuery({
