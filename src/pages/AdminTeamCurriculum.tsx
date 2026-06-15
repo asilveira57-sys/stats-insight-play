@@ -102,17 +102,16 @@ export default function AdminTeamCurriculum() {
   const [titles, setTitles] = useState<Title[]>([]);
   const [parts, setParts] = useState<Participation[]>([]);
 
-  // Sync state when bundle loads
-  useState(() => {});
-  if (bundle && (profile === emptyProfile || (bundle.team && (profile as any).__teamId !== bundle.team.id))) {
-    // ignore — handled below via effect-like guard
-  }
-  // simple sync without useEffect dependency churn
-  if (bundle?.team && (profile as any).__teamId !== bundle.team.id) {
-    setProfile({ ...bundle.profile, ...({ __teamId: bundle.team.id } as any) });
-    setTitles(bundle.titles);
-    setParts(bundle.participations);
-  }
+  const [loadedTeamId, setLoadedTeamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (bundle?.team && bundle.team.id !== loadedTeamId) {
+      setProfile(bundle.profile);
+      setTitles(bundle.titles);
+      setParts(bundle.participations);
+      setLoadedTeamId(bundle.team.id);
+    }
+  }, [bundle, loadedTeamId]);
 
   async function handleGenerate() {
     if (!teamId) return;
