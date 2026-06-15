@@ -34,7 +34,8 @@ const PAGE_SIZE = 12;
 
 export default function TimeAnalises() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: team, isLoading: loadingTeam } = useTeamBySlug(slug || null);
+  const { data: teamResult, isLoading: loadingTeam } = useTeamBySlug(slug || null);
+  const team = teamResult?.status === "found" ? teamResult.team : null;
   const { data: news, isLoading: loadingNews } = useTeamRelatedNews(team?.nome || null);
 
   const [search, setSearch] = useState("");
