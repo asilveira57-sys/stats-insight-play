@@ -120,85 +120,47 @@ const regionIcons: Record<string, any> = {
   'Outros': Star,
 };
 
+// Limpa sufixo de estado ("Betim - MG" -> "Betim")
+function cleanTeamName(nome: string): string {
+  return nome.replace(/\s*-\s*[A-Z]{2}\s*$/, "").trim();
+}
+
 export default function Times() {
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = searchTerm.trim();
 
+  // Hub: apenas times curados (priority_score >= 60 OU total_matches >= 50).
+  // Quando o usuário busca, consultamos o banco por nome (sem o filtro de curadoria)
+  // para que QUALQUER time possa ser encontrado.
   const { data: times, isLoading } = useQuery({
-    queryKey: ['times-hub'],
+    queryKey: ['times-hub-v2', debouncedSearch],
     queryFn: async () => {
-      // Buscar TODOS os times sem limite usando paginação
-      const data = await fetchAllRecords<Time>(
-        'times',
-        'id, nome, slug, pais, priority_score, cores',
-        undefined,
-        { column: 'priority_score', ascending: false }
-      );
-      return data;
+      let query = supabase
+        .from('times')
+        .select('id, nome, slug, pais, priority_score, cores, total_matches')
+        .eq('status', 'active')
+        .order('priority_score', { ascending: false })
+        .order('total_matches', { ascending: false });
+
+      if (debouncedSearch.length >= 2) {
+        query = query.or(
+          `nome.ilike.%${debouncedSearch}%,pais.ilike.%${debouncedSearch}%`
+        ).limit(200);
+      } else {
+        // Curadoria: clubes/seleções relevantes
+        query = query
+          .or('priority_score.gte.60,total_matches.gte.50')
+          .limit(400);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as (Time & { total_matches?: number })[];
     },
+    staleTime: 1000 * 60 * 5,
   });
 
-  // Buscar contagem de partidas por time (TODOS os registros)
-  const { data: matchCounts } = useQuery({
-    queryKey: ['times-match-counts'],
-    queryFn: async () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-      
-      // Buscar TODAS as partidas recentes (últimos 30 dias, finalizadas)
-      const recentMatches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
-        'partidas',
-        'time_casa_id, time_fora_id',
-        (query) => query
-          .eq('status', 'finished')
-          .gte('data', thirtyDaysAgo)
-          .lte('data', today)
-      );
-
-      // Buscar TODAS as próximas partidas
-      const upcomingMatches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
-        'partidas',
-        'time_casa_id, time_fora_id',
-        (query) => query
-          .eq('status', 'scheduled')
-          .gte('data', today)
-      );
-
-      // Contar por time
-      const counts = new Map<string, { recent: number; upcoming: number }>();
-
-      recentMatches?.forEach(match => {
-        if (match.time_casa_id) {
-          const existing = counts.get(match.time_casa_id) || { recent: 0, upcoming: 0 };
-          existing.recent++;
-          counts.set(match.time_casa_id, existing);
-        }
-        if (match.time_fora_id) {
-          const existing = counts.get(match.time_fora_id) || { recent: 0, upcoming: 0 };
-          existing.recent++;
-          counts.set(match.time_fora_id, existing);
-        }
-      });
-
-      upcomingMatches?.forEach(match => {
-        if (match.time_casa_id) {
-          const existing = counts.get(match.time_casa_id) || { recent: 0, upcoming: 0 };
-          existing.upcoming++;
-          counts.set(match.time_casa_id, existing);
-        }
-        if (match.time_fora_id) {
-          const existing = counts.get(match.time_fora_id) || { recent: 0, upcoming: 0 };
-          existing.upcoming++;
-          counts.set(match.time_fora_id, existing);
-        }
-      });
-
-      return counts;
-    },
-  });
-
-  const getMatchCount = (timeId: string) => {
-    return matchCounts?.get(timeId) || { recent: 0, upcoming: 0 };
-  };
+  const getMatchCount = (_timeId: string) => ({ recent: 0, upcoming: 0 });
 
   // Agrupar por região
   const groupedByRegion = useMemo(() => {
