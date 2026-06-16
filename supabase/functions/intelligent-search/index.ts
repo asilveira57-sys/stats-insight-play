@@ -42,7 +42,7 @@ function detectIntent(q: string): Intent {
     return "player_stats";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
     // pergunta sobre time específico
-    if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha/.test(n))
+    if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
     return "open_question";
   }
@@ -330,6 +330,8 @@ async function fetchSide(supabase: any, side: "home" | "away", teamId: string, y
       .from("partidas")
       .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
       .eq("status", "finished")
+      .not("gols_casa", "is", null)
+      .not("gols_fora", "is", null)
       .eq(col, teamId);
     if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
     const { data, error } = await q.order("data", { ascending: false }).range(from, from + PAGE - 1);
@@ -364,6 +366,54 @@ function aggregate(matches: any[], teamId: string) {
     else l++;
   }
   return { total: matches.length, w, d, l, gf, ga };
+}
+
+const STOPWORDS = new Set([
+  "quem", "qual", "quais", "quanto", "quantos", "quantas", "como", "quando", "onde", "porque", "por", "que",
+  "jogos", "jogo", "partidas", "partida", "jogou", "disputou", "fez", "marcou", "ganhou", "perdeu", "empatou",
+  "em", "no", "na", "nos", "nas", "do", "da", "dos", "das", "de", "o", "a", "os", "as", "um", "uma", "pelo", "pela",
+  "ano", "temporada", "ate", "agora", "estatistica", "estatisticas", "campanha", "aproveitamento",
+]);
+
+function extractEntityTokens(normQuery: string): string[] {
+  return normQuery
+    .replace(/\b(19|20)\d{2}\b/g, " ")
+    .split(/[^a-z0-9]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+}
+
+async function resolveTeamCandidate(supabase: any, query: string, normQuery: string, results: any[]) {
+  const teamCandidates = (results || []).filter((r: any) => r.entity_type === "team");
+  const fromResults = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+  if (fromResults) return fromResults;
+
+  const tokens = extractEntityTokens(normQuery);
+  const seen = new Set<string>();
+  const candidates: any[] = [];
+  for (const token of tokens) {
+    const { data, error } = await supabase
+      .from("times")
+      .select("id, nome, slug, total_matches, pais, estado, cores, escudo_url")
+      .or(`nome.ilike.%${token}%,slug.ilike.%${token}%`)
+      .range(0, 19);
+    if (error) {
+      console.error("resolveTeamCandidate", error);
+      continue;
+    }
+    for (const t of data || []) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      const teamNorm = normalize(`${t.nome} ${t.slug || ""}`);
+      const exact = tokens.some((tok) => teamNorm.split(/\s|-/).includes(tok));
+      const subPenalty = SUBTEAM_RE.test(t.nome) ? 500 : 0;
+      const suffixPenalty = /-[a-z]{2}\b|\b(pi|sc|ba|u17|u20|u23|w)\b/i.test(t.nome) ? 120 : 0;
+      const score = (exact ? 1000 : 0) + Number(t.total_matches || 0) - subPenalty - suffixPenalty;
+      candidates.push({ entity_type: "team", entity_id: t.id, name: t.nome, score, extra: t });
+    }
+  }
+  candidates.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  return candidates[0] || null;
 }
 
 // ---------- IA ----------
@@ -491,8 +541,7 @@ Deno.serve(async (req) => {
 
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
-      const teamCandidates = results.filter((r: any) => r.entity_type === "team");
-      const topTeam = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+      const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
       if (topTeam) {
         const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
         const agg = aggregate(matches, topTeam.entity_id);
@@ -506,7 +555,16 @@ Deno.serve(async (req) => {
           }).join("; ");
           contextStr += `Últimas: ${last}\n`;
         }
-        ai_answer = await callAI(contextStr, query);
+        if (/quantos jogos|quantas partidas|jogou|disputou/.test(normalized)) {
+          ai_answer = {
+            answer: `O ${topTeam.name} jogou **${agg.total} partidas**${year ? ` em ${year}` : ""}${scopeStr}.`,
+            explanation: `Contagem feita nas partidas finalizadas do banco interno. Campanha: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
+            has_enough_data: true,
+            confidence: 95,
+          };
+        } else {
+          ai_answer = await callAI(contextStr, query);
+        }
       } else if (intent === "open_question") {
         ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
       }
