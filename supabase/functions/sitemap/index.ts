@@ -309,7 +309,7 @@ Deno.serve(async (req) => {
       } else if (name === "sitemap-estatisticas" || name === "estatisticas") {
         type = "estatisticas";
       } else {
-        const m = name.match(/^sitemap-(noticias|partidas)-(\d+)$/);
+        const m = name.match(/^sitemap-(noticias|partidas|pesquisas)-(\d+)$/);
         if (m) {
           type = m[1];
           page = parseInt(m[2], 10);
