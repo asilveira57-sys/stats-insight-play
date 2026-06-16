@@ -328,7 +328,7 @@ async function fetchSide(supabase: any, side: "home" | "away", teamId: string, y
   while (true) {
     let q = supabase
       .from("partidas")
-      .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
+      .select("id, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id, slug")
       .eq("status", "finished")
       .not("gols_casa", "is", null)
       .not("gols_fora", "is", null)
@@ -353,6 +353,7 @@ async function fetchAllPartidas(supabase: any, teamId: string, year: number | nu
   ]);
   return [...h, ...a].sort((x, y) => (y.data || "").localeCompare(x.data || ""));
 }
+
 
 function aggregate(matches: any[], teamId: string) {
   let w = 0, d = 0, l = 0, gf = 0, ga = 0;
@@ -457,6 +458,59 @@ Regras INVIOLÁVEIS:
   }
 }
 
+// ---------- slug + post helpers ----------
+function slugify(s: string): string {
+  return normalize(s)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+function buildSlug(intent: string, parts: (string | number | null | undefined)[]): string {
+  const base = parts.filter(Boolean).map((p) => slugify(String(p))).filter(Boolean).join("-");
+  return slugify(`${intent}-${base}`).slice(0, 90);
+}
+
+function truncate(s: string, n: number): string {
+  if (!s) return "";
+  const clean = s.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+  return clean.length <= n ? clean : clean.slice(0, n - 1).trimEnd() + "…";
+}
+
+async function persistSearchPost(supabase: any, payload: {
+  slug: string;
+  question: string;
+  normalized: string;
+  intent: string;
+  summary: string;
+  meta_title: string;
+  meta_description: string;
+  answer_payload: any;
+  entities: any[];
+  confidence: number;
+}) {
+  try {
+    const { error } = await supabase.from("search_posts").upsert({
+      slug: payload.slug,
+      question: payload.question,
+      normalized_question: payload.normalized,
+      intent: payload.intent,
+      answer_summary: payload.summary,
+      meta_title: truncate(payload.meta_title, 60),
+      meta_description: truncate(payload.meta_description, 160),
+      answer_payload: payload.answer_payload,
+      entities: payload.entities,
+      confidence: payload.confidence,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "slug" });
+    if (error) console.error("persistSearchPost", error);
+  } catch (e) {
+    console.error("persistSearchPost ex", e);
+  }
+}
+
 // ---------- handler ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -486,19 +540,22 @@ Deno.serve(async (req) => {
     let contextStr = "";
     let source: string = "internal";
     let top_scorers: any[] | null = null;
-    let resolved_league: { id: string; name: string } | null = null;
+    let resolved_league: { id: string; name: string; slug?: string | null } | null = null;
     let league_disambiguation: { id: string; name: string }[] = [];
+    let structured_answer: any = null;
+    let post_slug: string | null = null;
 
     // ---------- TOP SCORER ----------
     if (intent === "top_scorer") {
-      let league: { id: string; name: string } | null = null;
+      let league: { id: string; name: string; slug?: string | null } | null = null;
       if (forcedLeagueId) {
-        const { data: l } = await supabase.from("ligas").select("id, nome").eq("id", forcedLeagueId).single();
-        if (l) league = { id: l.id, name: l.nome };
+        const { data: l } = await supabase.from("ligas").select("id, nome, slug").eq("id", forcedLeagueId).single();
+        if (l) league = { id: l.id, name: l.nome, slug: l.slug };
       } else {
         const candidates = await resolveLeagueCandidates(supabase, query, normalized);
         if (candidates.length > 0) {
-          league = { id: candidates[0].id, name: candidates[0].name };
+          const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", candidates[0].id).maybeSingle();
+          league = { id: candidates[0].id, name: candidates[0].name, slug: lrow?.slug ?? null };
           league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
         }
       }
@@ -529,12 +586,34 @@ Deno.serve(async (req) => {
           const list = rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.jogador}${r.time ? ` (${r.time})` : ""} — ${r.gols} gols`).join("\n");
           const sourceLabel = src === "artilharia_agregada" ? "artilharia agregada Statball" : src === "gols_partida" ? "agregação de eventos de gol" : "eventos oficiais da Copa 2026 no Statball";
           contextStr = `Liga: ${league.name}${scorerYear ? ` (${scorerYear})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
+          const summary = `${top.jogador}${top.time ? ` (${top.time})` : ""} é o maior artilheiro da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} com ${top.gols} gols.`;
           ai_answer = {
             answer: `O maior artilheiro da **${league.name}**${scorerYear ? ` em ${scorerYear}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
             explanation: `Fonte: ${sourceLabel}.`,
             has_enough_data: true,
             confidence: src === "artilharia_agregada" ? 95 : 80,
           };
+          structured_answer = {
+            kind: "top_scorer",
+            summary,
+            league: { id: league.id, name: league.name, slug: league.slug ?? null },
+            year: scorerYear,
+            source: src,
+            top_scorers: rows,
+          };
+          post_slug = buildSlug("artilheiros", [league.name, scorerYear]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent,
+            summary,
+            meta_title: `Artilheiros da ${league.name}${scorerYear ? ` ${scorerYear}` : ""} — Statball`,
+            meta_description: `${summary} Veja o ranking completo dos 10 maiores goleadores.`,
+            answer_payload: structured_answer,
+            entities,
+            confidence: ai_answer.confidence,
+          });
         }
       }
     }
@@ -543,8 +622,66 @@ Deno.serve(async (req) => {
     else if (intent === "team_stats" || intent === "open_question") {
       const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
       if (topTeam) {
+        // enrich team with slug
+        let teamSlug: string | null = topTeam.extra?.slug ?? null;
+        if (!teamSlug) {
+          const { data: trow } = await supabase.from("times").select("slug").eq("id", topTeam.entity_id).maybeSingle();
+          teamSlug = trow?.slug ?? null;
+        }
+
         const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
         const agg = aggregate(matches, topTeam.entity_id);
+
+        // build competitions + opponents maps
+        const ligaIds = [...new Set(matches.map((m: any) => m.liga_id).filter(Boolean))];
+        const oppIds = [...new Set(matches.map((m: any) =>
+          m.time_casa_id === topTeam.entity_id ? m.time_fora_id : m.time_casa_id
+        ).filter(Boolean))];
+
+        const [{ data: ligas }, { data: oppTeams }] = await Promise.all([
+          ligaIds.length ? supabase.from("ligas").select("id, nome, slug").in("id", ligaIds) : Promise.resolve({ data: [] }),
+          oppIds.length ? supabase.from("times").select("id, nome, slug").in("id", oppIds) : Promise.resolve({ data: [] }),
+        ]);
+        const ligaMap = new Map((ligas || []).map((l: any) => [l.id, l]));
+        const oppMap = new Map((oppTeams || []).map((t: any) => [t.id, t]));
+
+        const compCounts = new Map<string, { id: string; name: string; slug: string | null; total: number; w: number; d: number; l: number }>();
+        for (const m of matches) {
+          if (!m.liga_id) continue;
+          const li: any = ligaMap.get(m.liga_id);
+          if (!li) continue;
+          const cur = compCounts.get(m.liga_id) || { id: li.id, name: li.nome, slug: li.slug ?? null, total: 0, w: 0, d: 0, l: 0 };
+          cur.total += 1;
+          const isHome = m.time_casa_id === topTeam.entity_id;
+          const my = isHome ? (m.gols_casa ?? 0) : (m.gols_fora ?? 0);
+          const op = isHome ? (m.gols_fora ?? 0) : (m.gols_casa ?? 0);
+          if (my > op) cur.w += 1; else if (my === op) cur.d += 1; else cur.l += 1;
+          compCounts.set(m.liga_id, cur);
+        }
+        const competitions = [...compCounts.values()].sort((a, b) => b.total - a.total);
+
+        const matchList = matches.slice(0, 80).map((m: any) => {
+          const isHome = m.time_casa_id === topTeam.entity_id;
+          const oppId = isHome ? m.time_fora_id : m.time_casa_id;
+          const opp: any = oppId ? oppMap.get(oppId) : null;
+          const li: any = m.liga_id ? ligaMap.get(m.liga_id) : null;
+          return {
+            id: m.id,
+            data: m.data,
+            slug: m.slug ?? null,
+            is_home: isHome,
+            home_team: isHome ? topTeam.name : (opp?.nome ?? "—"),
+            away_team: isHome ? (opp?.nome ?? "—") : topTeam.name,
+            home_team_slug: isHome ? teamSlug : (opp?.slug ?? null),
+            away_team_slug: isHome ? (opp?.slug ?? null) : teamSlug,
+            gols_casa: m.gols_casa,
+            gols_fora: m.gols_fora,
+            liga_id: m.liga_id ?? null,
+            liga_nome: li?.nome ?? null,
+            liga_slug: li?.slug ?? null,
+          };
+        });
+
         const scopeStr = scope === "home" ? " (mandante)" : scope === "away" ? " (visitante)" : "";
         const yearStr = year ? `Ano: ${year}\n` : "Período: todos os dados\n";
         contextStr += `Time: ${topTeam.name}\n${yearStr}Jogos${scopeStr}: ${agg.total}\nV:${agg.w} E:${agg.d} D:${agg.l}\nGols pró:${agg.gf} contra:${agg.ga}\n`;
@@ -555,15 +692,46 @@ Deno.serve(async (req) => {
           }).join("; ");
           contextStr += `Últimas: ${last}\n`;
         }
-        if (/quantos jogos|quantas partidas|jogou|disputou/.test(normalized)) {
+
+        const isCountQuestion = /quantos jogos|quantas partidas|jogou|disputou/.test(normalized);
+        const summary = `O ${topTeam.name} disputou ${agg.total} partidas${year ? ` em ${year}` : ""}${scopeStr} — ${agg.w} vitórias, ${agg.d} empates e ${agg.l} derrotas (${agg.gf} gols pró × ${agg.ga} contra).`;
+
+        if (isCountQuestion || agg.total > 0) {
           ai_answer = {
             answer: `O ${topTeam.name} jogou **${agg.total} partidas**${year ? ` em ${year}` : ""}${scopeStr}.`,
-            explanation: `Contagem feita nas partidas finalizadas do banco interno. Campanha: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
-            has_enough_data: true,
-            confidence: 95,
+            explanation: `Campanha: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
+            has_enough_data: agg.total > 0,
+            confidence: agg.total > 0 ? 95 : 0,
           };
         } else {
           ai_answer = await callAI(contextStr, query);
+        }
+
+        if (agg.total > 0) {
+          structured_answer = {
+            kind: "team_stats",
+            summary,
+            team: { id: topTeam.entity_id, name: topTeam.name, slug: teamSlug },
+            year,
+            scope,
+            breakdown: { total: agg.total, vitorias: agg.w, empates: agg.d, derrotas: agg.l, gols_pro: agg.gf, gols_contra: agg.ga },
+            competitions,
+            matches: matchList,
+            total_matches: matches.length,
+          };
+          post_slug = buildSlug("time", [topTeam.name, year, scope]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent,
+            summary,
+            meta_title: `${topTeam.name}${year ? ` em ${year}` : ""}: ${agg.total} jogos — Statball`,
+            meta_description: summary,
+            answer_payload: structured_answer,
+            entities,
+            confidence: ai_answer.confidence,
+          });
         }
       } else if (intent === "open_question") {
         ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
@@ -613,6 +781,8 @@ Deno.serve(async (req) => {
       source,
       resolved_league,
       league_disambiguation,
+      structured_answer,
+      post_slug,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("intelligent-search error", e);
@@ -621,3 +791,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+

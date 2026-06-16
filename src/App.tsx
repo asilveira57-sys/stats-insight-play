@@ -82,6 +82,7 @@ import AdminKaggle from "./pages/AdminKaggle";
 import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
 import Pesquisa from "./pages/Pesquisa";
+import SearchPost from "./pages/SearchPost";
 import Trends from "./pages/Trends";
 import Copa2026Home from "./pages/Copa2026Home";
 import Copa2026Selecoes from "./pages/Copa2026Selecoes";
@@ -130,7 +131,8 @@ const App = () => (
             <Route path="/estatisticas/:liga/:time/:ano" element={<EstatisticasTeam />} />
             <Route path="/estatisticas/:liga/:time/:ano/:view" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
-            <Route path="/pesquisa" element={<Pesquisa />} />
+           <Route path="/pesquisa" element={<Pesquisa />} />
+           <Route path="/pesquisa/:slug" element={<SearchPost />} />
             <Route path="/trends" element={<Trends />} />
             <Route path="/copa-2026" element={<Copa2026Home />} />
             <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
