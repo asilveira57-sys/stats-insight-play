@@ -1,14 +1,17 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Trophy, Shield, Users, Flame } from "lucide-react";
+import { TrendingUp, Trophy, Shield, Users, Flame, FileText, Eye } from "lucide-react";
 import {
   useSearchTrends,
   usePopularEntities,
 } from "@/hooks/useIntelligentSearch";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type Period = "daily" | "weekly" | "monthly" | "total";
 
