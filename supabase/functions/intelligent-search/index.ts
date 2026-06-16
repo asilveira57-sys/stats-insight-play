@@ -461,12 +461,13 @@ Deno.serve(async (req) => {
         };
       } else {
         resolved_league = league;
-        const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, year, 10);
+        const scorerYear = effectiveTopScorerYear(normalized, league.name, year);
+        const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, scorerYear, 10);
         source = src;
         top_scorers = rows;
         if (rows.length === 0) {
           ai_answer = {
-            answer: `Ainda não há dados de artilharia da ${league.name}${year ? ` em ${year}` : ""} no Statball.`,
+            answer: `Ainda não há dados de artilharia da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} no Statball.`,
             explanation: "Sem registros internos para essa liga/ano.",
             has_enough_data: false,
             confidence: 0,
@@ -474,10 +475,11 @@ Deno.serve(async (req) => {
         } else {
           const top = rows[0];
           const list = rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.jogador}${r.time ? ` (${r.time})` : ""} — ${r.gols} gols`).join("\n");
-          contextStr = `Liga: ${league.name}${year ? ` (${year})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
+          const sourceLabel = src === "artilharia_agregada" ? "artilharia agregada Statball" : src === "gols_partida" ? "agregação de eventos de gol" : "eventos oficiais da Copa 2026 no Statball";
+          contextStr = `Liga: ${league.name}${scorerYear ? ` (${scorerYear})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
           ai_answer = {
-            answer: `O maior artilheiro da **${league.name}**${year ? ` em ${year}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
-            explanation: `Fonte: ${src === "artilharia_agregada" ? "artilharia agregada Statball" : "agregação de eventos de gol"}.`,
+            answer: `O maior artilheiro da **${league.name}**${scorerYear ? ` em ${scorerYear}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
+            explanation: `Fonte: ${sourceLabel}.`,
             has_enough_data: true,
             confidence: src === "artilharia_agregada" ? 95 : 80,
           };
