@@ -128,7 +128,7 @@ export default function Pesquisa() {
                 <CardContent>
                   {filtered.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-6 text-center">
-                      Nenhum resultado direto. Tente refinar a busca ou pergunte para a IA.
+                      Sem entidades diretas no banco — confira a resposta acima.
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
