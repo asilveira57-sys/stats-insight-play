@@ -84,7 +84,7 @@ const LEAGUE_ALIAS_GROUPS: Record<string, string[]> = {
 
 function aliasGroupFor(normQuery: string): string[] | null {
   // procura uma chave que apareça como palavra inteira na pergunta
-  for (const key of Object.keys(LEAGUE_ALIAS_GROUPS)) {
+  for (const key of Object.keys(LEAGUE_ALIAS_GROUPS).sort((a, b) => b.length - a.length)) {
     const re = new RegExp(`\\b${key}\\b`);
     if (re.test(normQuery)) return LEAGUE_ALIAS_GROUPS[key];
   }
