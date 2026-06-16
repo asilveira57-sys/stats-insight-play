@@ -58,7 +58,7 @@ const emptyProfile: Profile = {
 };
 
 export default function AdminTeamCurriculum() {
-  const { isAdmin, isLoading: loadingAuth } = useAdminAccess();
+  const { isAdmin, isLoading: loadingAuth, failed, retry, user } = useAdminAccess();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [teamId, setTeamId] = useState<string | null>(null);
