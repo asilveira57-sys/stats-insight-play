@@ -72,6 +72,8 @@ function extractScope(q: string): "home" | "away" | null {
 // Quando o usuário escreve um termo genérico, lista de "ligas canônicas" candidatas (por nome exato)
 const LEAGUE_ALIAS_GROUPS: Record<string, string[]> = {
   copa: ["FIFA World Cup", "Copa do Brasil", "Copa Libertadores", "Copa Sul-Americana", "Copa do Mundo"],
+  "copa do brasil": ["Copa do Brasil"],
+  "copa libertadores": ["Copa Libertadores"],
   mundial: ["FIFA World Cup", "Copa do Mundo"],
   "copa do mundo": ["FIFA World Cup", "Copa do Mundo"],
   "world cup": ["FIFA World Cup", "Copa do Mundo"],
@@ -84,9 +86,23 @@ const LEAGUE_ALIAS_GROUPS: Record<string, string[]> = {
 
 function aliasGroupFor(normQuery: string): string[] | null {
   // procura uma chave que apareça como palavra inteira na pergunta
-  for (const key of Object.keys(LEAGUE_ALIAS_GROUPS)) {
+  for (const key of Object.keys(LEAGUE_ALIAS_GROUPS).sort((a, b) => b.length - a.length)) {
     const re = new RegExp(`\\b${key}\\b`);
     if (re.test(normQuery)) return LEAGUE_ALIAS_GROUPS[key];
+  }
+  return null;
+}
+
+function effectiveTopScorerYear(normQuery: string, leagueName: string, explicitYear: number | null): number | null {
+  if (explicitYear) return explicitYear;
+  const currentYear = new Date().getUTCFullYear();
+  const nLeague = normalize(leagueName);
+  if (
+    currentYear === 2026 &&
+    (nLeague.includes("fifa world cup") || nLeague.includes("copa do mundo")) &&
+    /\b(copa|mundial|world cup)\b/.test(normQuery)
+  ) {
+    return 2026;
   }
   return null;
 }
@@ -105,7 +121,8 @@ async function resolveLeagueCandidates(
       .select("id, nome, ativa, tipo_principal, priority_score")
       .in("nome", aliases);
     for (const l of data || []) {
-      out.push({ id: l.id, name: l.nome, score: 100 + (Number(l.priority_score) || 0) });
+      const aliasIndex = aliases.indexOf(l.nome);
+      out.push({ id: l.id, name: l.nome, score: 1000 - aliasIndex * 25 + (Number(l.priority_score) || 0) / 100 });
     }
   }
 
@@ -123,6 +140,82 @@ async function resolveLeagueCandidates(
 }
 
 // ---------- top scorer resolver ----------
+function isWorldCup2026League(leagueName: string, year: number | null): boolean {
+  const n = normalize(leagueName);
+  return year === 2026 && (n.includes("fifa world cup") || n.includes("copa do mundo"));
+}
+
+function parseGoalScorer(description: string | null): string | null {
+  if (!description) return null;
+  if (/own goal/i.test(description)) return null;
+  const afterDash = description.includes("—") ? description.split("—").slice(1).join("—") : description;
+  const name = afterDash.replace(/\(assist:.*?\)/i, "").trim();
+  return name || null;
+}
+
+async function resolveWorldCup2026TopScorers(
+  supabase: any,
+  limit = 10,
+): Promise<{ rows: any[]; source: string }> {
+  const events: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("world_cup_2026_match_events")
+      .select("player_id, team_id, description, event_type")
+      .eq("event_type", "goal")
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("world_cup_2026_match_events", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    events.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  if (events.length === 0) return { rows: [], source: "none" };
+
+  const playerIds = [...new Set(events.map((e) => e.player_id).filter(Boolean))];
+  const teamIds = [...new Set(events.map((e) => e.team_id).filter(Boolean))];
+  const [{ data: players }, { data: teams }] = await Promise.all([
+    playerIds.length > 0
+      ? supabase.from("world_cup_2026_players").select("id, name, slug").in("id", playerIds)
+      : Promise.resolve({ data: [] }),
+    teamIds.length > 0
+      ? supabase.from("world_cup_2026_teams").select("id, name").in("id", teamIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const pmap = new Map((players || []).map((p: any) => [p.id, p]));
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t.name]));
+
+  const counts = new Map<string, { jogador: string; slug: string | null; time_id: string | null; gols: number }>();
+  for (const e of events) {
+    const player = e.player_id ? pmap.get(e.player_id) : null;
+    const scorer = player?.name || parseGoalScorer(e.description);
+    if (!scorer) continue;
+    const key = `${normalize(scorer)}|${e.team_id ?? ""}`;
+    const cur = counts.get(key) || { jogador: scorer, slug: player?.slug || null, time_id: e.team_id ?? null, gols: 0 };
+    cur.gols += 1;
+    counts.set(key, cur);
+  }
+
+  const rows = [...counts.values()]
+    .map((r) => ({
+      jogador: r.jogador,
+      slug: r.slug,
+      time: r.time_id ? tmap.get(r.time_id) || null : null,
+      gols: r.gols,
+      temporada: "2026",
+    }))
+    .sort((a, b) => b.gols - a.gols || a.jogador.localeCompare(b.jogador))
+    .slice(0, limit);
+
+  return { rows, source: "world_cup_2026_match_events" };
+}
+
 async function resolveTopScorers(
   supabase: any,
   leagueId: string,
@@ -130,6 +223,10 @@ async function resolveTopScorers(
   year: number | null,
   limit = 10,
 ): Promise<{ rows: any[]; source: string }> {
+  if (isWorldCup2026League(leagueName, year)) {
+    return resolveWorldCup2026TopScorers(supabase, limit);
+  }
+
   // 1) artilharia_agregada (preferida)
   let q = supabase
     .from("artilharia_agregada")
@@ -327,6 +424,7 @@ Deno.serve(async (req) => {
     const normalized = normalize(query);
     const intent = detectIntent(query);
     const year = extractYear(query);
+    let responseYear: number | null = year;
     const scope = extractScope(query);
 
     // entidades para a UI (lista geral)
@@ -364,12 +462,14 @@ Deno.serve(async (req) => {
         };
       } else {
         resolved_league = league;
-        const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, year, 10);
+        const scorerYear = effectiveTopScorerYear(normalized, league.name, year);
+        responseYear = scorerYear;
+        const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, scorerYear, 10);
         source = src;
         top_scorers = rows;
         if (rows.length === 0) {
           ai_answer = {
-            answer: `Ainda não há dados de artilharia da ${league.name}${year ? ` em ${year}` : ""} no Statball.`,
+            answer: `Ainda não há dados de artilharia da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} no Statball.`,
             explanation: "Sem registros internos para essa liga/ano.",
             has_enough_data: false,
             confidence: 0,
@@ -377,10 +477,11 @@ Deno.serve(async (req) => {
         } else {
           const top = rows[0];
           const list = rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.jogador}${r.time ? ` (${r.time})` : ""} — ${r.gols} gols`).join("\n");
-          contextStr = `Liga: ${league.name}${year ? ` (${year})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
+          const sourceLabel = src === "artilharia_agregada" ? "artilharia agregada Statball" : src === "gols_partida" ? "agregação de eventos de gol" : "eventos oficiais da Copa 2026 no Statball";
+          contextStr = `Liga: ${league.name}${scorerYear ? ` (${scorerYear})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
           ai_answer = {
-            answer: `O maior artilheiro da **${league.name}**${year ? ` em ${year}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
-            explanation: `Fonte: ${src === "artilharia_agregada" ? "artilharia agregada Statball" : "agregação de eventos de gol"}.`,
+            answer: `O maior artilheiro da **${league.name}**${scorerYear ? ` em ${scorerYear}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
+            explanation: `Fonte: ${sourceLabel}.`,
             has_enough_data: true,
             confidence: src === "artilharia_agregada" ? 95 : 80,
           };
@@ -445,7 +546,7 @@ Deno.serve(async (req) => {
       intent,
       query,
       normalized,
-      year,
+      year: responseYear,
       scope,
       entities,
       results,

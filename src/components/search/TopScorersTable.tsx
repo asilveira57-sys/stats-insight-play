@@ -19,6 +19,7 @@ interface Props {
 
 export function TopScorersTable({ rows, leagueName, year, source }: Props) {
   if (!rows || rows.length === 0) return null;
+  const sourceLabel = source === "artilharia_agregada" ? "interna" : source === "gols_partida" ? "eventos" : source === "world_cup_2026_match_events" ? "Copa 2026" : source;
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -29,7 +30,7 @@ export function TopScorersTable({ rows, leagueName, year, source }: Props) {
           </CardTitle>
           {source && (
             <Badge variant="outline" className="text-[10px] uppercase">
-              fonte: {source === "artilharia_agregada" ? "interna" : source === "gols_partida" ? "eventos" : source}
+              fonte: {sourceLabel}
             </Badge>
           )}
         </div>
