@@ -105,6 +105,11 @@ async function buildIndex(): Promise<string> {
   entries.push({ loc: `${SITE}/sitemap-times.xml`, lastmod: today });
   entries.push({ loc: `${SITE}/sitemap-estatisticas.xml`, lastmod: today });
 
+  const pesquisasCount = await countTable("search_posts");
+  for (let i = 0; i < Math.ceil(pesquisasCount / PAGE_SIZE); i++) {
+    entries.push({ loc: `${SITE}/sitemap-pesquisas-${i + 1}.xml`, lastmod: today });
+  }
+
   return wrapIndex(entries);
 }
 
