@@ -336,6 +336,9 @@ Deno.serve(async (req) => {
       case "estatisticas":
         body = await buildEstatisticas();
         break;
+      case "pesquisas":
+        body = await buildPesquisas(Math.max(0, page - 1));
+        break;
       case "index":
       default:
         body = await buildIndex();
