@@ -533,10 +533,12 @@ Use null quando não houver. NÃO invente nomes.`;
 
 // Resposta de conhecimento geral (fallback). Marca explicitamente como fonte externa.
 async function externalAnswer(question: string, contextHint: string): Promise<{ answer: string; explanation: string; confidence: number } | null> {
-  const system = `Você é especialista em futebol. Responda a pergunta do usuário em PT-BR de forma factual e concisa (até 4 frases).
-Se houver "CONTEXTO STATBALL" abaixo, priorize esses dados.
-Caso contrário, responda com seu conhecimento geral de futebol — mas seja honesto: se não tiver certeza, diga "não tenho confirmação".
-Devolva JSON: { answer: string, explanation: string (curta), confidence: 0-100 }.`;
+  const system = `Você é especialista em futebol mundial. Responda à pergunta em PT-BR de forma factual, completa e clara (3 a 6 frases).
+- Se houver "CONTEXTO STATBALL", priorize esses dados.
+- Caso contrário, use seu conhecimento de fatos históricos do futebol (resultados, jogadores, técnicos, datas, copas) com confiança.
+- Apenas diga "não tenho confirmação" se a pergunta envolver algo realmente fora do seu conhecimento (eventos muito recentes ou obscuros).
+- Sempre cite placares, datas e nomes quando souber.
+- Devolva JSON: { answer: string, explanation: string (curta — fonte/observação), confidence: 0-100 }.`;
   const data = await lovableAiChat({
     model: AI_MODEL,
     messages: [
