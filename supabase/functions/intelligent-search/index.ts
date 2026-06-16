@@ -423,30 +423,46 @@ async function resolveTeamCandidate(supabase: any, query: string, normQuery: str
 }
 
 // ---------- IA (Lovable AI Gateway) ----------
-async function lovableAiChat(body: any): Promise<any | null> {
-  if (!LOVABLE_API_KEY) return null;
+async function openaiChat(body: any): Promise<any | null> {
+  if (!OPENAI_API_KEY) return null;
   try {
-    const r = await fetch(AI_GATEWAY_URL, {
+    const openaiBody = { ...body, model: OPENAI_MODEL };
+    const r = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(openaiBody),
     });
-    if (r.status === 429 || r.status === 402) {
-      console.warn("AI gateway limit", r.status);
-      return null;
-    }
     if (!r.ok) {
-      console.error("AI gateway error", r.status, await r.text().catch(() => ""));
+      console.error("openai error", r.status, await r.text().catch(() => ""));
       return null;
     }
     return await r.json();
   } catch (e) {
-    console.error("lovableAiChat ex", e);
+    console.error("openaiChat ex", e);
     return null;
   }
+}
+
+async function lovableAiChat(body: any): Promise<any | null> {
+  if (LOVABLE_API_KEY) {
+    try {
+      const r = await fetch(AI_GATEWAY_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) return await r.json();
+      if (r.status === 429 || r.status === 402) {
+        console.warn("AI gateway limit", r.status, "→ tentando OpenAI");
+      } else {
+        console.error("AI gateway error", r.status, await r.text().catch(() => ""));
+      }
+    } catch (e) {
+      console.error("lovableAiChat ex", e);
+    }
+  }
+  // Fallback OpenAI
+  return await openaiChat(body);
 }
 
 async function callAI(context: string, question: string) {
