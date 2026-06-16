@@ -168,7 +168,16 @@ export default function AdminTeamCurriculum() {
   }
 
   if (loadingAuth) return <AdminLayout><div className="p-8">Carregando...</div></AdminLayout>;
-  if (!isAdmin) return <AdminLayout><div className="p-8">Acesso negado</div></AdminLayout>;
+  if (failed) return (
+    <AdminLayout>
+      <div className="p-8 space-y-4">
+        <p>Não foi possível validar suas permissões (timeout). Tente novamente.</p>
+        <Button onClick={retry}>Tentar novamente</Button>
+      </div>
+    </AdminLayout>
+  );
+  if (!user) return <AdminLayout><div className="p-8">Faça login para acessar.</div></AdminLayout>;
+  if (!isAdmin) return <AdminLayout><div className="p-8">Acesso negado. Sua conta não tem papel de admin.</div></AdminLayout>;
 
   return (
     <AdminLayout>
