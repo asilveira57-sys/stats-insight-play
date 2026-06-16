@@ -388,6 +388,10 @@ export default function AdminTeamCurriculum() {
                 <CardContent className="space-y-3">
                   <div className="flex gap-2 flex-wrap items-center">
                     <Input placeholder="Filtrar..." value={textFilter} onChange={(e) => setTextFilter(e.target.value)} className="max-w-xs" />
+                    <label className="flex items-center gap-1 text-xs">
+                      <Checkbox checked={hideNoise} onCheckedChange={(v) => setHideNoise(!!v)} />
+                      Ocultar duplicados / pouco relevantes
+                    </label>
                     <Button size="sm" variant="outline" onClick={selectAll}>Selecionar todos</Button>
                     <Button size="sm" variant="outline" onClick={selectEmpty}>Selecionar só os vazios</Button>
                     <Button size="sm" variant="ghost" onClick={clearSelected}>Limpar</Button>
@@ -395,18 +399,30 @@ export default function AdminTeamCurriculum() {
                   </div>
 
                   {loadingLeagueTeams && <p className="text-sm text-muted-foreground">Carregando times...</p>}
+                  {!loadingLeagueTeams && leagueTeams && filteredTeams.length < leagueTeams.length && (
+                    <p className="text-xs text-muted-foreground">
+                      Mostrando {filteredTeams.length} de {leagueTeams.length} (ocultos times com poucos jogos — provavelmente duplicados).
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[420px] overflow-y-auto">
                     {filteredTeams.map((t) => {
                       const st = teamStatus(t);
                       const checked = selectedIds.has(t.id);
+                      const lowSignal = t.league_matches < 10 && t.total_matches < 200;
                       return (
-                        <div key={t.id} className={`flex items-center gap-2 p-2 rounded border ${checked ? "border-primary bg-primary/5" : "border-border"}`}>
+                        <div key={t.id} className={`flex items-center gap-2 p-2 rounded border ${checked ? "border-primary bg-primary/5" : "border-border"} ${lowSignal ? "opacity-70" : ""}`}>
                           <Checkbox checked={checked} onCheckedChange={() => toggleSelected(t.id)} />
                           <button className="flex-1 text-left text-sm" onClick={() => toggleSelected(t.id)}>
-                            <div className="font-medium">{t.nome}</div>
+                            <div className="font-medium flex items-center gap-2">
+                              {t.nome}
+                              {lowSignal && <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-600">possível duplicado</span>}
+                            </div>
                             <div className="text-xs text-muted-foreground">
-                              {t.estado || t.pais || "—"} • {t.titles_count} títulos • {t.parts_count} part.
+                              {t.estado || t.pais || "—"} • {t.league_matches} jogos na liga • {t.total_matches} totais
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {t.titles_count} títulos · {t.parts_count} part. salvos
                             </div>
                           </button>
                           <Badge className={`${st.color} text-white`}>{st.label}</Badge>
@@ -417,6 +433,7 @@ export default function AdminTeamCurriculum() {
                       );
                     })}
                   </div>
+
 
                   <div className="flex gap-2 pt-2 border-t">
                     <Button onClick={() => startBatch(true)} disabled={!!activeJobId && job?.status === "running"}>
