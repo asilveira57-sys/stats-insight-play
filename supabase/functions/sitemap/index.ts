@@ -123,6 +123,8 @@ function buildStatic(): string {
     ["/palpites", "daily", 0.8],
     ["/resultados", "daily", 0.8],
     ["/evolucao", "weekly", 0.6],
+    ["/pesquisa", "daily", 0.8],
+    ["/trends", "daily", 0.7],
     ["/precos", "monthly", 0.7],
     ["/auth", "monthly", 0.5],
     ["/termos", "yearly", 0.3],
