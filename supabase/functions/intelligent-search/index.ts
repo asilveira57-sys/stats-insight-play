@@ -91,6 +91,20 @@ function aliasGroupFor(normQuery: string): string[] | null {
   return null;
 }
 
+function effectiveTopScorerYear(normQuery: string, leagueName: string, explicitYear: number | null): number | null {
+  if (explicitYear) return explicitYear;
+  const currentYear = new Date().getUTCFullYear();
+  const nLeague = normalize(leagueName);
+  if (
+    currentYear === 2026 &&
+    (nLeague.includes("fifa world cup") || nLeague.includes("copa do mundo")) &&
+    /\b(copa|mundial|world cup)\b/.test(normQuery)
+  ) {
+    return 2026;
+  }
+  return null;
+}
+
 async function resolveLeagueCandidates(
   supabase: any,
   query: string,
