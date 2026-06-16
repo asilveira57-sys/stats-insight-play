@@ -539,8 +539,7 @@ Deno.serve(async (req) => {
 
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
-      const teamCandidates = results.filter((r: any) => r.entity_type === "team");
-      const topTeam = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+      const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
       if (topTeam) {
         const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
         const agg = aggregate(matches, topTeam.entity_id);
@@ -554,7 +553,16 @@ Deno.serve(async (req) => {
           }).join("; ");
           contextStr += `Últimas: ${last}\n`;
         }
-        ai_answer = await callAI(contextStr, query);
+        if (/quantos jogos|quantas partidas|jogou|disputou/.test(normalized)) {
+          ai_answer = {
+            answer: `O ${topTeam.name} jogou **${agg.total} partidas**${year ? ` em ${year}` : ""}${scopeStr}.`,
+            explanation: `Contagem feita nas partidas finalizadas do banco interno. Campanha: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
+            has_enough_data: true,
+            confidence: 95,
+          };
+        } else {
+          ai_answer = await callAI(contextStr, query);
+        }
       } else if (intent === "open_question") {
         ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
       }
