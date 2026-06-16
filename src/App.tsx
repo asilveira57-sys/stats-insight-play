@@ -83,6 +83,8 @@ import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
 import Pesquisa from "./pages/Pesquisa";
 import SearchPost from "./pages/SearchPost";
+import SearchPostCompetition from "./pages/SearchPostCompetition";
+import PartidaDetalhe from "./pages/PartidaDetalhe";
 import Trends from "./pages/Trends";
 import Copa2026Home from "./pages/Copa2026Home";
 import Copa2026Selecoes from "./pages/Copa2026Selecoes";
