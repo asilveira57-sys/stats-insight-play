@@ -6,6 +6,8 @@ import { TrendingCards } from "@/components/search/TrendingCards";
 import { AIAnswerCard } from "@/components/search/AIAnswerCard";
 import { EntityResultCard } from "@/components/search/EntityResultCard";
 import { UserSearchHistory } from "@/components/search/UserSearchHistory";
+import { TopScorersTable } from "@/components/search/TopScorersTable";
+import { DisambiguationChips } from "@/components/search/DisambiguationChips";
 import { useIntelligentSearch } from "@/hooks/useIntelligentSearch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +30,7 @@ export default function Pesquisa() {
   const mut = useIntelligentSearch();
 
   useEffect(() => {
-    if (initialQ) mut.mutate(initialQ);
+    if (initialQ) mut.mutate({ query: initialQ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQ]);
 
@@ -42,7 +44,12 @@ export default function Pesquisa() {
 
   const submit = (q: string) => {
     setParams({ q });
-    mut.mutate(q);
+    mut.mutate({ query: q });
+  };
+
+  const pickLeague = (leagueId: string) => {
+    if (!data) return;
+    mut.mutate({ query: data.query, liga_id: leagueId });
   };
 
   return (
@@ -67,6 +74,23 @@ export default function Pesquisa() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 space-y-6">
+            {data?.league_disambiguation && data.league_disambiguation.length > 1 && (
+              <DisambiguationChips
+                options={data.league_disambiguation}
+                activeId={data.resolved_league?.id ?? null}
+                onPick={pickLeague}
+              />
+            )}
+
+            {data?.top_scorers && data.top_scorers.length > 0 && (
+              <TopScorersTable
+                rows={data.top_scorers}
+                leagueName={data.resolved_league?.name}
+                year={data.year ?? null}
+                source={data.source}
+              />
+            )}
+
             {data?.ai_answer && (
               <AIAnswerCard answer={data.ai_answer} sources={data.entities} />
             )}

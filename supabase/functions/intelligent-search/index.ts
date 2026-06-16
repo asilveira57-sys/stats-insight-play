@@ -1,5 +1,5 @@
-// Pesquisa Inteligente Statball — edge function
-// Recebe query, classifica, busca dados internos, opcionalmente chama Lovable AI Gateway.
+// Pesquisa Inteligente Statball — v2
+// Intenções nomeadas + desambiguação de liga + resolvers factuais (artilheiros, time, jogador)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -13,6 +13,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
+// ---------- helpers ----------
 function normalize(s: string): string {
   return (s || "")
     .normalize("NFD")
@@ -22,31 +23,41 @@ function normalize(s: string): string {
     .trim();
 }
 
-const STAT_KEYWORDS = [
-  "artilheir", "ranking", "média", "media", "total", "comparar",
-  "comparação", "comparacao", "tendência", "tendencia", "mais gols",
-  "mais vitórias", "mais vitorias", "estatística", "estatistica",
-  "aproveitamento", "saldo",
-];
-const QUESTION_MARKERS = [
-  "?", "quem ", "qual ", "quais ", "quanto", "quantos ", "quantas ",
-  "como ", "por que", "porque ", "quando ", "onde ",
-];
+const SUBTEAM_RE = /(\s|^)(U-?17|U-?20|U-?23|Sub-?\d+|Women|Feminin|W)(\s|$|-)/i;
+const LEAGUE_NOISE_RE = /(U-?\d+|Sub-?\d+|Feminin|Women|Amador|Júnior|Junior)/i;
 
-function classify(q: string): "entity" | "stat" | "question" {
+type Intent =
+  | "top_scorer"
+  | "player_stats"
+  | "team_stats"
+  | "match_lookup"
+  | "entity_lookup"
+  | "open_question";
+
+function detectIntent(q: string): Intent {
   const n = normalize(q);
-  if (QUESTION_MARKERS.some((m) => n.includes(m))) return "question";
-  if (STAT_KEYWORDS.some((m) => n.includes(m))) return "stat";
-  return "entity";
+  if (/artilheir|maior goleador|mais gols na|mais gols no|mais gols da|mais gols do|quem fez mais gols|top.?scorer|chuteira de ouro/.test(n))
+    return "top_scorer";
+  if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
+    return "player_stats";
+  if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
+    // pergunta sobre time específico
+    if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha/.test(n))
+      return "team_stats";
+    return "open_question";
+  }
+  if (/\bx\b|\bvs\b|\bcontra\b|placar|jogo de|partida de/.test(n))
+    return "match_lookup";
+  return "entity_lookup";
 }
 
 function extractYear(q: string): number | null {
-  const n = normalize(q);
   const m = q.match(/\b(19|20)\d{2}\b/);
   if (m) return parseInt(m[0], 10);
+  const n = normalize(q);
   const now = new Date();
   if (/\bano passado\b|\btemporada passada\b/.test(n)) return now.getUTCFullYear() - 1;
-  if (/\beste ano\b|\bano atual\b|\btemporada atual\b/.test(n)) return now.getUTCFullYear();
+  if (/\beste ano\b|\bano atual\b|\btemporada atual\b|ate agora|até agora/.test(n)) return now.getUTCFullYear();
   return null;
 }
 
@@ -57,8 +68,161 @@ function extractScope(q: string): "home" | "away" | null {
   return null;
 }
 
-const SUBTEAM_RE = /(\s|^)(U-?17|U-?20|U-?23|Sub-?\d+|Women|Feminin|W)(\s|$|-)/i;
+// ---------- league aliases ----------
+// Quando o usuário escreve um termo genérico, lista de "ligas canônicas" candidatas (por nome exato)
+const LEAGUE_ALIAS_GROUPS: Record<string, string[]> = {
+  copa: ["FIFA World Cup", "Copa do Brasil", "Copa Libertadores", "Copa Sul-Americana", "Copa do Mundo"],
+  mundial: ["FIFA World Cup", "Copa do Mundo"],
+  "copa do mundo": ["FIFA World Cup", "Copa do Mundo"],
+  "world cup": ["FIFA World Cup", "Copa do Mundo"],
+  brasileirao: ["Campeonato Brasileiro Série A"],
+  "brasileirão": ["Campeonato Brasileiro Série A"],
+  libertadores: ["Copa Libertadores"],
+  champions: ["UEFA Champions League"],
+  premier: ["Premier League"],
+};
 
+function aliasGroupFor(normQuery: string): string[] | null {
+  // procura uma chave que apareça como palavra inteira na pergunta
+  for (const key of Object.keys(LEAGUE_ALIAS_GROUPS)) {
+    const re = new RegExp(`\\b${key}\\b`);
+    if (re.test(normQuery)) return LEAGUE_ALIAS_GROUPS[key];
+  }
+  return null;
+}
+
+async function resolveLeagueCandidates(
+  supabase: any,
+  query: string,
+  normQuery: string,
+): Promise<{ id: string; name: string; score: number }[]> {
+  const aliases = aliasGroupFor(normQuery);
+  const out: { id: string; name: string; score: number }[] = [];
+
+  if (aliases) {
+    const { data } = await supabase
+      .from("ligas")
+      .select("id, nome, ativa, tipo_principal, priority_score")
+      .in("nome", aliases);
+    for (const l of data || []) {
+      out.push({ id: l.id, name: l.nome, score: 100 + (Number(l.priority_score) || 0) });
+    }
+  }
+
+  // sempre completa com o search_global para termos não-alias
+  const { data: glob } = await supabase.rpc("search_global", { p_query: query, p_limit: 15 });
+  for (const r of glob || []) {
+    if (r.entity_type !== "league") continue;
+    if (LEAGUE_NOISE_RE.test(r.name)) continue;
+    if (out.find((o) => o.id === r.entity_id)) continue;
+    out.push({ id: r.entity_id, name: r.name, score: Number(r.score) || 0 });
+  }
+
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
+// ---------- top scorer resolver ----------
+async function resolveTopScorers(
+  supabase: any,
+  leagueId: string,
+  leagueName: string,
+  year: number | null,
+  limit = 10,
+): Promise<{ rows: any[]; source: string }> {
+  // 1) artilharia_agregada (preferida)
+  let q = supabase
+    .from("artilharia_agregada")
+    .select("jogador_nome, jogador_slug, gols, partidas_com_gol, time_id, temporada")
+    .eq("competicao_id", leagueId)
+    .order("gols", { ascending: false });
+  if (year) q = q.eq("temporada", String(year));
+  const { data: agg } = await q.range(0, limit - 1);
+
+  if (agg && agg.length > 0) {
+    // resolve nome dos times
+    const teamIds = [...new Set(agg.map((r: any) => r.time_id).filter(Boolean))];
+    const { data: teams } = await supabase.from("times").select("id, nome").in("id", teamIds);
+    const tmap = new Map((teams || []).map((t: any) => [t.id, t.nome]));
+    return {
+      rows: agg.map((r: any) => ({
+        jogador: r.jogador_nome,
+        slug: r.jogador_slug,
+        time: tmap.get(r.time_id) || null,
+        gols: r.gols,
+        temporada: r.temporada,
+      })),
+      source: "artilharia_agregada",
+    };
+  }
+
+  // 2) Fallback: agregar gols_partida via partidas da liga
+  // pega ids das partidas da liga (no ano se houver), depois conta gols
+  let pq = supabase
+    .from("partidas")
+    .select("id")
+    .eq("liga_id", leagueId)
+    .eq("status", "finished");
+  if (year) pq = pq.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+  const partidaIds: string[] = [];
+  let from = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data, error } = await pq.range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    partidaIds.push(...data.map((p: any) => p.id));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  if (partidaIds.length === 0) return { rows: [], source: "none" };
+
+  // agrupa gols em batches (cláusula IN tem limite prático)
+  const counts = new Map<string, { gols: number; time_id: string | null }>();
+  for (let i = 0; i < partidaIds.length; i += 500) {
+    const slice = partidaIds.slice(i, i + 500);
+    let gfrom = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("gols_partida")
+        .select("jogador_nome, time_id, tipo")
+        .in("partida_id", slice)
+        .range(gfrom, gfrom + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      for (const g of data) {
+        if (!g.jogador_nome || g.tipo === "own_goal") continue;
+        const key = `${normalize(g.jogador_nome)}|${g.time_id ?? ""}`;
+        const cur = counts.get(key) || { gols: 0, time_id: g.time_id };
+        cur.gols += 1;
+        counts.set(key, cur);
+      }
+      if (data.length < PAGE) break;
+      gfrom += PAGE;
+    }
+  }
+  if (counts.size === 0) return { rows: [], source: "none" };
+
+  const teamIds = [...new Set([...counts.values()].map((v) => v.time_id).filter(Boolean))] as string[];
+  const { data: teams } = await supabase.from("times").select("id, nome").in("id", teamIds);
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t.nome]));
+
+  const rows = [...counts.entries()]
+    .map(([key, v]) => {
+      const jogador_nome = key.split("|")[0];
+      return {
+        jogador: jogador_nome.replace(/\b\w/g, (c) => c.toUpperCase()),
+        slug: null,
+        time: v.time_id ? tmap.get(v.time_id) : null,
+        gols: v.gols,
+        temporada: year ? String(year) : null,
+      };
+    })
+    .sort((a, b) => b.gols - a.gols)
+    .slice(0, limit);
+
+  return { rows, source: "gols_partida" };
+}
+
+// ---------- team stats (mantém comportamento anterior) ----------
 async function fetchSide(supabase: any, side: "home" | "away", teamId: string, year: number | null) {
   const col = side === "home" ? "time_casa_id" : "time_fora_id";
   const all: any[] = [];
@@ -105,55 +269,31 @@ function aggregate(matches: any[], teamId: string) {
   return { total: matches.length, w, d, l, gf, ga };
 }
 
-async function callAI(context: string, question: string): Promise<{
-  answer: string;
-  explanation: string;
-  has_enough_data: boolean;
-  confidence: number;
-}> {
+// ---------- IA ----------
+async function callAI(context: string, question: string) {
   if (!OPENAI_API_KEY) {
-    return {
-      answer: "Ainda não há dados suficientes no Statball para responder com precisão.",
-      explanation: "Configuração de IA indisponível.",
-      has_enough_data: false,
-      confidence: 0,
-    };
+    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "IA indisponível.", has_enough_data: false, confidence: 0 };
   }
   const system = `Você é o assistente do Statball, uma plataforma de estatísticas de futebol.
 Regras INVIOLÁVEIS:
-1. Responda APENAS com base nos dados fornecidos no CONTEXTO abaixo. Os números do CONTEXTO já vêm filtrados pelo ano/escopo da pergunta — use-os exatamente como estão.
-2. NUNCA invente nomes, números, datas ou fatos que não estejam no contexto.
-3. Sempre confirme qual entidade foi consultada na resposta (ex.: "O Fluminense-RJ teve...").
-4. Se o CONTEXTO trouxer "Ano consultado:", a resposta DEVE usar os números daquele ano.
-5. Se o contexto não tiver dados suficientes para responder, retorne EXATAMENTE: "Ainda não há dados suficientes no Statball para responder com precisão."
-6. Seja conciso, em português do Brasil.
-7. Responda em JSON puro com as chaves: answer (string), explanation (string curta), has_enough_data (boolean), confidence (0-100).`;
-
-  const user = `CONTEXTO (dados do banco Statball):\n${context}\n\nPERGUNTA: ${question}\n\nResponda em JSON.`;
-
+1. Responda APENAS com base nos dados do CONTEXTO. Não invente nomes, números ou datas.
+2. Os números do CONTEXTO já vêm filtrados pela pergunta — use-os exatamente.
+3. Se o contexto não tiver dados suficientes, retorne EXATAMENTE: "Ainda não há dados suficientes no Statball para responder com precisão."
+4. Seja conciso, em português do Brasil.
+5. Responda em JSON com: answer (string), explanation (string curta), has_enough_data (boolean), confidence (0-100).`;
+  const user = `CONTEXTO:\n${context}\n\nPERGUNTA: ${question}\n\nResponda em JSON.`;
   try {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
+        messages: [{ role: "system", content: system }, { role: "user", content: user }],
         response_format: { type: "json_object" },
       }),
     });
     if (r.status === 429 || r.status === 402) {
-      return {
-        answer: "Limite de uso da IA atingido. Tente novamente em instantes.",
-        explanation: "Rate limit / créditos.",
-        has_enough_data: false,
-        confidence: 0,
-      };
+      return { answer: "Limite de uso da IA atingido. Tente novamente em instantes.", explanation: "Rate limit.", has_enough_data: false, confidence: 0 };
     }
     const data = await r.json();
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
@@ -166,20 +306,16 @@ Regras INVIOLÁVEIS:
     };
   } catch (e) {
     console.error("AI error", e);
-    return {
-      answer: "Ainda não há dados suficientes no Statball para responder com precisão.",
-      explanation: "Falha ao consultar IA.",
-      has_enough_data: false,
-      confidence: 0,
-    };
+    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "Falha ao consultar IA.", has_enough_data: false, confidence: 0 };
   }
 }
 
+// ---------- handler ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { query, user_id } = await req.json();
+    const { query, user_id, liga_id: forcedLeagueId } = await req.json();
     if (!query || typeof query !== "string" || query.trim().length < 2) {
       return new Response(JSON.stringify({ error: "query inválida" }), {
         status: 400,
@@ -189,141 +325,140 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
     const normalized = normalize(query);
-    const type = classify(query);
+    const intent = detectIntent(query);
     const year = extractYear(query);
     const scope = extractScope(query);
 
-    // 1. Resolve entidades — extrai tokens significativos
-    const STOPWORDS = new Set([
-      "quantos","quantas","quanto","qual","quais","quem","como","quando","onde",
-      "por","porque","que","de","do","da","dos","das","o","a","os","as","um","uma",
-      "no","na","nos","nas","em","e","ou","com","sem","para","pra","pelo","pela",
-      "jogo","jogos","jogou","jogar","partida","partidas","fez","feito","tem",
-      "ja","já","mais","menos","melhor","pior","time","times","liga","campeonato",
-      "ano","anos","temporada","atual","passado","passada","este","esse","essa",
-      "casa","fora","mandante","visitante",
-    ]);
-    const tokens = normalized
-      .replace(/[?!.,;:()"]/g, " ")
-      .split(/\s+/)
-      .filter((t) => t.length >= 3 && !STOPWORDS.has(t) && !/^\d{4}$/.test(t));
-
-    const queriesToTry: string[] = [query];
-    if (type !== "entity" && tokens.length > 0) {
-      queriesToTry.push(tokens.join(" "));
-      for (const t of tokens) queriesToTry.push(t);
-    }
-
-    const seen = new Set<string>();
-    const merged: any[] = [];
-    for (const q of queriesToTry) {
-      const { data, error } = await supabase.rpc("search_global", { p_query: q, p_limit: 20 });
-      if (error) { console.error("search_global", q, error); continue; }
-      for (const r of (data || [])) {
-        const k = `${r.entity_type}:${r.entity_id}`;
-        if (seen.has(k)) continue;
-        seen.add(k);
-        merged.push(r);
-        if (merged.length >= 30) break;
-      }
-      if (merged.length >= 30) break;
-    }
-    const results = merged;
-
-    const entities = (results || []).slice(0, 8).map((r: any) => ({
-      type: r.entity_type,
-      id: r.entity_id,
-      name: r.name,
-    }));
+    // entidades para a UI (lista geral)
+    const { data: globResults } = await supabase.rpc("search_global", { p_query: query, p_limit: 30 });
+    const results = globResults || [];
+    const entities = results.slice(0, 8).map((r: any) => ({ type: r.entity_type, id: r.entity_id, name: r.name }));
 
     let ai_answer: any = null;
     let contextStr = "";
+    let source: string = "internal";
+    let top_scorers: any[] | null = null;
+    let resolved_league: { id: string; name: string } | null = null;
+    let league_disambiguation: { id: string; name: string }[] = [];
 
-    // 2. Monta contexto factual real (com filtros aplicados) para a IA
-    if (type === "question" || type === "stat") {
-      // pula sub-times se houver alternativa principal
+    // ---------- TOP SCORER ----------
+    if (intent === "top_scorer") {
+      let league: { id: string; name: string } | null = null;
+      if (forcedLeagueId) {
+        const { data: l } = await supabase.from("ligas").select("id, nome").eq("id", forcedLeagueId).single();
+        if (l) league = { id: l.id, name: l.nome };
+      } else {
+        const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+        if (candidates.length > 0) {
+          league = { id: candidates[0].id, name: candidates[0].name };
+          league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+        }
+      }
+
+      if (!league) {
+        ai_answer = {
+          answer: "Não consegui identificar de qual campeonato você está falando. Tente: \"artilheiro do Brasileirão 2025\".",
+          explanation: "Liga não resolvida.",
+          has_enough_data: false,
+          confidence: 0,
+        };
+      } else {
+        resolved_league = league;
+        const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, year, 10);
+        source = src;
+        top_scorers = rows;
+        if (rows.length === 0) {
+          ai_answer = {
+            answer: `Ainda não há dados de artilharia da ${league.name}${year ? ` em ${year}` : ""} no Statball.`,
+            explanation: "Sem registros internos para essa liga/ano.",
+            has_enough_data: false,
+            confidence: 0,
+          };
+        } else {
+          const top = rows[0];
+          const list = rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.jogador}${r.time ? ` (${r.time})` : ""} — ${r.gols} gols`).join("\n");
+          contextStr = `Liga: ${league.name}${year ? ` (${year})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
+          ai_answer = {
+            answer: `O maior artilheiro da **${league.name}**${year ? ` em ${year}` : ""} é **${top.jogador}**${top.time ? ` (${top.time})` : ""} com **${top.gols} gols**.\n\nTop 5:\n${list}`,
+            explanation: `Fonte: ${src === "artilharia_agregada" ? "artilharia agregada Statball" : "agregação de eventos de gol"}.`,
+            has_enough_data: true,
+            confidence: src === "artilharia_agregada" ? 95 : 80,
+          };
+        }
+      }
+    }
+
+    // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
+    else if (intent === "team_stats" || intent === "open_question") {
       const teamCandidates = results.filter((r: any) => r.entity_type === "team");
       const topTeam = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
-      const topLeague = results.find((r: any) => r.entity_type === "league");
-      const topPlayer = results.find((r: any) => r.entity_type === "player");
-
       if (topTeam) {
         const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
         const agg = aggregate(matches, topTeam.entity_id);
-        const scopeStr = scope === "home" ? " (apenas como mandante)" : scope === "away" ? " (apenas como visitante)" : "";
-        const yearStr = year ? `Ano consultado: ${year}\n` : "Período: todos os dados disponíveis\n";
-        contextStr += `Time consultado: ${topTeam.name} (id: ${topTeam.entity_id})\n${yearStr}`;
-        contextStr += `Jogos finalizados${scopeStr}: ${agg.total}\n`;
-        contextStr += `Vitórias: ${agg.w} | Empates: ${agg.d} | Derrotas: ${agg.l}\n`;
-        contextStr += `Gols marcados: ${agg.gf} | Gols sofridos: ${agg.ga}\n`;
+        const scopeStr = scope === "home" ? " (mandante)" : scope === "away" ? " (visitante)" : "";
+        const yearStr = year ? `Ano: ${year}\n` : "Período: todos os dados\n";
+        contextStr += `Time: ${topTeam.name}\n${yearStr}Jogos${scopeStr}: ${agg.total}\nV:${agg.w} E:${agg.d} D:${agg.l}\nGols pró:${agg.gf} contra:${agg.ga}\n`;
         if (matches.length > 0) {
           const last = matches.slice(0, 5).map((m: any) => {
             const isHome = m.time_casa_id === topTeam.entity_id;
-            return `${m.data?.slice(0,10)} ${isHome ? "(casa)" : "(fora)"} ${m.gols_casa}x${m.gols_fora}`;
+            return `${m.data?.slice(0, 10)} ${isHome ? "(casa)" : "(fora)"} ${m.gols_casa}x${m.gols_fora}`;
           }).join("; ");
-          contextStr += `Últimas partidas no período: ${last}\n`;
+          contextStr += `Últimas: ${last}\n`;
         }
-        if (teamCandidates.length > 1) {
-          const others = teamCandidates.slice(0, 5).filter((t: any) => t.entity_id !== topTeam.entity_id).map((t: any) => t.name);
-          if (others.length) contextStr += `Outros times com nome similar (não consultados): ${others.join(", ")}\n`;
-        }
-      }
-      if (topLeague) contextStr += `Liga relacionada: ${topLeague.name}\n`;
-      if (topPlayer) contextStr += `Jogador relacionado: ${topPlayer.name}\n`;
-
-      if (type === "question") {
-        const ai = await callAI(contextStr || "Sem dados internos relacionados.", query);
-        ai_answer = ai;
-        await supabase.rpc("record_ai_answer", {
-          p_question: query,
-          p_normalized: normalized,
-          p_answer: ai.answer,
-          p_sources: entities,
-          p_confidence: ai.confidence,
-          p_has_enough: ai.has_enough_data,
-          p_user_id: user_id ?? null,
-        });
+        ai_answer = await callAI(contextStr, query);
+      } else if (intent === "open_question") {
+        ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
       }
     }
 
-    // 3. Registra busca + trends
+    // log da resposta
+    if (ai_answer) {
+      await supabase.rpc("record_ai_answer", {
+        p_question: query,
+        p_normalized: normalized,
+        p_answer: ai_answer.answer,
+        p_sources: entities,
+        p_confidence: ai_answer.confidence,
+        p_has_enough: ai_answer.has_enough_data,
+        p_user_id: user_id ?? null,
+      }).then(() => {}, (e: any) => console.error("record_ai_answer", e));
+    }
+
     await supabase.rpc("register_search", {
       p_query: query,
       p_normalized: normalized,
-      p_type: type,
+      p_type: intent === "top_scorer" || intent === "player_stats" || intent === "team_stats" || intent === "open_question" ? "question" : "entity",
       p_entities: entities,
       p_user_id: user_id ?? null,
-      p_result_count: results?.length ?? 0,
+      p_result_count: results.length,
       p_status: "ok",
-    });
+    }).then(() => {}, (e: any) => console.error("register_search", e));
 
-    // 4. Histórico individual
     if (user_id) {
       await supabase.from("user_search_history").insert({
-        user_id,
-        query_text: query,
-        query_type: type,
-      });
+        user_id, query_text: query, query_type: intent,
+      }).then(() => {}, (e: any) => console.error("history", e));
     }
 
-    return new Response(
-      JSON.stringify({
-        type,
-        query,
-        normalized,
-        year,
-        scope,
-        entities,
-        results: results ?? [],
-        ai_answer,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({
+      type: intent,
+      intent,
+      query,
+      normalized,
+      year,
+      scope,
+      entities,
+      results,
+      ai_answer,
+      top_scorers,
+      source,
+      resolved_league,
+      league_disambiguation,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("intelligent-search error", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

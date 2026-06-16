@@ -23,21 +23,37 @@ export interface AIAnswer {
   confidence: number;
 }
 
+export interface TopScorerRow {
+  jogador: string;
+  slug?: string | null;
+  time?: string | null;
+  gols: number;
+  temporada?: string | null;
+}
+
 export interface SearchResponse {
-  type: "entity" | "stat" | "question";
+  type: string;
+  intent?: string;
   query: string;
   normalized: string;
+  year?: number | null;
+  scope?: "home" | "away" | null;
   entities: SearchEntity[];
   results: SearchResultRow[];
   ai_answer: AIAnswer | null;
+  top_scorers?: TopScorerRow[] | null;
+  source?: string;
+  resolved_league?: { id: string; name: string } | null;
+  league_disambiguation?: { id: string; name: string }[];
 }
 
 export function useIntelligentSearch() {
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (query: string): Promise<SearchResponse> => {
+    mutationFn: async (args: string | { query: string; liga_id?: string }): Promise<SearchResponse> => {
+      const payload = typeof args === "string" ? { query: args } : args;
       const { data, error } = await supabase.functions.invoke("intelligent-search", {
-        body: { query, user_id: user?.id ?? null },
+        body: { ...payload, user_id: user?.id ?? null },
       });
       if (error) throw error;
       return data as SearchResponse;
