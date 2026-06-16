@@ -105,8 +105,8 @@ export default function AdminTeamCurriculum() {
     queryKey: ["admin-curriculum-league-teams", ligaId],
     enabled: !!ligaId,
     queryFn: async (): Promise<LeagueTeam[]> => {
-      // 1) distinct team ids from partidas
-      const ids = new Set<string>();
+      // 1) distinct team ids + per-league match counts
+      const leagueCount = new Map<string, number>();
       let page = 0;
       const pageSize = 1000;
       while (true) {
@@ -121,20 +121,20 @@ export default function AdminTeamCurriculum() {
         if (error) throw error;
         if (!data || data.length === 0) break;
         data.forEach((r: any) => {
-          if (r.time_casa_id) ids.add(r.time_casa_id);
-          if (r.time_fora_id) ids.add(r.time_fora_id);
+          if (r.time_casa_id) leagueCount.set(r.time_casa_id, (leagueCount.get(r.time_casa_id) ?? 0) + 1);
+          if (r.time_fora_id) leagueCount.set(r.time_fora_id, (leagueCount.get(r.time_fora_id) ?? 0) + 1);
         });
         if (data.length < pageSize) break;
         page++;
         if (page > 20) break;
       }
-      const idArr = Array.from(ids);
+      const idArr = Array.from(leagueCount.keys());
       if (idArr.length === 0) return [];
 
-      // 2) team meta
+      // 2) team meta (incluindo total_matches global)
       const teamsRes = await supabase
         .from("times")
-        .select("id, nome, pais, estado")
+        .select("id, nome, pais, estado, total_matches")
         .in("id", idArr);
       const teamsArr = teamsRes.data || [];
 
@@ -152,13 +152,15 @@ export default function AdminTeamCurriculum() {
       (profRes.data || []).forEach((r: any) => profMap.set(r.team_id, !!r.history_text));
 
       return teamsArr
-        .map((t: any) => ({
+        .map((t: any): LeagueTeam => ({
           id: t.id, nome: t.nome, estado: t.estado, pais: t.pais,
           titles_count: titleMap.get(t.id) ?? 0,
           parts_count: partMap.get(t.id) ?? 0,
           profile_filled: profMap.get(t.id) ?? false,
+          league_matches: leagueCount.get(t.id) ?? 0,
+          total_matches: t.total_matches ?? 0,
         }))
-        .sort((a, b) => a.nome.localeCompare(b.nome));
+        .sort((a, b) => b.league_matches - a.league_matches || b.total_matches - a.total_matches);
     },
   });
 
