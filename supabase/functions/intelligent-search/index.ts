@@ -123,6 +123,82 @@ async function resolveLeagueCandidates(
 }
 
 // ---------- top scorer resolver ----------
+function isWorldCup2026League(leagueName: string, year: number | null): boolean {
+  const n = normalize(leagueName);
+  return year === 2026 && (n.includes("fifa world cup") || n.includes("copa do mundo"));
+}
+
+function parseGoalScorer(description: string | null): string | null {
+  if (!description) return null;
+  if (/own goal/i.test(description)) return null;
+  const afterDash = description.includes("—") ? description.split("—").slice(1).join("—") : description;
+  const name = afterDash.replace(/\(assist:.*?\)/i, "").trim();
+  return name || null;
+}
+
+async function resolveWorldCup2026TopScorers(
+  supabase: any,
+  limit = 10,
+): Promise<{ rows: any[]; source: string }> {
+  const events: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("world_cup_2026_match_events")
+      .select("player_id, team_id, description, event_type")
+      .eq("event_type", "goal")
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("world_cup_2026_match_events", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    events.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  if (events.length === 0) return { rows: [], source: "none" };
+
+  const playerIds = [...new Set(events.map((e) => e.player_id).filter(Boolean))];
+  const teamIds = [...new Set(events.map((e) => e.team_id).filter(Boolean))];
+  const [{ data: players }, { data: teams }] = await Promise.all([
+    playerIds.length > 0
+      ? supabase.from("world_cup_2026_players").select("id, name, slug").in("id", playerIds)
+      : Promise.resolve({ data: [] }),
+    teamIds.length > 0
+      ? supabase.from("world_cup_2026_teams").select("id, name").in("id", teamIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const pmap = new Map((players || []).map((p: any) => [p.id, p]));
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t.name]));
+
+  const counts = new Map<string, { jogador: string; slug: string | null; time_id: string | null; gols: number }>();
+  for (const e of events) {
+    const player = e.player_id ? pmap.get(e.player_id) : null;
+    const scorer = player?.name || parseGoalScorer(e.description);
+    if (!scorer) continue;
+    const key = `${normalize(scorer)}|${e.team_id ?? ""}`;
+    const cur = counts.get(key) || { jogador: scorer, slug: player?.slug || null, time_id: e.team_id ?? null, gols: 0 };
+    cur.gols += 1;
+    counts.set(key, cur);
+  }
+
+  const rows = [...counts.values()]
+    .map((r) => ({
+      jogador: r.jogador,
+      slug: r.slug,
+      time: r.time_id ? tmap.get(r.time_id) || null : null,
+      gols: r.gols,
+      temporada: "2026",
+    }))
+    .sort((a, b) => b.gols - a.gols || a.jogador.localeCompare(b.jogador))
+    .slice(0, limit);
+
+  return { rows, source: "world_cup_2026_match_events" };
+}
+
 async function resolveTopScorers(
   supabase: any,
   leagueId: string,
@@ -130,6 +206,10 @@ async function resolveTopScorers(
   year: number | null,
   limit = 10,
 ): Promise<{ rows: any[]; source: string }> {
+  if (isWorldCup2026League(leagueName, year)) {
+    return resolveWorldCup2026TopScorers(supabase, limit);
+  }
+
   // 1) artilharia_agregada (preferida)
   let q = supabase
     .from("artilharia_agregada")
