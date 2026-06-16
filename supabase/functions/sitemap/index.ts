@@ -105,6 +105,11 @@ async function buildIndex(): Promise<string> {
   entries.push({ loc: `${SITE}/sitemap-times.xml`, lastmod: today });
   entries.push({ loc: `${SITE}/sitemap-estatisticas.xml`, lastmod: today });
 
+  const pesquisasCount = await countTable("search_posts");
+  for (let i = 0; i < Math.ceil(pesquisasCount / PAGE_SIZE); i++) {
+    entries.push({ loc: `${SITE}/sitemap-pesquisas-${i + 1}.xml`, lastmod: today });
+  }
+
   return wrapIndex(entries);
 }
 
@@ -123,6 +128,8 @@ function buildStatic(): string {
     ["/palpites", "daily", 0.8],
     ["/resultados", "daily", 0.8],
     ["/evolucao", "weekly", 0.6],
+    ["/pesquisa", "daily", 0.8],
+    ["/trends", "daily", 0.7],
     ["/precos", "monthly", 0.7],
     ["/auth", "monthly", 0.5],
     ["/termos", "yearly", 0.3],
@@ -163,6 +170,22 @@ async function buildPartidas(page: number): Promise<string> {
   for (const r of rows) {
     if (!r.slug) continue;
     body += urlEntry(`${SITE}/partida/${r.slug}`, r.updated_at || r.data, "weekly", 0.6);
+  }
+  return wrapUrlset(body);
+}
+
+async function buildPesquisas(page: number): Promise<string> {
+  const rows = await fetchPage<{ slug: string; updated_at: string }>(
+    "search_posts",
+    "slug, updated_at",
+    page,
+    undefined,
+    { column: "updated_at", ascending: false },
+  );
+  let body = "";
+  for (const r of rows) {
+    if (!r.slug) continue;
+    body += urlEntry(`${SITE}/pesquisa/${r.slug}`, r.updated_at, "weekly", 0.6);
   }
   return wrapUrlset(body);
 }
@@ -286,7 +309,7 @@ Deno.serve(async (req) => {
       } else if (name === "sitemap-estatisticas" || name === "estatisticas") {
         type = "estatisticas";
       } else {
-        const m = name.match(/^sitemap-(noticias|partidas)-(\d+)$/);
+        const m = name.match(/^sitemap-(noticias|partidas|pesquisas)-(\d+)$/);
         if (m) {
           type = m[1];
           page = parseInt(m[2], 10);
@@ -312,6 +335,9 @@ Deno.serve(async (req) => {
         break;
       case "estatisticas":
         body = await buildEstatisticas();
+        break;
+      case "pesquisas":
+        body = await buildPesquisas(Math.max(0, page - 1));
         break;
       case "index":
       default:
