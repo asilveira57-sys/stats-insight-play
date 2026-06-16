@@ -366,6 +366,54 @@ function aggregate(matches: any[], teamId: string) {
   return { total: matches.length, w, d, l, gf, ga };
 }
 
+const STOPWORDS = new Set([
+  "quem", "qual", "quais", "quanto", "quantos", "quantas", "como", "quando", "onde", "porque", "por", "que",
+  "jogos", "jogo", "partidas", "partida", "jogou", "disputou", "fez", "marcou", "ganhou", "perdeu", "empatou",
+  "em", "no", "na", "nos", "nas", "do", "da", "dos", "das", "de", "o", "a", "os", "as", "um", "uma", "pelo", "pela",
+  "ano", "temporada", "ate", "agora", "estatistica", "estatisticas", "campanha", "aproveitamento",
+]);
+
+function extractEntityTokens(normQuery: string): string[] {
+  return normQuery
+    .replace(/\b(19|20)\d{2}\b/g, " ")
+    .split(/[^a-z0-9]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+}
+
+async function resolveTeamCandidate(supabase: any, query: string, normQuery: string, results: any[]) {
+  const teamCandidates = (results || []).filter((r: any) => r.entity_type === "team");
+  const fromResults = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+  if (fromResults) return fromResults;
+
+  const tokens = extractEntityTokens(normQuery);
+  const seen = new Set<string>();
+  const candidates: any[] = [];
+  for (const token of tokens) {
+    const { data, error } = await supabase
+      .from("times")
+      .select("id, nome, slug, total_matches, pais, estado, cores, escudo_url")
+      .or(`nome.ilike.%${token}%,slug.ilike.%${token}%`)
+      .range(0, 19);
+    if (error) {
+      console.error("resolveTeamCandidate", error);
+      continue;
+    }
+    for (const t of data || []) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      const teamNorm = normalize(`${t.nome} ${t.slug || ""}`);
+      const exact = tokens.some((tok) => teamNorm.split(/\s|-/).includes(tok));
+      const subPenalty = SUBTEAM_RE.test(t.nome) ? 500 : 0;
+      const suffixPenalty = /-[a-z]{2}\b|\b(pi|sc|ba|u17|u20|u23|w)\b/i.test(t.nome) ? 120 : 0;
+      const score = (exact ? 1000 : 0) + Number(t.total_matches || 0) - subPenalty - suffixPenalty;
+      candidates.push({ entity_type: "team", entity_id: t.id, name: t.nome, score, extra: t });
+    }
+  }
+  candidates.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  return candidates[0] || null;
+}
+
 // ---------- IA ----------
 async function callAI(context: string, question: string) {
   if (!OPENAI_API_KEY) {
