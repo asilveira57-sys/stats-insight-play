@@ -1,80 +1,78 @@
+## Problema
+
+A pergunta "resultado da Alemanha no último jogo da Copa" cai em `entity_lookup`, que não tem nenhum resolvedor. O frontend então mostra "Nenhum resultado direto". O mesmo acontece com qualquer pergunta cujo formato não bata exatamente com as regex de intenção atuais (ex.: "último jogo do Flamengo", "placar de Brasil x Argentina", "quem treina o Palmeiras", "onde nasceu o Neymar").
+
+Hoje só temos resolvers para `top_scorer`, `team_stats` e parte de `open_question`. `match_lookup`, `player_stats` e `entity_lookup` não geram resposta — e não existe fallback de IA quando o banco não tem dados.
+
 ## Objetivo
 
-Transformar a Pesquisa Inteligente em uma experiência estilo Perplexity: nunca devolver "vazio" quando há dado, mostrar resposta curta + lista clicável (partidas, gols, jogadores), e salvar cada pergunta válida como **post indexável** com slug, meta title e meta description para SEO.
+Garantir que **toda** pergunta retorne uma resposta útil, seguindo essa cascata:
 
-## 1. Resposta nunca vazia (resolvers de team_stats)
+1. Entender a intenção (com LLM como roteador, não só regex)
+2. Buscar no banco com o resolver certo
+3. Se faltar dado, buscar em fonte externa (web/Perplexity quando disponível, ou Lovable AI com Google Search grounding)
+4. Sempre responder algo — nunca tela vazia
 
-No edge function `intelligent-search` (intent `team_stats` / contagem de jogos):
+## Mudanças
 
-- Quando o usuário pergunta "quantos jogos o X jogou em Y", além do número, retornar a **lista completa de partidas** já agregada:
-  - `summary`: "O Flamengo disputou 93 partidas em 2025."
-  - `breakdown`: vitórias / empates / derrotas / gols pró / gols contra.
-  - `matches[]`: id, data, mandante, visitante, placar, liga, link para `/jogo/:id` (ou rota equivalente já existente).
-  - `competitions[]`: agregado por liga com contagem (clicável → `?liga_id=...`).
-- Cobrir os outros intents que hoje podem voltar vazio: `top_scorer` (já tem tabela), `match_lookup`, `player_stats`. Para cada um, sempre devolver `summary` + `items[]` clicáveis.
-- Garantir fallback: se `partidas` tiver 0 linhas, tentar `historical_*` / `kaggle_staging_matches` antes de declarar vazio.
+### 1. Roteador de intenção híbrido (`detectIntent` + LLM classifier)
+- Manter regex rápidas como atalho.
+- Quando não houver match claro, chamar **Lovable AI Gateway (`google/gemini-3-flash-preview`)** com schema estruturado pra classificar:
+  - `intent`: top_scorer | player_stats | team_stats | match_lookup | last_match | next_match | coach_lookup | entity_lookup | open_question
+  - `entities`: { team?, player?, league?, year?, opponent? }
+  - `time_modifier`: last | next | specific_date | range | none
+- Substituir `OPENAI_API_KEY` por `LOVABLE_API_KEY` em todo o arquivo (padrão da plataforma).
 
-## 2. UI estilo Perplexity (Pesquisa.tsx)
+### 2. Novos resolvers no edge function
 
-Novo componente `AnswerCard` substituindo o atual `AIAnswerCard` quando houver `structured_answer`:
+**`resolveLastMatch(teamId, leagueFilter?)`** — usado para perguntas tipo "resultado da Alemanha no último jogo da Copa":
+- Busca em `partidas` (status=finished) + `world_cup_2026_matches` quando a liga for Copa do Mundo
+- Filtra por liga se o usuário citou ("copa", "brasileirão", etc.) usando os alias groups existentes
+- Retorna placar, adversário, data, gols (de `gols_partida` / `world_cup_2026_match_events`), cartões e link pra `/partida/:slug`
+- Persiste `search_post` (intent=last_match) com slug `ultimo-jogo-<time>-<liga>` e meta SEO
 
-```
-┌─────────────────────────────────────────────┐
-│ "O Flamengo disputou 93 partidas em 2025"   │  ← summary destacado
-│ 56V · 22E · 15D · 178 GP · 72 GC             │  ← breakdown chips
-├─────────────────────────────────────────────┤
-│ Por competição (clicável)                   │
-│  • Brasileirão Série A — 38                 │
-│  • Libertadores — 13                        │
-│  • Copa do Brasil — 9 …                     │
-├─────────────────────────────────────────────┤
-│ Últimas partidas (expandir lista completa)  │
-│  15/12  Flamengo 2x1 Palmeiras  → /jogo/123 │
-│  …                                          │
-└─────────────────────────────────────────────┘
-```
+**`resolveMatchLookup(teamA, teamB, year?)`** — para "Brasil x Argentina 2022":
+- Procura partidas entre os dois times; retorna lista ou jogo único
 
-Componentes novos em `src/components/search/`:
-- `AnswerCard.tsx` — summary + breakdown chips + fontes.
-- `MatchesList.tsx` — lista paginada (10 por vez, "ver mais") de partidas clicáveis.
-- `CompetitionBreakdown.tsx` — agregação por liga, cada linha clicável.
+**`resolvePlayerStats(playerName, year?)`** — para "quantos gols Vinicius fez em 2024":
+- Procura em `players`, agrega `gols_partida` ou `artilharia_agregada`
 
-## 3. Pesquisa vira post SEO (`/pesquisa/:slug`)
+**`resolveCoach(teamId)`** — para "quem treina o X":
+- Consulta `tecnicos` / `tecnico_partida` do último jogo
 
-Cada pergunta com resposta válida gera (ou reutiliza) um registro persistido:
+### 3. Fallback obrigatório (nunca retornar vazio)
+Quando nenhum resolver produzir `structured_answer`:
+1. Tenta Lovable AI com o contexto disponível (entidades encontradas, normalized query) e o sistema atual.
+2. Se ainda não houver resposta útil, chama Lovable AI novamente em modo "resposta geral de futebol" com aviso explícito de que veio de **conhecimento externo** (não do banco) — UI marca como `source: "external"` com badge "Fonte externa".
+3. Se houver `PERPLEXITY_API_KEY` configurado (connector), usar `sonar` em vez do passo 2 para respostas com citação. Caso contrário, pular.
+4. Sempre gerar pelo menos `ai_answer.answer` + `structured_answer.kind = "external"` com `summary` para que a UI renderize algo.
 
-- Tabela nova `search_posts`:
-  - `id`, `slug` (único), `question`, `normalized_question`, `answer_summary`, `answer_payload jsonb` (matches/breakdown/etc.), `meta_title`, `meta_description`, `entities jsonb` (time/liga/ano), `views`, `created_at`, `updated_at`.
-  - Grants conforme regra (`SELECT` para `anon`, escrita só `service_role`); RLS leitura pública.
-- No final do edge function, se `structured_answer` existe:
-  - Gerar slug determinístico (`quantos-jogos-flamengo-2025`).
-  - Upsert em `search_posts` com `meta_title` (`<=60` chars) e `meta_description` (`<=160` chars) baseados no summary.
-  - Retornar `post_slug` no payload.
-- Rota nova `/pesquisa/:slug` (`SearchPost.tsx`):
-  - Carrega `search_posts` pelo slug; renderiza `AnswerCard` + lista + "atualizado em".
-  - `<Helmet>` com title/description/canonical/og e JSON-LD `QAPage` + `BreadcrumbList`.
-  - Botão "refazer pergunta" → reexecuta busca e atualiza payload (revalidação leve, ex.: > 24h).
-- `Pesquisa.tsx`: após resposta, mostrar link "🔗 Página desta pergunta" → `/pesquisa/{slug}`. Em listagens "Trending", linkar para o slug em vez de só re-disparar a query.
-- Atualizar `scripts/generate-sitemap.ts` para incluir todos os slugs de `search_posts` (sem filtros extras além de "tem answer").
+### 4. UI (`Pesquisa.tsx` + `AnswerCard.tsx`)
+- Quando `structured_answer.kind === "last_match"` ou `"match_detail"`, renderizar `AnswerCard` com placar grande, adversário, data e botão "Ver detalhes" → `/partida/:slug`.
+- Quando `structured_answer.kind === "external"`, mostrar resposta com badge amarelo "Fonte externa — dados não confirmados pelo Statball".
+- Remover o estado "Nenhum resultado direto" e substituir por skeleton enquanto carrega; após a resposta, sempre mostrar `AnswerCard`.
 
-## 4. Garantias de qualidade
+### 5. SEO posts
+- Cada resolver novo persiste em `search_posts` com `meta_title`/`meta_description` apropriados e cria página em `/pesquisa/:slug` (já existe — só passa o payload novo).
+- `last_match` cria post separado por (time + liga), `match_lookup` por (timeA + timeB + ano).
 
-- Nunca salvar post se a resposta veio vazia ou marcada como `low_confidence`.
-- Marcar `source` em cada bloco (`interna`, `eventos`, `historico`) — já existe parcialmente, expor na UI.
-- Cache HTTP do edge function (5 min) para evitar reprocessar a mesma pergunta repetidamente.
+## Detalhes técnicos
+
+- Não cria tabelas novas. `search_posts.answer_payload` (JSONB) acomoda os novos `kind`s.
+- Adiciona `kind: "last_match" | "match_detail" | "player_stats" | "coach" | "external"` ao tipo `StructuredAnswer` no frontend (`useIntelligentSearch.ts`, `SearchPost.tsx`).
+- `callAI` migra pra Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1`, header `Lovable-API-Key`) — remove dependência do `OPENAI_API_KEY`.
+- Tratamento explícito de 402/429 do gateway com mensagem para o usuário.
 
 ## Arquivos afetados
 
-- `supabase/functions/intelligent-search/index.ts` — novos resolvers `resolveTeamMatches`, slug + upsert `search_posts`.
-- Migração: criar `search_posts` com GRANTs + RLS pública para SELECT.
-- `src/pages/Pesquisa.tsx` — usar `AnswerCard` + mostrar link do post.
-- `src/pages/SearchPost.tsx` (novo) + rota em `src/App.tsx`.
-- `src/components/search/AnswerCard.tsx`, `MatchesList.tsx`, `CompetitionBreakdown.tsx` (novos).
-- `src/hooks/useIntelligentSearch.ts` — tipos do novo payload (`structured_answer`, `post_slug`).
-- `scripts/generate-sitemap.ts` — incluir slugs de `search_posts`.
+- `supabase/functions/intelligent-search/index.ts` (grande refactor: roteador LLM, novos resolvers, fallback obrigatório, migração pra Lovable AI)
+- `src/hooks/useIntelligentSearch.ts` (novos `kind`s no tipo)
+- `src/pages/Pesquisa.tsx` (sempre renderizar resposta; remover estado vazio)
+- `src/components/search/AnswerCard.tsx` (renderizar `last_match`, `match_detail`, `external`)
+- `src/pages/SearchPost.tsx` (suportar novos `kind`s no SEO)
 
-## Fora de escopo
+## Fora do escopo
 
-- Editor manual dos posts gerados (pode vir depois via Admin).
-- Tradução / multi-idioma das respostas.
-- Geração de imagem OG por post (usa OG padrão do site por enquanto).
+- Não muda esquema de banco.
+- Não mexe em outras páginas/fluxos.
+- Conector Perplexity só é usado se já existir (não vou pedir pra configurar agora) — se o usuário quiser citações web ricas, posso sugerir depois.

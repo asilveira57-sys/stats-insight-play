@@ -11,7 +11,12 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const AI_MODEL = "google/gemini-3-flash-preview";
+const OPENAI_MODEL = "gpt-4o-mini";
 
 // ---------- helpers ----------
 function normalize(s: string): string {
@@ -417,33 +422,64 @@ async function resolveTeamCandidate(supabase: any, query: string, normQuery: str
   return candidates[0] || null;
 }
 
-// ---------- IA ----------
-async function callAI(context: string, question: string) {
-  if (!OPENAI_API_KEY) {
-    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "IA indisponível.", has_enough_data: false, confidence: 0 };
-  }
-  const system = `Você é o assistente do Statball, uma plataforma de estatísticas de futebol.
-Regras INVIOLÁVEIS:
-1. Responda APENAS com base nos dados do CONTEXTO. Não invente nomes, números ou datas.
-2. Os números do CONTEXTO já vêm filtrados pela pergunta — use-os exatamente.
-3. Se o contexto não tiver dados suficientes, retorne EXATAMENTE: "Ainda não há dados suficientes no Statball para responder com precisão."
-4. Seja conciso, em português do Brasil.
-5. Responda em JSON com: answer (string), explanation (string curta), has_enough_data (boolean), confidence (0-100).`;
-  const user = `CONTEXTO:\n${context}\n\nPERGUNTA: ${question}\n\nResponda em JSON.`;
+// ---------- IA (Lovable AI Gateway) ----------
+async function openaiChat(body: any): Promise<any | null> {
+  if (!OPENAI_API_KEY) return null;
   try {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    const openaiBody = { ...body, model: OPENAI_MODEL };
+    const r = await fetch(OPENAI_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        response_format: { type: "json_object" },
-      }),
+      body: JSON.stringify(openaiBody),
     });
-    if (r.status === 429 || r.status === 402) {
-      return { answer: "Limite de uso da IA atingido. Tente novamente em instantes.", explanation: "Rate limit.", has_enough_data: false, confidence: 0 };
+    if (!r.ok) {
+      console.error("openai error", r.status, await r.text().catch(() => ""));
+      return null;
     }
-    const data = await r.json();
+    return await r.json();
+  } catch (e) {
+    console.error("openaiChat ex", e);
+    return null;
+  }
+}
+
+async function lovableAiChat(body: any): Promise<any | null> {
+  if (LOVABLE_API_KEY) {
+    try {
+      const r = await fetch(AI_GATEWAY_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) return await r.json();
+      if (r.status === 429 || r.status === 402) {
+        console.warn("AI gateway limit", r.status, "→ tentando OpenAI");
+      } else {
+        console.error("AI gateway error", r.status, await r.text().catch(() => ""));
+      }
+    } catch (e) {
+      console.error("lovableAiChat ex", e);
+    }
+  }
+  // Fallback OpenAI
+  return await openaiChat(body);
+}
+
+async function callAI(context: string, question: string) {
+  const system = `Você é o assistente do Statball, plataforma de estatísticas de futebol.
+Regras: 1) Responda em PT-BR, conciso. 2) Use APENAS o CONTEXTO. 3) Se faltar dado, responda "Ainda não há dados suficientes no Statball para responder com precisão." 4) JSON: { answer, explanation, has_enough_data, confidence }.`;
+  const data = await lovableAiChat({
+    model: AI_MODEL,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `CONTEXTO:\n${context}\n\nPERGUNTA: ${question}\n\nResponda em JSON.` },
+    ],
+    response_format: { type: "json_object" },
+  });
+  if (!data) {
+    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "IA indisponível.", has_enough_data: false, confidence: 0 };
+  }
+  try {
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
     const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     return {
@@ -453,10 +489,194 @@ Regras INVIOLÁVEIS:
       confidence: Number(parsed.confidence ?? 0),
     };
   } catch (e) {
-    console.error("AI error", e);
-    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "Falha ao consultar IA.", has_enough_data: false, confidence: 0 };
+    console.error("callAI parse", e);
+    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "Falha ao interpretar IA.", has_enough_data: false, confidence: 0 };
   }
 }
+
+// Classificador LLM: entende a pergunta e devolve intent + entidades
+async function classifyWithAI(question: string): Promise<{
+  intent: string;
+  team?: string | null;
+  opponent?: string | null;
+  player?: string | null;
+  league?: string | null;
+  year?: number | null;
+  time_modifier?: string | null;
+} | null> {
+  const system = `Classifique perguntas de futebol em PT-BR. Devolva JSON com:
+- intent: um de "top_scorer" | "team_stats" | "match_lookup" | "last_match" | "next_match" | "player_stats" | "coach_lookup" | "entity_lookup" | "open_question"
+- team: nome do time principal mencionado (ou null)
+- opponent: adversário (ou null)
+- player: jogador mencionado (ou null)
+- league: liga/competição mencionada (ou null) — exs: "Copa do Mundo", "Brasileirão", "Libertadores"
+- year: ano específico (ou null)
+- time_modifier: "last" | "next" | "specific" | null
+Use null quando não houver. NÃO invente nomes.`;
+  const data = await lovableAiChat({
+    model: AI_MODEL,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: question },
+    ],
+    response_format: { type: "json_object" },
+  });
+  if (!data) return null;
+  try {
+    const raw = data?.choices?.[0]?.message?.content ?? "{}";
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Resposta de conhecimento geral (fallback). Marca explicitamente como fonte externa.
+async function externalAnswer(question: string, contextHint: string): Promise<{ answer: string; explanation: string; confidence: number } | null> {
+  const system = `Você é especialista em futebol mundial. Responda à pergunta em PT-BR de forma factual, completa e clara (3 a 6 frases).
+- Se houver "CONTEXTO STATBALL", priorize esses dados.
+- Caso contrário, use seu conhecimento de fatos históricos do futebol (resultados, jogadores, técnicos, datas, copas) com confiança.
+- Apenas diga "não tenho confirmação" se a pergunta envolver algo realmente fora do seu conhecimento (eventos muito recentes ou obscuros).
+- Sempre cite placares, datas e nomes quando souber.
+- Devolva JSON: { answer: string, explanation: string (curta — fonte/observação), confidence: 0-100 }.`;
+  const data = await lovableAiChat({
+    model: AI_MODEL,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `CONTEXTO STATBALL:\n${contextHint || "(sem dados internos)"}\n\nPERGUNTA: ${question}\n\nResponda em JSON.` },
+    ],
+    response_format: { type: "json_object" },
+  });
+  if (!data) return null;
+  try {
+    const raw = data?.choices?.[0]?.message?.content ?? "{}";
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return {
+      answer: parsed.answer ?? "Não foi possível responder agora.",
+      explanation: parsed.explanation ?? "Resposta gerada com conhecimento externo da IA.",
+      confidence: Number(parsed.confidence ?? 40),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Last match resolver ----------
+async function findTeamByName(supabase: any, name: string): Promise<{ id: string; name: string; slug: string | null } | null> {
+  if (!name) return null;
+  const n = normalize(name);
+  const tokens = n.split(/\s+/).filter((t) => t.length >= 3);
+  const orFilter = [`nome.ilike.%${name}%`, `slug.ilike.%${n}%`, ...tokens.map((t) => `nome.ilike.%${t}%`)].join(",");
+  const { data } = await supabase
+    .from("times")
+    .select("id, nome, slug, total_matches")
+    .or(orFilter)
+    .order("total_matches", { ascending: false })
+    .range(0, 9);
+  const filtered = (data || []).filter((t: any) => !SUBTEAM_RE.test(t.nome));
+  const pick = filtered[0] || (data || [])[0];
+  return pick ? { id: pick.id, name: pick.nome, slug: pick.slug ?? null } : null;
+}
+
+async function resolveLastMatch(
+  supabase: any,
+  teamId: string,
+  teamName: string,
+  teamSlug: string | null,
+  leagueHint: string | null,
+  year: number | null,
+): Promise<any | null> {
+  // Tenta primeiro Copa do Mundo 2026 se a dica for "copa/mundial"
+  const wantsWorldCup = leagueHint && /copa|mundial|world cup|mundo/.test(normalize(leagueHint));
+  if (wantsWorldCup) {
+    // Mapear team -> world_cup_2026_teams pelo nome
+    const { data: wcTeam } = await supabase
+      .from("world_cup_2026_teams")
+      .select("id, name, slug")
+      .ilike("name", `%${teamName}%`)
+      .maybeSingle();
+    if (wcTeam) {
+      const { data: matches } = await supabase
+        .from("world_cup_2026_matches")
+        .select("*")
+        .or(`home_team_id.eq.${wcTeam.id},away_team_id.eq.${wcTeam.id}`)
+        .eq("status", "finished")
+        .order("match_date", { ascending: false })
+        .range(0, 0);
+      const m = (matches || [])[0];
+      if (m) {
+        const oppId = m.home_team_id === wcTeam.id ? m.away_team_id : m.home_team_id;
+        const { data: opp } = await supabase.from("world_cup_2026_teams").select("name, slug").eq("id", oppId).maybeSingle();
+        const isHome = m.home_team_id === wcTeam.id;
+        return {
+          kind: "last_match",
+          source: "world_cup_2026_matches",
+          team: { id: teamId, name: teamName, slug: teamSlug },
+          competition: { name: "Copa do Mundo FIFA 2026", slug: null },
+          match: {
+            id: m.id,
+            slug: m.slug ?? null,
+            date: m.match_date,
+            is_home: isHome,
+            home_team: isHome ? teamName : (opp?.name ?? "—"),
+            away_team: isHome ? (opp?.name ?? "—") : teamName,
+            gols_casa: m.home_score,
+            gols_fora: m.away_score,
+            stage: m.stage ?? null,
+          },
+        };
+      }
+    }
+  }
+
+  // Caso geral: tabela `partidas`
+  let q = supabase
+    .from("partidas")
+    .select("id, slug, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, status")
+    .eq("status", "finished")
+    .not("gols_casa", "is", null)
+    .or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`)
+    .order("data", { ascending: false });
+  if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+  if (leagueHint) {
+    // tenta restringir por liga (nome match)
+    const { data: ligas } = await supabase
+      .from("ligas")
+      .select("id, nome")
+      .ilike("nome", `%${leagueHint}%`)
+      .range(0, 9);
+    const ligaIds = (ligas || []).map((l: any) => l.id);
+    if (ligaIds.length) q = q.in("liga_id", ligaIds);
+  }
+  const { data: rows } = await q.range(0, 0);
+  const m = (rows || [])[0];
+  if (!m) return null;
+  const isHome = m.time_casa_id === teamId;
+  const oppId = isHome ? m.time_fora_id : m.time_casa_id;
+  const [{ data: opp }, { data: liga }] = await Promise.all([
+    oppId ? supabase.from("times").select("nome, slug").eq("id", oppId).maybeSingle() : Promise.resolve({ data: null }),
+    m.liga_id ? supabase.from("ligas").select("nome, slug").eq("id", m.liga_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  return {
+    kind: "last_match",
+    source: "partidas",
+    team: { id: teamId, name: teamName, slug: teamSlug },
+    competition: { name: liga?.nome ?? null, slug: liga?.slug ?? null },
+    match: {
+      id: m.id,
+      slug: m.slug ?? null,
+      date: m.data,
+      is_home: isHome,
+      home_team: isHome ? teamName : (opp?.nome ?? "—"),
+      away_team: isHome ? (opp?.nome ?? "—") : teamName,
+      home_team_slug: isHome ? teamSlug : (opp?.slug ?? null),
+      away_team_slug: isHome ? (opp?.slug ?? null) : teamSlug,
+      gols_casa: m.gols_casa,
+      gols_fora: m.gols_fora,
+    },
+  };
+}
+
 
 // ---------- slug + post helpers ----------
 function slugify(s: string): string {
@@ -737,6 +957,98 @@ Deno.serve(async (req) => {
         ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
       }
     }
+
+    // ---------- FALLBACK GARANTIDO ----------
+    // Se ainda não temos resposta estruturada, usa o classificador LLM para refinar
+    // intenção e entidades, tenta resolver "último jogo" no banco e, em último caso,
+    // devolve uma resposta de conhecimento externo (marcada como tal).
+    const noStructured = !structured_answer;
+    const aiInsufficient = !ai_answer || !ai_answer.has_enough_data;
+
+    if (noStructured && aiInsufficient) {
+      const refined = await classifyWithAI(query);
+      const refinedIntent = refined?.intent ?? "open_question";
+      const refinedTeam = refined?.team ?? null;
+      const refinedLeague = refined?.league ?? null;
+      const refinedYear = refined?.year ?? year ?? null;
+      const wantsLast = refined?.time_modifier === "last" || /ultimo|último|recent|mais recente/.test(normalized);
+
+      // Tenta resolver "último jogo" do time mencionado
+      if ((refinedIntent === "last_match" || refinedIntent === "match_lookup" || wantsLast) && refinedTeam) {
+        const team = await findTeamByName(supabase, refinedTeam);
+        if (team) {
+          const lm = await resolveLastMatch(supabase, team.id, team.name, team.slug, refinedLeague, refinedYear);
+          if (lm) {
+            structured_answer = lm;
+            const m = lm.match;
+            const placar = `${m.gols_casa ?? "?"} x ${m.gols_fora ?? "?"}`;
+            const opp = m.is_home ? m.away_team : m.home_team;
+            const compStr = lm.competition?.name ? ` pela ${lm.competition.name}` : "";
+            const dateStr = m.date ? ` em ${String(m.date).slice(0, 10)}` : "";
+            const summary = `${team.name} ${m.is_home ? "recebeu" : "visitou"} o ${opp}${compStr}${dateStr} e o placar foi ${placar}.`;
+            ai_answer = {
+              answer: `**${team.name}** ${m.is_home ? "recebeu" : "visitou"} o **${opp}**${compStr}${dateStr}. Placar: **${placar}**.`,
+              explanation: `Fonte: ${lm.source}.`,
+              has_enough_data: true,
+              confidence: 90,
+            };
+            post_slug = buildSlug("ultimo-jogo", [team.name, lm.competition?.name, refinedYear]);
+            await persistSearchPost(supabase, {
+              slug: post_slug,
+              question: query,
+              normalized,
+              intent: "last_match",
+              summary,
+              meta_title: `Último jogo do ${team.name}${lm.competition?.name ? ` na ${lm.competition.name}` : ""} — Statball`,
+              meta_description: summary,
+              answer_payload: structured_answer,
+              entities,
+              confidence: 90,
+            });
+          }
+        }
+      }
+
+      // Se mesmo assim continua sem resposta, dispara a resposta externa
+      if (!structured_answer && (!ai_answer || !ai_answer.has_enough_data)) {
+        const ext = await externalAnswer(query, contextStr);
+        if (ext) {
+          ai_answer = {
+            answer: ext.answer,
+            explanation: ext.explanation,
+            has_enough_data: true,
+            confidence: ext.confidence,
+          };
+          structured_answer = {
+            kind: "external",
+            summary: ext.answer,
+            note: "Resposta gerada com conhecimento externo da IA — não confirmada pelos dados internos do Statball.",
+          };
+          post_slug = buildSlug("pergunta", [query.slice(0, 60)]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent: refinedIntent,
+            summary: ext.answer,
+            meta_title: truncate(query, 60),
+            meta_description: ext.answer,
+            answer_payload: structured_answer,
+            entities,
+            confidence: ext.confidence,
+          });
+        } else if (!ai_answer) {
+          ai_answer = {
+            answer: "Não consegui responder agora. Tente reformular a pergunta com nome do time, jogador ou competição.",
+            explanation: "IA indisponível no momento.",
+            has_enough_data: false,
+            confidence: 0,
+          };
+        }
+      }
+    }
+
+
 
     // log da resposta
     if (ai_answer) {
