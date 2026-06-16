@@ -937,6 +937,98 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- FALLBACK GARANTIDO ----------
+    // Se ainda não temos resposta estruturada, usa o classificador LLM para refinar
+    // intenção e entidades, tenta resolver "último jogo" no banco e, em último caso,
+    // devolve uma resposta de conhecimento externo (marcada como tal).
+    const noStructured = !structured_answer;
+    const aiInsufficient = !ai_answer || !ai_answer.has_enough_data;
+
+    if (noStructured && aiInsufficient) {
+      const refined = await classifyWithAI(query);
+      const refinedIntent = refined?.intent ?? "open_question";
+      const refinedTeam = refined?.team ?? null;
+      const refinedLeague = refined?.league ?? null;
+      const refinedYear = refined?.year ?? year ?? null;
+      const wantsLast = refined?.time_modifier === "last" || /ultimo|último|recent|mais recente/.test(normalized);
+
+      // Tenta resolver "último jogo" do time mencionado
+      if ((refinedIntent === "last_match" || refinedIntent === "match_lookup" || wantsLast) && refinedTeam) {
+        const team = await findTeamByName(supabase, refinedTeam);
+        if (team) {
+          const lm = await resolveLastMatch(supabase, team.id, team.name, team.slug, refinedLeague, refinedYear);
+          if (lm) {
+            structured_answer = lm;
+            const m = lm.match;
+            const placar = `${m.gols_casa ?? "?"} x ${m.gols_fora ?? "?"}`;
+            const opp = m.is_home ? m.away_team : m.home_team;
+            const compStr = lm.competition?.name ? ` pela ${lm.competition.name}` : "";
+            const dateStr = m.date ? ` em ${String(m.date).slice(0, 10)}` : "";
+            const summary = `${team.name} ${m.is_home ? "recebeu" : "visitou"} o ${opp}${compStr}${dateStr} e o placar foi ${placar}.`;
+            ai_answer = {
+              answer: `**${team.name}** ${m.is_home ? "recebeu" : "visitou"} o **${opp}**${compStr}${dateStr}. Placar: **${placar}**.`,
+              explanation: `Fonte: ${lm.source}.`,
+              has_enough_data: true,
+              confidence: 90,
+            };
+            post_slug = buildSlug("ultimo-jogo", [team.name, lm.competition?.name, refinedYear]);
+            await persistSearchPost(supabase, {
+              slug: post_slug,
+              question: query,
+              normalized,
+              intent: "last_match",
+              summary,
+              meta_title: `Último jogo do ${team.name}${lm.competition?.name ? ` na ${lm.competition.name}` : ""} — Statball`,
+              meta_description: summary,
+              answer_payload: structured_answer,
+              entities,
+              confidence: 90,
+            });
+          }
+        }
+      }
+
+      // Se mesmo assim continua sem resposta, dispara a resposta externa
+      if (!structured_answer && (!ai_answer || !ai_answer.has_enough_data)) {
+        const ext = await externalAnswer(query, contextStr);
+        if (ext) {
+          ai_answer = {
+            answer: ext.answer,
+            explanation: ext.explanation,
+            has_enough_data: true,
+            confidence: ext.confidence,
+          };
+          structured_answer = {
+            kind: "external",
+            summary: ext.answer,
+            note: "Resposta gerada com conhecimento externo da IA — não confirmada pelos dados internos do Statball.",
+          };
+          post_slug = buildSlug("pergunta", [query.slice(0, 60)]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent: refinedIntent,
+            summary: ext.answer,
+            meta_title: truncate(query, 60),
+            meta_description: ext.answer,
+            answer_payload: structured_answer,
+            entities,
+            confidence: ext.confidence,
+          });
+        } else if (!ai_answer) {
+          ai_answer = {
+            answer: "Não consegui responder agora. Tente reformular a pergunta com nome do time, jogador ou competição.",
+            explanation: "IA indisponível no momento.",
+            has_enough_data: false,
+            confidence: 0,
+          };
+        }
+      }
+    }
+
+
+
     // log da resposta
     if (ai_answer) {
       await supabase.rpc("record_ai_answer", {
