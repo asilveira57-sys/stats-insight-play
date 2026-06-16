@@ -42,7 +42,7 @@ function detectIntent(q: string): Intent {
     return "player_stats";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
     // pergunta sobre time específico
-    if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha/.test(n))
+    if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
     return "open_question";
   }
