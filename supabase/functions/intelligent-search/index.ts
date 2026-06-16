@@ -328,7 +328,7 @@ async function fetchSide(supabase: any, side: "home" | "away", teamId: string, y
   while (true) {
     let q = supabase
       .from("partidas")
-      .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
+      .select("id, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id, slug")
       .eq("status", "finished")
       .not("gols_casa", "is", null)
       .not("gols_fora", "is", null)
@@ -353,6 +353,7 @@ async function fetchAllPartidas(supabase: any, teamId: string, year: number | nu
   ]);
   return [...h, ...a].sort((x, y) => (y.data || "").localeCompare(x.data || ""));
 }
+
 
 function aggregate(matches: any[], teamId: string) {
   let w = 0, d = 0, l = 0, gf = 0, ga = 0;
