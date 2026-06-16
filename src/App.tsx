@@ -134,7 +134,10 @@ const App = () => (
             <Route path="/estatisticas/:liga/:time/:ano/:view" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
            <Route path="/pesquisa" element={<Pesquisa />} />
+           <Route path="/pesquisa" element={<Pesquisa />} />
            <Route path="/pesquisa/:slug" element={<SearchPost />} />
+           <Route path="/pesquisa/:slug/competicao/:ligaSlug" element={<SearchPostCompetition />} />
+           <Route path="/partida/:slug" element={<PartidaDetalhe />} />
             <Route path="/trends" element={<Trends />} />
             <Route path="/copa-2026" element={<Copa2026Home />} />
             <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
