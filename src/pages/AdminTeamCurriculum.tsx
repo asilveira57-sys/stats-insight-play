@@ -64,6 +64,8 @@ type LeagueTeam = {
   titles_count: number;
   parts_count: number;
   profile_filled: boolean;
+  league_matches: number;
+  total_matches: number;
 };
 
 export default function AdminTeamCurriculum() {
