@@ -31,6 +31,53 @@ export interface TopScorerRow {
   temporada?: string | null;
 }
 
+export interface MatchRow {
+  id: string;
+  data: string | null;
+  slug: string | null;
+  is_home: boolean;
+  home_team: string;
+  away_team: string;
+  home_team_slug: string | null;
+  away_team_slug: string | null;
+  gols_casa: number | null;
+  gols_fora: number | null;
+  liga_id: string | null;
+  liga_nome: string | null;
+  liga_slug: string | null;
+}
+
+export interface CompetitionRow {
+  id: string;
+  name: string;
+  slug: string | null;
+  total: number;
+  w: number;
+  d: number;
+  l: number;
+}
+
+export type StructuredAnswer =
+  | {
+      kind: "team_stats";
+      summary: string;
+      team: { id: string; name: string; slug: string | null };
+      year: number | null;
+      scope: "home" | "away" | null;
+      breakdown: { total: number; vitorias: number; empates: number; derrotas: number; gols_pro: number; gols_contra: number };
+      competitions: CompetitionRow[];
+      matches: MatchRow[];
+      total_matches: number;
+    }
+  | {
+      kind: "top_scorer";
+      summary: string;
+      league: { id: string; name: string; slug: string | null };
+      year: number | null;
+      source: string;
+      top_scorers: TopScorerRow[];
+    };
+
 export interface SearchResponse {
   type: string;
   intent?: string;
@@ -45,7 +92,10 @@ export interface SearchResponse {
   source?: string;
   resolved_league?: { id: string; name: string } | null;
   league_disambiguation?: { id: string; name: string }[];
+  structured_answer?: StructuredAnswer | null;
+  post_slug?: string | null;
 }
+
 
 export function useIntelligentSearch() {
   const { user } = useAuth();
