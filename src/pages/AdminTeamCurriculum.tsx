@@ -75,6 +75,7 @@ export default function AdminTeamCurriculum() {
   // ---- Selector ----
   const [ligaId, setLigaId] = useState<string | null>(null);
   const [textFilter, setTextFilter] = useState("");
+  const [hideNoise, setHideNoise] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [teamId, setTeamId] = useState<string | null>(null);
 
