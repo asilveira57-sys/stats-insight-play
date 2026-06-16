@@ -167,9 +167,14 @@ export default function AdminTeamCurriculum() {
   const filteredTeams = useMemo(() => {
     if (!leagueTeams) return [];
     const q = textFilter.trim().toLowerCase();
-    if (!q) return leagueTeams;
-    return leagueTeams.filter((t) => t.nome.toLowerCase().includes(q));
-  }, [leagueTeams, textFilter]);
+    let list = leagueTeams;
+    if (hideNoise) {
+      // mantém só os times com participação relevante na liga (>=10 jogos OU >=200 jogos totais)
+      list = list.filter((t) => t.league_matches >= 10 || t.total_matches >= 200);
+    }
+    if (q) list = list.filter((t) => t.nome.toLowerCase().includes(q));
+    return list;
+  }, [leagueTeams, textFilter, hideNoise]);
 
   function teamStatus(t: LeagueTeam): { label: string; color: string } {
     if (t.titles_count + t.parts_count === 0 && !t.profile_filled) return { label: "vazio", color: "bg-gray-500" };
