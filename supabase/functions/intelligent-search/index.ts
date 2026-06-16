@@ -72,6 +72,8 @@ function extractScope(q: string): "home" | "away" | null {
 // Quando o usuário escreve um termo genérico, lista de "ligas canônicas" candidatas (por nome exato)
 const LEAGUE_ALIAS_GROUPS: Record<string, string[]> = {
   copa: ["FIFA World Cup", "Copa do Brasil", "Copa Libertadores", "Copa Sul-Americana", "Copa do Mundo"],
+  "copa do brasil": ["Copa do Brasil"],
+  "copa libertadores": ["Copa Libertadores"],
   mundial: ["FIFA World Cup", "Copa do Mundo"],
   "copa do mundo": ["FIFA World Cup", "Copa do Mundo"],
   "world cup": ["FIFA World Cup", "Copa do Mundo"],
@@ -119,7 +121,8 @@ async function resolveLeagueCandidates(
       .select("id, nome, ativa, tipo_principal, priority_score")
       .in("nome", aliases);
     for (const l of data || []) {
-      out.push({ id: l.id, name: l.nome, score: 100 + (Number(l.priority_score) || 0) });
+      const aliasIndex = aliases.indexOf(l.nome);
+      out.push({ id: l.id, name: l.nome, score: 1000 - aliasIndex * 25 + (Number(l.priority_score) || 0) / 100 });
     }
   }
 
