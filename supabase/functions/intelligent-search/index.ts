@@ -424,6 +424,7 @@ Deno.serve(async (req) => {
     const normalized = normalize(query);
     const intent = detectIntent(query);
     const year = extractYear(query);
+    let responseYear: number | null = year;
     const scope = extractScope(query);
 
     // entidades para a UI (lista geral)
@@ -462,6 +463,7 @@ Deno.serve(async (req) => {
       } else {
         resolved_league = league;
         const scorerYear = effectiveTopScorerYear(normalized, league.name, year);
+        responseYear = scorerYear;
         const { rows, source: src } = await resolveTopScorers(supabase, league.id, league.name, scorerYear, 10);
         source = src;
         top_scorers = rows;
@@ -544,7 +546,7 @@ Deno.serve(async (req) => {
       intent,
       query,
       normalized,
-      year,
+      year: responseYear,
       scope,
       entities,
       results,
