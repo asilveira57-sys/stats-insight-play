@@ -133,8 +133,7 @@ const App = () => (
             <Route path="/estatisticas/:liga/:time/:ano" element={<EstatisticasTeam />} />
             <Route path="/estatisticas/:liga/:time/:ano/:view" element={<EstatisticasTeam />} />
             <Route path="/palpites" element={<Palpites />} />
-           <Route path="/pesquisa" element={<Pesquisa />} />
-           <Route path="/pesquisa" element={<Pesquisa />} />
+            <Route path="/pesquisa" element={<Pesquisa />} />
            <Route path="/pesquisa/:slug" element={<SearchPost />} />
            <Route path="/pesquisa/:slug/competicao/:ligaSlug" element={<SearchPostCompetition />} />
            <Route path="/partida/:slug" element={<PartidaDetalhe />} />
