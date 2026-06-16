@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 import { TrendingCards } from "@/components/search/TrendingCards";
 import { AIAnswerCard } from "@/components/search/AIAnswerCard";
+import { AnswerCard } from "@/components/search/AnswerCard";
 import { EntityResultCard } from "@/components/search/EntityResultCard";
 import { UserSearchHistory } from "@/components/search/UserSearchHistory";
 import { TopScorersTable } from "@/components/search/TopScorersTable";
@@ -82,6 +83,10 @@ export default function Pesquisa() {
               />
             )}
 
+            {data?.structured_answer && (
+              <AnswerCard data={data.structured_answer} postSlug={data.post_slug ?? null} />
+            )}
+
             {data?.top_scorers && data.top_scorers.length > 0 && (
               <TopScorersTable
                 rows={data.top_scorers}
@@ -91,7 +96,7 @@ export default function Pesquisa() {
               />
             )}
 
-            {data?.ai_answer && (
+            {data?.ai_answer && !data.structured_answer && (
               <AIAnswerCard answer={data.ai_answer} sources={data.entities} />
             )}
 
