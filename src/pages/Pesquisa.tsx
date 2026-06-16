@@ -74,6 +74,23 @@ export default function Pesquisa() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 space-y-6">
+            {data?.league_disambiguation && data.league_disambiguation.length > 1 && (
+              <DisambiguationChips
+                options={data.league_disambiguation}
+                activeId={data.resolved_league?.id ?? null}
+                onPick={pickLeague}
+              />
+            )}
+
+            {data?.top_scorers && data.top_scorers.length > 0 && (
+              <TopScorersTable
+                rows={data.top_scorers}
+                leagueName={data.resolved_league?.name}
+                year={data.year ?? null}
+                source={data.source}
+              />
+            )}
+
             {data?.ai_answer && (
               <AIAnswerCard answer={data.ai_answer} sources={data.entities} />
             )}
