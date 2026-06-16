@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
-import { Trophy } from "lucide-react";
+import { Trophy, ChevronRight } from "lucide-react";
 import type { CompetitionRow } from "@/hooks/useIntelligentSearch";
 
-export function CompetitionBreakdown({ competitions }: { competitions: CompetitionRow[] }) {
+interface Props {
+  competitions: CompetitionRow[];
+  /** When provided, each row links to /pesquisa/{parentSlug}/competicao/{ligaSlug} */
+  parentSlug?: string;
+}
+
+export function CompetitionBreakdown({ competitions, parentSlug }: Props) {
   return (
     <div>
       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -11,21 +17,24 @@ export function CompetitionBreakdown({ competitions }: { competitions: Competiti
       </h3>
       <ul className="divide-y divide-border rounded-md border">
         {competitions.map((c) => {
+          const href = c.slug
+            ? parentSlug
+              ? `/pesquisa/${parentSlug}/competicao/${c.slug}`
+              : `/campeonatos/${c.slug}`
+            : null;
+
           const inner = (
             <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-muted/40 transition">
               <span className="truncate">{c.name}</span>
-              <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+              <span className="flex items-center gap-2 text-muted-foreground tabular-nums whitespace-nowrap">
                 {c.total} jogos · {c.w}V {c.d}E {c.l}D
+                {href && <ChevronRight className="h-3 w-3 text-primary/70" />}
               </span>
             </div>
           );
           return (
             <li key={c.id}>
-              {c.slug ? (
-                <Link to={`/campeonatos/${c.slug}`} className="block">{inner}</Link>
-              ) : (
-                inner
-              )}
+              {href ? <Link to={href} className="block">{inner}</Link> : inner}
             </li>
           );
         })}

@@ -259,7 +259,7 @@ export default function SearchPost() {
             <p className="text-sm text-muted-foreground">
               Distribuição das {payload.breakdown.total} partidas{payload.year ? ` de ${payload.year}` : ""} entre os torneios disputados. Clique em uma competição para ver a página completa do campeonato.
             </p>
-            <CompetitionBreakdown competitions={payload.competitions} />
+            <CompetitionBreakdown competitions={payload.competitions} parentSlug={data.slug} />
           </section>
         )}
 
