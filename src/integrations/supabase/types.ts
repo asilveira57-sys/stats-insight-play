@@ -5218,6 +5218,83 @@ export type Database = {
           },
         ]
       }
+      team_curriculum_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_team_id: string | null
+          current_team_nome: string | null
+          error_log: Json
+          failed: number
+          finished_at: string | null
+          id: string
+          liga_id: string | null
+          liga_nome: string | null
+          only_empty: boolean
+          processed: number
+          skipped_existing: number
+          skipped_low_conf: number
+          started_at: string | null
+          status: string
+          succeeded: number
+          team_ids: string[]
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_team_id?: string | null
+          current_team_nome?: string | null
+          error_log?: Json
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          liga_id?: string | null
+          liga_nome?: string | null
+          only_empty?: boolean
+          processed?: number
+          skipped_existing?: number
+          skipped_low_conf?: number
+          started_at?: string | null
+          status?: string
+          succeeded?: number
+          team_ids?: string[]
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_team_id?: string | null
+          current_team_nome?: string | null
+          error_log?: Json
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          liga_id?: string | null
+          liga_nome?: string | null
+          only_empty?: boolean
+          processed?: number
+          skipped_existing?: number
+          skipped_low_conf?: number
+          started_at?: string | null
+          status?: string
+          succeeded?: number
+          team_ids?: string[]
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_curriculum_jobs_liga_id_fkey"
+            columns: ["liga_id"]
+            isOneToOne: false
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_merge_analysis_cache: {
         Row: {
           created_by_user_id: string | null
