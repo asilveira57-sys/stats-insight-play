@@ -72,12 +72,31 @@ export default function AdminTeamCurriculum() {
   const { isAdmin, isLoading: loadingAuth, failed, retry, user } = useAdminAccess();
   const qc = useQueryClient();
 
-  // ---- Selector ----
-  const [ligaId, setLigaId] = useState<string | null>(null);
+  // ---- Selector (persisted in localStorage para sobreviver re-renders/refresh de auth) ----
+  const [ligaId, setLigaId] = useState<string | null>(() => {
+    try { return localStorage.getItem("admin-curriculum:ligaId"); } catch { return null; }
+  });
   const [textFilter, setTextFilter] = useState("");
   const [hideNoise, setHideNoise] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem("admin-curriculum:selectedIds");
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
   const [teamId, setTeamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      if (ligaId) localStorage.setItem("admin-curriculum:ligaId", ligaId);
+      else localStorage.removeItem("admin-curriculum:ligaId");
+    } catch {}
+  }, [ligaId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("admin-curriculum:selectedIds", JSON.stringify(Array.from(selectedIds)));
+    } catch {}
+  }, [selectedIds]);
 
   // ---- Editor ----
   const [generating, setGenerating] = useState(false);
