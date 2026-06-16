@@ -4758,6 +4758,57 @@ export type Database = {
         }
         Relationships: []
       }
+      search_posts: {
+        Row: {
+          answer_payload: Json
+          answer_summary: string
+          confidence: number | null
+          created_at: string
+          entities: Json
+          id: string
+          intent: string | null
+          meta_description: string
+          meta_title: string
+          normalized_question: string
+          question: string
+          slug: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          answer_payload?: Json
+          answer_summary: string
+          confidence?: number | null
+          created_at?: string
+          entities?: Json
+          id?: string
+          intent?: string | null
+          meta_description: string
+          meta_title: string
+          normalized_question: string
+          question: string
+          slug: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          answer_payload?: Json
+          answer_summary?: string
+          confidence?: number | null
+          created_at?: string
+          entities?: Json
+          id?: string
+          intent?: string | null
+          meta_description?: string
+          meta_title?: string
+          normalized_question?: string
+          question?: string
+          slug?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: []
+      }
       search_queries: {
         Row: {
           created_at: string
@@ -7240,6 +7291,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_search_post_views: {
+        Args: { p_slug: string }
+        Returns: undefined
       }
       log_user_activity: {
         Args: {
