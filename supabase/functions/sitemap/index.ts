@@ -174,6 +174,22 @@ async function buildPartidas(page: number): Promise<string> {
   return wrapUrlset(body);
 }
 
+async function buildPesquisas(page: number): Promise<string> {
+  const rows = await fetchPage<{ slug: string; updated_at: string }>(
+    "search_posts",
+    "slug, updated_at",
+    page,
+    undefined,
+    { column: "updated_at", ascending: false },
+  );
+  let body = "";
+  for (const r of rows) {
+    if (!r.slug) continue;
+    body += urlEntry(`${SITE}/pesquisa/${r.slug}`, r.updated_at, "weekly", 0.6);
+  }
+  return wrapUrlset(body);
+}
+
 async function buildTimes(): Promise<string> {
   // Teams are ~1k; one file is fine
   const all: { slug: string; updated_at: string }[] = [];
