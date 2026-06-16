@@ -76,6 +76,30 @@ export type StructuredAnswer =
       year: number | null;
       source: string;
       top_scorers: TopScorerRow[];
+    }
+  | {
+      kind: "last_match";
+      source: string;
+      team: { id: string; name: string; slug: string | null };
+      competition: { name: string | null; slug: string | null };
+      match: {
+        id: string;
+        slug: string | null;
+        date: string | null;
+        is_home: boolean;
+        home_team: string;
+        away_team: string;
+        home_team_slug?: string | null;
+        away_team_slug?: string | null;
+        gols_casa: number | null;
+        gols_fora: number | null;
+        stage?: string | null;
+      };
+    }
+  | {
+      kind: "external";
+      summary: string;
+      note: string;
     };
 
 export interface SearchResponse {
