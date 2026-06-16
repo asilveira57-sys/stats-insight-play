@@ -330,6 +330,8 @@ async function fetchSide(supabase: any, side: "home" | "away", teamId: string, y
       .from("partidas")
       .select("data, gols_casa, gols_fora, time_casa_id, time_fora_id, status, liga_id")
       .eq("status", "finished")
+      .not("gols_casa", "is", null)
+      .not("gols_fora", "is", null)
       .eq(col, teamId);
     if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
     const { data, error } = await q.order("data", { ascending: false }).range(from, from + PAGE - 1);
