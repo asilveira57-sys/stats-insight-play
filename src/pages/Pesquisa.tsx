@@ -6,6 +6,8 @@ import { TrendingCards } from "@/components/search/TrendingCards";
 import { AIAnswerCard } from "@/components/search/AIAnswerCard";
 import { EntityResultCard } from "@/components/search/EntityResultCard";
 import { UserSearchHistory } from "@/components/search/UserSearchHistory";
+import { TopScorersTable } from "@/components/search/TopScorersTable";
+import { DisambiguationChips } from "@/components/search/DisambiguationChips";
 import { useIntelligentSearch } from "@/hooks/useIntelligentSearch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +30,7 @@ export default function Pesquisa() {
   const mut = useIntelligentSearch();
 
   useEffect(() => {
-    if (initialQ) mut.mutate(initialQ);
+    if (initialQ) mut.mutate({ query: initialQ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQ]);
 
@@ -42,7 +44,12 @@ export default function Pesquisa() {
 
   const submit = (q: string) => {
     setParams({ q });
-    mut.mutate(q);
+    mut.mutate({ query: q });
+  };
+
+  const pickLeague = (leagueId: string) => {
+    if (!data) return;
+    mut.mutate({ query: data.query, liga_id: leagueId });
   };
 
   return (
