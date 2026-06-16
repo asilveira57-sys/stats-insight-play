@@ -58,7 +58,7 @@ export default function SearchPost() {
     );
   }
 
-  const payload = data.answer_payload as StructuredAnswer;
+  const payload = data.answer_payload as unknown as StructuredAnswer;
   const canonical = `${BASE_URL}/pesquisa/${data.slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
