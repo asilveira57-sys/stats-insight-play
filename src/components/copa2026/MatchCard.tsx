@@ -1,8 +1,15 @@
 import { Link } from "react-router-dom";
 import { TeamFlag } from "./TeamCard";
 import { WC2026PalpiteButton } from "./WC2026PalpiteButton";
-import { Calendar, MapPin, Radio, FileText } from "lucide-react";
+import { Calendar, MapPin, Radio, FileText, Brain, Check, X, CircleDot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+function confidenceLabel(c: number | null | undefined) {
+  if (c == null) return { label: "—", className: "bg-muted text-muted-foreground" };
+  if (c >= 0.7) return { label: "Alta", className: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" };
+  if (c >= 0.5) return { label: "Média", className: "bg-amber-500/15 text-amber-500 border-amber-500/30" };
+  return { label: "Baixa", className: "bg-muted text-muted-foreground" };
+}
 
 export function MatchCard({ match }: { match: any }) {
   const d = match.match_date ? new Date(match.match_date) : null;
@@ -12,20 +19,39 @@ export function MatchCard({ match }: { match: any }) {
   const statusVariant = isLive ? "destructive" : isFinished ? "secondary" : "outline";
   const statusLabel = isLive ? "AO VIVO" : isFinished ? "Encerrado" : "Agendado";
 
+  const ai = match.ai_prediction;
+  const hasAI = ai && ai.predicted_home_score != null && ai.predicted_away_score != null;
+  const conf = confidenceLabel(ai?.confidence_score);
+
+  // Avaliar acerto da IA quando partida finalizada
+  let aiExact = false, aiResult = false;
+  if (hasAI && isFinished && match.home_score != null && match.away_score != null) {
+    aiExact = ai.predicted_home_score === match.home_score && ai.predicted_away_score === match.away_score;
+    const realSign = Math.sign(match.home_score - match.away_score);
+    const predSign = Math.sign(ai.predicted_home_score - ai.predicted_away_score);
+    aiResult = realSign === predSign;
+  }
+
   return (
     <div className={`rounded-xl border ${isLive ? "border-destructive/60 shadow-[0_0_20px_-5px_hsl(var(--destructive)/0.5)]" : "border-border"} bg-card hover:border-primary/60 transition-all p-4`}>
       <Link to={`/copa-2026/jogos/${match.id}`} className="block">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{dateStr}</span>
-          <Badge variant={statusVariant} className={`text-[10px] ${isLive ? "animate-pulse" : ""}`}>{statusLabel}</Badge>
+          <Badge variant={statusVariant} className={`text-[10px] ${isLive ? "animate-pulse" : ""}`}>
+            {isLive && <CircleDot className="w-3 h-3 mr-1 inline" />}{statusLabel}
+          </Badge>
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <TeamFlag team={match.home} />
             <span className="font-medium truncate">{match.home?.name ?? "—"}</span>
           </div>
-          <div className={`px-2 font-bold text-lg tabular-nums ${isLive ? "text-destructive" : ""}`}>
-            {match.status === "scheduled" ? "vs" : `${match.home_score ?? 0} - ${match.away_score ?? 0}`}
+          <div className={`px-2 font-bold text-2xl tabular-nums ${isLive ? "text-destructive" : ""}`}>
+            {match.status === "scheduled" ? (
+              <span className="text-base text-muted-foreground">vs</span>
+            ) : (
+              <>{match.home_score ?? 0} <span className="text-muted-foreground">-</span> {match.away_score ?? 0}</>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
             <span className="font-medium truncate text-right">{match.away?.name ?? "—"}</span>
@@ -36,6 +62,29 @@ export function MatchCard({ match }: { match: any }) {
           <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
             {match.group_letter && <span>Grupo {match.group_letter}</span>}
             {match.stadium && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{match.stadium}</span>}
+          </div>
+        )}
+
+        {/* Palpite da IA — sempre visível quando existe */}
+        {hasAI && (
+          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Brain className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Palpite IA</span>
+              <span className="font-bold tabular-nums text-sm">
+                {ai.predicted_home_score} - {ai.predicted_away_score}
+              </span>
+              <Badge variant="outline" className={`text-[10px] ${conf.className}`}>{conf.label}</Badge>
+            </div>
+            {isFinished && (
+              aiExact ? (
+                <Badge className="text-[10px] bg-emerald-500/20 text-emerald-500 border-emerald-500/40"><Check className="w-3 h-3 mr-1" />Placar exato</Badge>
+              ) : aiResult ? (
+                <Badge className="text-[10px] bg-amber-500/20 text-amber-500 border-amber-500/40"><Check className="w-3 h-3 mr-1" />Resultado</Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] text-muted-foreground"><X className="w-3 h-3 mr-1" />Errou</Badge>
+              )
+            )}
           </div>
         )}
       </Link>
