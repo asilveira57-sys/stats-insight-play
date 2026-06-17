@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Download, Target, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
+
 
 const STAGE_LABELS: Record<string, string> = {
   group: "Fase de Grupos",
