@@ -80,10 +80,12 @@ function downloadCSV(rows: Row[]) {
 }
 
 export default function Copa2026PalpitesIA() {
+  useCopa2026Realtime();
   const [stage, setStage] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [conf, setConf] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["wc2026", "palpites-ia"],
