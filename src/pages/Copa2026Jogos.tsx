@@ -1,6 +1,8 @@
 import { Layout } from "@/components/layout/Layout";
 import { Helmet } from "react-helmet-async";
 import { useWC2026Matches } from "@/hooks/useCopa2026";
+import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
+
 import { MatchCard } from "@/components/copa2026/MatchCard";
 import { useMemo, useState } from "react";
 
