@@ -47,10 +47,22 @@ export function useWC2026Matches(filters?: { stage?: string; group?: string; sta
       if (filters?.teamId) q = q.or(`home_team_id.eq.${filters.teamId},away_team_id.eq.${filters.teamId}`);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const ids = rows.map((m: any) => m.id);
+      if (!ids.length) return rows;
+      const { data: preds } = await supabase
+        .from("world_cup_2026_ai_analyses")
+        .select("match_id, predicted_home_score, predicted_away_score, confidence_score")
+        .eq("analysis_type", "pre_match")
+        .in("match_id", ids)
+        .not("predicted_home_score", "is", null);
+      const map = new Map<string, any>();
+      (preds ?? []).forEach((p: any) => { if (!map.has(p.match_id)) map.set(p.match_id, p); });
+      return rows.map((m: any) => ({ ...m, ai_prediction: map.get(m.id) ?? null }));
     },
   });
 }
+
 
 export function useWC2026Match(id: string | undefined) {
   return useQuery({
@@ -127,15 +139,39 @@ export function useWC2026Overview() {
           .or("world_cup_2026_match_id.not.is.null,slug.ilike.copa-2026-%")
           .order("data_publicacao", { ascending: false }).limit(12),
       ]);
+
+      // Coletar match_ids para buscar previsões IA e anexar
+      const allMatches = [
+        ...(todayMatches.data ?? []),
+        ...(nextMatches.data ?? []),
+        ...(liveMatches.data ?? []),
+        ...(lastResults.data ?? []),
+      ];
+      const matchIds = Array.from(new Set(allMatches.map((m: any) => m.id)));
+      let predByMatch = new Map<string, any>();
+      if (matchIds.length) {
+        const { data: preds } = await supabase
+          .from("world_cup_2026_ai_analyses")
+          .select("match_id, predicted_home_score, predicted_away_score, confidence_score")
+          .eq("analysis_type", "pre_match")
+          .in("match_id", matchIds)
+          .not("predicted_home_score", "is", null);
+        (preds ?? []).forEach((p: any) => {
+          if (!predByMatch.has(p.match_id)) predByMatch.set(p.match_id, p);
+        });
+      }
+      const attach = (rows: any[]) => rows.map((m) => ({ ...m, ai_prediction: predByMatch.get(m.id) ?? null }));
+
       return {
-        todayMatches: todayMatches.data ?? [],
-        nextMatches: nextMatches.data ?? [],
-        nextMatch: (nextMatches.data ?? [])[0] ?? null,
-        liveMatches: liveMatches.data ?? [],
-        lastResults: lastResults.data ?? [],
+        todayMatches: attach(todayMatches.data ?? []),
+        nextMatches: attach(nextMatches.data ?? []),
+        nextMatch: attach(nextMatches.data ?? [])[0] ?? null,
+        liveMatches: attach(liveMatches.data ?? []),
+        lastResults: attach(lastResults.data ?? []),
         recentPosts: (posts.data ?? []).slice(0, 6),
       };
     },
   });
 }
+
 

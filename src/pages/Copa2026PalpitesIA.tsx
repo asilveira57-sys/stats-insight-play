@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Download, Target, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
+
 
 const STAGE_LABELS: Record<string, string> = {
   group: "Fase de Grupos",
@@ -78,10 +80,12 @@ function downloadCSV(rows: Row[]) {
 }
 
 export default function Copa2026PalpitesIA() {
+  useCopa2026Realtime();
   const [stage, setStage] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [conf, setConf] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["wc2026", "palpites-ia"],
