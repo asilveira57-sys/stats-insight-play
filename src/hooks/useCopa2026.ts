@@ -47,10 +47,22 @@ export function useWC2026Matches(filters?: { stage?: string; group?: string; sta
       if (filters?.teamId) q = q.or(`home_team_id.eq.${filters.teamId},away_team_id.eq.${filters.teamId}`);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const ids = rows.map((m: any) => m.id);
+      if (!ids.length) return rows;
+      const { data: preds } = await supabase
+        .from("world_cup_2026_ai_analyses")
+        .select("match_id, predicted_home_score, predicted_away_score, confidence_score")
+        .eq("analysis_type", "pre_match")
+        .in("match_id", ids)
+        .not("predicted_home_score", "is", null);
+      const map = new Map<string, any>();
+      (preds ?? []).forEach((p: any) => { if (!map.has(p.match_id)) map.set(p.match_id, p); });
+      return rows.map((m: any) => ({ ...m, ai_prediction: map.get(m.id) ?? null }));
     },
   });
 }
+
 
 export function useWC2026Match(id: string | undefined) {
   return useQuery({
