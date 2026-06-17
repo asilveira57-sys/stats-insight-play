@@ -28,8 +28,17 @@ async function apiGet(path: string, apiKey: string) {
     headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": "v3.football.api-sports.io" },
   });
   if (!r.ok) throw new Error(`API-Football ${path} ${r.status}`);
-  return (await r.json()).response ?? [];
+  const json = await r.json();
+  // API-Football devolve HTTP 200 com errors no corpo (ex: conta suspensa, limite,
+  // chave inválida). Precisamos transformar isso em exceção, senão a sync passa em
+  // "success" silenciosamente e nada é atualizado.
+  if (json?.errors && !Array.isArray(json.errors) && Object.keys(json.errors).length > 0) {
+    const msg = Object.entries(json.errors).map(([k, v]) => `${k}: ${v}`).join(" | ");
+    throw new Error(`API-Football ${path} error: ${msg}`);
+  }
+  return json.response ?? [];
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
