@@ -18,6 +18,8 @@ const STAGES = [
 ];
 
 export default function Copa2026Jogos() {
+  useCopa2026Realtime();
+
   const [stage, setStage] = useState("");
   const [status, setStatus] = useState("");
   const [group, setGroup] = useState("");
