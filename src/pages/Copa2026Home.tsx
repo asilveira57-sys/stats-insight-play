@@ -4,14 +4,17 @@ import { CountdownTimer } from "@/components/copa2026/CountdownTimer";
 import { GroupsTable } from "@/components/copa2026/GroupsTable";
 import { MatchCard } from "@/components/copa2026/MatchCard";
 import { useWC2026Overview } from "@/hooks/useCopa2026";
+import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
 import { Link } from "react-router-dom";
 import { Trophy, Users, Calendar, Newspaper, Sparkles, Radio, Brain, GitBranch, Goal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Copa2026Home() {
+  useCopa2026Realtime();
   const { data } = useWC2026Overview();
   const opening = new Date("2026-06-11T20:00:00-04:00");
   const tournamentStarted = new Date() >= opening;
+
 
   return (
     <Layout>
