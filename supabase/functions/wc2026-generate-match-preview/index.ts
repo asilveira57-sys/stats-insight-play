@@ -168,6 +168,19 @@ Os três campos prob_home + prob_draw + prob_away DEVEM somar 100 (inteiros).`;
     const s = pH + pD + pA;
     if (s > 0 && s !== 100) { pH = Math.round((pH / s) * 100); pD = Math.round((pD / s) * 100); pA = 100 - pH - pD; }
 
+    // Sanity-fix the score if AI returned 0x0 but probs don't favor a draw.
+    let pHome = Number(parsed.predicted_home_score);
+    let pAway = Number(parsed.predicted_away_score);
+    if (!Number.isFinite(pHome)) pHome = 0;
+    if (!Number.isFinite(pAway)) pAway = 0;
+    const drawDominant = pD >= pH && pD >= pA;
+    if (pHome === 0 && pAway === 0 && !drawDominant) {
+      if (pH >= pA) { pHome = pH >= 55 ? 2 : 1; pAway = pH >= 65 ? 0 : 1; if (pHome === pAway) pHome++; }
+      else { pAway = pA >= 55 ? 2 : 1; pHome = pA >= 65 ? 0 : 1; if (pHome === pAway) pAway++; }
+    }
+    parsed.predicted_home_score = pHome;
+    parsed.predicted_away_score = pAway;
+
     const homeName = match.home?.name ?? "Seleção A";
     const awayName = match.away?.name ?? "Seleção B";
 
