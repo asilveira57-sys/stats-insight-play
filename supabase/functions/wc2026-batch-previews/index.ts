@@ -26,7 +26,7 @@ async function invokePreview(matchId: string, force: boolean) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-async function runBatch(force: boolean, stage: string | null, logId: string) {
+async function runBatch(force: boolean, stage: string | null, onlyZeroZero: boolean, logId: string) {
   const supabase = createClient(PROJECT_URL, SERVICE_KEY);
   let q = supabase
     .from("world_cup_2026_matches")
@@ -38,9 +38,18 @@ async function runBatch(force: boolean, stage: string | null, logId: string) {
   const { data: matches } = await q;
   const list = matches ?? [];
 
-  // Skip ones that already have a pre-match analysis unless force
   let pending = list;
-  if (!force && list.length) {
+  if (onlyZeroZero && list.length) {
+    const { data: zeros } = await supabase
+      .from("world_cup_2026_ai_analyses")
+      .select("match_id")
+      .eq("analysis_type", "pre_match")
+      .eq("predicted_home_score", 0)
+      .eq("predicted_away_score", 0)
+      .in("match_id", list.map(m => m.id));
+    const zeroSet = new Set((zeros ?? []).map((e: any) => e.match_id));
+    pending = list.filter(m => zeroSet.has(m.id));
+  } else if (!force && list.length) {
     const { data: existing } = await supabase
       .from("world_cup_2026_ai_analyses")
       .select("match_id")
