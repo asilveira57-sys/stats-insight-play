@@ -128,6 +128,13 @@ Devolva APENAS um JSON estrito com este formato (todos os campos obrigatórios):
   "image_concept": "descrição curta (≤180 chars) de uma cena ÚNICA: estádio estilizado de ${hostCity} ao entardecer/noite, gramado iluminado, formas geométricas modernas com as cores das bandeiras de ${match.home?.name} e ${match.away?.name}, sem brasões/logos oficiais"
 }
 
+REGRAS DO PALPITE DE PLACAR (OBRIGATÓRIAS):
+- predicted_home_score e predicted_away_score são INTEIROS entre 0 e 4.
+- Em Copa do Mundo placares 0x0 são raros. NÃO devolva 0x0 a menos que ambos os times sejam reconhecidamente defensivos E o empate seja claramente o cenário mais provável (prob_draw > prob_home E prob_draw > prob_away).
+- O placar deve refletir as probabilidades: se prob_home > prob_away então predicted_home_score > predicted_away_score (e vice-versa). Se empate for provável use 1x1 ou 2x2.
+- Use média de gols das seleções em Copas e nível técnico (favoritos = mais gols).
+- Exemplos realistas: 1x0, 2x1, 2x0, 3x1, 1x1, 2x2, 3x0.
+
 Os três campos prob_home + prob_draw + prob_away DEVEM somar 100 (inteiros).`;
 
     const controller = new AbortController();
