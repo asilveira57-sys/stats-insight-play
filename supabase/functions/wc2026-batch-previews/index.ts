@@ -26,7 +26,7 @@ async function invokePreview(matchId: string, force: boolean) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-async function runBatch(force: boolean, stage: string | null, logId: string) {
+async function runBatch(force: boolean, stage: string | null, onlyZeroZero: boolean, logId: string) {
   const supabase = createClient(PROJECT_URL, SERVICE_KEY);
   let q = supabase
     .from("world_cup_2026_matches")
@@ -38,9 +38,18 @@ async function runBatch(force: boolean, stage: string | null, logId: string) {
   const { data: matches } = await q;
   const list = matches ?? [];
 
-  // Skip ones that already have a pre-match analysis unless force
   let pending = list;
-  if (!force && list.length) {
+  if (onlyZeroZero && list.length) {
+    const { data: zeros } = await supabase
+      .from("world_cup_2026_ai_analyses")
+      .select("match_id")
+      .eq("analysis_type", "pre_match")
+      .eq("predicted_home_score", 0)
+      .eq("predicted_away_score", 0)
+      .in("match_id", list.map(m => m.id));
+    const zeroSet = new Set((zeros ?? []).map((e: any) => e.match_id));
+    pending = list.filter(m => zeroSet.has(m.id));
+  } else if (!force && list.length) {
     const { data: existing } = await supabase
       .from("world_cup_2026_ai_analyses")
       .select("match_id")
@@ -91,7 +100,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const supabase = createClient(PROJECT_URL, SERVICE_KEY);
-    const { force = false, stage = null } = await req.json().catch(() => ({}));
+    const { force = false, stage = null, only_zero_zero = false } = await req.json().catch(() => ({}));
 
     const { data: log } = await supabase.from("world_cup_2026_sync_logs").insert({
       sync_type: "ai_preview_batch",
@@ -100,11 +109,11 @@ Deno.serve(async (req) => {
       started_at: new Date().toISOString(),
     }).select("id").single();
 
-    // Fire and forget - response returns immediately
+    // Fire and forget
     // @ts-ignore EdgeRuntime is provided by Supabase runtime
-    EdgeRuntime.waitUntil(runBatch(force, stage, log!.id));
+    EdgeRuntime.waitUntil(runBatch(force || only_zero_zero, stage, only_zero_zero, log!.id));
 
-    return new Response(JSON.stringify({ success: true, log_id: log!.id, message: "Batch started in background. Acompanhe nos logs." }), {
+    return new Response(JSON.stringify({ success: true, log_id: log!.id, message: "Batch started in background." }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {

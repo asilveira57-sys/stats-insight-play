@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { getCountryFlagUrl } from "@/lib/countryFlags";
 
 interface TeamRef { name?: string; flag_url?: string | null; slug?: string }
 
@@ -14,15 +15,22 @@ function Initials({ name, dims }: { name?: string; dims: string }) {
 
 export function TeamFlag({ team, size = "md" }: { team?: TeamRef | null; size?: "sm" | "md" | "lg" }) {
   const dims = size === "sm" ? "w-6 h-6" : size === "lg" ? "w-12 h-12" : "w-8 h-8";
-  const [errored, setErrored] = useState(false);
+  const [stage, setStage] = useState<0 | 1 | 2>(0);
   if (!team) return <div className={`${dims} rounded bg-muted`} />;
-  if (!team.flag_url || errored) return <Initials name={team.name} dims={dims} />;
+
+  // Prefer flagcdn (country flag — reliable) over api-sports badge (which may be blocked).
+  const cdn = team.name ? getCountryFlagUrl(team.name) : null;
+  const primary = cdn || team.flag_url || null;
+  const secondary = cdn && team.flag_url && cdn !== team.flag_url ? team.flag_url : null;
+
+  const src = stage === 0 ? primary : stage === 1 ? secondary : null;
+  if (!src) return <Initials name={team.name} dims={dims} />;
   return (
     <img
-      src={team.flag_url}
+      src={src}
       alt={team.name ?? ""}
       loading="lazy"
-      onError={() => setErrored(true)}
+      onError={() => setStage((s) => (s === 0 && secondary ? 1 : 2))}
       className={`${dims} rounded object-cover bg-muted`}
     />
   );
