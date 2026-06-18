@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const supabase = createClient(PROJECT_URL, SERVICE_KEY);
-    const { force = false, stage = null } = await req.json().catch(() => ({}));
+    const { force = false, stage = null, only_zero_zero = false } = await req.json().catch(() => ({}));
 
     const { data: log } = await supabase.from("world_cup_2026_sync_logs").insert({
       sync_type: "ai_preview_batch",
@@ -109,11 +109,11 @@ Deno.serve(async (req) => {
       started_at: new Date().toISOString(),
     }).select("id").single();
 
-    // Fire and forget - response returns immediately
+    // Fire and forget
     // @ts-ignore EdgeRuntime is provided by Supabase runtime
-    EdgeRuntime.waitUntil(runBatch(force, stage, log!.id));
+    EdgeRuntime.waitUntil(runBatch(force || only_zero_zero, stage, only_zero_zero, log!.id));
 
-    return new Response(JSON.stringify({ success: true, log_id: log!.id, message: "Batch started in background. Acompanhe nos logs." }), {
+    return new Response(JSON.stringify({ success: true, log_id: log!.id, message: "Batch started in background." }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
