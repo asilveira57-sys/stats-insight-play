@@ -50,6 +50,57 @@ export type Database = {
         }
         Relationships: []
       }
+      analysis_audit: {
+        Row: {
+          analysis_id: string
+          analysis_source: string
+          audit_grade: string
+          audit_score: number
+          badge: string
+          claims_detail: Json
+          created_at: string
+          data_source_count: number
+          id: string
+          inconsistent_claims: number
+          match_id: string | null
+          model_version: string
+          unverified_claims: number
+          verified_claims: number
+        }
+        Insert: {
+          analysis_id: string
+          analysis_source: string
+          audit_grade?: string
+          audit_score?: number
+          badge?: string
+          claims_detail?: Json
+          created_at?: string
+          data_source_count?: number
+          id?: string
+          inconsistent_claims?: number
+          match_id?: string | null
+          model_version?: string
+          unverified_claims?: number
+          verified_claims?: number
+        }
+        Update: {
+          analysis_id?: string
+          analysis_source?: string
+          audit_grade?: string
+          audit_score?: number
+          badge?: string
+          claims_detail?: Json
+          created_at?: string
+          data_source_count?: number
+          id?: string
+          inconsistent_claims?: number
+          match_id?: string | null
+          model_version?: string
+          unverified_claims?: number
+          verified_claims?: number
+        }
+        Relationships: []
+      }
       analytics_config: {
         Row: {
           ga4_enabled: boolean | null
@@ -918,6 +969,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      confidence_accuracy: {
+        Row: {
+          accuracy_diff: number
+          accuracy_exact: number
+          accuracy_trend: number
+          accuracy_winner: number
+          avg_score: number
+          competition_code: string
+          confidence_band: string
+          id: string
+          level1_hits: number
+          level2_hits: number
+          level3_hits: number
+          level4_hits: number
+          model_version: string
+          score_sum: number
+          total_matches: number
+          updated_at: string
+        }
+        Insert: {
+          accuracy_diff?: number
+          accuracy_exact?: number
+          accuracy_trend?: number
+          accuracy_winner?: number
+          avg_score?: number
+          competition_code?: string
+          confidence_band: string
+          id?: string
+          level1_hits?: number
+          level2_hits?: number
+          level3_hits?: number
+          level4_hits?: number
+          model_version?: string
+          score_sum?: number
+          total_matches?: number
+          updated_at?: string
+        }
+        Update: {
+          accuracy_diff?: number
+          accuracy_exact?: number
+          accuracy_trend?: number
+          accuracy_winner?: number
+          avg_score?: number
+          competition_code?: string
+          confidence_band?: string
+          id?: string
+          level1_hits?: number
+          level2_hits?: number
+          level3_hits?: number
+          level4_hits?: number
+          model_version?: string
+          score_sum?: number
+          total_matches?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       configuracoes: {
         Row: {
@@ -3923,6 +4031,36 @@ export type Database = {
           },
         ]
       }
+      model_versions: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          released_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          released_at?: string
+          version: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          released_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       mp_payments: {
         Row: {
           amount_cents: number
@@ -4525,6 +4663,129 @@ export type Database = {
           id?: string
           period?: string
           search_count?: number
+        }
+        Relationships: []
+      }
+      prediction_explanations: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string | null
+          model_version: string
+          prediction_id: string
+          prediction_source: string
+          rationale: string | null
+          top_factors: Json
+          weights: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          model_version?: string
+          prediction_id: string
+          prediction_source: string
+          rationale?: string | null
+          top_factors?: Json
+          weights?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          model_version?: string
+          prediction_id?: string
+          prediction_source?: string
+          rationale?: string | null
+          top_factors?: Json
+          weights?: Json
+        }
+        Relationships: []
+      }
+      prediction_performance: {
+        Row: {
+          competition_code: string | null
+          competition_id: string | null
+          confidence_band: string | null
+          confidence_value: number | null
+          created_at: string
+          frozen_at: string
+          goal_difference_error: number
+          id: string
+          level1_winner_correct: boolean
+          level2_trend_correct: boolean
+          level3_diff_correct: boolean
+          level4_exact_correct: boolean
+          match_id: string
+          match_source: string
+          model_version: string
+          predicted_away_goals: number
+          predicted_diff: number | null
+          predicted_home_goals: number
+          predicted_result: string
+          prediction_score: number
+          real_away_goals: number
+          real_diff: number | null
+          real_home_goals: number
+          real_result: string
+          stage: string | null
+          total_goals_error: number
+        }
+        Insert: {
+          competition_code?: string | null
+          competition_id?: string | null
+          confidence_band?: string | null
+          confidence_value?: number | null
+          created_at?: string
+          frozen_at?: string
+          goal_difference_error: number
+          id?: string
+          level1_winner_correct: boolean
+          level2_trend_correct: boolean
+          level3_diff_correct: boolean
+          level4_exact_correct: boolean
+          match_id: string
+          match_source: string
+          model_version?: string
+          predicted_away_goals: number
+          predicted_diff?: number | null
+          predicted_home_goals: number
+          predicted_result: string
+          prediction_score: number
+          real_away_goals: number
+          real_diff?: number | null
+          real_home_goals: number
+          real_result: string
+          stage?: string | null
+          total_goals_error: number
+        }
+        Update: {
+          competition_code?: string | null
+          competition_id?: string | null
+          confidence_band?: string | null
+          confidence_value?: number | null
+          created_at?: string
+          frozen_at?: string
+          goal_difference_error?: number
+          id?: string
+          level1_winner_correct?: boolean
+          level2_trend_correct?: boolean
+          level3_diff_correct?: boolean
+          level4_exact_correct?: boolean
+          match_id?: string
+          match_source?: string
+          model_version?: string
+          predicted_away_goals?: number
+          predicted_diff?: number | null
+          predicted_home_goals?: number
+          predicted_result?: string
+          prediction_score?: number
+          real_away_goals?: number
+          real_diff?: number | null
+          real_home_goals?: number
+          real_result?: string
+          stage?: string | null
+          total_goals_error?: number
         }
         Relationships: []
       }
@@ -7078,6 +7339,16 @@ export type Database = {
     }
     Functions: {
       calculate_level: { Args: { p_total_xp: number }; Returns: number }
+      compute_prediction_levels: {
+        Args: { p_away: number; p_home: number; r_away: number; r_home: number }
+        Returns: {
+          l1: boolean
+          l2: boolean
+          l3: boolean
+          l4: boolean
+          score: number
+        }[]
+      }
       consolidate_team_aliases: {
         Args: never
         Returns: {
@@ -7331,6 +7602,14 @@ export type Database = {
           p_user_id?: string
         }
         Returns: string
+      }
+      refresh_confidence_accuracy: {
+        Args: {
+          p_band: string
+          p_competition_code: string
+          p_model_version: string
+        }
+        Returns: undefined
       }
       refresh_team_stats_cache: { Args: never; Returns: Json }
       register_search: {
