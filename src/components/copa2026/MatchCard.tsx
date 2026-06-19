@@ -83,16 +83,37 @@ export function MatchCard({ match }: { match: any }) {
 
         {/* Palpite da IA — sempre visível quando existe */}
         {hasAI && (
-          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Brain className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Palpite IA</span>
-              <span className="font-bold tabular-nums text-sm">
-                {ai.predicted_home_score} - {ai.predicted_away_score}
-              </span>
-              <Badge variant="outline" className={`text-[10px] ${conf.className}`}>{conf.label}</Badge>
+          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <Brain className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Palpite IA</span>
+                <span className="font-bold tabular-nums text-sm">
+                  {ai.predicted_home_score} - {ai.predicted_away_score}
+                </span>
+                <Badge variant="outline" className={`text-[10px] ${conf.className}`}>
+                  {conf.label}{historicAcc != null && <span className="ml-1 opacity-80">· {historicAcc}%</span>}
+                </Badge>
+                <AuditBadge matchId={match.id} />
+              </div>
+              {isFinished && (
+                aiExact ? (
+                  <Badge className="text-[10px] bg-emerald-500/20 text-emerald-500 border-emerald-500/40"><Check className="w-3 h-3 mr-1" />Placar exato</Badge>
+                ) : aiResult ? (
+                  <Badge className="text-[10px] bg-amber-500/20 text-amber-500 border-amber-500/40"><Check className="w-3 h-3 mr-1" />Resultado</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground"><X className="w-3 h-3 mr-1" />Errou</Badge>
+                )
+              )}
             </div>
-            {isFinished && (
+          </div>
+        )}
+      </Link>
+      {hasAI && (
+        <div className="mt-2 flex justify-start">
+          <PredictionExplanationDialog matchId={match.id} source="wc2026" />
+        </div>
+      )}
               aiExact ? (
                 <Badge className="text-[10px] bg-emerald-500/20 text-emerald-500 border-emerald-500/40"><Check className="w-3 h-3 mr-1" />Placar exato</Badge>
               ) : aiResult ? (
