@@ -114,17 +114,6 @@ export function MatchCard({ match }: { match: any }) {
           <PredictionExplanationDialog matchId={match.id} source="wc2026" />
         </div>
       )}
-              aiExact ? (
-                <Badge className="text-[10px] bg-emerald-500/20 text-emerald-500 border-emerald-500/40"><Check className="w-3 h-3 mr-1" />Placar exato</Badge>
-              ) : aiResult ? (
-                <Badge className="text-[10px] bg-amber-500/20 text-amber-500 border-amber-500/40"><Check className="w-3 h-3 mr-1" />Resultado</Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] text-muted-foreground"><X className="w-3 h-3 mr-1" />Errou</Badge>
-              )
-            )}
-          </div>
-        )}
-      </Link>
       <div className="mt-3 pt-3 border-t border-border/50 flex justify-end">
         {isLive ? (
           <Link to={`/copa-2026/jogos/${match.id}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-destructive hover:underline">
