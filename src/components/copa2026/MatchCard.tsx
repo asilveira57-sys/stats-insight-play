@@ -3,12 +3,24 @@ import { TeamFlag } from "./TeamCard";
 import { WC2026PalpiteButton } from "./WC2026PalpiteButton";
 import { Calendar, MapPin, Radio, FileText, Brain, Check, X, CircleDot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useConfidenceAccuracy, type ConfidenceBand } from "@/hooks/useConfidenceAccuracy";
+import { AuditBadge } from "./AuditBadge";
+import { PredictionExplanationDialog } from "./PredictionExplanationDialog";
 
-function confidenceLabel(c: number | null | undefined) {
-  if (c == null) return { label: "—", className: "bg-muted text-muted-foreground" };
-  if (c >= 0.7) return { label: "Alta", className: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" };
-  if (c >= 0.5) return { label: "Média", className: "bg-amber-500/15 text-amber-500 border-amber-500/30" };
-  return { label: "Baixa", className: "bg-muted text-muted-foreground" };
+function confidenceBand(c: number | null | undefined): ConfidenceBand | null {
+  if (c == null) return null;
+  // confidence_score chega como 0-1 (frontend) ou 0-100 (db)
+  const v = c <= 1 ? c * 100 : c;
+  if (v >= 70) return "alta";
+  if (v >= 40) return "media";
+  return "baixa";
+}
+
+function bandStyle(band: ConfidenceBand | null) {
+  if (band === "alta") return { label: "Alta", className: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" };
+  if (band === "media") return { label: "Média", className: "bg-amber-500/15 text-amber-500 border-amber-500/30" };
+  if (band === "baixa") return { label: "Baixa", className: "bg-muted text-muted-foreground" };
+  return { label: "—", className: "bg-muted text-muted-foreground" };
 }
 
 export function MatchCard({ match }: { match: any }) {
