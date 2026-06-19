@@ -24,7 +24,7 @@ export function usePredictionExplanation(matchId: string | undefined | null) {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as PredictionExplanation | null;
+      return data as unknown as PredictionExplanation | null;
     },
     staleTime: 60_000,
   });

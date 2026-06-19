@@ -28,7 +28,7 @@ export function useAnalysisAudit(matchId: string | undefined | null) {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as AnalysisAudit | null;
+      return data as unknown as AnalysisAudit | null;
     },
     staleTime: 60_000,
   });
@@ -45,7 +45,7 @@ export function useAnalysisAuditByAnalysis(analysisId: string | undefined | null
         .eq("analysis_id", analysisId)
         .maybeSingle();
       if (error) throw error;
-      return data as AnalysisAudit | null;
+      return data as unknown as AnalysisAudit | null;
     },
     staleTime: 60_000,
   });
