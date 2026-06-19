@@ -33,7 +33,11 @@ export function MatchCard({ match }: { match: any }) {
 
   const ai = match.ai_prediction;
   const hasAI = ai && ai.predicted_home_score != null && ai.predicted_away_score != null;
-  const conf = confidenceLabel(ai?.confidence_score);
+  const band = confidenceBand(ai?.confidence_score);
+  const conf = bandStyle(band);
+  const { data: accuracyData } = useConfidenceAccuracy("WC2026");
+  const accForBand = band ? accuracyData?.byBand[band] : null;
+  const historicAcc = accForBand && accForBand.total_matches >= 3 ? Math.round(accForBand.accuracy_winner) : null;
 
   // Avaliar acerto da IA quando partida finalizada
   let aiExact = false, aiResult = false;
