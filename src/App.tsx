@@ -97,6 +97,8 @@ import Copa2026Grupos from "./pages/Copa2026Grupos";
 import Copa2026PalpitesIA from "./pages/Copa2026PalpitesIA";
 import AdminCopa2026 from "./pages/AdminCopa2026";
 import Copa2026Artilharia from "./pages/Copa2026Artilharia";
+import IAPerformance from "./pages/IAPerformance";
+import TransparenciaIA from "./pages/TransparenciaIA";
 
 const queryClient = new QueryClient();
 
@@ -172,6 +174,8 @@ const App = () => (
             <Route path="/termos" element={<TermosUso />} />
             <Route path="/sobre" element={<Sobre />} />
             <Route path="/transparencia" element={<TransparenciaEditorial />} />
+            <Route path="/ia-performance" element={<IAPerformance />} />
+            <Route path="/transparencia-ia" element={<TransparenciaIA />} />
             <Route path="/contato" element={<Contato />} />
             <Route path="/lgpd" element={<Lgpd />} />
             <Route path="/cookies" element={<PoliticaCookies />} />
