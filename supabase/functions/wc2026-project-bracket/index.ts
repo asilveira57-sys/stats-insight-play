@@ -269,27 +269,35 @@ Deno.serve(async (req) => {
       r32Winners.push({ team: teamById.get(sim.winner_team_id)!, slot: p.slot });
     });
 
-    // R16: pair winners sequentially (1v2, 3v4, ...)
-    const r16Winners: { team: Team; slot: string }[] = [];
-    for (let i = 0; i < 8; i++) {
-      const home = r32Winners[i * 2].team;
-      const away = r32Winners[i * 2 + 1].team;
-      const sim = simulateKnockout(home, away);
-      const slot = `R16-${i + 1}`;
-      rows.push({ phase: "round_of_16", slot_code: slot, home_team_id: home.id, away_team_id: away.id, ...sim });
-      r16Winners.push({ team: teamById.get(sim.winner_team_id)!, slot });
-    }
+    const pairAndRun = (
+      input: { team: Team; slot: string }[],
+      phase: string,
+      prefix: string,
+    ) => {
+      const winners: { team: Team; slot: string }[] = [];
+      const losers: { team: Team; slot: string }[] = [];
+      const pairs = Math.floor(input.length / 2);
+      for (let i = 0; i < pairs; i++) {
+        const home = input[i * 2].team;
+        const away = input[i * 2 + 1].team;
+        if (!home || !away) continue;
+        const sim = simulateKnockout(home, away);
+        const slot = `${prefix}-${i + 1}`;
+        rows.push({ phase, slot_code: slot, home_team_id: home.id, away_team_id: away.id, ...sim });
+        const winner = teamById.get(sim.winner_team_id);
+        if (!winner) continue;
+        winners.push({ team: winner, slot });
+        const loser = winner.id === home.id ? away : home;
+        losers.push({ team: loser, slot });
+      }
+      return { winners, losers };
+    };
 
-    // QF
-    const qfWinners: { team: Team; slot: string }[] = [];
-    for (let i = 0; i < 4; i++) {
-      const home = r16Winners[i * 2].team;
-      const away = r16Winners[i * 2 + 1].team;
-      const sim = simulateKnockout(home, away);
-      const slot = `QF-${i + 1}`;
-      rows.push({ phase: "quarter_final", slot_code: slot, home_team_id: home.id, away_team_id: away.id, ...sim });
-      qfWinners.push({ team: teamById.get(sim.winner_team_id)!, slot });
-    }
+    const r16 = pairAndRun(r32Winners, "round_of_16", "R16").winners;
+    const qf = pairAndRun(r16, "quarter_final", "QF").winners;
+    const sf = pairAndRun(qf, "semi_final", "SF");
+    const sfWinners = sf.winners;
+    const sfLosers = sf.losers;
 
     // SF
     const sfWinners: { team: Team; slot: string }[] = [];
