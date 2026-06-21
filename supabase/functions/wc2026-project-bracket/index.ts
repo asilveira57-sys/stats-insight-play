@@ -299,34 +299,25 @@ Deno.serve(async (req) => {
     const sfWinners = sf.winners;
     const sfLosers = sf.losers;
 
-    // SF
-    const sfWinners: { team: Team; slot: string }[] = [];
-    const sfLosers: { team: Team; slot: string }[] = [];
-    for (let i = 0; i < 2; i++) {
-      const home = qfWinners[i * 2].team;
-      const away = qfWinners[i * 2 + 1].team;
-      const sim = simulateKnockout(home, away);
-      const slot = `SF-${i + 1}`;
-      rows.push({ phase: "semi_final", slot_code: slot, home_team_id: home.id, away_team_id: away.id, ...sim });
-      const winner = teamById.get(sim.winner_team_id)!;
-      sfWinners.push({ team: winner, slot });
-      const loser = winner.id === home.id ? away : home;
-      sfLosers.push({ team: loser, slot });
+    let championName: string | undefined;
+    let thirdName: string | undefined;
+
+    if (sfWinners.length >= 2) {
+      const finalSim = simulateKnockout(sfWinners[0].team, sfWinners[1].team);
+      rows.push({
+        phase: "final", slot_code: "F-1",
+        home_team_id: sfWinners[0].team.id, away_team_id: sfWinners[1].team.id, ...finalSim,
+      });
+      championName = teamById.get(finalSim.winner_team_id!)?.name;
     }
-
-    // Final
-    const finalSim = simulateKnockout(sfWinners[0].team, sfWinners[1].team);
-    rows.push({
-      phase: "final", slot_code: "F-1",
-      home_team_id: sfWinners[0].team.id, away_team_id: sfWinners[1].team.id, ...finalSim,
-    });
-
-    // Third place
-    const thirdSim = simulateKnockout(sfLosers[0].team, sfLosers[1].team);
-    rows.push({
-      phase: "third_place", slot_code: "TP-1",
-      home_team_id: sfLosers[0].team.id, away_team_id: sfLosers[1].team.id, ...thirdSim,
-    });
+    if (sfLosers.length >= 2) {
+      const thirdSim = simulateKnockout(sfLosers[0].team, sfLosers[1].team);
+      rows.push({
+        phase: "third_place", slot_code: "TP-1",
+        home_team_id: sfLosers[0].team.id, away_team_id: sfLosers[1].team.id, ...thirdSim,
+      });
+      thirdName = teamById.get(thirdSim.winner_team_id!)?.name;
+    }
 
     // Delete existing live rows, insert fresh
     const { error: delErr } = await supabase
