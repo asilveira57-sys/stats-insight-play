@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
     const version = "live";
 
     const [teamsRes, matchesRes, analysesRes] = await Promise.all([
-      supabase.from("world_cup_2026_teams").select("id,name,slug,group_letter,fifa_ranking").eq("is_active", true),
+      supabase.from("world_cup_2026_teams").select("id,name,slug,group_letter,fifa_ranking"),
       supabase.from("world_cup_2026_matches").select("id,stage,home_team_id,away_team_id,status,home_score,away_score,winner_team_id,group_letter").eq("stage", "group"),
       supabase.from("world_cup_2026_ai_analyses").select("match_id,predicted_home_score,predicted_away_score,confidence_score"),
     ]);
