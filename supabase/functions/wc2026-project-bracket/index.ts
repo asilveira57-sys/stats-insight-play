@@ -92,9 +92,16 @@ async function projectGroups(supabase: any, teams: Team[], matches: GroupMatch[]
   const standings = new Map<string, Map<string, any>>();
 
   const init = (teamId: string) => {
-    const t = teamById.get(teamId)!;
+    const t = teamById.get(teamId);
+    if (!t) return null;
     const g = t.group_letter ?? "?";
     if (!standings.has(g)) standings.set(g, new Map());
+    const gm = standings.get(g)!;
+    if (!gm.has(teamId)) {
+      gm.set(teamId, { teamId, team: t, played: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 });
+    }
+    return gm.get(teamId)!;
+  };
     const gm = standings.get(g)!;
     if (!gm.has(teamId)) {
       gm.set(teamId, { teamId, team: t, played: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 });
