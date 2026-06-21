@@ -102,18 +102,13 @@ async function projectGroups(supabase: any, teams: Team[], matches: GroupMatch[]
     }
     return gm.get(teamId)!;
   };
-    const gm = standings.get(g)!;
-    if (!gm.has(teamId)) {
-      gm.set(teamId, { teamId, team: t, played: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 });
-    }
-    return gm.get(teamId)!;
-  };
 
   const groupProjections: any[] = [];
 
   for (const m of matches) {
     const home = init(m.home_team_id);
     const away = init(m.away_team_id);
+    if (!home || !away) continue;
     let hs: number, as: number;
     let basis: any = {};
 
