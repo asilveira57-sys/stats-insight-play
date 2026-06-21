@@ -233,17 +233,27 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     const version = "live";
 
-    const [teamsRes, matchesRes, analysesRes] = await Promise.all([
+    const [teamsRes, matchesRes, analysesRes, standingsRes] = await Promise.all([
       supabase.from("world_cup_2026_teams").select("id,name,slug,group_letter,fifa_ranking"),
       supabase.from("world_cup_2026_matches").select("id,stage,home_team_id,away_team_id,status,home_score,away_score,winner_team_id,group_letter").eq("stage", "group"),
       supabase.from("world_cup_2026_ai_analyses").select("match_id,predicted_home_score,predicted_away_score,confidence_score"),
+      supabase.from("world_cup_2026_standings").select("team_id,group_letter"),
     ]);
 
     if (teamsRes.error) throw teamsRes.error;
     if (matchesRes.error) throw matchesRes.error;
     if (analysesRes.error) throw analysesRes.error;
+    if (standingsRes.error) throw standingsRes.error;
 
     const teams = (teamsRes.data ?? []) as Team[];
+    // Fill in group_letter from standings table where missing
+    const groupByTeam = new Map<string, string>();
+    for (const s of (standingsRes.data ?? []) as any[]) {
+      if (s.team_id && s.group_letter) groupByTeam.set(s.team_id, s.group_letter);
+    }
+    for (const t of teams) {
+      if (!t.group_letter && groupByTeam.has(t.id)) t.group_letter = groupByTeam.get(t.id)!;
+    }
     const groupMatches = ((matchesRes.data ?? []) as GroupMatch[]).filter((m) => m.home_team_id && m.away_team_id);
     const aiMap = new Map<string, AIAnalysis>();
     for (const a of (analysesRes.data ?? []) as AIAnalysis[]) aiMap.set(a.match_id, a);
