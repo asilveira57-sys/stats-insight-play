@@ -6570,6 +6570,116 @@ export type Database = {
         }
         Relationships: []
       }
+      wc2026_bracket_projections: {
+        Row: {
+          away_pens: number | null
+          away_score: number | null
+          away_team_id: string | null
+          basis: Json
+          confidence: string
+          created_at: string
+          frozen_at: string | null
+          generated_at: string
+          group_letter: string | null
+          home_pens: number | null
+          home_score: number | null
+          home_team_id: string | null
+          id: string
+          is_official_version: boolean
+          match_id: string | null
+          phase: string
+          prob_away: number | null
+          prob_draw: number | null
+          prob_home: number | null
+          projection_version: string
+          slot_code: string
+          updated_at: string
+          went_to_penalties: boolean
+          winner_team_id: string | null
+        }
+        Insert: {
+          away_pens?: number | null
+          away_score?: number | null
+          away_team_id?: string | null
+          basis?: Json
+          confidence?: string
+          created_at?: string
+          frozen_at?: string | null
+          generated_at?: string
+          group_letter?: string | null
+          home_pens?: number | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          is_official_version?: boolean
+          match_id?: string | null
+          phase: string
+          prob_away?: number | null
+          prob_draw?: number | null
+          prob_home?: number | null
+          projection_version?: string
+          slot_code: string
+          updated_at?: string
+          went_to_penalties?: boolean
+          winner_team_id?: string | null
+        }
+        Update: {
+          away_pens?: number | null
+          away_score?: number | null
+          away_team_id?: string | null
+          basis?: Json
+          confidence?: string
+          created_at?: string
+          frozen_at?: string | null
+          generated_at?: string
+          group_letter?: string | null
+          home_pens?: number | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          is_official_version?: boolean
+          match_id?: string | null
+          phase?: string
+          prob_away?: number | null
+          prob_draw?: number | null
+          prob_home?: number | null
+          projection_version?: string
+          slot_code?: string
+          updated_at?: string
+          went_to_penalties?: boolean
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wc2026_bracket_projections_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wc2026_bracket_projections_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wc2026_bracket_projections_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wc2026_bracket_projections_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_events: {
         Row: {
           action: string | null
