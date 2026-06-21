@@ -146,6 +146,7 @@ async function projectGroups(supabase: any, teams: Team[], matches: GroupMatch[]
         prob_home: basis.probs?.pHome,
         prob_draw: basis.probs?.pDraw,
         prob_away: basis.probs?.pAway,
+        went_to_penalties: false,
         basis,
       });
     }
