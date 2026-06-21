@@ -186,13 +186,13 @@ function pickAdvancers(groupTable: Record<string, any[]>) {
 
 // Build R32 pairings using a deterministic standard bracket
 function buildR32Pairings(top2: any[], best8thirds: any[]) {
-  // Sort all 32 by group letter+position for deterministic seeding
-  const all32 = [...top2, ...best8thirds];
-  // Simple seeding: pair seed i with seed 32-i+1 by overall strength rank (pts → gd → gf)
+  const all32 = [...top2, ...best8thirds].filter((x) => x && x.teamId);
   all32.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || (a.team.fifa_ranking ?? 999) - (b.team.fifa_ranking ?? 999));
   const pairs: { home: any; away: any; slot: string }[] = [];
-  for (let i = 0; i < 16; i++) {
-    pairs.push({ home: all32[i], away: all32[31 - i], slot: `R32-${i + 1}` });
+  const n = Math.min(32, all32.length);
+  const pairCount = Math.floor(n / 2);
+  for (let i = 0; i < pairCount; i++) {
+    pairs.push({ home: all32[i], away: all32[n - 1 - i], slot: `R32-${i + 1}` });
   }
   return pairs;
 }
