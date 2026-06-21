@@ -118,8 +118,9 @@ async function projectGroups(supabase: any, teams: Team[], matches: GroupMatch[]
       basis = { source: "official" };
     } else {
       const ai = analyses.get(m.id);
-      const ht = teamById.get(m.home_team_id)!;
-      const at = teamById.get(m.away_team_id)!;
+      const ht = teamById.get(m.home_team_id);
+      const at = teamById.get(m.away_team_id);
+      if (!ht || !at) continue;
       const probs = rankingProbabilities(ht.fifa_ranking ?? 100, at.fifa_ranking ?? 100);
       if (ai?.predicted_home_score != null && ai?.predicted_away_score != null) {
         hs = ai.predicted_home_score;
