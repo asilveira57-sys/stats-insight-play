@@ -344,8 +344,8 @@ Deno.serve(async (req) => {
         r32: 16, r16: 8, qf: 4, sf: 2, final: 1, third: 1,
         total: toInsert.length,
       },
-      champion: teamById.get(finalSim.winner_team_id!)?.name,
-      third: teamById.get(thirdSim.winner_team_id!)?.name,
+      champion: championName,
+      third: thirdName,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("project-bracket error", e);
