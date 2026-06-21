@@ -245,16 +245,82 @@ Deno.serve(async (req) => {
     if (analysesRes.error) throw analysesRes.error;
     if (standingsRes.error) throw standingsRes.error;
 
-    const teams = (teamsRes.data ?? []) as Team[];
+    const allTeams = (teamsRes.data ?? []) as Team[];
     // Fill in group_letter from standings table where missing
     const groupByTeam = new Map<string, string>();
     for (const s of (standingsRes.data ?? []) as any[]) {
       if (s.team_id && s.group_letter) groupByTeam.set(s.team_id, s.group_letter);
     }
-    for (const t of teams) {
+    for (const t of allTeams) {
       if (!t.group_letter && groupByTeam.has(t.id)) t.group_letter = groupByTeam.get(t.id)!;
     }
-    const groupMatches = ((matchesRes.data ?? []) as GroupMatch[]).filter((m) => m.home_team_id && m.away_team_id);
+
+    // Canonical team map: prefer team with group_letter; for duplicates by normalized name,
+    // collapse to the canonical (group-bearing) team id.
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const canonicalByName = new Map<string, Team>();
+    for (const t of allTeams) {
+      const key = norm(t.name);
+      const existing = canonicalByName.get(key);
+      if (!existing) canonicalByName.set(key, t);
+      else if (!existing.group_letter && t.group_letter) canonicalByName.set(key, t);
+    }
+    // English ↔ Portuguese name aliases (manual fallback for Spain/Espanha etc.)
+    const aliasPairs: [string, string][] = [
+      ["spain", "espanha"], ["france", "franca"], ["england", "inglaterra"], ["germany", "alemanha"],
+      ["italy", "italia"], ["netherlands", "paises baixos"], ["holland", "paises baixos"],
+      ["belgium", "belgica"], ["switzerland", "suica"], ["denmark", "dinamarca"],
+      ["croatia", "croacia"], ["serbia", "servia"], ["turkey", "turquia"], ["ukraine", "ucrania"],
+      ["austria", "austria"], ["poland", "polonia"], ["portugal", "portugal"],
+      ["scotland", "escocia"], ["wales", "pais de gales"], ["norway", "noruega"], ["sweden", "suecia"],
+      ["ireland", "irlanda"], ["czech republic", "republica tcheca"], ["czechia", "republica tcheca"],
+      ["greece", "grecia"], ["hungary", "hungria"], ["romania", "romenia"], ["finland", "finlandia"],
+      ["iceland", "islandia"], ["albania", "albania"], ["bosnia", "bosnia"], ["slovakia", "eslovaquia"],
+      ["slovenia", "eslovenia"], ["russia", "russia"], ["argentina", "argentina"], ["brazil", "brasil"],
+      ["uruguay", "uruguai"], ["colombia", "colombia"], ["chile", "chile"], ["peru", "peru"],
+      ["ecuador", "equador"], ["paraguay", "paraguai"], ["venezuela", "venezuela"], ["bolivia", "bolivia"],
+      ["mexico", "mexico"], ["united states", "estados unidos"], ["usa", "estados unidos"],
+      ["canada", "canada"], ["panama", "panama"], ["costa rica", "costa rica"], ["jamaica", "jamaica"],
+      ["honduras", "honduras"], ["haiti", "haiti"], ["japan", "japao"], ["south korea", "coreia do sul"],
+      ["korea republic", "coreia do sul"], ["iran", "ira"], ["saudi arabia", "arabia saudita"],
+      ["iraq", "iraque"], ["qatar", "catar"], ["australia", "australia"], ["new zealand", "nova zelandia"],
+      ["uzbekistan", "uzbequistao"], ["jordan", "jordania"], ["united arab emirates", "emirados arabes"],
+      ["morocco", "marrocos"], ["senegal", "senegal"], ["nigeria", "nigeria"], ["egypt", "egito"],
+      ["algeria", "argelia"], ["tunisia", "tunisia"], ["cameroon", "camaroes"], ["ghana", "gana"],
+      ["ivory coast", "costa do marfim"], ["cote d'ivoire", "costa do marfim"],
+      ["south africa", "africa do sul"], ["mali", "mali"], ["dr congo", "republica democratica do congo"],
+      ["congo dr", "republica democratica do congo"], ["cape verde", "cabo verde"],
+    ];
+    for (const [en, pt] of aliasPairs) {
+      const ent = canonicalByName.get(en);
+      const ptt = canonicalByName.get(pt);
+      if (ent && ptt) {
+        // Pick whichever has group_letter as canonical
+        const canon = ptt.group_letter ? ptt : ent.group_letter ? ent : ptt;
+        canonicalByName.set(en, canon);
+        canonicalByName.set(pt, canon);
+      } else if (ent && !ptt) canonicalByName.set(pt, ent);
+      else if (!ent && ptt) canonicalByName.set(en, ptt);
+    }
+    // Build id → canonical id map for all teams
+    const canonicalIdByTeamId = new Map<string, string>();
+    for (const t of allTeams) {
+      const canon = canonicalByName.get(norm(t.name)) ?? t;
+      canonicalIdByTeamId.set(t.id, canon.id);
+    }
+
+    // Only canonical teams (deduped) are used downstream
+    const teams: Team[] = Array.from(new Set(canonicalIdByTeamId.values()))
+      .map((id) => allTeams.find((t) => t.id === id)!)
+      .filter(Boolean);
+
+    const groupMatchesRaw = ((matchesRes.data ?? []) as GroupMatch[]).filter((m) => m.home_team_id && m.away_team_id);
+    // Remap match team ids to canonical
+    const groupMatches: GroupMatch[] = groupMatchesRaw.map((m) => ({
+      ...m,
+      home_team_id: canonicalIdByTeamId.get(m.home_team_id) ?? m.home_team_id,
+      away_team_id: canonicalIdByTeamId.get(m.away_team_id) ?? m.away_team_id,
+    }));
     const aiMap = new Map<string, AIAnalysis>();
     for (const a of (analysesRes.data ?? []) as AIAnalysis[]) aiMap.set(a.match_id, a);
 
