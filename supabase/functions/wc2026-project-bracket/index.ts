@@ -148,7 +148,7 @@ async function projectGroups(supabase: any, teams: Team[], matches: GroupMatch[]
       const ht = teamById.get(m.home_team_id);
       const at = teamById.get(m.away_team_id);
       if (!ht || !at) continue;
-      const probs = rankingProbabilities(ht.fifa_ranking ?? 100, at.fifa_ranking ?? 100);
+      const probs = rankingProbabilities(effectiveRank(ht), effectiveRank(at));
       if (ai?.predicted_home_score != null && ai?.predicted_away_score != null) {
         hs = ai.predicted_home_score;
         as = ai.predicted_away_score;
@@ -226,7 +226,7 @@ function buildR32Pairings(top2: any[], best8thirds: any[]) {
 }
 
 function simulateKnockout(home: Team, away: Team) {
-  const probs = rankingProbabilities(home.fifa_ranking ?? 100, away.fifa_ranking ?? 100);
+  const probs = rankingProbabilities(effectiveRank(home), effectiveRank(away));
   const s = scoreFromProb(probs);
   let h = s.h;
   let a = s.a;
@@ -235,7 +235,7 @@ function simulateKnockout(home: Team, away: Team) {
   let winner: Team;
   if (h === a) {
     wentToPens = true;
-    const w = pickWinnerOnTie(home.fifa_ranking ?? 100, away.fifa_ranking ?? 100);
+    const w = pickWinnerOnTie(effectiveRank(home), effectiveRank(away));
     if (w === "home") { hp = 4; ap = 3; winner = home; } else { hp = 3; ap = 4; winner = away; }
   } else if (h > a) {
     winner = home;
