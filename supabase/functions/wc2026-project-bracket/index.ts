@@ -31,18 +31,38 @@ type AIAnalysis = {
   confidence_score: number | null;
 };
 
+// Fallback FIFA-style ranking (Nov 2025 approximation) — used when DB has nulls.
+// Lower number = stronger team. Names are normalized (no accents, lowercase).
+const FALLBACK_RANK: Record<string, number> = {
+  "argentina": 1, "espanha": 2, "franca": 3, "inglaterra": 4, "brasil": 5,
+  "portugal": 6, "paises baixos": 7, "belgica": 8, "italia": 9, "croacia": 10,
+  "alemanha": 11, "marrocos": 12, "colombia": 13, "uruguai": 14, "estados unidos": 15,
+  "suica": 16, "mexico": 17, "japao": 18, "senegal": 19, "iran": 20, "ira": 20,
+  "dinamarca": 21, "austria": 22, "coreia do sul": 23, "ucrania": 24, "australia": 25,
+  "servia": 26, "polonia": 27, "equador": 28, "noruega": 29, "egito": 30,
+  "suecia": 31, "tunisia": 32, "republica tcheca": 33, "venezuela": 34, "argelia": 35,
+  "nigeria": 36, "escocia": 37, "pais de gales": 38, "turquia": 39, "peru": 40,
+  "paraguai": 41, "chile": 42, "costa do marfim": 43, "romenia": 44, "panama": 45,
+  "canada": 46, "catar": 47, "arabia saudita": 48, "costa rica": 49, "gana": 50,
+  "camaroes": 51, "africa do sul": 52, "irlanda": 53, "grecia": 54, "eslovaquia": 55,
+  "hungria": 56, "uzbequistao": 57, "jordania": 58, "nova zelandia": 59, "bolivia": 60,
+  "haiti": 61, "honduras": 62, "jamaica": 63, "cabo verde": 64,
+};
+const normName = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+function effectiveRank(team: { fifa_ranking: number | null; name: string }): number {
+  if (team.fifa_ranking != null) return team.fifa_ranking;
+  return FALLBACK_RANK[normName(team.name)] ?? 90;
+}
+
 // FIFA-ranking-driven probability for fallbacks
 function rankingProbabilities(homeRank: number, awayRank: number) {
-  // Lower rank number = stronger team. Convert to "strength" via Elo-like proxy.
   const hr = homeRank || 100;
   const ar = awayRank || 100;
   const strengthHome = 1000 - hr * 4;
   const strengthAway = 1000 - ar * 4;
   const diff = strengthHome - strengthAway;
-  // Logistic
   const pHome = 1 / (1 + Math.pow(10, -diff / 400));
   const pAway = 1 - pHome;
-  // Draw weight: closer teams → more draws (up to 28%)
   const closeness = 1 - Math.min(1, Math.abs(diff) / 600);
   const drawWeight = 0.18 + closeness * 0.12;
   const rawHome = pHome * (1 - drawWeight);
