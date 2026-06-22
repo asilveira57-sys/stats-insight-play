@@ -51,23 +51,30 @@ function rankingProbabilities(homeRank: number, awayRank: number) {
 }
 
 function scoreFromProb(p: { pHome: number; pDraw: number; pAway: number }) {
-  // Deterministic most-likely score using simple lambda mapping
-  const lambdaHome = 1.1 + (p.pHome - p.pAway) * 1.4;
-  const lambdaAway = 1.1 + (p.pAway - p.pHome) * 1.4;
-  const h = Math.max(0, Math.round(lambdaHome));
-  const a = Math.max(0, Math.round(lambdaAway));
+  // Most-likely score using lambda mapping with more variance to avoid 1-1 everywhere.
+  const diff = p.pHome - p.pAway; // -1..1
+  const lambdaHome = 1.45 + diff * 1.9;
+  const lambdaAway = 1.45 - diff * 1.9;
+  // Round but ensure favorites score more by adding a small bonus when prob > 0.5
+  let h = Math.max(0, Math.round(lambdaHome));
+  let a = Math.max(0, Math.round(lambdaAway));
+  if (h === a) {
+    // Break the tie using the dominant probability, unless the match is truly even.
+    if (diff > 0.08) h += 1;
+    else if (diff < -0.08) a += 1;
+  }
   return { h, a };
 }
 
 function confidenceFromProb(p: { pHome: number; pDraw: number; pAway: number }) {
-  const max = Math.max(p.pHome, p.pDraw, p.pAway);
-  if (max >= 0.55) return "high";
-  if (max >= 0.4) return "medium";
-  return "low";
+  const max = Math.max(p.pHome, p.pAway); // ignore draw for confidence on a winner
+  if (max >= 0.55) return "alta";
+  if (max >= 0.42) return "media";
+  return "baixa";
 }
 
 function pickWinnerOnTie(homeRank: number, awayRank: number): "home" | "away" {
-  // Penalty shootout: small bias toward better-ranked team. Use deterministic pseudo-random by rank parity.
+  // Penalty shootout: bias toward better-ranked team.
   const better = homeRank <= awayRank ? "home" : "away";
   return better;
 }
