@@ -99,6 +99,7 @@ import AdminCopa2026 from "./pages/AdminCopa2026";
 import Copa2026Artilharia from "./pages/Copa2026Artilharia";
 import IAPerformance from "./pages/IAPerformance";
 import TransparenciaIA from "./pages/TransparenciaIA";
+import Copa2026Projecao from "./pages/Copa2026Projecao";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +151,7 @@ const App = () => (
             <Route path="/copa-2026/grupos" element={<Copa2026Grupos />} />
             <Route path="/copa-2026/palpites-ia" element={<Copa2026PalpitesIA />} />
             <Route path="/copa-2026/artilharia" element={<Copa2026Artilharia />} />
+            <Route path="/copa-2026/projecao" element={<Copa2026Projecao />} />
             <Route path="/admin/copa-2026" element={<AdminCopa2026 />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:slug" element={<NoticiaDetalhes />} />
