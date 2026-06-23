@@ -255,13 +255,13 @@ export default function Copa2026Chaveamento() {
                             return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
                           }
                           if (mode === "projecao") {
-                            return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} />;
+                            return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                           }
                           // misto: oficial se tiver times reais, senão projeção
                           if (officialHasTeams) {
                             return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
                           }
-                          return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} />;
+                          return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                         })}
                       </div>
                     </div>
