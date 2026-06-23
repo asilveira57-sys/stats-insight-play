@@ -6,7 +6,8 @@ import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { Link } from "react-router-dom";
 import { useBracketProjection, BracketProjectionRow } from "@/hooks/useBracketProjection";
 import { Button } from "@/components/ui/button";
-import { Sparkles, RefreshCw, Lock } from "lucide-react";
+import { Sparkles, RefreshCw, Lock, Info } from "lucide-react";
+import { ProjectionExplainDialog } from "@/components/copa2026/ProjectionExplainDialog";
 
 type Match = {
   id: string; stage: string; bracket_position: string | null; match_date: string | null;
