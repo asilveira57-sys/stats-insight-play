@@ -79,7 +79,7 @@ function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
   );
 }
 
-function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placeholder: string }) {
+function ProjectionCell({ p, placeholder, onExplain }: { p?: BracketProjectionRow; placeholder: string; onExplain?: (p: BracketProjectionRow) => void }) {
   if (!p) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-2 text-xs min-w-[200px]">
@@ -91,7 +91,12 @@ function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placehol
   const winnerHome = p.winner_team_id === p.home_team?.id;
   const winnerAway = p.winner_team_id === p.away_team?.id;
   return (
-    <div className="rounded-lg border border-primary/30 bg-card/70 p-2 min-w-[210px] relative">
+    <button
+      type="button"
+      onClick={() => onExplain?.(p)}
+      className="text-left rounded-lg border border-primary/30 bg-card/70 p-2 min-w-[210px] relative hover:border-primary hover:bg-card transition-colors w-full"
+      title="Clique para ver o cálculo estatístico"
+    >
       <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-1">
         <span className="inline-flex items-center gap-1">
           {p.slot_code}
@@ -117,10 +122,11 @@ function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placehol
           </span>
         </div>
       ))}
-      <div className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wide">
-        Projeção IA{p.went_to_penalties ? " · pênaltis" : ""}
+      <div className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wide flex items-center gap-1">
+        <Info className="w-2.5 h-2.5" />
+        Projeção IA{p.went_to_penalties ? " · pênaltis" : ""} · ver cálculo
       </div>
-    </div>
+    </button>
   );
 }
 
