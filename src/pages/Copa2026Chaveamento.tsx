@@ -6,7 +6,8 @@ import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { Link } from "react-router-dom";
 import { useBracketProjection, BracketProjectionRow } from "@/hooks/useBracketProjection";
 import { Button } from "@/components/ui/button";
-import { Sparkles, RefreshCw, Lock } from "lucide-react";
+import { Sparkles, RefreshCw, Lock, Info } from "lucide-react";
+import { ProjectionExplainDialog } from "@/components/copa2026/ProjectionExplainDialog";
 
 type Match = {
   id: string; stage: string; bracket_position: string | null; match_date: string | null;
@@ -78,7 +79,7 @@ function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
   );
 }
 
-function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placeholder: string }) {
+function ProjectionCell({ p, placeholder, onExplain }: { p?: BracketProjectionRow; placeholder: string; onExplain?: (p: BracketProjectionRow) => void }) {
   if (!p) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-2 text-xs min-w-[200px]">
@@ -90,7 +91,12 @@ function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placehol
   const winnerHome = p.winner_team_id === p.home_team?.id;
   const winnerAway = p.winner_team_id === p.away_team?.id;
   return (
-    <div className="rounded-lg border border-primary/30 bg-card/70 p-2 min-w-[210px] relative">
+    <button
+      type="button"
+      onClick={() => onExplain?.(p)}
+      className="text-left rounded-lg border border-primary/30 bg-card/70 p-2 min-w-[210px] relative hover:border-primary hover:bg-card transition-colors w-full"
+      title="Clique para ver o cálculo estatístico"
+    >
       <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-1">
         <span className="inline-flex items-center gap-1">
           {p.slot_code}
@@ -116,10 +122,11 @@ function ProjectionCell({ p, placeholder }: { p?: BracketProjectionRow; placehol
           </span>
         </div>
       ))}
-      <div className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wide">
-        Projeção IA{p.went_to_penalties ? " · pênaltis" : ""}
+      <div className="text-[9px] text-muted-foreground mt-1 uppercase tracking-wide flex items-center gap-1">
+        <Info className="w-2.5 h-2.5" />
+        Projeção IA{p.went_to_penalties ? " · pênaltis" : ""} · ver cálculo
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -131,6 +138,9 @@ export default function Copa2026Chaveamento() {
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [mode, setMode] = useState<Mode>("misto");
   const [regenerating, setRegenerating] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
+  const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
+  const openExplain = (p: BracketProjectionRow) => { setExplainProj(p); setExplainOpen(true); };
 
   const { rows: projRows, loading: loadingProj, generatedAt, regenerate } = useBracketProjection("live");
 
@@ -245,13 +255,13 @@ export default function Copa2026Chaveamento() {
                             return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
                           }
                           if (mode === "projecao") {
-                            return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} />;
+                            return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                           }
                           // misto: oficial se tiver times reais, senão projeção
                           if (officialHasTeams) {
                             return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
                           }
-                          return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} />;
+                          return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                         })}
                       </div>
                     </div>
@@ -272,7 +282,7 @@ export default function Copa2026Chaveamento() {
                     if (mode === "misto" && officialHasTeams) {
                       return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />;
                     }
-                    return <ProjectionCell p={proj} placeholder="TP-1" />;
+                    return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
                   })()
                 )}
               </div>
@@ -280,6 +290,7 @@ export default function Copa2026Chaveamento() {
           </>
         )}
       </div>
+      <ProjectionExplainDialog open={explainOpen} onOpenChange={setExplainOpen} proj={explainProj} />
     </Layout>
   );
 }
