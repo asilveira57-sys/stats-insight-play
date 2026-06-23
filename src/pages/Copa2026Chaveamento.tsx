@@ -282,7 +282,7 @@ export default function Copa2026Chaveamento() {
                     if (mode === "misto" && officialHasTeams) {
                       return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />;
                     }
-                    return <ProjectionCell p={proj} placeholder="TP-1" />;
+                    return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
                   })()
                 )}
               </div>
@@ -290,6 +290,7 @@ export default function Copa2026Chaveamento() {
           </>
         )}
       </div>
+      <ProjectionExplainDialog open={explainOpen} onOpenChange={setExplainOpen} proj={explainProj} />
     </Layout>
   );
 }
