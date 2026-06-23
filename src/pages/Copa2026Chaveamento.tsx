@@ -138,8 +138,9 @@ export default function Copa2026Chaveamento() {
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [mode, setMode] = useState<Mode>("misto");
   const [regenerating, setRegenerating] = useState(false);
-
-  const { rows: projRows, loading: loadingProj, generatedAt, regenerate } = useBracketProjection("live");
+  const [explainOpen, setExplainOpen] = useState(false);
+  const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
+  const openExplain = (p: BracketProjectionRow) => { setExplainProj(p); setExplainOpen(true); };
 
   useEffect(() => {
     (async () => {
