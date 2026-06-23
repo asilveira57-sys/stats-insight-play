@@ -53,7 +53,7 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
         {/* Resumo do confronto */}
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
-            {proj.phase.replaceAll("_", " ")} · {proj.slot_code}
+            {proj.phase.replace(/_/g, " ")} · {proj.slot_code}
           </div>
           <div className="grid grid-cols-3 items-center gap-2 text-center">
             <div className="flex flex-col items-center gap-1">
