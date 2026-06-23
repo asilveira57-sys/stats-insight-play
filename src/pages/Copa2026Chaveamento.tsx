@@ -142,6 +142,8 @@ export default function Copa2026Chaveamento() {
   const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
   const openExplain = (p: BracketProjectionRow) => { setExplainProj(p); setExplainOpen(true); };
 
+  const { rows: projRows, loading: loadingProj, generatedAt, regenerate } = useBracketProjection("live");
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase
