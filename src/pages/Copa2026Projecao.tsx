@@ -35,6 +35,7 @@ function TeamFlag({ team, size = 40 }: { team: BracketProjectionRow["home_team"]
 
 export default function Copa2026Projecao() {
   const { rows, loading, generatedAt, regenerate } = useBracketProjection("live");
+  const { rows: mcRows, loading: mcLoading } = useMonteCarloResults("live");
 
   const { champion, runnerUp, third, fourth, finalRow, thirdRow, titleProbs, zebras } = useMemo(() => {
     const finalRow = rows.find((r) => r.phase === "final") || null;
