@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Medal, Award, Sparkles, RefreshCw, AlertTriangle } from "lucide-react";
+import { Trophy, Medal, Award, Sparkles, RefreshCw, AlertTriangle, Dices } from "lucide-react";
 import { useBracketProjection, type BracketProjectionRow } from "@/hooks/useBracketProjection";
+import { useMonteCarloResults } from "@/hooks/useMonteCarloResults";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
