@@ -6680,6 +6680,65 @@ export type Database = {
           },
         ]
       }
+      wc2026_monte_carlo_results: {
+        Row: {
+          created_at: string
+          expected_goals_against: number | null
+          expected_goals_for: number | null
+          generated_at: string
+          id: string
+          is_official_version: boolean
+          p_champion: number
+          p_final: number
+          p_qf: number
+          p_r16: number
+          p_semi: number
+          projection_version: string
+          simulations: number
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_goals_against?: number | null
+          expected_goals_for?: number | null
+          generated_at?: string
+          id?: string
+          is_official_version?: boolean
+          p_champion?: number
+          p_final?: number
+          p_qf?: number
+          p_r16?: number
+          p_semi?: number
+          projection_version?: string
+          simulations?: number
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_goals_against?: number | null
+          expected_goals_for?: number | null
+          generated_at?: string
+          id?: string
+          is_official_version?: boolean
+          p_champion?: number
+          p_final?: number
+          p_qf?: number
+          p_r16?: number
+          p_semi?: number
+          projection_version?: string
+          simulations?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wc2026_monte_carlo_results_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "world_cup_2026_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_events: {
         Row: {
           action: string | null
