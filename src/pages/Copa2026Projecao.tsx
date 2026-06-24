@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Medal, Award, Sparkles, RefreshCw, AlertTriangle } from "lucide-react";
+import { Trophy, Medal, Award, Sparkles, RefreshCw, AlertTriangle, Dices } from "lucide-react";
 import { useBracketProjection, type BracketProjectionRow } from "@/hooks/useBracketProjection";
+import { useMonteCarloResults } from "@/hooks/useMonteCarloResults";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -34,6 +35,7 @@ function TeamFlag({ team, size = 40 }: { team: BracketProjectionRow["home_team"]
 
 export default function Copa2026Projecao() {
   const { rows, loading, generatedAt, regenerate } = useBracketProjection("live");
+  const { rows: mcRows, loading: mcLoading } = useMonteCarloResults("live");
 
   const { champion, runnerUp, third, fourth, finalRow, thirdRow, titleProbs, zebras } = useMemo(() => {
     const finalRow = rows.find((r) => r.phase === "final") || null;
@@ -189,11 +191,57 @@ export default function Copa2026Projecao() {
               </Card>
             </section>
 
-            {/* Probabilidades de título */}
+            {/* Monte Carlo — probabilidades reais por fase */}
+            <section>
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Dices className="h-5 w-5 text-primary" />
+                    Probabilidade de Título — Monte Carlo
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Resultado de <strong>{mcRows[0]?.simulations ?? 3000} simulações</strong> do torneio completo. Cada placar é sorteado por distribuição de Poisson usando histórico em Copas + ranking FIFA + forma recente.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {mcLoading && mcRows.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Calculando simulações...</p>
+                  )}
+                  {mcRows.slice(0, 16).map((r, i) => (
+                    <div key={r.team_id} className="grid grid-cols-12 items-center gap-2 text-sm py-1">
+                      <span className="text-xs text-muted-foreground col-span-1">{i + 1}</span>
+                      <div className="col-span-3 flex items-center gap-2 min-w-0">
+                        <TeamFlag team={r.team as any} size={24} />
+                        <span className="font-medium truncate">{r.team?.name ?? "—"}</span>
+                      </div>
+                      <div className="col-span-5">
+                        <Progress value={r.p_champion * 100} className="h-2" />
+                      </div>
+                      <span className="col-span-1 text-right font-semibold tabular-nums">
+                        {(r.p_champion * 100).toFixed(1)}%
+                      </span>
+                      <span className="col-span-2 text-right text-[10px] text-muted-foreground tabular-nums">
+                        final {(r.p_final * 100).toFixed(0)}% · semi {(r.p_semi * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  ))}
+                  {!mcLoading && mcRows.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Sem dados de Monte Carlo ainda. Clique em "Recalcular" no topo da página.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Cenário modal (chaveamento único mais provável) */}
             <section>
               <Card>
                 <CardHeader>
-                  <CardTitle>Probabilidades de Título (Top 10)</CardTitle>
+                  <CardTitle>Cenário Modal (chaveamento único mais provável)</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Quão fundo cada time vai usando placares <em>modais</em> (Poisson) — pode divergir do Monte Carlo porque ignora variância.
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {titleProbs.map((t, i) => (

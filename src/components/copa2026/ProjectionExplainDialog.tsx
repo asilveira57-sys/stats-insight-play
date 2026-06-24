@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { BracketProjectionRow } from "@/hooks/useBracketProjection";
-import { Sparkles, AlertTriangle, Calculator, Trophy } from "lucide-react";
+import { Sparkles, AlertTriangle, Calculator, Trophy, BarChart3, Activity } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -18,7 +18,8 @@ function sourceLabel(src?: string) {
   switch (src) {
     case "official": return "Resultado oficial (já encerrado)";
     case "ai_analysis": return "Análise IA da partida (tabela world_cup_2026_ai_analyses)";
-    case "ranking_model": return "Modelo Elo/ranking FIFA (sem análise IA disponível)";
+    case "poisson_model": return "Modelo Poisson + Monte Carlo (Sprint 4) — histórico em Copas + ranking FIFA + forma recente";
+    case "ranking_model": return "Modelo Elo/ranking FIFA";
     case "fifa_ranking_fallback": return "Modelo Elo/ranking FIFA (fallback)";
     default: return src ?? "—";
   }
@@ -28,14 +29,10 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
   if (!proj) return null;
   const basis = (proj.basis ?? {}) as any;
   const probs = basis.probs ?? { pHome: proj.prob_home, pDraw: proj.prob_draw, pAway: proj.prob_away };
-  const homeRank = basis.home_fifa ?? "—";
-  const awayRank = basis.away_fifa ?? "—";
-  const diff =
-    probs?.pHome != null && probs?.pAway != null
-      ? Number(probs.pHome) - Number(probs.pAway)
-      : null;
-  const lambdaHome = diff != null ? (1.45 + diff * 1.9).toFixed(2) : "—";
-  const lambdaAway = diff != null ? (1.45 - diff * 1.9).toFixed(2) : "—";
+  const lambdas = basis.lambdas;
+  const features = basis.features;
+  const topScores: { h: number; a: number; prob: number }[] = basis.top_scores ?? [];
+  const isPoisson = basis.source === "poisson_model";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,7 +43,7 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
             Como a IA chegou nesse placar
           </DialogTitle>
           <DialogDescription>
-            Auditoria estatística completa — sem invenção, sem palpite. Apenas Elo + ranking FIFA.
+            Auditoria estatística completa — sem invenção, sem palpite. Tudo vem de tabelas reais.
           </DialogDescription>
         </DialogHeader>
 
@@ -59,7 +56,7 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
             <div className="flex flex-col items-center gap-1">
               <TeamFlag team={proj.home_team ?? undefined} size="md" />
               <div className="text-sm font-medium truncate w-full">{proj.home_team?.name}</div>
-              <div className="text-[10px] text-muted-foreground">FIFA #{homeRank}</div>
+              <div className="text-[10px] text-muted-foreground">FIFA #{features?.home?.rank ?? "—"}</div>
             </div>
             <div className="text-2xl font-bold tabular-nums">
               {proj.home_score} <span className="text-muted-foreground">×</span> {proj.away_score}
@@ -72,7 +69,7 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
             <div className="flex flex-col items-center gap-1">
               <TeamFlag team={proj.away_team ?? undefined} size="md" />
               <div className="text-sm font-medium truncate w-full">{proj.away_team?.name}</div>
-              <div className="text-[10px] text-muted-foreground">FIFA #{awayRank}</div>
+              <div className="text-[10px] text-muted-foreground">FIFA #{features?.away?.rank ?? "—"}</div>
             </div>
           </div>
         </div>
@@ -106,32 +103,84 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
           </div>
           <p className="text-xs text-muted-foreground">
             Confiança no vencedor: <span className="uppercase font-bold">{proj.confidence}</span>{" "}
-            (máx entre vitória/derrota — Alta ≥ 55%, Média ≥ 42%, abaixo disso Baixa).
+            (Alta ≥ 55%, Média ≥ 42%, abaixo disso Baixa).
           </p>
         </section>
 
+        {/* Features (Sprint 4) */}
+        {isPoisson && features && (
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+              <Activity className="w-4 h-4" /> Features estatísticas usadas
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              {(["home", "away"] as const).map((side) => {
+                const f = features[side];
+                const team = side === "home" ? proj.home_team : proj.away_team;
+                if (!f) return null;
+                return (
+                  <div key={side} className="rounded-md bg-muted/30 p-2 text-xs space-y-1">
+                    <div className="font-semibold truncate">{team?.name}</div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Ataque</span><span className="tabular-nums">{f.attack}×</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Defesa</span><span className="tabular-nums">{f.defense}×</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Hist. gols/jogo (Copa)</span><span className="tabular-nums">{f.hist_gf}/{f.hist_ga}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Forma (últ. jogos)</span><span className="tabular-nums">{f.form_pts} pts</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Amostra</span><span className="tabular-nums">{f.samples} jogos</span></div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Distribuição de placares */}
+        {isPoisson && topScores.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" /> Placares mais prováveis (top 6)
+            </h3>
+            <div className="space-y-1">
+              {topScores.map((s, i) => {
+                const isModal = i === 0;
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <div className={`w-12 tabular-nums font-mono ${isModal ? "font-bold text-primary" : ""}`}>
+                      {s.h} × {s.a}
+                    </div>
+                    <div className="flex-1 h-2 rounded bg-muted/30 overflow-hidden">
+                      <div className={`h-full ${isModal ? "bg-primary" : "bg-muted-foreground/60"}`} style={{ width: `${(s.prob * 100 * 4).toFixed(1)}%` }} />
+                    </div>
+                    <div className="w-14 text-right tabular-nums">{(s.prob * 100).toFixed(1)}%</div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              O placar exibido é o <strong>modal</strong> (mais provável) da distribuição Poisson — não é o esperado, é o mais frequente nas simulações.
+            </p>
+          </section>
+        )}
+
         {/* Fórmulas */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Fórmulas usadas</h3>
-          <div className="text-xs space-y-1.5 font-mono bg-muted/30 rounded-md p-3">
-            <div>strength = 1000 − rank × 4</div>
-            <div>diff = strengthHome − strengthAway</div>
-            <div>pHome = 1 / (1 + 10^(−diff/400))  <span className="text-muted-foreground">// Elo padrão</span></div>
-            <div>pDraw = 0.18 + closeness × 0.12  <span className="text-muted-foreground">// + empate se ranks próximos</span></div>
-            <div>λHome = 1.45 + (pHome−pAway) × 1.9 = <span className="text-primary">{lambdaHome}</span></div>
-            <div>λAway = 1.45 − (pHome−pAway) × 1.9 = <span className="text-primary">{lambdaAway}</span></div>
-            <div className="text-muted-foreground">placar = round(λ); empate → desempate por ranking superior</div>
-          </div>
-        </section>
+        {isPoisson && (
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Fórmulas usadas</h3>
+            <div className="text-xs space-y-1.5 font-mono bg-muted/30 rounded-md p-3">
+              <div>λHome = 1.35 · atkHome · defAway · 1.08 · formH = <span className="text-primary">{lambdas?.lH ?? "—"}</span></div>
+              <div>λAway = 1.35 · atkAway · defHome · (1/1.08) · formA = <span className="text-primary">{lambdas?.lA ?? "—"}</span></div>
+              <div>P(h, a) = Poisson(λHome, h) × Poisson(λAway, a)</div>
+              <div className="text-muted-foreground">Monte Carlo: 3000 sorteios desses placares → probabilidades agregadas</div>
+            </div>
+          </section>
+        )}
 
         {/* Pênaltis */}
         {proj.went_to_penalties && (
           <section className="space-y-1">
             <h3 className="text-sm font-bold uppercase tracking-wide text-primary">Disputa de pênaltis</h3>
             <p className="text-xs text-muted-foreground">
-              O modelo só vai aos pênaltis quando o placar projetado é empate em fase eliminatória. O vencedor é o time
-              de melhor ranking FIFA (4×3). Esse é o ponto mais fraco do modelo atual e será substituído por simulação
-              Monte Carlo na Sprint 4.
+              Como o placar modal foi empate, decidimos por Bernoulli enviesada (60/40 máx) usando a diferença de ranking.
+              Na agregada do Monte Carlo, os pênaltis são sorteados a cada uma das 3000 simulações.
             </p>
           </section>
         )}
@@ -139,13 +188,13 @@ export function ProjectionExplainDialog({ open, onOpenChange, proj }: Props) {
         {/* Limitações honestas */}
         <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
           <h3 className="text-sm font-bold uppercase tracking-wide text-amber-500 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> Limitações deste modelo (versão atual)
+            <AlertTriangle className="w-4 h-4" /> Limitações honestas
           </h3>
           <ul className="text-xs space-y-1 list-disc pl-4">
-            <li>Usa <strong>somente</strong> o ranking FIFA das seleções — não consulta média de gols, H2H histórico, últimos 5 jogos, lesões nem escalações.</li>
-            <li>Quando o ranking FIFA está vazio no banco, usa uma tabela de <em>fallback</em> Nov/2025 (aproximação).</li>
-            <li>Empates eliminatórios são decididos por ranking, não por simulação real de pênaltis.</li>
-            <li>Não incorpora ainda os dados de forma recente da API-Football/Football-Data — isso entra na Sprint 4 (Monte Carlo + features avançadas).</li>
+            <li>Histórico vem de <code>world_cup_2026_team_history</code> — só Copas do Mundo, não Eliminatórias/amistosos.</li>
+            <li>Forma recente é só dos jogos da Copa 2026 já realizados; antes do torneio, não há sinal.</li>
+            <li>Ainda não consideramos lesões, escalações nem viagens — entram em sprints futuros.</li>
+            <li>Ranking FIFA vem do fallback Nov/2025 quando o campo no banco está vazio.</li>
           </ul>
         </section>
 
