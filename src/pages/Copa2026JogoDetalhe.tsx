@@ -9,6 +9,7 @@ import { AIAnalysisBlock } from "@/components/copa2026/AIAnalysisBlock";
 import { WC2026PalpiteButton } from "@/components/copa2026/WC2026PalpiteButton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Newspaper, Radio } from "lucide-react";
+import { MatchOddsBlock } from "@/components/copa2026/MatchOddsBlock";
 
 export default function Copa2026JogoDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -85,6 +86,8 @@ export default function Copa2026JogoDetalhe() {
             <p className="text-center text-xs text-muted-foreground mt-4">Atualizando automaticamente a cada 30 segundos.</p>
           )}
         </header>
+
+        <MatchOddsBlock matchId={match.id} homeName={match.home?.name} awayName={match.away?.name} />
 
         {/* PÓS-JOGO em destaque quando encerrado */}
         {status === "finished" && postgame && (
