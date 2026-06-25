@@ -123,6 +123,8 @@ export default function AdminCopa2026() {
     { id: "wc2026-seed-bracket", label: "🏆 Criar chaveamento (placeholders mata-mata)" },
     { id: "wc2026-advance-bracket", label: "Avançar chaveamento (recomputar vencedores)" },
     { id: "wc2026-ai-generate", label: "Gerar análise IA (exemplo)", body: { analysis_type: "group_preview" } },
+    { id: "wc2026-sync-odds", label: "💰 Sincronizar odds (próximos jogos)" },
+    { id: "wc2026-sync-odds", label: "💰 Sincronizar odds (TODOS os jogos)", body: { all: true, limit: 500 } },
   ];
 
   return (
