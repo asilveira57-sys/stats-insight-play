@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConfidenceAccuracy, type ConfidenceBand } from "@/hooks/useConfidenceAccuracy";
 import { AuditBadge } from "./AuditBadge";
 import { PredictionExplanationDialog } from "./PredictionExplanationDialog";
+import { MatchOddsBlock } from "./MatchOddsBlock";
 
 function confidenceBand(c: number | null | undefined): ConfidenceBand | null {
   if (c == null) return null;
@@ -114,6 +115,7 @@ export function MatchCard({ match }: { match: any }) {
           <PredictionExplanationDialog matchId={match.id} source="wc2026" />
         </div>
       )}
+      <MatchOddsBlock matchId={match.id} compact />
       <div className="mt-3 pt-3 border-t border-border/50 flex justify-end">
         {isLive ? (
           <Link to={`/copa-2026/jogos/${match.id}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-destructive hover:underline">
