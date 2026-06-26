@@ -1110,7 +1110,7 @@ Deno.serve(async (req) => {
     await supabase.rpc("register_search", {
       p_query: query,
       p_normalized: normalized,
-      p_type: intent === "top_scorer" || intent === "player_stats" || intent === "team_stats" || intent === "open_question" ? "question" : "entity",
+      p_type: intent === "top_scorer" || intent === "player_stats" || intent === "team_stats" || intent === "open_question" || intent === "champion" ? "question" : "entity",
       p_entities: entities,
       p_user_id: user_id ?? null,
       p_result_count: results.length,
