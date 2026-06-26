@@ -49,6 +49,10 @@ function detectIntent(q: string): Intent {
     return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
+  // Resultado/placar precisa ser tratado antes do bloco genérico de perguntas.
+  // Ex.: "quanto foi o jogo da França hoje?" não é estatística histórica de um clube.
+  if (/\b(quanto foi|qual foi o placar|placar|resultado|jogo de hoje|jogo da|jogo do|partida da|partida do)\b/.test(n))
+    return "match_lookup";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
     if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
@@ -678,6 +682,222 @@ async function resolveLastMatch(
       gols_fora: m.gols_fora,
     },
   };
+}
+
+// ---------- World Cup match lookup resolver ----------
+const NATIONAL_TEAM_ALIASES: Record<string, string[]> = {
+  franca: ["franca", "france"],
+  brasil: ["brasil", "brazil"],
+  alemanha: ["alemanha", "germany"],
+  argentina: ["argentina"],
+  espanha: ["espanha", "spain"],
+  inglaterra: ["inglaterra", "england"],
+  portugal: ["portugal"],
+  italia: ["italia", "italy"],
+  noruega: ["noruega", "norway"],
+  iraque: ["iraque", "iraq"],
+  mexico: ["mexico"],
+  uruguai: ["uruguai", "uruguay"],
+  japao: ["japao", "japan"],
+  marrocos: ["marrocos", "morocco"],
+  senegal: ["senegal"],
+  suica: ["suica", "switzerland"],
+  belgica: ["belgica", "belgium"],
+  croacia: ["croacia", "croatia"],
+  dinamarca: ["dinamarca", "denmark"],
+  polonia: ["polonia", "poland"],
+  servia: ["servia", "serbia"],
+  canada: ["canada"],
+  estados_unidos: ["estados unidos", "eua", "usa", "united states"],
+};
+
+const WORLD_CUP_PT_NAMES: Record<string, string> = {
+  france: "França",
+  franca: "França",
+  norway: "Noruega",
+  iraq: "Iraque",
+  brazil: "Brasil",
+  brasil: "Brasil",
+  germany: "Alemanha",
+  spain: "Espanha",
+  england: "Inglaterra",
+  italy: "Itália",
+  japan: "Japão",
+  morocco: "Marrocos",
+  switzerland: "Suíça",
+  belgium: "Bélgica",
+  croatia: "Croácia",
+  denmark: "Dinamarca",
+  poland: "Polônia",
+  serbia: "Sérvia",
+  usa: "Estados Unidos",
+  "united-states": "Estados Unidos",
+};
+
+function displayWorldCupTeamName(team: any): string {
+  const key = normalize(team?.slug || team?.name || "").replace(/\s+/g, "-");
+  return WORLD_CUP_PT_NAMES[key] || team?.name || "—";
+}
+
+function saoPauloDateKey(date: Date): string {
+  const shifted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function targetDateFromQuestion(normQuery: string): string | null {
+  const now = new Date();
+  if (/\bhoje\b|\bagora\b|\bao vivo\b/.test(normQuery)) return saoPauloDateKey(now);
+  if (/\bontem\b/.test(normQuery)) return saoPauloDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  return null;
+}
+
+function isResultQuestion(normQuery: string): boolean {
+  return /\b(quanto foi|qual foi o placar|placar|resultado|jogo de hoje|partida de hoje|jogo da|jogo do|partida da|partida do)\b/.test(normQuery);
+}
+
+async function fetchWorldCupTeams(supabase: any): Promise<any[]> {
+  const all: any[] = [];
+  const PAGE = 200;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("world_cup_2026_teams")
+      .select("id, name, slug, country_code")
+      .order("name", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("fetchWorldCupTeams", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+function aliasesFromQuestion(normText: string): Set<string> {
+  const aliases = new Set<string>();
+  for (const group of Object.values(NATIONAL_TEAM_ALIASES)) {
+    if (group.some((alias) => new RegExp(`\\b${alias.replace(/\s+/g, "\\s+")}\\b`).test(normText))) {
+      group.forEach((alias) => aliases.add(normalize(alias)));
+    }
+  }
+  for (const token of extractEntityTokens(normText)) aliases.add(token);
+  return aliases;
+}
+
+async function worldCupMatchCount(supabase: any, teamId: string): Promise<number> {
+  const { count } = await supabase
+    .from("world_cup_2026_matches")
+    .select("id", { count: "exact", head: true })
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
+  return Number(count || 0);
+}
+
+async function findWorldCupTeamCandidates(supabase: any, query: string, explicitTeam?: string | null): Promise<any[]> {
+  const normText = normalize(`${query} ${explicitTeam || ""}`);
+  const aliases = aliasesFromQuestion(normText);
+  const teams = await fetchWorldCupTeams(supabase);
+  const scored: any[] = [];
+
+  for (const t of teams) {
+    const nameNorm = normalize(t.name);
+    const slugNorm = normalize(t.slug || "").replace(/-/g, " ");
+    let score = 0;
+    for (const alias of aliases) {
+      if (!alias) continue;
+      if (nameNorm === alias || slugNorm === alias) score += 120;
+      else if (nameNorm.includes(alias) || slugNorm.includes(alias)) score += 70;
+    }
+    if (new RegExp(`\\b${nameNorm.replace(/\s+/g, "\\s+")}\\b`).test(normText)) score += 100;
+    if (slugNorm && new RegExp(`\\b${slugNorm.replace(/\s+/g, "\\s+")}\\b`).test(normText)) score += 100;
+    if (score > 0) scored.push({ ...t, _score: score });
+  }
+
+  const withCounts = await Promise.all(scored.map(async (t) => ({ ...t, _matchCount: await worldCupMatchCount(supabase, t.id) })));
+  return withCounts
+    .map((t) => ({ ...t, _score: t._score + Math.min(Number(t._matchCount || 0), 20) * 10 }))
+    .sort((a, b) => b._score - a._score || b._matchCount - a._matchCount);
+}
+
+async function fetchWorldCupMatchesForTeam(supabase: any, teamId: string): Promise<any[]> {
+  const all: any[] = [];
+  const PAGE = 200;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("world_cup_2026_matches")
+      .select("id, home_team_id, away_team_id, match_date, status, home_score, away_score, stage, round")
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .order("match_date", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("fetchWorldCupMatchesForTeam", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+async function resolveWorldCupMatchLookup(
+  supabase: any,
+  query: string,
+  explicitTeam?: string | null,
+): Promise<any | null> {
+  const normQuery = normalize(query);
+  const targetDate = targetDateFromQuestion(normQuery);
+  const candidates = await findWorldCupTeamCandidates(supabase, query, explicitTeam);
+  if (candidates.length === 0) return null;
+
+  for (const team of candidates) {
+    const matches = await fetchWorldCupMatchesForTeam(supabase, team.id);
+    if (matches.length === 0) continue;
+    const dated = targetDate
+      ? matches.find((m) => m.match_date && saoPauloDateKey(new Date(m.match_date)) === targetDate)
+      : null;
+    const finishedOrLive = (dated ? [dated] : matches).find((m) =>
+      ["finished", "live", "in_progress", "1h", "2h", "halftime", "ht"].includes(String(m.status || "").toLowerCase())
+    );
+    const picked = finishedOrLive || dated || matches.find((m) => String(m.status || "").toLowerCase() === "finished") || matches[0];
+    if (!picked) continue;
+
+    const ids = [...new Set([picked.home_team_id, picked.away_team_id].filter(Boolean))];
+    const { data: teams } = await supabase
+      .from("world_cup_2026_teams")
+      .select("id, name, slug")
+      .in("id", ids);
+    const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+    const home = tmap.get(picked.home_team_id) || null;
+    const away = tmap.get(picked.away_team_id) || null;
+    const isHome = picked.home_team_id === team.id;
+
+    return {
+      kind: "last_match",
+      source: "world_cup_2026_matches",
+      team: { id: team.id, name: displayWorldCupTeamName(team), slug: team.slug ?? null },
+      competition: { name: "Copa do Mundo FIFA 2026", slug: null },
+      match: {
+        id: picked.id,
+        slug: null,
+        date: picked.match_date,
+        is_home: isHome,
+        home_team: displayWorldCupTeamName(home),
+        away_team: displayWorldCupTeamName(away),
+        gols_casa: picked.home_score,
+        gols_fora: picked.away_score,
+        stage: picked.stage ?? picked.round ?? null,
+        status: picked.status ?? null,
+      },
+    };
+  }
+
+  return null;
 }
 
 
