@@ -37,16 +37,19 @@ type Intent =
   | "team_stats"
   | "match_lookup"
   | "entity_lookup"
+  | "champion"
   | "open_question";
 
 function detectIntent(q: string): Intent {
   const n = normalize(q);
   if (/artilheir|maior goleador|mais gols na|mais gols no|mais gols da|mais gols do|quem fez mais gols|top.?scorer|chuteira de ouro/.test(n))
     return "top_scorer";
+  // Campeão / vencedor de competição (ex: "quem ganhou a copa de 2022")
+  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o (da|do|de)|vencedor (da|do|de))\b/.test(n))
+    return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
-    // pergunta sobre time específico
     if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
     return "open_question";
@@ -838,6 +841,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- CHAMPION / WINNER ----------
+    else if (intent === "champion") {
+      // Monta contexto com a liga (se resolvida) e ano, e delega para resposta externa factual.
+      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const league = candidates[0] ?? null;
+      const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
+      const ctx = [
+        compLabel ? `Competição provável: ${compLabel}` : null,
+        year ? `Ano: ${year}` : null,
+      ].filter(Boolean).join("\n");
+      const ext = await externalAnswer(query, ctx);
+      if (ext) {
+        ai_answer = {
+          answer: ext.answer,
+          explanation: ext.explanation || "Resposta factual baseada em conhecimento histórico do futebol.",
+          has_enough_data: true,
+          confidence: Math.max(ext.confidence, 70),
+        };
+        structured_answer = {
+          kind: "external",
+          summary: ext.answer,
+          note: compLabel
+            ? `Resposta sobre ${compLabel}${year ? ` (${year})` : ""} — fonte: conhecimento histórico da IA.`
+            : "Resposta gerada com conhecimento histórico da IA.",
+        };
+        post_slug = buildSlug("campeao", [compLabel, year, query.slice(0, 40)]);
+        await persistSearchPost(supabase, {
+          slug: post_slug,
+          question: query,
+          normalized,
+          intent: "champion",
+          summary: ext.answer,
+          meta_title: `${compLabel ? `Campeão da ${compLabel}` : "Campeão"}${year ? ` ${year}` : ""} — Statball`,
+          meta_description: truncate(ext.answer, 160),
+          answer_payload: structured_answer,
+          entities,
+          confidence: ai_answer.confidence,
+        });
+      }
+    }
+
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
       const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
@@ -1066,7 +1110,7 @@ Deno.serve(async (req) => {
     await supabase.rpc("register_search", {
       p_query: query,
       p_normalized: normalized,
-      p_type: intent === "top_scorer" || intent === "player_stats" || intent === "team_stats" || intent === "open_question" ? "question" : "entity",
+      p_type: intent === "top_scorer" || intent === "player_stats" || intent === "team_stats" || intent === "open_question" || intent === "champion" ? "question" : "entity",
       p_entities: entities,
       p_user_id: user_id ?? null,
       p_result_count: results.length,
