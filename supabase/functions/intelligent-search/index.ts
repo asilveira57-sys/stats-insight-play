@@ -841,6 +841,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- CHAMPION / WINNER ----------
+    else if (intent === "champion") {
+      // Monta contexto com a liga (se resolvida) e ano, e delega para resposta externa factual.
+      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const league = candidates[0] ?? null;
+      const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
+      const ctx = [
+        compLabel ? `Competição provável: ${compLabel}` : null,
+        year ? `Ano: ${year}` : null,
+      ].filter(Boolean).join("\n");
+      const ext = await externalAnswer(query, ctx);
+      if (ext) {
+        ai_answer = {
+          answer: ext.answer,
+          explanation: ext.explanation || "Resposta factual baseada em conhecimento histórico do futebol.",
+          has_enough_data: true,
+          confidence: Math.max(ext.confidence, 70),
+        };
+        structured_answer = {
+          kind: "external",
+          summary: ext.answer,
+          note: compLabel
+            ? `Resposta sobre ${compLabel}${year ? ` (${year})` : ""} — fonte: conhecimento histórico da IA.`
+            : "Resposta gerada com conhecimento histórico da IA.",
+        };
+        post_slug = buildSlug("campeao", [compLabel, year, query.slice(0, 40)]);
+        await persistSearchPost(supabase, {
+          slug: post_slug,
+          question: query,
+          normalized,
+          intent: "champion",
+          summary: ext.answer,
+          meta_title: `${compLabel ? `Campeão da ${compLabel}` : "Campeão"}${year ? ` ${year}` : ""} — Statball`,
+          meta_description: truncate(ext.answer, 160),
+          answer_payload: structured_answer,
+          entities,
+          confidence: ai_answer.confidence,
+        });
+      }
+    }
+
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
       const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
