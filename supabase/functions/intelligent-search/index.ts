@@ -1102,6 +1102,40 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- MATCH LOOKUP / RESULTADO DE JOGO ----------
+    else if (intent === "match_lookup") {
+      const wcMatch = await resolveWorldCupMatchLookup(supabase, query);
+      if (wcMatch) {
+        structured_answer = wcMatch;
+        const m = wcMatch.match;
+        const placar = `${m.gols_casa ?? "?"} x ${m.gols_fora ?? "?"}`;
+        const statusNorm = String(m.status || "").toLowerCase();
+        const isLive = ["live", "in_progress", "1h", "2h", "halftime", "ht"].includes(statusNorm);
+        const dateStr = m.date ? ` em ${String(m.date).slice(0, 10)}` : "";
+        const statusText = isLive ? "está" : "foi";
+        const summary = `${m.home_team} ${placar} ${m.away_team}${dateStr}, pela ${wcMatch.competition.name}.`;
+        ai_answer = {
+          answer: `O jogo **${m.home_team} x ${m.away_team}** ${statusText} **${placar}**${dateStr}.`,
+          explanation: `Fonte: ${wcMatch.source}.`,
+          has_enough_data: true,
+          confidence: 92,
+        };
+        post_slug = buildSlug("resultado-jogo", [m.home_team, m.away_team, String(m.date || "").slice(0, 10)]);
+        await persistSearchPost(supabase, {
+          slug: post_slug,
+          question: query,
+          normalized,
+          intent: "match_lookup",
+          summary,
+          meta_title: `${m.home_team} ${placar} ${m.away_team} — resultado`,
+          meta_description: summary,
+          answer_payload: structured_answer,
+          entities,
+          confidence: ai_answer.confidence,
+        });
+      }
+    }
+
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
       const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
