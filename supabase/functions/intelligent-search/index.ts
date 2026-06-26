@@ -37,16 +37,19 @@ type Intent =
   | "team_stats"
   | "match_lookup"
   | "entity_lookup"
+  | "champion"
   | "open_question";
 
 function detectIntent(q: string): Intent {
   const n = normalize(q);
   if (/artilheir|maior goleador|mais gols na|mais gols no|mais gols da|mais gols do|quem fez mais gols|top.?scorer|chuteira de ouro/.test(n))
     return "top_scorer";
+  // Campeão / vencedor de competição (ex: "quem ganhou a copa de 2022")
+  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o (da|do|de)|vencedor (da|do|de))\b/.test(n))
+    return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
-    // pergunta sobre time específico
     if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
     return "open_question";
