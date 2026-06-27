@@ -16,13 +16,14 @@ type Match = {
   away_team?: { id: string; slug: string; name: string; flag_url: string | null } | null;
 };
 
-const STAGES: { key: string; label: string; n: number; prefix: string; projPhase: string }[] = [
-  { key: "round_of_32", label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
-  { key: "round_of_16", label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
-  { key: "quarter_final", label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
-  { key: "semi_final", label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
-  { key: "final", label: "Final", n: 1, prefix: "F", projPhase: "final" },
+const STAGES: { keys: string[]; label: string; n: number; prefix: string; projPhase: string }[] = [
+  { keys: ["round_of_32", "r32"], label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
+  { keys: ["round_of_16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
+  { keys: ["quarter_final"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
+  { keys: ["semi_final"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
+  { keys: ["final"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
 ];
+
 
 function statusBadge(s: string) {
   if (s === "live") return <span className="text-[9px] uppercase font-bold bg-red-500/20 text-red-500 px-1.5 py-0.5 rounded">Ao vivo</span>;
