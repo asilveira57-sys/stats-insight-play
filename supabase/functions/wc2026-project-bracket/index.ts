@@ -360,15 +360,18 @@ Deno.serve(async (req) => {
     const version = "live";
     const SIMS = 3000;
 
-    const [teamsRes, matchesRes, analysesRes, standingsRes, historyRes] = await Promise.all([
+    const [teamsRes, matchesRes, koRes, analysesRes, standingsRes, historyRes] = await Promise.all([
       supabase.from("world_cup_2026_teams").select("id,name,slug,group_letter,fifa_ranking"),
       supabase.from("world_cup_2026_matches").select("id,stage,home_team_id,away_team_id,status,home_score,away_score,winner_team_id,group_letter").eq("stage", "group"),
+      supabase.from("world_cup_2026_matches").select("id,stage,bracket_position,home_team_id,away_team_id,status,home_score,away_score,winner_team_id").in("stage", ["round_of_32","round_of_16","quarter_final","semi_final","final","third_place"]),
       supabase.from("world_cup_2026_ai_analyses").select("match_id,predicted_home_score,predicted_away_score,confidence_score"),
       supabase.from("world_cup_2026_standings").select("team_id,group_letter"),
       supabase.from("world_cup_2026_team_history").select("team_id,goals_for,goals_against,wins,draws,losses"),
     ]);
     if (teamsRes.error) throw teamsRes.error;
     if (matchesRes.error) throw matchesRes.error;
+    if (koRes.error) throw koRes.error;
+
     if (analysesRes.error) throw analysesRes.error;
     if (standingsRes.error) throw standingsRes.error;
     if (historyRes.error) throw historyRes.error;
@@ -530,22 +533,68 @@ Deno.serve(async (req) => {
     const all32 = [...top2, ...thirds.slice(0, 8)];
     all32.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
 
-    // Deterministic KO using modal scores
-    const koRow = (phase: string, slot: string, home: Team, away: Team) => {
-      const fH = features.get(home.id)!; const fA = features.get(away.id)!;
+    // Deterministic KO using modal scores — respects official matchups & results when available
+    const koByPhaseSlot = new Map<string, any>();
+    for (const m of (koRes.data ?? []) as any[]) {
+      if (m.bracket_position) {
+        // canonicalize team ids for join with simulated features
+        m.home_team_id = m.home_team_id ? (canonicalIdByTeamId.get(m.home_team_id) ?? m.home_team_id) : null;
+        m.away_team_id = m.away_team_id ? (canonicalIdByTeamId.get(m.away_team_id) ?? m.away_team_id) : null;
+        m.winner_team_id = m.winner_team_id ? (canonicalIdByTeamId.get(m.winner_team_id) ?? m.winner_team_id) : null;
+        koByPhaseSlot.set(`${m.stage}:${m.bracket_position}`, m);
+      }
+    }
+
+    const koRow = (phase: string, slot: string, home: Team | null, away: Team | null) => {
+      // Prefer official matchup (teams + maybe results) for this slot
+      const official = koByPhaseSlot.get(`${phase}:${slot}`);
+      let officialHome: Team | null = null, officialAway: Team | null = null;
+      if (official) {
+        if (official.home_team_id) officialHome = teamById.get(official.home_team_id) ?? null;
+        if (official.away_team_id) officialAway = teamById.get(official.away_team_id) ?? null;
+      }
+      const finalHome = officialHome ?? home;
+      const finalAway = officialAway ?? away;
+      if (!finalHome || !finalAway) return null;
+
+      // Official finished match → freeze projection to real result
+      if (official?.status === "finished" && official.home_score != null && official.away_score != null) {
+        const hs = official.home_score, as = official.away_score;
+        const winnerId = official.winner_team_id ?? (hs > as ? finalHome.id : hs < as ? finalAway.id : null);
+        const row = {
+          phase, slot_code: slot,
+          home_team_id: finalHome.id, away_team_id: finalAway.id,
+          home_score: hs, away_score: as,
+          home_pens: null, away_pens: null, went_to_penalties: false,
+          winner_team_id: winnerId,
+          prob_home: winnerId === finalHome.id ? 1 : 0,
+          prob_draw: 0,
+          prob_away: winnerId === finalAway.id ? 1 : 0,
+          confidence: "high" as const,
+          basis: { source: "official", match_id: official.id },
+          winnerTeam: winnerId ? (teamById.get(winnerId)! ?? finalHome) : finalHome,
+        };
+        rows.push(row);
+        return row;
+      }
+
+      // Simulate (with real teams if known, else seeded teams)
+      const fH = features.get(finalHome.id); const fA = features.get(finalAway.id);
+      if (!fH || !fA) return null;
       const { lH, lA } = lambdas(fH, fA);
       const dist = scoreDistribution(lH, lA);
       let hs = dist.modal.h, as = dist.modal.a;
       let pens = false, hp: number | null = null, ap: number | null = null;
-      let winnerId = hs > as ? home.id : hs < as ? away.id : null;
+      let winnerId = hs > as ? finalHome.id : hs < as ? finalAway.id : null;
       if (winnerId == null) {
         pens = true;
-        if (dist.pHome >= dist.pAway) { winnerId = home.id; hp = 4; ap = 3; }
-        else { winnerId = away.id; hp = 3; ap = 4; }
+        if (dist.pHome >= dist.pAway) { winnerId = finalHome.id; hp = 4; ap = 3; }
+        else { winnerId = finalAway.id; hp = 3; ap = 4; }
       }
+      const usedOfficialTeams = !!(officialHome && officialAway);
       const row = {
         phase, slot_code: slot,
-        home_team_id: home.id, away_team_id: away.id,
+        home_team_id: finalHome.id, away_team_id: finalAway.id,
         home_score: hs, away_score: as,
         home_pens: hp, away_pens: ap, went_to_penalties: pens,
         winner_team_id: winnerId,
@@ -554,7 +603,7 @@ Deno.serve(async (req) => {
         prob_away: +dist.pAway.toFixed(3),
         confidence: confidenceFromProb({ pHome: dist.pHome, pDraw: dist.pDraw, pAway: dist.pAway }),
         basis: {
-          source: "poisson_model",
+          source: usedOfficialTeams ? "poisson_model_official_pairing" : "poisson_model",
           lambdas: { lH: +lH.toFixed(3), lA: +lA.toFixed(3) },
           probs: { pHome: +dist.pHome.toFixed(3), pDraw: +dist.pDraw.toFixed(3), pAway: +dist.pAway.toFixed(3) },
           modal_prob: +dist.modal.p.toFixed(3),
@@ -570,42 +619,46 @@ Deno.serve(async (req) => {
       return row;
     };
 
-    // R32
-    const n = Math.min(32, all32.length);
-    const pairs = Math.floor(n / 2);
+    // R32 — iterate by slot R32-1..R32-16; use official pairing if present, else fall back to seeded all32 pairs
     const r32winners: Team[] = [];
-    for (let i = 0; i < pairs; i++) {
-      const home = teamById.get(all32[i].teamId)!;
-      const away = teamById.get(all32[n - 1 - i].teamId)!;
-      const r = koRow("round_of_32", `R32-${i + 1}`, home, away);
-      r32winners.push(r.winnerTeam);
+    const n = Math.min(32, all32.length);
+    for (let i = 0; i < 16; i++) {
+      const slot = `R32-${i + 1}`;
+      const seededHome = all32[i] ? (teamById.get(all32[i].teamId) ?? null) : null;
+      const seededAway = all32[n - 1 - i] ? (teamById.get(all32[n - 1 - i].teamId) ?? null) : null;
+      const r = koRow("round_of_32", slot, seededHome, seededAway);
+      if (r) r32winners.push(r.winnerTeam);
     }
 
-    const runRound = (input: Team[], phase: string, prefix: string) => {
+    const runRound = (input: Team[], phase: string, prefix: string, count: number) => {
       const winners: Team[] = []; const losers: Team[] = [];
-      for (let i = 0; i < Math.floor(input.length / 2); i++) {
-        const home = input[i * 2]; const away = input[i * 2 + 1];
-        if (!home || !away) continue;
+      for (let i = 0; i < count; i++) {
+        const home = input[i * 2] ?? null;
+        const away = input[i * 2 + 1] ?? null;
         const r = koRow(phase, `${prefix}-${i + 1}`, home, away);
+        if (!r) continue;
         winners.push(r.winnerTeam);
-        losers.push(r.winnerTeam.id === home.id ? away : home);
+        const fHome = teamById.get(r.home_team_id)!;
+        const fAway = teamById.get(r.away_team_id)!;
+        losers.push(r.winnerTeam.id === fHome.id ? fAway : fHome);
       }
       return { winners, losers };
     };
 
-    const r16w = runRound(r32winners, "round_of_16", "R16").winners;
-    const qfw = runRound(r16w, "quarter_final", "QF").winners;
-    const sf = runRound(qfw, "semi_final", "SF");
+    const r16w = runRound(r32winners, "round_of_16", "R16", 8).winners;
+    const qfw = runRound(r16w, "quarter_final", "QF", 4).winners;
+    const sf = runRound(qfw, "semi_final", "SF", 2);
 
     let championName: string | undefined; let thirdName: string | undefined;
     if (sf.winners.length >= 2) {
       const f = koRow("final", "F-1", sf.winners[0], sf.winners[1]);
-      championName = f.winnerTeam.name;
+      if (f) championName = f.winnerTeam.name;
     }
     if (sf.losers.length >= 2) {
       const t = koRow("third_place", "TP-1", sf.losers[0], sf.losers[1]);
-      thirdName = t.winnerTeam.name;
+      if (t) thirdName = t.winnerTeam.name;
     }
+
 
     // Strip helper field before insert
     const cleanRows = rows.map(({ winnerTeam, ...r }) => ({ ...r, projection_version: version }));

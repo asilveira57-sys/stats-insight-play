@@ -16,13 +16,14 @@ type Match = {
   away_team?: { id: string; slug: string; name: string; flag_url: string | null } | null;
 };
 
-const STAGES: { key: string; label: string; n: number; prefix: string; projPhase: string }[] = [
-  { key: "round_of_32", label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
-  { key: "round_of_16", label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
-  { key: "quarter_final", label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
-  { key: "semi_final", label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
-  { key: "final", label: "Final", n: 1, prefix: "F", projPhase: "final" },
+const STAGES: { keys: string[]; label: string; n: number; prefix: string; projPhase: string }[] = [
+  { keys: ["round_of_32", "r32"], label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
+  { keys: ["round_of_16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
+  { keys: ["quarter_final"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
+  { keys: ["semi_final"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
+  { keys: ["final"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
 ];
+
 
 function statusBadge(s: string) {
   if (s === "live") return <span className="text-[9px] uppercase font-bold bg-red-500/20 text-red-500 px-1.5 py-0.5 rounded">Ao vivo</span>;
@@ -136,7 +137,7 @@ export default function Copa2026Chaveamento() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [thirdPlace, setThirdPlace] = useState<Match | null>(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
-  const [mode, setMode] = useState<Mode>("misto");
+  const [mode, setMode] = useState<Mode>("oficial");
   const [regenerating, setRegenerating] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
   const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
@@ -240,9 +241,10 @@ export default function Copa2026Chaveamento() {
             <div className="overflow-x-auto">
               <div className="flex gap-6 min-w-max pb-4">
                 {STAGES.map((s) => {
-                  const list = matches.filter((m) => m.stage === s.key);
+                  const list = matches.filter((m) => s.keys.includes(m.stage));
                   return (
-                    <div key={s.key} className="flex flex-col gap-3">
+                    <div key={s.projPhase} className="flex flex-col gap-3">
+
                       <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>
                       <div className="flex flex-col gap-3 justify-around h-full">
                         {Array.from({ length: s.n }, (_, i) => {
