@@ -137,7 +137,7 @@ export default function Copa2026Chaveamento() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [thirdPlace, setThirdPlace] = useState<Match | null>(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
-  const [mode, setMode] = useState<Mode>("misto");
+  const [mode, setMode] = useState<Mode>("oficial");
   const [regenerating, setRegenerating] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
   const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
