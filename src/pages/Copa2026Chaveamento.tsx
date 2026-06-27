@@ -241,9 +241,10 @@ export default function Copa2026Chaveamento() {
             <div className="overflow-x-auto">
               <div className="flex gap-6 min-w-max pb-4">
                 {STAGES.map((s) => {
-                  const list = matches.filter((m) => m.stage === s.key);
+                  const list = matches.filter((m) => s.keys.includes(m.stage));
                   return (
-                    <div key={s.key} className="flex flex-col gap-3">
+                    <div key={s.projPhase} className="flex flex-col gap-3">
+
                       <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>
                       <div className="flex flex-col gap-3 justify-around h-full">
                         {Array.from({ length: s.n }, (_, i) => {
