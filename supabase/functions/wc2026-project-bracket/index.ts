@@ -360,15 +360,18 @@ Deno.serve(async (req) => {
     const version = "live";
     const SIMS = 3000;
 
-    const [teamsRes, matchesRes, analysesRes, standingsRes, historyRes] = await Promise.all([
+    const [teamsRes, matchesRes, koRes, analysesRes, standingsRes, historyRes] = await Promise.all([
       supabase.from("world_cup_2026_teams").select("id,name,slug,group_letter,fifa_ranking"),
       supabase.from("world_cup_2026_matches").select("id,stage,home_team_id,away_team_id,status,home_score,away_score,winner_team_id,group_letter").eq("stage", "group"),
+      supabase.from("world_cup_2026_matches").select("id,stage,bracket_position,home_team_id,away_team_id,status,home_score,away_score,winner_team_id").in("stage", ["round_of_32","round_of_16","quarter_final","semi_final","final","third_place"]),
       supabase.from("world_cup_2026_ai_analyses").select("match_id,predicted_home_score,predicted_away_score,confidence_score"),
       supabase.from("world_cup_2026_standings").select("team_id,group_letter"),
       supabase.from("world_cup_2026_team_history").select("team_id,goals_for,goals_against,wins,draws,losses"),
     ]);
     if (teamsRes.error) throw teamsRes.error;
     if (matchesRes.error) throw matchesRes.error;
+    if (koRes.error) throw koRes.error;
+
     if (analysesRes.error) throw analysesRes.error;
     if (standingsRes.error) throw standingsRes.error;
     if (historyRes.error) throw historyRes.error;
