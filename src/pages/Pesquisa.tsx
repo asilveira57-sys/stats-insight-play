@@ -83,8 +83,31 @@ export default function Pesquisa() {
               />
             )}
 
+            {data?.not_found && (
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center space-y-3">
+                  <SearchIcon className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-base font-medium">Não encontrei esse dado no banco de dados do StatBall.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {data.ai_answer?.explanation || "Tente reformular incluindo nome do time, jogador ou competição."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {data?.structured_answer && (
               <AnswerCard data={data.structured_answer} postSlug={data.post_slug ?? null} />
+            )}
+
+            {data?.filters_used && data.filters_used.length > 0 && data?.structured_answer && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground px-1">
+                <span className="font-medium">Filtros utilizados:</span>
+                {data.filters_used.map((f) => (
+                  <Badge key={f.label} variant="outline" className="text-[10px]">
+                    {f.label}: {f.value}
+                  </Badge>
+                ))}
+              </div>
             )}
 
             {data?.top_scorers && data.top_scorers.length > 0 && (
@@ -96,9 +119,10 @@ export default function Pesquisa() {
               />
             )}
 
-            {data?.ai_answer && !data.structured_answer && (
+            {data?.ai_answer && !data.structured_answer && !data.not_found && (
               <AIAnswerCard answer={data.ai_answer} sources={data.entities} />
             )}
+
 
             {data && (
               <Card>

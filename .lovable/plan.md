@@ -1,48 +1,89 @@
-## Diagnóstico
+# Motor de Pesquisa Inteligente — DB-Only
 
-Achei 3 problemas que somados produzem o "A definir" em tudo:
+## Princípio inegociável
 
-1. **Mistura de nomes de fase no banco.** Os jogos reais já sincronizados de 32-avos estão gravados com `stage = 'r32'` (9 partidas, com `home_team_id`/`away_team_id` e datas reais). Mas o chaveamento procura `stage = 'round_of_32'`, que só contém 16 linhas placeholder vazias e duplicadas (todas com `bracket_position = 'R32-1'`). O mesmo vale para `round_of_16`/`quarter_final`/`semi_final`/`final`: só existem placeholders vazios, todos com o mesmo `bracket_position`.
-2. **UI defaulta para "Oficial + Projeção"** e como o oficial não casa, mostra projeção por cima. O usuário quer "Apenas oficial" como default.
-3. **Projeção da IA ignora resultados oficiais do mata-mata.** A função `wc2026-project-bracket` só lê a fase de grupos e simula todo o KO do zero — então quando a R32 oficial avança, a projeção continua jogando dado nos times errados.
+A IA **só responde com dados retornados pelo banco**. Sem conhecimento de mundo, sem fallback externo. Se o banco não tem, a resposta é:
+> "Não encontrei esse dado no banco de dados do StatBall."
 
-## O que vai ser feito
+Isso remove o `externalAnswer` atual da edge function (que hoje deixa a IA inventar respostas factuais quando o DB falha).
 
-### 1) Limpeza / normalização do banco (migration)
-- Padronizar `stage`: renomear `r32` → `round_of_32` nas 9 partidas reais já carregadas.
-- Apagar as linhas placeholder vazias e duplicadas (sem times, todas com mesmo `bracket_position`) de `round_of_32`, `round_of_16`, `quarter_final`, `semi_final`, `final`, `third_place`. O chaveamento não precisa dessas linhas — a UI já renderiza os 16/8/4/2/1 slots proceduralmente.
-- Atribuir `bracket_position` correto (`R32-1` … `R32-16`) aos jogos oficiais conforme ordem cronológica e par adjacente do chaveamento.
+## Arquitetura
 
-### 2) Sincronizador de KO oficial (nova edge function `wc2026-sync-knockout`)
-- Lê os jogos de mata-mata do API-Football (já tem chave), grava em `world_cup_2026_matches` com `stage` correto, `bracket_position`, `home/away_team_id`, status e placar.
-- Quando uma partida termina, popula automaticamente a vaga correspondente da próxima fase: o vencedor de `R32-1` vira `home_team_id` de `R16-1`, vencedor de `R32-2` vira `away_team_id` de `R16-1`, e assim por diante.
-- Mantém o jogo de 3º lugar acoplado às semis perdedoras.
-- Disparada manualmente do Admin Copa 2026 e via cron a cada 15 min durante janelas de jogo.
+```text
+Usuário (pergunta livre)
+   ↓
+[1] Classificador de intenção (Gemini via Lovable AI Gateway)
+   ↓  → { intent, entities, year, scope, confidence }
+[2] Resolver de entidades (DB lookup com aliases)
+   ↓  → { competicao_id?, time_id?, jogador_id?, ... }
+   ↓  → se ambíguo: devolve chips de desambiguação (sem responder)
+   ↓  → se inexistente: devolve "não encontrado"
+[3] Query Builder (mapeia intent → SQL/RPC tipado)
+   ↓
+[4] Execução no Postgres (Supabase client)
+   ↓
+[5] Formatter (monta StructuredAnswer + frase natural a partir das rows)
+   ↓
+[6] Persistência SEO (search_posts) — só se houve dado real
+```
 
-### 3) Chaveamento.tsx (frontend)
-- Default do `mode` passa de `"misto"` para `"oficial"`.
-- Query aceita os dois nomes históricos (`r32` e `round_of_32`) por compatibilidade temporária.
-- Quando um slot R32 oficial tiver dois times definidos, aparece como card clicável; quando só um time estiver definido (vencedor já conhecido mas adversário ainda não), mostra "X vs A definir".
-- No modo "Oficial + Projeção", quando a partida oficial já tem times mas ainda não foi jogada, ainda assim mostra o card oficial (não a projeção) — projeção só preenche slots ainda 100% indefinidos.
+A IA aparece **só na etapa 1** (interpretar) e na etapa 5 (parafrasear rows). Nunca como fonte de fato.
 
-### 4) Projeção IA passa a respeitar o oficial
-Editar `wc2026-project-bracket`:
-- Antes de simular cada rodada do KO, carrega de `world_cup_2026_matches` todos os jogos daquela fase com `status = 'finished'`.
-- Se a partida oficial existe e está encerrada, usa o vencedor real (e o placar real) na linha de projeção, marcando `basis = "official"` e `confidence = "high"`.
-- Se a partida oficial tem times definidos mas não foi jogada, simula só ela (mantendo os times reais como entrada, não os simulados).
-- Só fases totalmente indefinidas continuam sendo simuladas a partir dos vencedores projetados.
-- Resultado: assim que as oitavas começarem a ser definidas no oficial, a projeção das quartas/semi/final se reajusta automaticamente.
+## Intents suportadas (whitelist)
 
-### 5) Botão "Atualizar projeção"
-- Passa a chamar primeiro `wc2026-sync-knockout` (puxa oficial) e em seguida `wc2026-project-bracket` (regenera projeção em cima do oficial atualizado). Realtime já invalida os caches.
+`resultado`, `placar`, `proximo_jogo`, `ultimo_jogo`, `ultimos_n_jogos`, `campeao`, `classificacao`, `artilharia`, `assistencias`, `cartoes`, `escalacao`, `confronto_direto`, `estatisticas_time`, `estatisticas_jogador`, `jogos_filtrados` (ex: "jogos com +3 gols ontem"), `gols_partida` ("quem fez gol na final"), `odds`.
 
-## Detalhes técnicos
+Qualquer pergunta fora dessa whitelist → "Não encontrei esse dado no banco".
 
-- Tabelas tocadas: `world_cup_2026_matches` (update de `stage`, delete de placeholders, update de `bracket_position`, popular `home/away_team_id` da próxima fase).
-- Nada muda em `wc2026_bracket_projections` exceto que `basis` e `confidence` passam a refletir partidas reais.
-- A função `wc2026-sync-knockout` reusa o mapeamento de times (`world_cup_2026_teams.api_football_id`) que `wc2026-sync-live` já usa.
+## Entidades + desambiguação
 
-## Fora do escopo agora
+Resolver por (slug exato → alias exato → normalize match → trigram). Sempre devolver `match_confidence`. Quando duas entidades empatam acima do limiar (ex.: "Barcelona" Espanha vs Equador, "França" país vs "Franca" cidade), **não consultar** — devolver `disambiguation: [{id, name, country, kind}]` e exibir chips.
 
-- Não vou mexer na sincronização da fase de grupos nem no Monte Carlo de grupos — só no mata-mata.
-- Não vou tentar adivinhar `bracket_position` para R16+ enquanto não houver R32 oficial completa — esses slots ficam como "A definir" no modo oficial e ganham projeção no modo misto.
+Aliases especiais já existem (`NATIONAL_TEAM_ALIASES`, `team_aliases`, `competition_aliases`). Vamos consolidar num único resolver.
+
+## Mudanças de código
+
+### Backend
+- **`supabase/functions/intelligent-search/index.ts`** — reescrito em módulos:
+  - `classifyIntent(query)` — único call ao Gemini, retorna JSON estruturado (Output schema). Prompt deixa explícito: "você só classifica, NÃO responde".
+  - `resolveEntities(entities)` — DB lookups + desambiguação.
+  - `runQuery(intent, resolved)` — switch por intent, cada um com sua função SQL tipada.
+  - `formatAnswer(intent, rows)` — gera `summary` + `StructuredAnswer` a partir das linhas.
+  - Remove `externalAnswer`, remove qualquer prompt que peça resposta factual à IA.
+  - Toda resposta inclui `filters_used` (competição, temporada, tipo).
+- **Novas funções SQL** (migration) para casos que hoje não têm query:
+  - `search_champion(liga_id, year)` — lê `standings` ordenado por posição = 1.
+  - `search_next_matches(time_id, limit)` — `partidas` futuros por data.
+  - `search_filtered_matches(date, min_goals)` — para "jogos com +3 gols ontem".
+  - `search_match_goals(partida_id)` — quem marcou (já existe parcial em `gols_partida`).
+
+### Frontend
+- **`src/components/search/AnswerCard.tsx`** — adicionar bloco `FiltersUsed` (chips discretos abaixo da resposta).
+- **`src/components/search/DisambiguationChips.tsx`** — já existe; estender para times/jogadores além de ligas.
+- **`src/pages/Pesquisa.tsx`** — quando `data.type === "not_found"`, mostrar mensagem padrão "Não encontrei esse dado no banco de dados do StatBall" com sugestões de busca (trending).
+- **`src/hooks/useIntelligentSearch.ts`** — adicionar tipos `filters_used`, `disambiguation` para entidades genéricas, `not_found`.
+
+### SEO
+- `search_posts` só é gravado quando `has_data = true`. Páginas "não encontrado" não viram post (evita lixo no Google).
+
+## Casos de teste (vão ser rodados após deploy)
+
+1. "Quem ganhou ontem?" → lista de jogos de ontem com vencedor.
+2. "Quanto ficou França x Alemanha?" → último confronto direto seleções.
+3. "Quem foi campeão do Brasileirão 2025?" → standings posição 1.
+4. "Quantos gols o Neymar fez na Copa?" → gols_partida + escalacoes + filtro Copa.
+5. "Jogos do Palmeiras em casa em 2025" → partidas com is_home + ano.
+6. "Últimos 5 jogos do Flamengo" → partidas finalizadas ordenadas.
+7. "Classificação da Série A" → standings ano corrente.
+8. "Próximos jogos do Barcelona" → desambiguação ESP/EQU primeiro.
+9. "Jogos com mais de 3 gols ontem" → partidas where gols_casa+gols_fora>3.
+10. "Quem fez gol na final da Champions?" → gols_partida da última final.
+
+Casos sem dado no banco devem responder a mensagem padrão, não inventar.
+
+## Fora de escopo desta fase
+- Ranking de odds históricas (só Copa 2026 tem hoje).
+- Estatísticas avançadas (xG etc) — banco não tem.
+- Tradução EN/ES da pergunta (só PT-BR nesta fase).
+
+Posso seguir com a implementação?

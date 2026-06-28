@@ -118,6 +118,8 @@ export interface SearchResponse {
   league_disambiguation?: { id: string; name: string }[];
   structured_answer?: StructuredAnswer | null;
   post_slug?: string | null;
+  filters_used?: { label: string; value: string }[];
+  not_found?: boolean;
 }
 
 

@@ -538,34 +538,41 @@ Use null quando não houver. NÃO invente nomes.`;
   }
 }
 
-// Resposta de conhecimento geral (fallback). Marca explicitamente como fonte externa.
-async function externalAnswer(question: string, contextHint: string): Promise<{ answer: string; explanation: string; confidence: number } | null> {
-  const system = `Você é especialista em futebol mundial. Responda à pergunta em PT-BR de forma factual, completa e clara (3 a 6 frases).
-- Se houver "CONTEXTO STATBALL", priorize esses dados.
-- Caso contrário, use seu conhecimento de fatos históricos do futebol (resultados, jogadores, técnicos, datas, copas) com confiança.
-- Apenas diga "não tenho confirmação" se a pergunta envolver algo realmente fora do seu conhecimento (eventos muito recentes ou obscuros).
-- Sempre cite placares, datas e nomes quando souber.
-- Devolva JSON: { answer: string, explanation: string (curta — fonte/observação), confidence: 0-100 }.`;
-  const data = await lovableAiChat({
-    model: AI_MODEL,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: `CONTEXTO STATBALL:\n${contextHint || "(sem dados internos)"}\n\nPERGUNTA: ${question}\n\nResponda em JSON.` },
-    ],
-    response_format: { type: "json_object" },
-  });
-  if (!data) return null;
-  try {
-    const raw = data?.choices?.[0]?.message?.content ?? "{}";
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return {
-      answer: parsed.answer ?? "Não foi possível responder agora.",
-      explanation: parsed.explanation ?? "Resposta gerada com conhecimento externo da IA.",
-      confidence: Number(parsed.confidence ?? 40),
-    };
-  } catch {
-    return null;
-  }
+// Política de "não encontrado": jamais inventar resposta a partir do conhecimento do modelo.
+const NOT_FOUND_MESSAGE = "Não encontrei esse dado no banco de dados do StatBall.";
+
+function notFoundAnswer(detail?: string) {
+  return {
+    answer: NOT_FOUND_MESSAGE,
+    explanation: detail || "Nenhum registro correspondente foi localizado nas tabelas internas.",
+    has_enough_data: false,
+    confidence: 0,
+  };
+}
+
+// Resolver de campeão consultando exclusivamente o banco (team_titles).
+async function resolveChampionFromDB(
+  supabase: any,
+  competitionLabel: string | null,
+  year: number | null,
+): Promise<{ time: string; time_slug: string | null; competition: string; year: number | null } | null> {
+  if (!competitionLabel && !year) return null;
+  let q = supabase
+    .from("team_titles")
+    .select("team_id, competition_name, edition_year, position")
+    .ilike("position", "campe%");
+  if (competitionLabel) q = q.ilike("competition_name", `%${competitionLabel}%`);
+  if (year) q = q.eq("edition_year", year);
+  const { data, error } = await q.range(0, 4);
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
+  const { data: time } = await supabase.from("times").select("nome, slug").eq("id", row.team_id).maybeSingle();
+  return {
+    time: time?.nome ?? "—",
+    time_slug: time?.slug ?? null,
+    competition: row.competition_name,
+    year: row.edition_year,
+  };
 }
 
 // ---------- Last match resolver ----------
@@ -1063,44 +1070,45 @@ Deno.serve(async (req) => {
 
     // ---------- CHAMPION / WINNER ----------
     else if (intent === "champion") {
-      // Monta contexto com a liga (se resolvida) e ano, e delega para resposta externa factual.
       const candidates = await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
-      const ctx = [
-        compLabel ? `Competição provável: ${compLabel}` : null,
-        year ? `Ano: ${year}` : null,
-      ].filter(Boolean).join("\n");
-      const ext = await externalAnswer(query, ctx);
-      if (ext) {
+      const champ = await resolveChampionFromDB(supabase, compLabel, year);
+      if (!champ) {
+        ai_answer = notFoundAnswer(
+          compLabel
+            ? `Sem registro de campeão da ${compLabel}${year ? ` em ${year}` : ""} no banco do StatBall.`
+            : "Não consegui identificar a competição. Tente especificar o nome (ex.: 'Brasileirão Série A 2022').",
+        );
+      } else {
+        const summary = `O campeão da ${champ.competition}${champ.year ? ` em ${champ.year}` : ""} foi o ${champ.time}.`;
         ai_answer = {
-          answer: ext.answer,
-          explanation: ext.explanation || "Resposta factual baseada em conhecimento histórico do futebol.",
+          answer: `O campeão da **${champ.competition}**${champ.year ? ` em **${champ.year}**` : ""} foi o **${champ.time}**.`,
+          explanation: "Fonte: tabela interna de títulos (team_titles).",
           has_enough_data: true,
-          confidence: Math.max(ext.confidence, 70),
+          confidence: 95,
         };
         structured_answer = {
-          kind: "external",
-          summary: ext.answer,
-          note: compLabel
-            ? `Resposta sobre ${compLabel}${year ? ` (${year})` : ""} — fonte: conhecimento histórico da IA.`
-            : "Resposta gerada com conhecimento histórico da IA.",
+          kind: "external", // reaproveita o card de texto simples
+          summary,
+          note: `Dado oficial — tabela team_titles do StatBall.`,
         };
-        post_slug = buildSlug("campeao", [compLabel, year, query.slice(0, 40)]);
+        post_slug = buildSlug("campeao", [champ.competition, champ.year]);
         await persistSearchPost(supabase, {
           slug: post_slug,
           question: query,
           normalized,
           intent: "champion",
-          summary: ext.answer,
-          meta_title: `${compLabel ? `Campeão da ${compLabel}` : "Campeão"}${year ? ` ${year}` : ""} — Statball`,
-          meta_description: truncate(ext.answer, 160),
+          summary,
+          meta_title: `Campeão da ${champ.competition}${champ.year ? ` ${champ.year}` : ""} — Statball`,
+          meta_description: truncate(summary, 160),
           answer_payload: structured_answer,
           entities,
           confidence: ai_answer.confidence,
         });
       }
     }
+
 
     // ---------- MATCH LOOKUP / RESULTADO DE JOGO ----------
     else if (intent === "match_lookup") {
@@ -1256,14 +1264,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---------- FALLBACK GARANTIDO ----------
-    // Se ainda não temos resposta estruturada, usa o classificador LLM para refinar
-    // intenção e entidades, tenta resolver "último jogo" no banco e, em último caso,
-    // devolve uma resposta de conhecimento externo (marcada como tal).
+    // ---------- FALLBACK: tenta resolver "último jogo" do time quando o resto falhou ----------
     const noStructured = !structured_answer;
     const aiInsufficient = !ai_answer || !ai_answer.has_enough_data;
+    // Só entra no fallback se nenhuma intent específica já produziu resposta (estruturada OU not-found).
+    const intentAlreadyHandled = ["top_scorer", "champion", "match_lookup"].includes(intent) && ai_answer != null;
 
-    if (noStructured && aiInsufficient) {
+    if (noStructured && aiInsufficient && !intentAlreadyHandled) {
       const refined = await classifyWithAI(query);
       const refinedIntent = refined?.intent ?? "open_question";
       const refinedTeam = refined?.team ?? null;
@@ -1307,44 +1314,24 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Se mesmo assim continua sem resposta, dispara a resposta externa
+      // Sem dados internos → resposta padrão "não encontrado". Não invocamos IA externa.
       if (!structured_answer && (!ai_answer || !ai_answer.has_enough_data)) {
-        const ext = await externalAnswer(query, contextStr);
-        if (ext) {
-          ai_answer = {
-            answer: ext.answer,
-            explanation: ext.explanation,
-            has_enough_data: true,
-            confidence: ext.confidence,
-          };
-          structured_answer = {
-            kind: "external",
-            summary: ext.answer,
-            note: "Resposta gerada com conhecimento externo da IA — não confirmada pelos dados internos do Statball.",
-          };
-          post_slug = buildSlug("pergunta", [query.slice(0, 60)]);
-          await persistSearchPost(supabase, {
-            slug: post_slug,
-            question: query,
-            normalized,
-            intent: refinedIntent,
-            summary: ext.answer,
-            meta_title: truncate(query, 60),
-            meta_description: ext.answer,
-            answer_payload: structured_answer,
-            entities,
-            confidence: ext.confidence,
-          });
-        } else if (!ai_answer) {
-          ai_answer = {
-            answer: "Não consegui responder agora. Tente reformular a pergunta com nome do time, jogador ou competição.",
-            explanation: "IA indisponível no momento.",
-            has_enough_data: false,
-            confidence: 0,
-          };
-        }
+        ai_answer = notFoundAnswer(
+          refinedTeam
+            ? `Não localizei dados de "${refinedTeam}"${refinedLeague ? ` na ${refinedLeague}` : ""}${refinedYear ? ` em ${refinedYear}` : ""} no banco do StatBall.`
+            : "Tente reformular incluindo nome do time, jogador ou competição.",
+        );
       }
     }
+
+    // Construir filtros utilizados (transparência para o usuário)
+    const filters_used: { label: string; value: string }[] = [];
+    if (resolved_league?.name) filters_used.push({ label: "Competição", value: resolved_league.name });
+    if (responseYear) filters_used.push({ label: "Temporada", value: String(responseYear) });
+    if (scope) filters_used.push({ label: "Mando", value: scope === "home" ? "Mandante" : "Visitante" });
+    filters_used.push({ label: "Tipo de consulta", value: intent });
+
+
 
 
 
@@ -1393,6 +1380,8 @@ Deno.serve(async (req) => {
       league_disambiguation,
       structured_answer,
       post_slug,
+      filters_used,
+      not_found: !ai_answer?.has_enough_data && !structured_answer,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("intelligent-search error", e);
