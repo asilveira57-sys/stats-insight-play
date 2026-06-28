@@ -1070,44 +1070,45 @@ Deno.serve(async (req) => {
 
     // ---------- CHAMPION / WINNER ----------
     else if (intent === "champion") {
-      // Monta contexto com a liga (se resolvida) e ano, e delega para resposta externa factual.
       const candidates = await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
-      const ctx = [
-        compLabel ? `Competição provável: ${compLabel}` : null,
-        year ? `Ano: ${year}` : null,
-      ].filter(Boolean).join("\n");
-      const ext = await externalAnswer(query, ctx);
-      if (ext) {
+      const champ = await resolveChampionFromDB(supabase, compLabel, year);
+      if (!champ) {
+        ai_answer = notFoundAnswer(
+          compLabel
+            ? `Sem registro de campeão da ${compLabel}${year ? ` em ${year}` : ""} no banco do StatBall.`
+            : "Não consegui identificar a competição. Tente especificar o nome (ex.: 'Brasileirão Série A 2022').",
+        );
+      } else {
+        const summary = `O campeão da ${champ.competition}${champ.year ? ` em ${champ.year}` : ""} foi o ${champ.time}.`;
         ai_answer = {
-          answer: ext.answer,
-          explanation: ext.explanation || "Resposta factual baseada em conhecimento histórico do futebol.",
+          answer: `O campeão da **${champ.competition}**${champ.year ? ` em **${champ.year}**` : ""} foi o **${champ.time}**.`,
+          explanation: "Fonte: tabela interna de títulos (team_titles).",
           has_enough_data: true,
-          confidence: Math.max(ext.confidence, 70),
+          confidence: 95,
         };
         structured_answer = {
-          kind: "external",
-          summary: ext.answer,
-          note: compLabel
-            ? `Resposta sobre ${compLabel}${year ? ` (${year})` : ""} — fonte: conhecimento histórico da IA.`
-            : "Resposta gerada com conhecimento histórico da IA.",
+          kind: "external", // reaproveita o card de texto simples
+          summary,
+          note: `Dado oficial — tabela team_titles do StatBall.`,
         };
-        post_slug = buildSlug("campeao", [compLabel, year, query.slice(0, 40)]);
+        post_slug = buildSlug("campeao", [champ.competition, champ.year]);
         await persistSearchPost(supabase, {
           slug: post_slug,
           question: query,
           normalized,
           intent: "champion",
-          summary: ext.answer,
-          meta_title: `${compLabel ? `Campeão da ${compLabel}` : "Campeão"}${year ? ` ${year}` : ""} — Statball`,
-          meta_description: truncate(ext.answer, 160),
+          summary,
+          meta_title: `Campeão da ${champ.competition}${champ.year ? ` ${champ.year}` : ""} — Statball`,
+          meta_description: truncate(summary, 160),
           answer_payload: structured_answer,
           entities,
           confidence: ai_answer.confidence,
         });
       }
     }
+
 
     // ---------- MATCH LOOKUP / RESULTADO DE JOGO ----------
     else if (intent === "match_lookup") {
