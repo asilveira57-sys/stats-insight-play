@@ -1315,44 +1315,24 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Se mesmo assim continua sem resposta, dispara a resposta externa
+      // Sem dados internos → resposta padrão "não encontrado". Não invocamos IA externa.
       if (!structured_answer && (!ai_answer || !ai_answer.has_enough_data)) {
-        const ext = await externalAnswer(query, contextStr);
-        if (ext) {
-          ai_answer = {
-            answer: ext.answer,
-            explanation: ext.explanation,
-            has_enough_data: true,
-            confidence: ext.confidence,
-          };
-          structured_answer = {
-            kind: "external",
-            summary: ext.answer,
-            note: "Resposta gerada com conhecimento externo da IA — não confirmada pelos dados internos do Statball.",
-          };
-          post_slug = buildSlug("pergunta", [query.slice(0, 60)]);
-          await persistSearchPost(supabase, {
-            slug: post_slug,
-            question: query,
-            normalized,
-            intent: refinedIntent,
-            summary: ext.answer,
-            meta_title: truncate(query, 60),
-            meta_description: ext.answer,
-            answer_payload: structured_answer,
-            entities,
-            confidence: ext.confidence,
-          });
-        } else if (!ai_answer) {
-          ai_answer = {
-            answer: "Não consegui responder agora. Tente reformular a pergunta com nome do time, jogador ou competição.",
-            explanation: "IA indisponível no momento.",
-            has_enough_data: false,
-            confidence: 0,
-          };
-        }
+        ai_answer = notFoundAnswer(
+          refinedTeam
+            ? `Não localizei dados de "${refinedTeam}"${refinedLeague ? ` na ${refinedLeague}` : ""}${refinedYear ? ` em ${refinedYear}` : ""} no banco do StatBall.`
+            : "Tente reformular incluindo nome do time, jogador ou competição.",
+        );
       }
     }
+
+    // Construir filtros utilizados (transparência para o usuário)
+    const filters_used: { label: string; value: string }[] = [];
+    if (resolved_league?.name) filters_used.push({ label: "Competição", value: resolved_league.name });
+    if (responseYear) filters_used.push({ label: "Temporada", value: String(responseYear) });
+    if (scope) filters_used.push({ label: "Mando", value: scope === "home" ? "Mandante" : "Visitante" });
+    filters_used.push({ label: "Tipo de consulta", value: intent });
+
+
 
 
 
