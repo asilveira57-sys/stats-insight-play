@@ -560,7 +560,7 @@ async function resolveChampionFromDB(
   let q = supabase
     .from("team_titles")
     .select("team_id, competition_name, edition_year, position")
-    .eq("position", "Campeão");
+    .ilike("position", "campe%");
   if (competitionLabel) q = q.ilike("competition_name", `%${competitionLabel}%`);
   if (year) q = q.eq("edition_year", year);
   const { data, error } = await q.range(0, 4);
