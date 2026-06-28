@@ -538,34 +538,41 @@ Use null quando não houver. NÃO invente nomes.`;
   }
 }
 
-// Resposta de conhecimento geral (fallback). Marca explicitamente como fonte externa.
-async function externalAnswer(question: string, contextHint: string): Promise<{ answer: string; explanation: string; confidence: number } | null> {
-  const system = `Você é especialista em futebol mundial. Responda à pergunta em PT-BR de forma factual, completa e clara (3 a 6 frases).
-- Se houver "CONTEXTO STATBALL", priorize esses dados.
-- Caso contrário, use seu conhecimento de fatos históricos do futebol (resultados, jogadores, técnicos, datas, copas) com confiança.
-- Apenas diga "não tenho confirmação" se a pergunta envolver algo realmente fora do seu conhecimento (eventos muito recentes ou obscuros).
-- Sempre cite placares, datas e nomes quando souber.
-- Devolva JSON: { answer: string, explanation: string (curta — fonte/observação), confidence: 0-100 }.`;
-  const data = await lovableAiChat({
-    model: AI_MODEL,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: `CONTEXTO STATBALL:\n${contextHint || "(sem dados internos)"}\n\nPERGUNTA: ${question}\n\nResponda em JSON.` },
-    ],
-    response_format: { type: "json_object" },
-  });
-  if (!data) return null;
-  try {
-    const raw = data?.choices?.[0]?.message?.content ?? "{}";
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return {
-      answer: parsed.answer ?? "Não foi possível responder agora.",
-      explanation: parsed.explanation ?? "Resposta gerada com conhecimento externo da IA.",
-      confidence: Number(parsed.confidence ?? 40),
-    };
-  } catch {
-    return null;
-  }
+// Política de "não encontrado": jamais inventar resposta a partir do conhecimento do modelo.
+const NOT_FOUND_MESSAGE = "Não encontrei esse dado no banco de dados do StatBall.";
+
+function notFoundAnswer(detail?: string) {
+  return {
+    answer: NOT_FOUND_MESSAGE,
+    explanation: detail || "Nenhum registro correspondente foi localizado nas tabelas internas.",
+    has_enough_data: false,
+    confidence: 0,
+  };
+}
+
+// Resolver de campeão consultando exclusivamente o banco (team_titles).
+async function resolveChampionFromDB(
+  supabase: any,
+  competitionLabel: string | null,
+  year: number | null,
+): Promise<{ time: string; time_slug: string | null; competition: string; year: number | null } | null> {
+  if (!competitionLabel && !year) return null;
+  let q = supabase
+    .from("team_titles")
+    .select("team_id, competition_name, edition_year, position")
+    .eq("position", "Campeão");
+  if (competitionLabel) q = q.ilike("competition_name", `%${competitionLabel}%`);
+  if (year) q = q.eq("edition_year", year);
+  const { data, error } = await q.range(0, 4);
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
+  const { data: time } = await supabase.from("times").select("nome, slug").eq("id", row.team_id).maybeSingle();
+  return {
+    time: time?.nome ?? "—",
+    time_slug: time?.slug ?? null,
+    competition: row.competition_name,
+    year: row.edition_year,
+  };
 }
 
 // ---------- Last match resolver ----------
