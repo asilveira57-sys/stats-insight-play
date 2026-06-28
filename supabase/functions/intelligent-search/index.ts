@@ -1381,6 +1381,23 @@ Deno.serve(async (req) => {
       league_disambiguation,
       structured_answer,
       post_slug,
+      filters_used,
+      not_found: !ai_answer?.has_enough_data && !structured_answer,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      intent,
+      query,
+      normalized,
+      year: responseYear,
+      scope,
+      entities,
+      results,
+      ai_answer,
+      top_scorers,
+      source,
+      resolved_league,
+      league_disambiguation,
+      structured_answer,
+      post_slug,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("intelligent-search error", e);
