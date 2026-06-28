@@ -1264,14 +1264,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---------- FALLBACK GARANTIDO ----------
-    // Se ainda não temos resposta estruturada, usa o classificador LLM para refinar
-    // intenção e entidades, tenta resolver "último jogo" no banco e, em último caso,
-    // devolve uma resposta de conhecimento externo (marcada como tal).
+    // ---------- FALLBACK: tenta resolver "último jogo" do time quando o resto falhou ----------
     const noStructured = !structured_answer;
     const aiInsufficient = !ai_answer || !ai_answer.has_enough_data;
+    // Só entra no fallback se nenhuma intent específica já produziu resposta (estruturada OU not-found).
+    const intentAlreadyHandled = ["top_scorer", "champion", "match_lookup"].includes(intent) && ai_answer != null;
 
-    if (noStructured && aiInsufficient) {
+    if (noStructured && aiInsufficient && !intentAlreadyHandled) {
       const refined = await classifyWithAI(query);
       const refinedIntent = refined?.intent ?? "open_question";
       const refinedTeam = refined?.team ?? null;
