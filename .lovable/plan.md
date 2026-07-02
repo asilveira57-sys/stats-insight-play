@@ -1,89 +1,117 @@
-# Motor de Pesquisa Inteligente — DB-Only
 
-## Princípio inegociável
+# Motor de Pesquisa Inteligente — Refatoração Definitiva
 
-A IA **só responde com dados retornados pelo banco**. Sem conhecimento de mundo, sem fallback externo. Se o banco não tem, a resposta é:
-> "Não encontrei esse dado no banco de dados do StatBall."
+## Princípios inegociáveis
 
-Isso remove o `externalAnswer` atual da edge function (que hoje deixa a IA inventar respostas factuais quando o DB falha).
+1. **Zero conhecimento próprio da IA** — toda resposta vem do banco. Gemini só interpreta a pergunta (intent + entidades). Nunca responde fatos.
+2. **Zero IF por campeonato** — nada de `if (competition === "Brasileirão")`. Toda resolução passa por `competition_aliases`.
+3. **Escalável** — nova competição importada = funciona automaticamente assim que ganhar aliases.
+4. **Auditável** — cada busca grava um log técnico completo (query, intent, entidades, SQL, erros).
 
-## Arquitetura
+## Arquitetura em camadas
 
 ```text
-Usuário (pergunta livre)
-   ↓
-[1] Classificador de intenção (Gemini via Lovable AI Gateway)
-   ↓  → { intent, entities, year, scope, confidence }
-[2] Resolver de entidades (DB lookup com aliases)
-   ↓  → { competicao_id?, time_id?, jogador_id?, ... }
-   ↓  → se ambíguo: devolve chips de desambiguação (sem responder)
-   ↓  → se inexistente: devolve "não encontrado"
-[3] Query Builder (mapeia intent → SQL/RPC tipado)
-   ↓
-[4] Execução no Postgres (Supabase client)
-   ↓
-[5] Formatter (monta StructuredAnswer + frase natural a partir das rows)
-   ↓
-[6] Persistência SEO (search_posts) — só se houve dado real
+Pergunta
+  ↓ [1] normalizeQuery()           remove acentos, lowercase, pontuação, espaços
+  ↓ [2] classifyIntent()           Gemini → { intent, raw_entities, year }
+  ↓ [3] resolveEntities()          DB lookup por aliases
+       - resolveCompetition()
+       - resolveTeam()
+       - resolvePlayer()
+       - resolveSeason()
+       - resolveCountry()
+  ↓ [4] runQuery(intent, resolved) switch por intent → funções SQL universais
+       - tenta múltiplas fontes em cascata (nunca para na primeira falha)
+  ↓ [5] formatAnswer()             gera summary + StructuredAnswer só a partir das rows
+  ↓ [6] logDiagnostics()           grava tudo em search_diagnostics
 ```
 
-A IA aparece **só na etapa 1** (interpretar) e na etapa 5 (parafrasear rows). Nunca como fonte de fato.
+## Mudanças no banco
 
-## Intents suportadas (whitelist)
+### Migration 1 — Aliases universais
+- Popular `competition_aliases` para **todas** as competições em `ligas`:
+  - alias exato do nome
+  - alias normalizado (sem acentos)
+  - variações por padrão: remover "campeonato", "copa", "liga", adicionar sinônimos por país (`inglês`/`inglesa`/`premier league`, `espanhol`/`la liga`, `italiano`/`serie a`, `brasileiro`/`brasileirão`/`serie a brasileira`).
+  - Gerado por função SQL `seed_competition_aliases()` — idempotente, roda no INSERT via trigger para novas competições.
+- Trigger `trg_competition_aliases_autoseed` em `ligas` (AFTER INSERT) que chama a mesma função para o novo registro.
 
-`resultado`, `placar`, `proximo_jogo`, `ultimo_jogo`, `ultimos_n_jogos`, `campeao`, `classificacao`, `artilharia`, `assistencias`, `cartoes`, `escalacao`, `confronto_direto`, `estatisticas_time`, `estatisticas_jogador`, `jogos_filtrados` (ex: "jogos com +3 gols ontem"), `gols_partida` ("quem fez gol na final"), `odds`.
+### Migration 2 — Diagnóstico
+- Tabela `search_diagnostics`:
+  - `query_raw`, `query_normalized`, `intent`, `entities jsonb`, `resolved jsonb`, `confidence`, `sql_source`, `filters_used jsonb`, `result_count`, `error_reason`, `duration_ms`, `user_id`, `created_at`
+- GRANT + RLS: insert por qualquer usuário autenticado ou anon (para log público de buscas); select apenas admin.
 
-Qualquer pergunta fora dessa whitelist → "Não encontrei esse dado no banco".
+### Migration 3 — Funções SQL universais
+- `search_champion_universal(competition_id uuid, year int)` — tenta em cascata: `seasons.winner_team_id` → `team_titles` → `standings position=1`. Retorna primeira fonte com dado + `source_table`.
+- `search_top_scorer_universal(competition_id, year, limit)` — `artilharia_agregada` → `estatisticas` agregado por gols → `gols_partida` agregado.
+- `search_standings_universal(competition_id, year)` — direto de `standings`.
+- `search_matches_by_team(team_id, from_date, to_date, status)` — universal para "jogos do X".
+- `search_h2h(team_a, team_b, limit)` — confronto direto.
 
-## Entidades + desambiguação
+## Mudanças no código
 
-Resolver por (slug exato → alias exato → normalize match → trigram). Sempre devolver `match_confidence`. Quando duas entidades empatam acima do limiar (ex.: "Barcelona" Espanha vs Equador, "França" país vs "Franca" cidade), **não consultar** — devolver `disambiguation: [{id, name, country, kind}]` e exibir chips.
+### `supabase/functions/intelligent-search/index.ts` — reescrita modular
+Remover completamente:
+- Qualquer `if (competition.name.includes("Brasileirão"))` ou similar
+- `externalAnswer` / fallback com conhecimento da IA
+- Prompts que peçam resposta factual
 
-Aliases especiais já existem (`NATIONAL_TEAM_ALIASES`, `team_aliases`, `competition_aliases`). Vamos consolidar num único resolver.
+Estrutura nova:
+```
+index.ts (orquestrador ~150 linhas)
+  ↳ chama classifyIntent → resolveEntities → runQuery → formatAnswer → logDiagnostics
+```
 
-## Mudanças de código
+**classifyIntent** — único call Gemini com JSON output schema:
+```json
+{
+  "intent": "champion|match_result|standings|fixtures|top_scorer|player_stats|team_stats|h2h|last_match|next_match",
+  "raw_entities": {
+    "competition": "string|null",
+    "teams": ["string"],
+    "players": ["string"],
+    "country": "string|null"
+  },
+  "year": "number|null",
+  "confidence": 0.0-1.0
+}
+```
+Prompt deixa explícito: "Você é APENAS um classificador. NÃO responda fatos. NÃO invente times/campeonatos. Se não souber, deixe null."
 
-### Backend
-- **`supabase/functions/intelligent-search/index.ts`** — reescrito em módulos:
-  - `classifyIntent(query)` — único call ao Gemini, retorna JSON estruturado (Output schema). Prompt deixa explícito: "você só classifica, NÃO responde".
-  - `resolveEntities(entities)` — DB lookups + desambiguação.
-  - `runQuery(intent, resolved)` — switch por intent, cada um com sua função SQL tipada.
-  - `formatAnswer(intent, rows)` — gera `summary` + `StructuredAnswer` a partir das linhas.
-  - Remove `externalAnswer`, remove qualquer prompt que peça resposta factual à IA.
-  - Toda resposta inclui `filters_used` (competição, temporada, tipo).
-- **Novas funções SQL** (migration) para casos que hoje não têm query:
-  - `search_champion(liga_id, year)` — lê `standings` ordenado por posição = 1.
-  - `search_next_matches(time_id, limit)` — `partidas` futuros por data.
-  - `search_filtered_matches(date, min_goals)` — para "jogos com +3 gols ontem".
-  - `search_match_goals(partida_id)` — quem marcou (já existe parcial em `gols_partida`).
+**resolveCompetition(raw)** — lookup em cascata:
+1. Match exato em `competition_aliases.normalized_alias`
+2. Match ILIKE parcial em `competition_aliases`
+3. Trigram em `ligas.nome`
+4. Se >1 acima de threshold → retorna `disambiguation: []`
+5. Se 0 → retorna `not_found_reason: "competition_not_registered"`
+
+Mesmo padrão para times (`team_aliases`), jogadores (`players`), seasons (extractSeason regex 1900-2100).
+
+**runQuery** — switch por intent, cada branch chama uma SQL function universal. Nunca hardcoded competition name.
 
 ### Frontend
-- **`src/components/search/AnswerCard.tsx`** — adicionar bloco `FiltersUsed` (chips discretos abaixo da resposta).
-- **`src/components/search/DisambiguationChips.tsx`** — já existe; estender para times/jogadores além de ligas.
-- **`src/pages/Pesquisa.tsx`** — quando `data.type === "not_found"`, mostrar mensagem padrão "Não encontrei esse dado no banco de dados do StatBall" com sugestões de busca (trending).
-- **`src/hooks/useIntelligentSearch.ts`** — adicionar tipos `filters_used`, `disambiguation` para entidades genéricas, `not_found`.
 
-### SEO
-- `search_posts` só é gravado quando `has_data = true`. Páginas "não encontrado" não viram post (evita lixo no Google).
+- `src/pages/Pesquisa.tsx` — exibir `diagnostic_reason` amigável no card "not found" (competição não cadastrada / temporada sem dados / etc), e badge de `source_table` no rodapé da resposta para transparência.
+- `src/hooks/useIntelligentSearch.ts` — estender tipos: `diagnostic`, `source_table`, `sql_execution_time`.
+- `src/components/search/DisambiguationChips.tsx` — já suporta lista genérica; só passar competições candidatas.
 
-## Casos de teste (vão ser rodados após deploy)
+Sem novos componentes.
 
-1. "Quem ganhou ontem?" → lista de jogos de ontem com vencedor.
-2. "Quanto ficou França x Alemanha?" → último confronto direto seleções.
-3. "Quem foi campeão do Brasileirão 2025?" → standings posição 1.
-4. "Quantos gols o Neymar fez na Copa?" → gols_partida + escalacoes + filtro Copa.
-5. "Jogos do Palmeiras em casa em 2025" → partidas com is_home + ano.
-6. "Últimos 5 jogos do Flamengo" → partidas finalizadas ordenadas.
-7. "Classificação da Série A" → standings ano corrente.
-8. "Próximos jogos do Barcelona" → desambiguação ESP/EQU primeiro.
-9. "Jogos com mais de 3 gols ontem" → partidas where gols_casa+gols_fora>3.
-10. "Quem fez gol na final da Champions?" → gols_partida da última final.
+## Testes automatizados
 
-Casos sem dado no banco devem responder a mensagem padrão, não inventar.
+Adicionar `supabase/functions/intelligent-search/index.test.ts` cobrindo os 16 casos da spec. Roda via `deno test` — cada teste faz POST na função e valida `intent` + `source_table` + presença de resposta (ou disambiguation).
 
-## Fora de escopo desta fase
-- Ranking de odds históricas (só Copa 2026 tem hoje).
-- Estatísticas avançadas (xG etc) — banco não tem.
-- Tradução EN/ES da pergunta (só PT-BR nesta fase).
+## Fora de escopo
+- Tradução EN/ES (só PT-BR).
+- xG e stats avançados (banco não tem).
+- Cache de resposta (fase futura).
 
-Posso seguir com a implementação?
+## Ordem de execução
+1. Migration 1 (aliases + trigger + seed)
+2. Migration 2 (search_diagnostics)
+3. Migration 3 (funções SQL universais)
+4. Reescrita da edge function
+5. Ajustes de UI (Pesquisa.tsx + hook)
+6. Testes deno + rodada dos 16 casos via `supabase--curl_edge_functions`
+
+Posso executar?

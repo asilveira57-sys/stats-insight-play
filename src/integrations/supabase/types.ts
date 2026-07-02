@@ -5019,6 +5019,57 @@ export type Database = {
         }
         Relationships: []
       }
+      search_diagnostics: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          duration_ms: number | null
+          entities: Json | null
+          error_reason: string | null
+          filters_used: Json | null
+          id: string
+          intent: string | null
+          query_normalized: string | null
+          query_raw: string
+          resolved: Json | null
+          result_count: number | null
+          sql_source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          entities?: Json | null
+          error_reason?: string | null
+          filters_used?: Json | null
+          id?: string
+          intent?: string | null
+          query_normalized?: string | null
+          query_raw: string
+          resolved?: Json | null
+          result_count?: number | null
+          sql_source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          entities?: Json | null
+          error_reason?: string | null
+          filters_used?: Json | null
+          id?: string
+          intent?: string | null
+          query_normalized?: string | null
+          query_raw?: string
+          resolved?: Json | null
+          result_count?: number | null
+          sql_source?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       search_posts: {
         Row: {
           answer_payload: Json
@@ -7611,6 +7662,7 @@ export type Database = {
         Args: { p_search?: string; p_status?: string }
         Returns: number
       }
+      country_alias_variants: { Args: { p_country: string }; Returns: string[] }
       estimated_count: { Args: { table_name: string }; Returns: number }
       find_match_by_canonical_key: {
         Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
@@ -7867,6 +7919,16 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_competition: {
+        Args: { p_query: string }
+        Returns: {
+          out_alias: string
+          out_league_id: string
+          out_nome: string
+          out_pais: string
+          out_score: number
+        }[]
+      }
       resolve_or_create_league: {
         Args: {
           p_api_id?: number
@@ -7903,6 +7965,16 @@ export type Database = {
         }
         Returns: string
       }
+      search_champion_universal: {
+        Args: { p_league_id: string; p_year: number }
+        Returns: {
+          out_source: string
+          out_team_id: string
+          out_team_nome: string
+          out_team_slug: string
+          out_year: number
+        }[]
+      }
       search_global: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
@@ -7913,6 +7985,40 @@ export type Database = {
           score: number
         }[]
       }
+      search_standings_universal: {
+        Args: { p_league_id: string; p_year: number }
+        Returns: {
+          out_drawn: number
+          out_ga: number
+          out_gd: number
+          out_gf: number
+          out_lost: number
+          out_played: number
+          out_points: number
+          out_pos: number
+          out_team_id: string
+          out_team_nome: string
+          out_team_slug: string
+          out_won: number
+          out_year: number
+        }[]
+      }
+      search_top_scorer_universal: {
+        Args: { p_league_id: string; p_limit?: number; p_year: number }
+        Returns: {
+          out_gols: number
+          out_jogador: string
+          out_slug: string
+          out_source: string
+          out_temporada: string
+          out_time: string
+        }[]
+      }
+      seed_aliases_for_league: {
+        Args: { p_league_id: string }
+        Returns: number
+      }
+      seed_all_competition_aliases: { Args: never; Returns: number }
       slugify: { Args: { input_text: string }; Returns: string }
       slugify_player_name: { Args: { name: string }; Returns: string }
       start_grace_period: { Args: { p_user_id: string }; Returns: Json }
