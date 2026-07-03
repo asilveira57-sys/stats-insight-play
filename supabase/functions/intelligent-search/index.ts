@@ -46,7 +46,7 @@ function detectIntent(q: string): Intent {
   if (/artilheir|maior goleador|mais gols na|mais gols no|mais gols da|mais gols do|quem fez mais gols|top.?scorer|chuteira de ouro/.test(n))
     return "top_scorer";
   // Campeão / vencedor de competição (ex: "quem ganhou a copa de 2022")
-  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o (da|do|de)|vencedor (da|do|de))\b/.test(n))
+  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o\b|campea\b|vencedor (da|do|de))\b/.test(n))
     return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
@@ -149,6 +149,7 @@ async function resolveLeagueCandidates(
       .select("id, nome, ativa, tipo_principal, priority_score")
       .in("nome", aliases);
     for (const l of data || []) {
+      if (out.find((o) => o.id === l.id)) continue;
       const aliasIndex = aliases.indexOf(l.nome);
       out.push({ id: l.id, name: l.nome, score: 1000 - aliasIndex * 25 + (Number(l.priority_score) || 0) / 100 });
     }
@@ -236,9 +237,86 @@ async function resolveStandingsRows(
   });
   if (error) {
     console.error("search_standings_universal", error);
-    return { rows: [], source: "none" };
   }
-  return { rows: data || [], source: data?.length ? "standings" : "none" };
+  if (data && data.length > 0) return { rows: data, source: "standings" };
+
+  // Fallback universal: calcula a tabela diretamente pelas partidas finalizadas.
+  // Isso evita "não encontrado" quando a tabela standings ainda não foi importada,
+  // mas os jogos/resultados oficiais já estão no banco.
+  const matches: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("partidas")
+      .select("time_casa_id, time_fora_id, gols_casa, gols_fora")
+      .eq("liga_id", leagueId)
+      .eq("status", "finished")
+      .not("gols_casa", "is", null)
+      .not("gols_fora", "is", null);
+    if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+    const { data: batch, error: matchError } = await q.range(from, from + PAGE - 1);
+    if (matchError) {
+      console.error("resolveStandingsRows partidas", matchError);
+      break;
+    }
+    if (!batch || batch.length === 0) break;
+    matches.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+  }
+  if (matches.length === 0) return { rows: [], source: "none" };
+
+  const table = new Map<string, { team_id: string; played: number; won: number; drawn: number; lost: number; gf: number; ga: number; points: number }>();
+  const ensure = (id: string) => {
+    const cur = table.get(id) || { team_id: id, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+    table.set(id, cur);
+    return cur;
+  };
+  for (const m of matches) {
+    if (!m.time_casa_id || !m.time_fora_id) continue;
+    const h = ensure(m.time_casa_id);
+    const a = ensure(m.time_fora_id);
+    const hg = Number(m.gols_casa || 0);
+    const ag = Number(m.gols_fora || 0);
+    h.played += 1; a.played += 1;
+    h.gf += hg; h.ga += ag;
+    a.gf += ag; a.ga += hg;
+    if (hg > ag) { h.won += 1; a.lost += 1; h.points += 3; }
+    else if (hg < ag) { a.won += 1; h.lost += 1; a.points += 3; }
+    else { h.drawn += 1; a.drawn += 1; h.points += 1; a.points += 1; }
+  }
+  const teamIds = [...table.keys()];
+  const { data: teams } = teamIds.length
+    ? await supabase.from("times").select("id, nome, slug").in("id", teamIds)
+    : { data: [] };
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+  const rows = [...table.values()]
+    .sort((a, b) =>
+      b.points - a.points ||
+      b.won - a.won ||
+      (b.gf - b.ga) - (a.gf - a.ga) ||
+      b.gf - a.gf
+    )
+    .map((r, i) => {
+      const t: any = tmap.get(r.team_id);
+      return {
+        out_pos: i + 1,
+        out_team_id: r.team_id,
+        out_team_nome: t?.nome ?? "—",
+        out_team_slug: t?.slug ?? null,
+        out_points: r.points,
+        out_played: r.played,
+        out_won: r.won,
+        out_drawn: r.drawn,
+        out_lost: r.lost,
+        out_gf: r.gf,
+        out_ga: r.ga,
+        out_gd: r.gf - r.ga,
+        out_year: year,
+      };
+    });
+  return { rows, source: "partidas_aggregated" };
 }
 
 async function resolveCompetitionOverview(
