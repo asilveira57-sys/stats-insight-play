@@ -37,6 +37,7 @@ type Intent =
   | "team_stats"
   | "match_lookup"
   | "entity_lookup"
+  | "standings"
   | "champion"
   | "open_question";
 
@@ -49,6 +50,8 @@ function detectIntent(q: string): Intent {
     return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
+  if (/\b(tabela|classificacao|classificacao da|classificacao do|classifica[cç][aã]o|posição|posicao)\b/.test(n))
+    return "standings";
   // Resultado/placar precisa ser tratado antes do bloco genérico de perguntas.
   // Ex.: "quanto foi o jogo da França hoje?" não é estatística histórica de um clube.
   if (/\b(quanto foi|qual foi o placar|placar|resultado|jogo de hoje|jogo da|jogo do|partida da|partida do)\b/.test(n))
@@ -127,6 +130,19 @@ async function resolveLeagueCandidates(
   const aliases = aliasGroupFor(normQuery);
   const out: { id: string; name: string; score: number }[] = [];
 
+  // Resolvedor universal orientado por aliases do banco. É o caminho principal para
+  // consultas naturais como "campeonato brasileiro 2025", "brasileiro", "inglês" etc.
+  const { data: resolvedByDb, error: resolveError } = await supabase.rpc("resolve_competition", { p_query: query });
+  if (!resolveError) {
+    for (const r of resolvedByDb || []) {
+      if (!r?.out_league_id) continue;
+      if (out.find((o) => o.id === r.out_league_id)) continue;
+      out.push({ id: r.out_league_id, name: r.out_nome, score: 1200 + (Number(r.out_score) || 0) });
+    }
+  } else {
+    console.error("resolve_competition", resolveError);
+  }
+
   if (aliases) {
     const { data } = await supabase
       .from("ligas")
@@ -149,6 +165,139 @@ async function resolveLeagueCandidates(
 
   out.sort((a, b) => b.score - a.score);
   return out;
+}
+
+async function fetchCompetitionMatches(
+  supabase: any,
+  leagueId: string,
+  year: number | null,
+  limit = 12,
+): Promise<{ rows: any[]; total: number; source: string }> {
+  const all: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("partidas")
+      .select("id, slug, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, status, rodada")
+      .eq("liga_id", leagueId)
+      .order("data", { ascending: false })
+      .order("hora", { ascending: false });
+    if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+    const { data, error } = await q.range(from, from + PAGE - 1);
+    if (error) {
+      console.error("fetchCompetitionMatches", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const picked = all.slice(0, limit);
+  const teamIds = [...new Set(picked.flatMap((m: any) => [m.time_casa_id, m.time_fora_id]).filter(Boolean))];
+  const { data: teams } = teamIds.length
+    ? await supabase.from("times").select("id, nome, slug").in("id", teamIds)
+    : { data: [] };
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+  const rows = picked.map((m: any) => {
+    const home: any = m.time_casa_id ? tmap.get(m.time_casa_id) : null;
+    const away: any = m.time_fora_id ? tmap.get(m.time_fora_id) : null;
+    return {
+      id: m.id,
+      slug: m.slug ?? null,
+      data: m.data,
+      is_home: true,
+      home_team: home?.nome ?? "—",
+      away_team: away?.nome ?? "—",
+      home_team_slug: home?.slug ?? null,
+      away_team_slug: away?.slug ?? null,
+      gols_casa: m.gols_casa,
+      gols_fora: m.gols_fora,
+      liga_id: m.liga_id ?? null,
+      liga_nome: null,
+      liga_slug: null,
+      rodada: m.rodada ?? null,
+      status: m.status ?? null,
+    };
+  });
+  return { rows, total: all.length, source: "partidas" };
+}
+
+async function resolveStandingsRows(
+  supabase: any,
+  leagueId: string,
+  year: number | null,
+): Promise<{ rows: any[]; source: string }> {
+  const { data, error } = await supabase.rpc("search_standings_universal", {
+    p_league_id: leagueId,
+    p_year: year,
+  });
+  if (error) {
+    console.error("search_standings_universal", error);
+    return { rows: [], source: "none" };
+  }
+  return { rows: data || [], source: data?.length ? "standings" : "none" };
+}
+
+async function resolveCompetitionOverview(
+  supabase: any,
+  league: { id: string; name: string; slug?: string | null },
+  year: number | null,
+  wantsStandings = false,
+): Promise<{ structured: any | null; ai: any; source: string }> {
+  const { rows: standings, source: standingsSource } = await resolveStandingsRows(supabase, league.id, year);
+  if (wantsStandings && standings.length > 0) {
+    const leader = standings[0];
+    return {
+      source: standingsSource,
+      ai: {
+        answer: `A tabela da **${league.name}**${year ? ` em **${year}**` : ""} tem **${leader.out_team_nome}** na liderança com **${leader.out_points} pontos**.`,
+        explanation: "Fonte: classificação oficial armazenada no StatBall.",
+        has_enough_data: true,
+        confidence: 95,
+      },
+      structured: {
+        kind: "standings",
+        summary: `Classificação da ${league.name}${year ? ` ${year}` : ""}. Líder: ${leader.out_team_nome} (${leader.out_points} pontos).`,
+        league: { id: league.id, name: league.name, slug: league.slug ?? null },
+        year,
+        source: standingsSource,
+        standings,
+      },
+    };
+  }
+
+  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12);
+  if (matches.length > 0) {
+    const last = matches[0];
+    const placar = last.gols_casa != null && last.gols_fora != null ? `${last.gols_casa} x ${last.gols_fora}` : "placar indisponível";
+    return {
+      source: matchesSource,
+      ai: {
+        answer: `Encontrei **${total} jogos** da **${league.name}**${year ? ` em **${year}**` : ""} no banco do StatBall. Último registro: **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}.`,
+        explanation: "Fonte: tabela de partidas do StatBall.",
+        has_enough_data: true,
+        confidence: 92,
+      },
+      structured: {
+        kind: "competition_matches",
+        summary: `${league.name}${year ? ` ${year}` : ""}: ${total} jogos encontrados no banco do StatBall.`,
+        league: { id: league.id, name: league.name, slug: league.slug ?? null },
+        year,
+        source: matchesSource,
+        matches,
+        total_matches: total,
+      },
+    };
+  }
+
+  return {
+    source: "none",
+    structured: null,
+    ai: notFoundAnswer(`A competição ${league.name} foi identificada, mas não há jogos${year ? ` em ${year}` : ""} cadastrados no banco do StatBall.`),
+  };
 }
 
 // ---------- top scorer resolver ----------
