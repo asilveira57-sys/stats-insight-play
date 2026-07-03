@@ -1332,6 +1332,11 @@ Deno.serve(async (req) => {
     else if (intent === "champion") {
       const candidates = await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
+      if (league) {
+        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle();
+        resolved_league = { id: league.id, name: league.name, slug: lrow?.slug ?? null };
+        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+      }
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
       const champ = await resolveChampionFromDB(supabase, compLabel, year);
       if (!champ) {
