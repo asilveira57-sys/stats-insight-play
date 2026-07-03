@@ -57,6 +57,22 @@ export interface CompetitionRow {
   l: number;
 }
 
+export interface StandingRow {
+  out_pos: number;
+  out_team_id: string;
+  out_team_nome: string;
+  out_team_slug: string | null;
+  out_points: number;
+  out_played: number;
+  out_won: number;
+  out_drawn: number;
+  out_lost: number;
+  out_gf: number;
+  out_ga: number;
+  out_gd: number;
+  out_year: number | null;
+}
+
 export type StructuredAnswer =
   | {
       kind: "team_stats";
@@ -76,6 +92,23 @@ export type StructuredAnswer =
       year: number | null;
       source: string;
       top_scorers: TopScorerRow[];
+    }
+  | {
+      kind: "standings";
+      summary: string;
+      league: { id: string; name: string; slug: string | null };
+      year: number | null;
+      source: string;
+      standings: StandingRow[];
+    }
+  | {
+      kind: "competition_matches";
+      summary: string;
+      league: { id: string; name: string; slug: string | null };
+      year: number | null;
+      source: string;
+      matches: MatchRow[];
+      total_matches: number;
     }
   | {
       kind: "last_match";
