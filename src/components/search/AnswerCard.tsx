@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Link as LinkIcon, AlertTriangle, Trophy } from "lucide-react";
+import { Sparkles, Link as LinkIcon, Database, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { StructuredAnswer } from "@/hooks/useIntelligentSearch";
 import { CompetitionBreakdown } from "./CompetitionBreakdown";
@@ -109,13 +109,74 @@ export function AnswerCard({ data, postSlug }: Props) {
     );
   }
 
+  if (data.kind === "standings") {
+    return (
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Classificação" icon={Trophy} /></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-base leading-snug">{data.summary}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="py-2 text-left font-medium">#</th>
+                  <th className="py-2 text-left font-medium">Time</th>
+                  <th className="py-2 text-right font-medium">Pts</th>
+                  <th className="py-2 text-right font-medium">J</th>
+                  <th className="py-2 text-right font-medium">V</th>
+                  <th className="py-2 text-right font-medium">E</th>
+                  <th className="py-2 text-right font-medium">D</th>
+                  <th className="py-2 text-right font-medium">SG</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.standings.slice(0, 20).map((row) => (
+                  <tr key={row.out_team_id}>
+                    <td className="py-2 text-muted-foreground">{row.out_pos}</td>
+                    <td className="py-2 font-medium">
+                      {row.out_team_slug ? (
+                        <Link to={`/times/${row.out_team_slug}`} className="text-primary hover:underline">
+                          {row.out_team_nome}
+                        </Link>
+                      ) : row.out_team_nome}
+                    </td>
+                    <td className="py-2 text-right font-semibold">{row.out_points}</td>
+                    <td className="py-2 text-right">{row.out_played}</td>
+                    <td className="py-2 text-right">{row.out_won}</td>
+                    <td className="py-2 text-right">{row.out_drawn}</td>
+                    <td className="py-2 text-right">{row.out_lost}</td>
+                    <td className="py-2 text-right">{row.out_gd}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Badge variant="outline">Fonte: {data.source}</Badge>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data.kind === "competition_matches") {
+    return (
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Jogos encontrados" icon={Trophy} /></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-base leading-snug">{data.summary}</p>
+          {data.matches.length > 0 && <MatchesList matches={data.matches} totalMatches={data.total_matches} />}
+          <Badge variant="outline">Fonte: {data.source}</Badge>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (data.kind === "external") {
     return (
       <Card className="border-yellow-500/40">
-        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Resposta da IA (fonte externa)" icon={AlertTriangle} /></CardHeader>
+        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Resposta Statball" icon={Database} /></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-base leading-relaxed whitespace-pre-wrap">{data.summary}</p>
-          <p className="text-xs text-yellow-600 dark:text-yellow-400">⚠ {data.note}</p>
+          <p className="text-xs text-muted-foreground">{data.note}</p>
         </CardContent>
       </Card>
     );

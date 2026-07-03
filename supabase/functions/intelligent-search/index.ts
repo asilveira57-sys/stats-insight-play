@@ -37,6 +37,7 @@ type Intent =
   | "team_stats"
   | "match_lookup"
   | "entity_lookup"
+  | "standings"
   | "champion"
   | "open_question";
 
@@ -45,10 +46,12 @@ function detectIntent(q: string): Intent {
   if (/artilheir|maior goleador|mais gols na|mais gols no|mais gols da|mais gols do|quem fez mais gols|top.?scorer|chuteira de ouro/.test(n))
     return "top_scorer";
   // Campeão / vencedor de competição (ex: "quem ganhou a copa de 2022")
-  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o (da|do|de)|vencedor (da|do|de))\b/.test(n))
+  if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o\b|campea\b|vencedor (da|do|de))\b/.test(n))
     return "champion";
   if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
     return "player_stats";
+  if (/\b(tabela|classificacao|classificacao da|classificacao do|classifica[cç][aã]o|posição|posicao)\b/.test(n))
+    return "standings";
   // Resultado/placar precisa ser tratado antes do bloco genérico de perguntas.
   // Ex.: "quanto foi o jogo da França hoje?" não é estatística histórica de um clube.
   if (/\b(quanto foi|qual foi o placar|placar|resultado|jogo de hoje|jogo da|jogo do|partida da|partida do)\b/.test(n))
@@ -127,12 +130,26 @@ async function resolveLeagueCandidates(
   const aliases = aliasGroupFor(normQuery);
   const out: { id: string; name: string; score: number }[] = [];
 
+  // Resolvedor universal orientado por aliases do banco. É o caminho principal para
+  // consultas naturais como "campeonato brasileiro 2025", "brasileiro", "inglês" etc.
+  const { data: resolvedByDb, error: resolveError } = await supabase.rpc("resolve_competition", { p_query: query });
+  if (!resolveError) {
+    for (const r of resolvedByDb || []) {
+      if (!r?.out_league_id) continue;
+      if (out.find((o) => o.id === r.out_league_id)) continue;
+      out.push({ id: r.out_league_id, name: r.out_nome, score: 1200 + (Number(r.out_score) || 0) });
+    }
+  } else {
+    console.error("resolve_competition", resolveError);
+  }
+
   if (aliases) {
     const { data } = await supabase
       .from("ligas")
       .select("id, nome, ativa, tipo_principal, priority_score")
       .in("nome", aliases);
     for (const l of data || []) {
+      if (out.find((o) => o.id === l.id)) continue;
       const aliasIndex = aliases.indexOf(l.nome);
       out.push({ id: l.id, name: l.nome, score: 1000 - aliasIndex * 25 + (Number(l.priority_score) || 0) / 100 });
     }
@@ -149,6 +166,216 @@ async function resolveLeagueCandidates(
 
   out.sort((a, b) => b.score - a.score);
   return out;
+}
+
+async function fetchCompetitionMatches(
+  supabase: any,
+  leagueId: string,
+  year: number | null,
+  limit = 12,
+): Promise<{ rows: any[]; total: number; source: string }> {
+  const all: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("partidas")
+      .select("id, slug, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, status, rodada")
+      .eq("liga_id", leagueId)
+      .order("data", { ascending: false })
+      .order("hora", { ascending: false });
+    if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+    const { data, error } = await q.range(from, from + PAGE - 1);
+    if (error) {
+      console.error("fetchCompetitionMatches", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const picked = all.slice(0, limit);
+  const teamIds = [...new Set(picked.flatMap((m: any) => [m.time_casa_id, m.time_fora_id]).filter(Boolean))];
+  const { data: teams } = teamIds.length
+    ? await supabase.from("times").select("id, nome, slug").in("id", teamIds)
+    : { data: [] };
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+  const rows = picked.map((m: any) => {
+    const home: any = m.time_casa_id ? tmap.get(m.time_casa_id) : null;
+    const away: any = m.time_fora_id ? tmap.get(m.time_fora_id) : null;
+    return {
+      id: m.id,
+      slug: m.slug ?? null,
+      data: m.data,
+      is_home: true,
+      home_team: home?.nome ?? "—",
+      away_team: away?.nome ?? "—",
+      home_team_slug: home?.slug ?? null,
+      away_team_slug: away?.slug ?? null,
+      gols_casa: m.gols_casa,
+      gols_fora: m.gols_fora,
+      liga_id: m.liga_id ?? null,
+      liga_nome: null,
+      liga_slug: null,
+      rodada: m.rodada ?? null,
+      status: m.status ?? null,
+    };
+  });
+  return { rows, total: all.length, source: "partidas" };
+}
+
+async function resolveStandingsRows(
+  supabase: any,
+  leagueId: string,
+  year: number | null,
+): Promise<{ rows: any[]; source: string }> {
+  const { data, error } = await supabase.rpc("search_standings_universal", {
+    p_league_id: leagueId,
+    p_year: year,
+  });
+  if (error) {
+    console.error("search_standings_universal", error);
+  }
+  if (data && data.length > 0) return { rows: data, source: "standings" };
+
+  // Fallback universal: calcula a tabela diretamente pelas partidas finalizadas.
+  // Isso evita "não encontrado" quando a tabela standings ainda não foi importada,
+  // mas os jogos/resultados oficiais já estão no banco.
+  const matches: any[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("partidas")
+      .select("time_casa_id, time_fora_id, gols_casa, gols_fora")
+      .eq("liga_id", leagueId)
+      .eq("status", "finished")
+      .not("gols_casa", "is", null)
+      .not("gols_fora", "is", null);
+    if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+    const { data: batch, error: matchError } = await q.range(from, from + PAGE - 1);
+    if (matchError) {
+      console.error("resolveStandingsRows partidas", matchError);
+      break;
+    }
+    if (!batch || batch.length === 0) break;
+    matches.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+  }
+  if (matches.length === 0) return { rows: [], source: "none" };
+
+  const table = new Map<string, { team_id: string; played: number; won: number; drawn: number; lost: number; gf: number; ga: number; points: number }>();
+  const ensure = (id: string) => {
+    const cur = table.get(id) || { team_id: id, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 };
+    table.set(id, cur);
+    return cur;
+  };
+  for (const m of matches) {
+    if (!m.time_casa_id || !m.time_fora_id) continue;
+    const h = ensure(m.time_casa_id);
+    const a = ensure(m.time_fora_id);
+    const hg = Number(m.gols_casa || 0);
+    const ag = Number(m.gols_fora || 0);
+    h.played += 1; a.played += 1;
+    h.gf += hg; h.ga += ag;
+    a.gf += ag; a.ga += hg;
+    if (hg > ag) { h.won += 1; a.lost += 1; h.points += 3; }
+    else if (hg < ag) { a.won += 1; h.lost += 1; a.points += 3; }
+    else { h.drawn += 1; a.drawn += 1; h.points += 1; a.points += 1; }
+  }
+  const teamIds = [...table.keys()];
+  const { data: teams } = teamIds.length
+    ? await supabase.from("times").select("id, nome, slug").in("id", teamIds)
+    : { data: [] };
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+  const rows = [...table.values()]
+    .sort((a, b) =>
+      b.points - a.points ||
+      b.won - a.won ||
+      (b.gf - b.ga) - (a.gf - a.ga) ||
+      b.gf - a.gf
+    )
+    .map((r, i) => {
+      const t: any = tmap.get(r.team_id);
+      return {
+        out_pos: i + 1,
+        out_team_id: r.team_id,
+        out_team_nome: t?.nome ?? "—",
+        out_team_slug: t?.slug ?? null,
+        out_points: r.points,
+        out_played: r.played,
+        out_won: r.won,
+        out_drawn: r.drawn,
+        out_lost: r.lost,
+        out_gf: r.gf,
+        out_ga: r.ga,
+        out_gd: r.gf - r.ga,
+        out_year: year,
+      };
+    });
+  return { rows, source: "partidas_aggregated" };
+}
+
+async function resolveCompetitionOverview(
+  supabase: any,
+  league: { id: string; name: string; slug?: string | null },
+  year: number | null,
+  wantsStandings = false,
+): Promise<{ structured: any | null; ai: any; source: string }> {
+  const { rows: standings, source: standingsSource } = await resolveStandingsRows(supabase, league.id, year);
+  if (wantsStandings && standings.length > 0) {
+    const leader = standings[0];
+    return {
+      source: standingsSource,
+      ai: {
+        answer: `A tabela da **${league.name}**${year ? ` em **${year}**` : ""} tem **${leader.out_team_nome}** na liderança com **${leader.out_points} pontos**.`,
+        explanation: "Fonte: classificação oficial armazenada no StatBall.",
+        has_enough_data: true,
+        confidence: 95,
+      },
+      structured: {
+        kind: "standings",
+        summary: `Classificação da ${league.name}${year ? ` ${year}` : ""}. Líder: ${leader.out_team_nome} (${leader.out_points} pontos).`,
+        league: { id: league.id, name: league.name, slug: league.slug ?? null },
+        year,
+        source: standingsSource,
+        standings,
+      },
+    };
+  }
+
+  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12);
+  if (matches.length > 0) {
+    const last = matches[0];
+    const placar = last.gols_casa != null && last.gols_fora != null ? `${last.gols_casa} x ${last.gols_fora}` : "placar indisponível";
+    return {
+      source: matchesSource,
+      ai: {
+        answer: `Encontrei **${total} jogos** da **${league.name}**${year ? ` em **${year}**` : ""} no banco do StatBall. Último registro: **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}.`,
+        explanation: "Fonte: tabela de partidas do StatBall.",
+        has_enough_data: true,
+        confidence: 92,
+      },
+      structured: {
+        kind: "competition_matches",
+        summary: `${league.name}${year ? ` ${year}` : ""}: ${total} jogos encontrados no banco do StatBall.`,
+        league: { id: league.id, name: league.name, slug: league.slug ?? null },
+        year,
+        source: matchesSource,
+        matches,
+        total_matches: total,
+      },
+    };
+  }
+
+  return {
+    source: "none",
+    structured: null,
+    ai: notFoundAnswer(`A competição ${league.name} foi identificada, mas não há jogos${year ? ` em ${year}` : ""} cadastrados no banco do StatBall.`),
+  };
 }
 
 // ---------- top scorer resolver ----------
@@ -1068,10 +1295,48 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- STANDINGS / CLASSIFICAÇÃO ----------
+    else if (intent === "standings") {
+      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const picked = candidates[0] ?? null;
+      if (!picked) {
+        ai_answer = notFoundAnswer("Não consegui identificar a competição. Tente especificar o nome (ex.: 'tabela do Brasileirão 2025').");
+      } else {
+        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
+        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        resolved_league = league;
+        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+        const overview = await resolveCompetitionOverview(supabase, league, year, true);
+        source = overview.source;
+        ai_answer = overview.ai;
+        structured_answer = overview.structured;
+        if (structured_answer) {
+          post_slug = buildSlug("classificacao", [league.name, year]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent: "standings",
+            summary: structured_answer.summary,
+            meta_title: `Tabela da ${league.name}${year ? ` ${year}` : ""} — Statball`,
+            meta_description: truncate(structured_answer.summary, 160),
+            answer_payload: structured_answer,
+            entities,
+            confidence: ai_answer.confidence,
+          });
+        }
+      }
+    }
+
     // ---------- CHAMPION / WINNER ----------
     else if (intent === "champion") {
       const candidates = await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
+      if (league) {
+        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle();
+        resolved_league = { id: league.id, name: league.name, slug: lrow?.slug ?? null };
+        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+      }
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
       const champ = await resolveChampionFromDB(supabase, compLabel, year);
       if (!champ) {
@@ -1264,6 +1529,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---------- ENTITY LOOKUP: competição pura vira visão geral, não "não encontrado" ----------
+    else if (intent === "entity_lookup") {
+      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const picked = candidates[0] ?? null;
+      if (picked) {
+        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
+        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        resolved_league = league;
+        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+        const overview = await resolveCompetitionOverview(supabase, league, year, false);
+        source = overview.source;
+        ai_answer = overview.ai;
+        structured_answer = overview.structured;
+        if (structured_answer) {
+          post_slug = buildSlug("competicao", [league.name, year]);
+          await persistSearchPost(supabase, {
+            slug: post_slug,
+            question: query,
+            normalized,
+            intent: "entity_lookup",
+            summary: structured_answer.summary,
+            meta_title: `${league.name}${year ? ` ${year}` : ""} — jogos e dados`,
+            meta_description: truncate(structured_answer.summary, 160),
+            answer_payload: structured_answer,
+            entities,
+            confidence: ai_answer.confidence,
+          });
+        }
+      }
+    }
+
     // ---------- FALLBACK: tenta resolver "último jogo" do time quando o resto falhou ----------
     const noStructured = !structured_answer;
     const aiInsufficient = !ai_answer || !ai_answer.has_enough_data;
@@ -1277,6 +1573,23 @@ Deno.serve(async (req) => {
       const refinedLeague = refined?.league ?? null;
       const refinedYear = refined?.year ?? year ?? null;
       const wantsLast = refined?.time_modifier === "last" || /ultimo|último|recent|mais recente/.test(normalized);
+
+      // Se a IA identificou uma competição, usa o mesmo resolvedor universal.
+      if (!structured_answer && refinedLeague) {
+        const candidates = await resolveLeagueCandidates(supabase, refinedLeague, normalize(refinedLeague));
+        const picked = candidates[0] ?? null;
+        if (picked) {
+          const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
+          const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+          resolved_league = league;
+          league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+          const wantsTable = refinedIntent === "standings" || /\b(tabela|classificacao|classificacao da|classificacao do|classifica[cç][aã]o)\b/.test(normalized);
+          const overview = await resolveCompetitionOverview(supabase, league, refinedYear, wantsTable);
+          source = overview.source;
+          ai_answer = overview.ai;
+          structured_answer = overview.structured;
+        }
+      }
 
       // Tenta resolver "último jogo" do time mencionado
       if ((refinedIntent === "last_match" || refinedIntent === "match_lookup" || wantsLast) && refinedTeam) {
