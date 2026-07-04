@@ -48,14 +48,16 @@ function detectIntent(q: string): Intent {
   // Campeão / vencedor de competição (ex: "quem ganhou a copa de 2022")
   if (/\b(quem (ganhou|venceu|foi campe[aã]o|levou|conquistou|faturou)|campe[aã]o\b|campea\b|vencedor (da|do|de))\b/.test(n))
     return "champion";
-  if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
-    return "player_stats";
   if (/\b(tabela|classificacao|classificacao da|classificacao do|classifica[cç][aã]o|posição|posicao)\b/.test(n))
     return "standings";
-  // Resultado/placar precisa ser tratado antes do bloco genérico de perguntas.
-  // Ex.: "quanto foi o jogo da França hoje?" não é estatística histórica de um clube.
-  if (/\b(quanto foi|qual foi o placar|placar|resultado|jogo de hoje|jogo da|jogo do|partida da|partida do)\b/.test(n))
+  // Resultado/placar e confronto precisam vir antes do bloco genérico de perguntas.
+  if (/\b(quanto ficou|quanto foi|qual foi o placar|placar|resultado|jogo de hoje|partida de hoje)\b|\s+x\s+|\bvs\b|\bcontra\b/.test(n))
     return "match_lookup";
+  // Listas/estatísticas de time: "jogos do Palmeiras", "últimos 5 jogos do Flamengo".
+  if (/\b(ultimos|ultimas|ultimo|ultima|recentes|mais recentes)\b.*\b(jogos|partidas)\b|\b(jogos|partidas)\s+(do|da|de)\b|\bem casa\b|\bcomo mandante\b|\bcomo visitante\b/.test(n))
+    return "team_stats";
+  if (/quantos gols .* (fez|marcou)|estatistica do |estatisticas do |numeros do /.test(n))
+    return "player_stats";
   if (/^(quem|qual|quais|quanto|quantos|quantas|como|quando|onde|por que|porque)\b|\?/.test(n)) {
     if (/aproveitamento|saldo|vitorias|derrotas|empates|jogos do |partidas do |campanha|quantos jogos|quantas partidas|jogou|disputou/.test(n))
       return "team_stats";
@@ -81,6 +83,20 @@ function extractScope(q: string): "home" | "away" | null {
   if (/\bem casa\b|\bcomo mandante\b|\bmandante\b/.test(n)) return "home";
   if (/\bfora de casa\b|\bcomo visitante\b|\bvisitante\b/.test(n)) return "away";
   return null;
+}
+
+function extractLimit(q: string): number | null {
+  const n = normalize(q);
+  const m = n.match(/\b(?:ultimos|ultimas|recentes|mais recentes)\s+(\d{1,2})\b|\b(\d{1,2})\s+(?:ultimos|ultimas|jogos|partidas)\b/);
+  const raw = m?.[1] ?? m?.[2];
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return null;
+  return Math.max(1, Math.min(value, 50));
+}
+
+function isLastMatchesQuestion(normQuery: string): boolean {
+  return /\b(ultimos|ultimas|recentes|mais recentes|ultimo|ultima)\b/.test(normQuery);
 }
 
 // ---------- league aliases ----------
@@ -593,6 +609,92 @@ async function fetchAllPartidas(supabase: any, teamId: string, year: number | nu
   return [...h, ...a].sort((x, y) => (y.data || "").localeCompare(x.data || ""));
 }
 
+async function buildMatchRows(supabase: any, matches: any[], focusTeamId?: string | null) {
+  const ligaIds = [...new Set(matches.map((m: any) => m.liga_id).filter(Boolean))];
+  const teamIds = [...new Set(matches.flatMap((m: any) => [m.time_casa_id, m.time_fora_id]).filter(Boolean))];
+  const [{ data: ligas }, { data: teams }] = await Promise.all([
+    ligaIds.length ? supabase.from("ligas").select("id, nome, slug").in("id", ligaIds) : Promise.resolve({ data: [] }),
+    teamIds.length ? supabase.from("times").select("id, nome, slug").in("id", teamIds) : Promise.resolve({ data: [] }),
+  ]);
+  const ligaMap = new Map((ligas || []).map((l: any) => [l.id, l]));
+  const teamMap = new Map((teams || []).map((t: any) => [t.id, t]));
+  return matches.map((m: any) => {
+    const home: any = m.time_casa_id ? teamMap.get(m.time_casa_id) : null;
+    const away: any = m.time_fora_id ? teamMap.get(m.time_fora_id) : null;
+    const liga: any = m.liga_id ? ligaMap.get(m.liga_id) : null;
+    return {
+      id: m.id,
+      data: m.data,
+      slug: m.slug ?? null,
+      is_home: focusTeamId ? m.time_casa_id === focusTeamId : true,
+      home_team: home?.nome ?? "—",
+      away_team: away?.nome ?? "—",
+      home_team_slug: home?.slug ?? null,
+      away_team_slug: away?.slug ?? null,
+      gols_casa: m.gols_casa,
+      gols_fora: m.gols_fora,
+      liga_id: m.liga_id ?? null,
+      liga_nome: liga?.nome ?? null,
+      liga_slug: liga?.slug ?? null,
+    };
+  });
+}
+
+async function resolveTeamMatches(
+  supabase: any,
+  team: any,
+  year: number | null,
+  scope: "home" | "away" | null,
+  requestedLimit: number | null,
+) {
+  const matches = await fetchAllPartidas(supabase, team.entity_id, year, scope);
+  const limit = requestedLimit ?? (isLastMatchesQuestion(normalize(team.query || "")) ? 5 : 20);
+  const picked = matches.slice(0, limit);
+  const rows = await buildMatchRows(supabase, picked, team.entity_id);
+  return { rows, total: matches.length, source: "partidas" };
+}
+
+async function resolveHeadToHead(
+  supabase: any,
+  leftTeam: any,
+  rightTeam: any,
+  year: number | null,
+) {
+  const fetchPair = async (homeId: string, awayId: string) => {
+    const rows: any[] = [];
+    const PAGE = 1000;
+    let from = 0;
+    while (true) {
+      let q = supabase
+        .from("partidas")
+        .select("id, data, hora, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, status, slug")
+        .eq("time_casa_id", homeId)
+        .eq("time_fora_id", awayId)
+        .not("gols_casa", "is", null)
+        .not("gols_fora", "is", null)
+        .order("data", { ascending: false });
+      if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
+      const { data, error } = await q.range(from, from + PAGE - 1);
+      if (error) {
+        console.error("resolveHeadToHead pair", error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+      rows.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    return rows;
+  };
+  const [a, b] = await Promise.all([
+    fetchPair(leftTeam.entity_id, rightTeam.entity_id),
+    fetchPair(rightTeam.entity_id, leftTeam.entity_id),
+  ]);
+  const all = [...a, ...b].sort((x, y) => String(y.data || "").localeCompare(String(x.data || "")));
+  const rows = await buildMatchRows(supabase, all.slice(0, 20), null);
+  return { rows, total: all.length, source: "partidas" };
+}
+
 
 function aggregate(matches: any[], teamId: string) {
   let w = 0, d = 0, l = 0, gf = 0, ga = 0;
@@ -623,9 +725,138 @@ function extractEntityTokens(normQuery: string): string[] {
     .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 }
 
+function slugish(s: string): string {
+  return normalize(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function stripQueryNoise(s: string): string {
+  return normalize(s)
+    .replace(/\b(19|20)\d{2}\b/g, " ")
+    .replace(/\b(ultimos|ultimas|ultimo|ultima|recentes|mais recentes)\b/g, " ")
+    .replace(/\b\d{1,2}\b/g, " ")
+    .replace(/\b(jogos|jogo|partidas|partida|do|da|de|dos|das|em casa|fora de casa|como mandante|como visitante|mandante|visitante)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTeamPhraseFromStatsQuery(query: string): string | null {
+  const n = normalize(query);
+  const direct = n.match(/(?:jogos|jogo|partidas|partida)\s+(?:do|da|de|dos|das)\s+(.+?)(?:\s+em\s+casa|\s+fora\s+de\s+casa|\s+como\s+mandante|\s+como\s+visitante|\s+em\s+(?:19|20)\d{2}|$)/);
+  if (direct?.[1]) return stripQueryNoise(direct[1]);
+  const last = n.match(/(?:ultimos|ultimas|ultimo|ultima|recentes|mais recentes)(?:\s+\d{1,2})?\s+(?:jogos|partidas)\s+(?:do|da|de|dos|das)\s+(.+)/);
+  if (last?.[1]) return stripQueryNoise(last[1]);
+  const cleaned = stripQueryNoise(n);
+  return cleaned || null;
+}
+
+function extractHeadToHeadPhrases(query: string): { left: string; right: string } | null {
+  const n = normalize(query)
+    .replace(/\b(quanto ficou|quanto foi|qual foi o placar|placar|resultado|do jogo|jogo|partida)\b/g, " ")
+    .replace(/\?/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = n.split(/\s+(?:x|vs|contra)\s+/).map((p) => stripQueryNoise(p)).filter(Boolean);
+  if (parts.length >= 2) return { left: parts[0], right: parts[1] };
+  return null;
+}
+
+function isNationalTeamPhrase(phrase: string): boolean {
+  const n = normalize(phrase).replace(/_/g, " ");
+  return Object.values(NATIONAL_TEAM_ALIASES).some((group) => group.some((alias) => normalize(alias) === n));
+}
+
+function nationalAliasesForPhrase(phrase: string): string[] {
+  const n = normalize(phrase).replace(/_/g, " ");
+  for (const group of Object.values(NATIONAL_TEAM_ALIASES)) {
+    if (group.some((alias) => normalize(alias) === n)) return [...new Set(group.map((alias) => normalize(alias)))];
+  }
+  return [];
+}
+
+function candidateTeamScore(t: any, phrase: string): number {
+  const p = normalize(phrase);
+  const pSlug = slugish(phrase);
+  const nameNorm = normalize(t.nome || "");
+  const slugNorm = normalize(t.slug || "").replace(/-/g, " ");
+  const tokenMatch = new RegExp(`(^|\\s|-)${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|-|$)`).test(nameNorm) || slugNorm.split(/\s+/).includes(p);
+  let score = Number(t.total_matches || 0);
+  if (nameNorm === p || slugNorm === p || t.slug === pSlug) score += 5000;
+  else if (tokenMatch) score += 1500;
+  else if (nameNorm.includes(p) || slugNorm.includes(p)) score += 250;
+  if (isNationalTeamPhrase(p) && String(t.pais || "").toLowerCase() === "international") score += 3000;
+  if (String(t.pais || "").toLowerCase() === "brazil") score += 350;
+  if (t.estado) score += 120;
+  if (/^(se|cr|ec|sc|fc|ac|ca|cf)\s+/i.test(t.nome || "")) score += 160;
+  if (SUBTEAM_RE.test(t.nome || "")) score -= 2000;
+  if (/-[A-Z]{2}\b/.test(t.nome || "") || /\b(women|u\d+|sub-?\d+)\b/i.test(t.nome || "")) score -= 900;
+  if (isNationalTeamPhrase(p) && !(nameNorm === p || slugNorm === p || t.slug === pSlug || String(t.pais || "").toLowerCase() === "international")) score -= 5000;
+  return score;
+}
+
+async function resolveTeamByPhrase(supabase: any, phrase: string): Promise<any | null> {
+  const clean = stripQueryNoise(phrase);
+  if (!clean || clean.length < 3) return null;
+  const s = slugish(clean);
+  const n = normalize(clean);
+  const candidates: any[] = [];
+  const seen = new Set<string>();
+  const pushRows = (rows: any[] | null | undefined) => {
+    for (const t of rows || []) {
+      if (!t?.id || seen.has(t.id)) continue;
+      seen.add(t.id);
+      candidates.push(t);
+    }
+  };
+
+  const exact = await supabase
+    .from("times")
+    .select("id, nome, slug, total_matches, pais, estado, cores, escudo_url")
+    .or(`slug.eq.${s},nome.ilike.${clean}`)
+    .range(0, 19);
+  pushRows(exact.data);
+
+  const nationalAliases = nationalAliasesForPhrase(clean);
+  for (const alias of nationalAliases) {
+    const aliasSlug = slugish(alias);
+    const { data, error } = await supabase
+      .from("times")
+      .select("id, nome, slug, total_matches, pais, estado, cores, escudo_url")
+      .or(`slug.eq.${aliasSlug},nome.ilike.${alias}`)
+      .range(0, 9);
+    if (!error) pushRows(data);
+  }
+
+  const tokens = n.split(/\s+/).filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+  for (const token of tokens.slice(0, 3)) {
+    const { data, error } = await supabase
+      .from("times")
+      .select("id, nome, slug, total_matches, pais, estado, cores, escudo_url")
+      .or(`nome.ilike.%${token}%,slug.ilike.%${token}%`)
+      .range(0, 39);
+    if (!error) pushRows(data);
+  }
+
+  if (candidates.length === 0) return null;
+  const scored = candidates
+    .map((t) => ({ entity_type: "team", entity_id: t.id, name: t.nome, score: candidateTeamScore(t, clean), extra: t }))
+    .filter((c) => c.score > -1000)
+    .sort((a, b) => b.score - a.score);
+  return scored[0] || null;
+}
+
 async function resolveTeamCandidate(supabase: any, query: string, normQuery: string, results: any[]) {
+  const phrase = extractTeamPhraseFromStatsQuery(query);
+  if (phrase) {
+    const direct = await resolveTeamByPhrase(supabase, phrase);
+    if (direct) return direct;
+  }
+
   const teamCandidates = (results || []).filter((r: any) => r.entity_type === "team");
-  const fromResults = teamCandidates.find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
+  const fromResults = teamCandidates
+    .map((r: any) => ({ ...r, score: Number(r.score || 0) + candidateTeamScore({ ...(r.extra || {}), id: r.entity_id, nome: r.name }, phrase || normQuery) }))
+    .filter((r: any) => !isNationalTeamPhrase(phrase || normQuery) || String(r.extra?.pais || "").toLowerCase() === "international")
+    .sort((a: any, b: any) => b.score - a.score)
+    .find((r: any) => !SUBTEAM_RE.test(r.name)) || teamCandidates[0];
   if (fromResults) return fromResults;
 
   const tokens = extractEntityTokens(normQuery);
@@ -648,7 +879,7 @@ async function resolveTeamCandidate(supabase: any, query: string, normQuery: str
       const exact = tokens.some((tok) => teamNorm.split(/\s|-/).includes(tok));
       const subPenalty = SUBTEAM_RE.test(t.nome) ? 500 : 0;
       const suffixPenalty = /-[a-z]{2}\b|\b(pi|sc|ba|u17|u20|u23|w)\b/i.test(t.nome) ? 120 : 0;
-      const score = (exact ? 1000 : 0) + Number(t.total_matches || 0) - subPenalty - suffixPenalty;
+      const score = candidateTeamScore(t, token) + (exact ? 1000 : 0) - subPenalty - suffixPenalty;
       candidates.push({ entity_type: "team", entity_id: t.id, name: t.nome, score, extra: t });
     }
   }
@@ -782,8 +1013,9 @@ async function resolveChampionFromDB(
   supabase: any,
   competitionLabel: string | null,
   year: number | null,
-): Promise<{ time: string; time_slug: string | null; competition: string; year: number | null } | null> {
-  if (!competitionLabel && !year) return null;
+  leagueId?: string | null,
+): Promise<{ time: string; time_slug: string | null; competition: string; year: number | null; mode?: "champion" | "leader"; source?: string } | null> {
+  if (!competitionLabel && !year && !leagueId) return null;
   let q = supabase
     .from("team_titles")
     .select("team_id, competition_name, edition_year, position")
@@ -799,7 +1031,51 @@ async function resolveChampionFromDB(
     time_slug: time?.slug ?? null,
     competition: row.competition_name,
     year: row.edition_year,
+    mode: "champion",
+    source: "team_titles",
   };
+}
+
+async function resolveChampionOrLeader(
+  supabase: any,
+  league: { id: string; name: string } | null,
+  competitionLabel: string | null,
+  year: number | null,
+): Promise<{ time: string; time_slug: string | null; competition: string; year: number | null; mode: "champion" | "leader"; source: string } | null> {
+  const fromTitles = await resolveChampionFromDB(supabase, competitionLabel, year, league?.id ?? null);
+  if (fromTitles) return { ...fromTitles, mode: "champion", source: fromTitles.source || "team_titles" };
+
+  if (league?.id && year) {
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("winner_team_id, year")
+      .eq("league_id", league.id)
+      .eq("year", year)
+      .maybeSingle();
+    if (season?.winner_team_id) {
+      const { data: time } = await supabase.from("times").select("nome, slug").eq("id", season.winner_team_id).maybeSingle();
+      if (time?.nome) {
+        return { time: time.nome, time_slug: time.slug ?? null, competition: league.name, year: season.year, mode: "champion", source: "seasons" };
+      }
+    }
+  }
+
+  if (league?.id) {
+    const { rows, source } = await resolveStandingsRows(supabase, league.id, year);
+    const leader = rows?.[0];
+    if (leader?.out_team_nome) {
+      return {
+        time: leader.out_team_nome,
+        time_slug: leader.out_team_slug ?? null,
+        competition: league.name,
+        year,
+        mode: "leader",
+        source,
+      };
+    }
+  }
+
+  return null;
 }
 
 // ---------- Last match resolver ----------
@@ -1207,6 +1483,7 @@ Deno.serve(async (req) => {
     const year = extractYear(query);
     let responseYear: number | null = year;
     const scope = extractScope(query);
+    const requestedLimit = extractLimit(query);
 
     // entidades para a UI (lista geral)
     const { data: globResults } = await supabase.rpc("search_global", { p_query: query, p_limit: 30 });
@@ -1218,6 +1495,8 @@ Deno.serve(async (req) => {
     let source: string = "internal";
     let top_scorers: any[] | null = null;
     let resolved_league: { id: string; name: string; slug?: string | null } | null = null;
+    let resolved_team: { id: string; name: string; slug?: string | null } | null = null;
+    let resolved_opponent: { id: string; name: string; slug?: string | null } | null = null;
     let league_disambiguation: { id: string; name: string }[] = [];
     let structured_answer: any = null;
     let post_slug: string | null = null;
@@ -1338,7 +1617,7 @@ Deno.serve(async (req) => {
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
       }
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
-      const champ = await resolveChampionFromDB(supabase, compLabel, year);
+      const champ = await resolveChampionOrLeader(supabase, league ? { id: league.id, name: league.name } : null, compLabel, year);
       if (!champ) {
         ai_answer = notFoundAnswer(
           compLabel
@@ -1346,17 +1625,22 @@ Deno.serve(async (req) => {
             : "Não consegui identificar a competição. Tente especificar o nome (ex.: 'Brasileirão Série A 2022').",
         );
       } else {
-        const summary = `O campeão da ${champ.competition}${champ.year ? ` em ${champ.year}` : ""} foi o ${champ.time}.`;
+        const isLeader = champ.mode === "leader";
+        const summary = isLeader
+          ? `Pelos jogos registrados, o líder da ${champ.competition}${champ.year ? ` em ${champ.year}` : ""} é o ${champ.time}.`
+          : `O campeão da ${champ.competition}${champ.year ? ` em ${champ.year}` : ""} foi o ${champ.time}.`;
         ai_answer = {
-          answer: `O campeão da **${champ.competition}**${champ.year ? ` em **${champ.year}**` : ""} foi o **${champ.time}**.`,
-          explanation: "Fonte: tabela interna de títulos (team_titles).",
+          answer: isLeader
+            ? `Ainda não há campeão oficial registrado para **${champ.competition}**${champ.year ? ` em **${champ.year}**` : ""}. Pela tabela calculada a partir dos jogos, o líder é **${champ.time}**.`
+            : `O campeão da **${champ.competition}**${champ.year ? ` em **${champ.year}**` : ""} foi o **${champ.time}**.`,
+          explanation: isLeader ? `Fonte: ${champ.source} — tabela calculada a partir das partidas.` : `Fonte: ${champ.source}.`,
           has_enough_data: true,
-          confidence: 95,
+          confidence: isLeader ? 82 : 95,
         };
         structured_answer = {
           kind: "external", // reaproveita o card de texto simples
           summary,
-          note: `Dado oficial — tabela team_titles do StatBall.`,
+          note: isLeader ? `Dado calculado — ${champ.source}.` : `Dado oficial — ${champ.source}.`,
         };
         post_slug = buildSlug("campeao", [champ.competition, champ.year]);
         await persistSearchPost(supabase, {
@@ -1377,7 +1661,7 @@ Deno.serve(async (req) => {
 
     // ---------- MATCH LOOKUP / RESULTADO DE JOGO ----------
     else if (intent === "match_lookup") {
-      const wcMatch = await resolveWorldCupMatchLookup(supabase, query);
+      const wcMatch = extractHeadToHeadPhrases(query) ? null : await resolveWorldCupMatchLookup(supabase, query);
       if (wcMatch) {
         structured_answer = wcMatch;
         const m = wcMatch.match;
@@ -1407,6 +1691,57 @@ Deno.serve(async (req) => {
           confidence: ai_answer.confidence,
         });
       }
+
+      if (!structured_answer) {
+        const h2h = extractHeadToHeadPhrases(query);
+        if (h2h) {
+          const [left, right] = await Promise.all([
+            resolveTeamByPhrase(supabase, h2h.left),
+            resolveTeamByPhrase(supabase, h2h.right),
+          ]);
+          if (left && right && left.entity_id !== right.entity_id) {
+            resolved_team = { id: left.entity_id, name: left.name, slug: left.extra?.slug ?? null };
+            resolved_opponent = { id: right.entity_id, name: right.name, slug: right.extra?.slug ?? null };
+            const { rows, total, source: src } = await resolveHeadToHead(supabase, left, right, year);
+            source = src;
+            if (rows.length > 0) {
+              const last = rows[0];
+              const placar = `${last.gols_casa ?? "?"} x ${last.gols_fora ?? "?"}`;
+              const summary = `${last.home_team} ${placar} ${last.away_team}${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}. Foram encontrados ${total} confrontos no banco do StatBall.`;
+              ai_answer = {
+                answer: `O confronto mais recente foi **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em **${String(last.data).slice(0, 10)}**` : ""}.`,
+                explanation: `Fonte: ${src}.`,
+                has_enough_data: true,
+                confidence: 94,
+              };
+              structured_answer = {
+                kind: "competition_matches",
+                summary,
+                league: { id: `${left.entity_id}-${right.entity_id}`, name: `${left.name} x ${right.name}`, slug: null },
+                year,
+                source: src,
+                matches: rows,
+                total_matches: total,
+              };
+              post_slug = buildSlug("confronto", [left.name, right.name, year]);
+              await persistSearchPost(supabase, {
+                slug: post_slug,
+                question: query,
+                normalized,
+                intent: "match_lookup",
+                summary,
+                meta_title: `${left.name} x ${right.name} — resultados`,
+                meta_description: truncate(summary, 160),
+                answer_payload: structured_answer,
+                entities,
+                confidence: 94,
+              });
+            } else {
+              ai_answer = notFoundAnswer(`Não localizei confrontos entre ${left.name} e ${right.name}${year ? ` em ${year}` : ""} no banco do StatBall.`);
+            }
+          }
+        }
+      }
     }
 
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
@@ -1419,6 +1754,7 @@ Deno.serve(async (req) => {
           const { data: trow } = await supabase.from("times").select("slug").eq("id", topTeam.entity_id).maybeSingle();
           teamSlug = trow?.slug ?? null;
         }
+        resolved_team = { id: topTeam.entity_id, name: topTeam.name, slug: teamSlug };
 
         const matches = await fetchAllPartidas(supabase, topTeam.entity_id, year, scope);
         const agg = aggregate(matches, topTeam.entity_id);
@@ -1451,7 +1787,8 @@ Deno.serve(async (req) => {
         }
         const competitions = [...compCounts.values()].sort((a, b) => b.total - a.total);
 
-        const matchList = matches.slice(0, 80).map((m: any) => {
+        const displayLimit = requestedLimit ?? (isLastMatchesQuestion(normalized) ? 5 : 80);
+        const matchList = matches.slice(0, displayLimit).map((m: any) => {
           const isHome = m.time_casa_id === topTeam.entity_id;
           const oppId = isHome ? m.time_fora_id : m.time_casa_id;
           const opp: any = oppId ? oppMap.get(oppId) : null;
@@ -1485,12 +1822,16 @@ Deno.serve(async (req) => {
         }
 
         const isCountQuestion = /quantos jogos|quantas partidas|jogou|disputou/.test(normalized);
-        const summary = `O ${topTeam.name} disputou ${agg.total} partidas${year ? ` em ${year}` : ""}${scopeStr} — ${agg.w} vitórias, ${agg.d} empates e ${agg.l} derrotas (${agg.gf} gols pró × ${agg.ga} contra).`;
+        const wantsMatchList = /\b(jogos|partidas|ultimos|ultimas|recentes|mais recentes)\b/.test(normalized);
+        const listPrefix = isLastMatchesQuestion(normalized) || requestedLimit ? `Últimos ${matchList.length} jogos` : "Jogos";
+        const summary = `${listPrefix} do ${topTeam.name}${year ? ` em ${year}` : ""}${scopeStr}: ${agg.total} partidas encontradas — ${agg.w} vitórias, ${agg.d} empates e ${agg.l} derrotas (${agg.gf} gols pró × ${agg.ga} contra).`;
 
-        if (isCountQuestion || agg.total > 0) {
+        if (isCountQuestion || wantsMatchList || agg.total > 0) {
           ai_answer = {
-            answer: `O ${topTeam.name} jogou **${agg.total} partidas**${year ? ` em ${year}` : ""}${scopeStr}.`,
-            explanation: `Campanha: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
+            answer: wantsMatchList && matchList.length > 0
+              ? `${listPrefix} do **${topTeam.name}**${year ? ` em **${year}**` : ""}${scopeStr}: encontrei **${agg.total} partidas** no banco.`
+              : `O ${topTeam.name} jogou **${agg.total} partidas**${year ? ` em ${year}` : ""}${scopeStr}.`,
+            explanation: `Campanha no filtro: ${agg.w}V, ${agg.d}E, ${agg.l}D; gols ${agg.gf}-${agg.ga}.`,
             has_enough_data: agg.total > 0,
             confidence: agg.total > 0 ? 95 : 0,
           };
@@ -1640,8 +1981,12 @@ Deno.serve(async (req) => {
     // Construir filtros utilizados (transparência para o usuário)
     const filters_used: { label: string; value: string }[] = [];
     if (resolved_league?.name) filters_used.push({ label: "Competição", value: resolved_league.name });
+    if (resolved_team?.name) filters_used.push({ label: "Time", value: resolved_team.name });
+    if (resolved_opponent?.name) filters_used.push({ label: "Adversário", value: resolved_opponent.name });
     if (responseYear) filters_used.push({ label: "Temporada", value: String(responseYear) });
     if (scope) filters_used.push({ label: "Mando", value: scope === "home" ? "Mandante" : "Visitante" });
+    if (requestedLimit) filters_used.push({ label: "Quantidade", value: String(requestedLimit) });
+    if (source && source !== "internal") filters_used.push({ label: "Fonte", value: source });
     filters_used.push({ label: "Tipo de consulta", value: intent });
 
 
