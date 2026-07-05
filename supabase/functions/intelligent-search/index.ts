@@ -377,7 +377,13 @@ async function resolveCompetitionOverview(
 
   const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12);
   if (matches.length > 0) {
-    const last = matches[0];
+    const displayMatches = matches.map((m: any) => ({
+      ...m,
+      liga_nome: m.liga_nome ?? league.name,
+      liga_slug: m.liga_slug ?? league.slug ?? null,
+      detail_path: m.detail_path ?? (m.slug ? `/partida/${m.slug}` : null),
+    }));
+    const last = displayMatches[0];
     const placar = last.gols_casa != null && last.gols_fora != null ? `${last.gols_casa} x ${last.gols_fora}` : "placar indisponível";
     return {
       source: matchesSource,
@@ -393,7 +399,7 @@ async function resolveCompetitionOverview(
         league: { id: league.id, name: league.name, slug: league.slug ?? null },
         year,
         source: matchesSource,
-        matches,
+        matches: displayMatches,
         total_matches: total,
       },
     };
