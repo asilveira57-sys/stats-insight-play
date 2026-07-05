@@ -35,6 +35,7 @@ export interface MatchRow {
   id: string;
   data: string | null;
   slug: string | null;
+  detail_path?: string | null;
   is_home: boolean;
   home_team: string;
   away_team: string;
@@ -118,6 +119,7 @@ export type StructuredAnswer =
       match: {
         id: string;
         slug: string | null;
+        detail_path?: string | null;
         date: string | null;
         is_home: boolean;
         home_team: string;

@@ -184,6 +184,17 @@ async function resolveLeagueCandidates(
   return out;
 }
 
+async function leagueFromId(supabase: any, leagueId: string | null | undefined): Promise<{ id: string; name: string; slug?: string | null } | null> {
+  if (!leagueId) return null;
+  const { data: l, error } = await supabase
+    .from("ligas")
+    .select("id, nome, slug")
+    .eq("id", leagueId)
+    .maybeSingle();
+  if (error || !l) return null;
+  return { id: l.id, name: l.nome, slug: l.slug ?? null };
+}
+
 async function fetchCompetitionMatches(
   supabase: any,
   leagueId: string,
@@ -224,6 +235,7 @@ async function fetchCompetitionMatches(
     return {
       id: m.id,
       slug: m.slug ?? null,
+      detail_path: m.slug ? `/partida/${m.slug}` : null,
       data: m.data,
       is_home: true,
       home_team: home?.nome ?? "—",
@@ -626,6 +638,7 @@ async function buildMatchRows(supabase: any, matches: any[], focusTeamId?: strin
       id: m.id,
       data: m.data,
       slug: m.slug ?? null,
+      detail_path: m.slug ? `/partida/${m.slug}` : null,
       is_home: focusTeamId ? m.time_casa_id === focusTeamId : true,
       home_team: home?.nome ?? "—",
       away_team: away?.nome ?? "—",
@@ -1133,6 +1146,7 @@ async function resolveLastMatch(
           match: {
             id: m.id,
             slug: m.slug ?? null,
+            detail_path: m.slug ? `/partida/${m.slug}` : null,
             date: m.match_date,
             is_home: isHome,
             home_team: isHome ? teamName : (opp?.name ?? "—"),
@@ -1395,6 +1409,7 @@ async function resolveWorldCupMatchLookup(
       match: {
         id: picked.id,
         slug: null,
+        detail_path: `/copa-2026/jogos/${picked.id}`,
         date: picked.match_date,
         is_home: isHome,
         home_team: displayWorldCupTeamName(home),
@@ -1441,6 +1456,7 @@ async function resolveWorldCupOverview(
       id: m.id,
       data: m.match_date,
       slug: null,
+      detail_path: `/copa-2026/jogos/${m.id}`,
       is_home: true,
       home_team: displayWorldCupTeamName(home),
       away_team: displayWorldCupTeamName(away),
