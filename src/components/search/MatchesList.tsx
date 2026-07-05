@@ -7,7 +7,9 @@ import type { MatchRow } from "@/hooks/useIntelligentSearch";
 function formatDate(d: string | null) {
   if (!d) return "—";
   try {
-    const dt = new Date(d + "T12:00:00Z");
+    const hasTime = /T|\s\d{2}:\d{2}/.test(d);
+    const dt = new Date(hasTime ? d : `${d}T12:00:00Z`);
+    if (Number.isNaN(dt.getTime())) return d.slice(0, 10);
     return dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
   } catch {
     return d.slice(0, 10);
@@ -26,6 +28,7 @@ export function MatchesList({ matches, totalMatches }: { matches: MatchRow[]; to
       </h3>
       <ul className="divide-y divide-border rounded-md border">
         {visible.map((m) => {
+          const detailPath = m.slug ? `/partida/${m.slug}` : m.detail_path ?? (m.liga_nome === "Copa do Mundo FIFA 2026" ? `/copa-2026/jogos/${m.id}` : null);
           const score = (
             <>
               <span className="tabular-nums text-xs text-muted-foreground w-20 shrink-0">{formatDate(m.data)}</span>
@@ -39,7 +42,7 @@ export function MatchesList({ matches, totalMatches }: { matches: MatchRow[]; to
           const meta = (
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground whitespace-nowrap inline-flex items-center gap-1">
               {m.liga_nome}
-              {m.slug && <ChevronRight className="h-3 w-3 text-primary/70" />}
+              {detailPath && <ChevronRight className="h-3 w-3 text-primary/70" />}
             </span>
           );
           const row = (
@@ -50,8 +53,8 @@ export function MatchesList({ matches, totalMatches }: { matches: MatchRow[]; to
           );
           return (
             <li key={m.id}>
-              {m.slug ? (
-                <Link to={`/partida/${m.slug}`} className="block" aria-label={`Ver resumo de ${m.home_team} ${m.gols_casa ?? "-"}x${m.gols_fora ?? "-"} ${m.away_team}`}>
+              {detailPath ? (
+                <Link to={detailPath} className="block" aria-label={`Ver resumo de ${m.home_team} ${m.gols_casa ?? "-"}x${m.gols_fora ?? "-"} ${m.away_team}`}>
                   {row}
                 </Link>
               ) : (

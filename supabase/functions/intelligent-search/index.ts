@@ -184,11 +184,23 @@ async function resolveLeagueCandidates(
   return out;
 }
 
+async function leagueFromId(supabase: any, leagueId: string | null | undefined): Promise<{ id: string; name: string; slug?: string | null } | null> {
+  if (!leagueId) return null;
+  const { data: l, error } = await supabase
+    .from("ligas")
+    .select("id, nome, slug")
+    .eq("id", leagueId)
+    .maybeSingle();
+  if (error || !l) return null;
+  return { id: l.id, name: l.nome, slug: l.slug ?? null };
+}
+
 async function fetchCompetitionMatches(
   supabase: any,
   leagueId: string,
   year: number | null,
   limit = 12,
+  finishedOnly = false,
 ): Promise<{ rows: any[]; total: number; source: string }> {
   const all: any[] = [];
   const PAGE = 1000;
@@ -200,6 +212,7 @@ async function fetchCompetitionMatches(
       .eq("liga_id", leagueId)
       .order("data", { ascending: false })
       .order("hora", { ascending: false });
+    if (finishedOnly) q = q.eq("status", "finished").not("gols_casa", "is", null).not("gols_fora", "is", null);
     if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
     const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) {
@@ -224,6 +237,7 @@ async function fetchCompetitionMatches(
     return {
       id: m.id,
       slug: m.slug ?? null,
+      detail_path: m.slug ? `/partida/${m.slug}` : null,
       data: m.data,
       is_home: true,
       home_team: home?.nome ?? "—",
@@ -340,6 +354,7 @@ async function resolveCompetitionOverview(
   league: { id: string; name: string; slug?: string | null },
   year: number | null,
   wantsStandings = false,
+  wantsFinishedMatches = false,
 ): Promise<{ structured: any | null; ai: any; source: string }> {
   const { rows: standings, source: standingsSource } = await resolveStandingsRows(supabase, league.id, year);
   if (wantsStandings && standings.length > 0) {
@@ -363,9 +378,15 @@ async function resolveCompetitionOverview(
     };
   }
 
-  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12);
+  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12, wantsFinishedMatches);
   if (matches.length > 0) {
-    const last = matches[0];
+    const displayMatches = matches.map((m: any) => ({
+      ...m,
+      liga_nome: m.liga_nome ?? league.name,
+      liga_slug: m.liga_slug ?? league.slug ?? null,
+      detail_path: m.detail_path ?? (m.slug ? `/partida/${m.slug}` : null),
+    }));
+    const last = displayMatches[0];
     const placar = last.gols_casa != null && last.gols_fora != null ? `${last.gols_casa} x ${last.gols_fora}` : "placar indisponível";
     return {
       source: matchesSource,
@@ -381,7 +402,7 @@ async function resolveCompetitionOverview(
         league: { id: league.id, name: league.name, slug: league.slug ?? null },
         year,
         source: matchesSource,
-        matches,
+        matches: displayMatches,
         total_matches: total,
       },
     };
@@ -626,6 +647,7 @@ async function buildMatchRows(supabase: any, matches: any[], focusTeamId?: strin
       id: m.id,
       data: m.data,
       slug: m.slug ?? null,
+      detail_path: m.slug ? `/partida/${m.slug}` : null,
       is_home: focusTeamId ? m.time_casa_id === focusTeamId : true,
       home_team: home?.nome ?? "—",
       away_team: away?.nome ?? "—",
@@ -1133,6 +1155,7 @@ async function resolveLastMatch(
           match: {
             id: m.id,
             slug: m.slug ?? null,
+            detail_path: `/copa-2026/jogos/${m.id}`,
             date: m.match_date,
             is_home: isHome,
             home_team: isHome ? teamName : (opp?.name ?? "—"),
@@ -1395,6 +1418,7 @@ async function resolveWorldCupMatchLookup(
       match: {
         id: picked.id,
         slug: null,
+        detail_path: `/copa-2026/jogos/${picked.id}`,
         date: picked.match_date,
         is_home: isHome,
         home_team: displayWorldCupTeamName(home),
@@ -1441,6 +1465,7 @@ async function resolveWorldCupOverview(
       id: m.id,
       data: m.match_date,
       slug: null,
+      detail_path: `/copa-2026/jogos/${m.id}`,
       is_home: true,
       home_team: displayWorldCupTeamName(home),
       away_team: displayWorldCupTeamName(away),
@@ -1642,16 +1667,16 @@ Deno.serve(async (req) => {
 
     // ---------- STANDINGS / CLASSIFICAÇÃO ----------
     else if (intent === "standings") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const picked = candidates[0] ?? null;
       if (!picked) {
         ai_answer = notFoundAnswer("Não consegui identificar a competição. Tente especificar o nome (ex.: 'tabela do Brasileirão 2025').");
       } else {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
-        const overview = await resolveCompetitionOverview(supabase, league, year, true);
+          const overview = await resolveCompetitionOverview(supabase, league, year, true, isLastMatchesQuestion(normalized));
         source = overview.source;
         ai_answer = overview.ai;
         structured_answer = overview.structured;
@@ -1675,11 +1700,11 @@ Deno.serve(async (req) => {
 
     // ---------- CHAMPION / WINNER ----------
     else if (intent === "champion") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
       if (league) {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle();
-        resolved_league = { id: league.id, name: league.name, slug: lrow?.slug ?? null };
+        resolved_league = forcedLeague ?? { id: league.id, name: league.name, slug: (await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle()).data?.slug ?? null };
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
       }
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
@@ -1824,18 +1849,18 @@ Deno.serve(async (req) => {
         aliasHit.some((n) => normalize(n) === phraseNorm)
       );
       if (aliasHit && phraseIsAlias) {
-        const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+        const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+        const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
         const picked = candidates[0] ?? null;
         if (picked) {
-          const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-          const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+          const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
           resolved_league = league;
-          league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+          league_disambiguation = forcedLeague ? await resolveLeagueCandidates(supabase, query, normalized).then((rows) => rows.slice(0, 5).map((c) => ({ id: c.id, name: c.name }))) : candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
           const isWC = /fifa world cup|copa do mundo/.test(normalize(league.name));
           const wantsLast = isLastMatchesQuestion(normalized);
           const overview = isWC
             ? await resolveWorldCupOverview(supabase, wantsLast)
-            : await resolveCompetitionOverview(supabase, league, year, false);
+            : await resolveCompetitionOverview(supabase, league, year, false, wantsLast);
           source = overview.source;
           ai_answer = overview.ai;
           structured_answer = overview.structured;
@@ -1982,14 +2007,14 @@ Deno.serve(async (req) => {
 
     // ---------- ENTITY LOOKUP: competição pura vira visão geral, não "não encontrado" ----------
     else if (intent === "entity_lookup") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const picked = candidates[0] ?? null;
       if (picked) {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
-        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
-        const overview = await resolveCompetitionOverview(supabase, league, year, false);
+        league_disambiguation = forcedLeague ? await resolveLeagueCandidates(supabase, query, normalized).then((rows) => rows.slice(0, 5).map((c) => ({ id: c.id, name: c.name }))) : candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+        const overview = await resolveCompetitionOverview(supabase, league, year, false, isLastMatchesQuestion(normalized));
         source = overview.source;
         ai_answer = overview.ai;
         structured_answer = overview.structured;

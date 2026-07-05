@@ -27,6 +27,18 @@ function HeaderRow({ postSlug, title = "Resposta Statball", icon: Icon = Sparkle
   );
 }
 
+function formatDisplayDate(d: string | null | undefined) {
+  if (!d) return null;
+  try {
+    const hasTime = /T|\s\d{2}:\d{2}/.test(d);
+    const dt = new Date(hasTime ? d : `${d}T12:00:00Z`);
+    if (Number.isNaN(dt.getTime())) return String(d).slice(0, 10);
+    return dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
+  } catch {
+    return String(d).slice(0, 10);
+  }
+}
+
 export function AnswerCard({ data, postSlug }: Props) {
   if (data.kind === "team_stats") {
     const b = data.breakdown;
@@ -69,6 +81,7 @@ export function AnswerCard({ data, postSlug }: Props) {
     const m = data.match;
     const placar = `${m.gols_casa ?? "?"} x ${m.gols_fora ?? "?"}`;
     const opp = m.is_home ? m.away_team : m.home_team;
+    const detailPath = m.slug ? `/partida/${m.slug}` : m.detail_path ?? null;
     return (
       <Card className="border-primary/30">
         <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Último jogo" icon={Trophy} /></CardHeader>
@@ -85,7 +98,7 @@ export function AnswerCard({ data, postSlug }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-            {m.date && <Badge variant="outline">{String(m.date).slice(0, 10)}</Badge>}
+            {m.date && <Badge variant="outline">{formatDisplayDate(m.date)}</Badge>}
             {data.competition?.name && <Badge variant="secondary">{data.competition.name}</Badge>}
             {m.stage && <Badge variant="outline">{m.stage}</Badge>}
           </div>
@@ -97,9 +110,9 @@ export function AnswerCard({ data, postSlug }: Props) {
             )}{" "}
             {m.is_home ? "recebeu" : "visitou"} o <strong>{opp}</strong> — placar final <strong>{placar}</strong>.
           </p>
-          {m.slug && (
+          {detailPath && (
             <div className="text-center">
-              <Link to={`/partida/${m.slug}`} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              <Link to={detailPath} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                 <LinkIcon className="h-3 w-3" /> Ver detalhes da partida
               </Link>
             </div>
