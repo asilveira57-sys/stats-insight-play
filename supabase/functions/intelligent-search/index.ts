@@ -1975,7 +1975,7 @@ Deno.serve(async (req) => {
             confidence: ai_answer.confidence,
           });
         }
-      } else if (intent === "open_question") {
+      } else if (intent === "open_question" && !structured_answer) {
         ai_answer = await callAI(contextStr || "Sem dados internos relacionados.", query);
       }
     }
