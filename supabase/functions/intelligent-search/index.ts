@@ -1831,7 +1831,11 @@ Deno.serve(async (req) => {
           const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
           resolved_league = league;
           league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
-          const overview = await resolveCompetitionOverview(supabase, league, year, false);
+          const isWC = /fifa world cup|copa do mundo/.test(normalize(league.name));
+          const wantsLast = isLastMatchesQuestion(normalized);
+          const overview = isWC
+            ? await resolveWorldCupOverview(supabase, wantsLast)
+            : await resolveCompetitionOverview(supabase, league, year, false);
           source = overview.source;
           ai_answer = overview.ai;
           structured_answer = overview.structured;
