@@ -1658,13 +1658,13 @@ Deno.serve(async (req) => {
 
     // ---------- STANDINGS / CLASSIFICAÇÃO ----------
     else if (intent === "standings") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const picked = candidates[0] ?? null;
       if (!picked) {
         ai_answer = notFoundAnswer("Não consegui identificar a competição. Tente especificar o nome (ex.: 'tabela do Brasileirão 2025').");
       } else {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
         const overview = await resolveCompetitionOverview(supabase, league, year, true);
@@ -1691,11 +1691,11 @@ Deno.serve(async (req) => {
 
     // ---------- CHAMPION / WINNER ----------
     else if (intent === "champion") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const league = candidates[0] ?? null;
       if (league) {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle();
-        resolved_league = { id: league.id, name: league.name, slug: lrow?.slug ?? null };
+        resolved_league = forcedLeague ?? { id: league.id, name: league.name, slug: (await supabase.from("ligas").select("slug").eq("id", league.id).maybeSingle()).data?.slug ?? null };
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
       }
       const compLabel = league?.name ?? (aliasGroupFor(normalized)?.[0] ?? null);
@@ -1840,13 +1840,13 @@ Deno.serve(async (req) => {
         aliasHit.some((n) => normalize(n) === phraseNorm)
       );
       if (aliasHit && phraseIsAlias) {
-        const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+        const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+        const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
         const picked = candidates[0] ?? null;
         if (picked) {
-          const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-          const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+          const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
           resolved_league = league;
-          league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+          league_disambiguation = forcedLeague ? await resolveLeagueCandidates(supabase, query, normalized).then((rows) => rows.slice(0, 5).map((c) => ({ id: c.id, name: c.name }))) : candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
           const isWC = /fifa world cup|copa do mundo/.test(normalize(league.name));
           const wantsLast = isLastMatchesQuestion(normalized);
           const overview = isWC
@@ -1998,13 +1998,13 @@ Deno.serve(async (req) => {
 
     // ---------- ENTITY LOOKUP: competição pura vira visão geral, não "não encontrado" ----------
     else if (intent === "entity_lookup") {
-      const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+      const forcedLeague = await leagueFromId(supabase, forcedLeagueId);
+      const candidates = forcedLeague ? [{ id: forcedLeague.id, name: forcedLeague.name, score: 9999 }] : await resolveLeagueCandidates(supabase, query, normalized);
       const picked = candidates[0] ?? null;
       if (picked) {
-        const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
-        const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+        const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
-        league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+        league_disambiguation = forcedLeague ? await resolveLeagueCandidates(supabase, query, normalized).then((rows) => rows.slice(0, 5).map((c) => ({ id: c.id, name: c.name }))) : candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
         const overview = await resolveCompetitionOverview(supabase, league, year, false);
         source = overview.source;
         ai_answer = overview.ai;
