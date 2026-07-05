@@ -1410,6 +1410,72 @@ async function resolveWorldCupMatchLookup(
   return null;
 }
 
+// Overview da Copa do Mundo 2026: últimos/próximos jogos, sem depender de time específico.
+async function resolveWorldCupOverview(
+  supabase: any,
+  wantsLast: boolean,
+): Promise<{ structured: any | null; ai: any; source: string }> {
+  const { data: allMatches, error } = await supabase
+    .from("world_cup_2026_matches")
+    .select("id, home_team_id, away_team_id, match_date, status, home_score, away_score, stage, round")
+    .order("match_date", { ascending: false });
+  if (error || !allMatches || allMatches.length === 0) {
+    return {
+      source: "world_cup_2026_matches",
+      structured: null,
+      ai: notFoundAnswer("Não localizei jogos da Copa do Mundo no banco do StatBall."),
+    };
+  }
+  const finished = allMatches.filter((m: any) =>
+    ["finished", "live", "in_progress", "1h", "2h", "halftime", "ht"].includes(String(m.status || "").toLowerCase())
+  );
+  const list = wantsLast && finished.length > 0 ? finished : allMatches;
+  const top = list.slice(0, 10);
+  const ids = [...new Set(top.flatMap((m: any) => [m.home_team_id, m.away_team_id]).filter(Boolean))];
+  const { data: teams } = await supabase.from("world_cup_2026_teams").select("id, name, slug").in("id", ids);
+  const tmap = new Map((teams || []).map((t: any) => [t.id, t]));
+  const rows = top.map((m: any) => {
+    const home = tmap.get(m.home_team_id) || null;
+    const away = tmap.get(m.away_team_id) || null;
+    return {
+      id: m.id,
+      data: m.match_date,
+      slug: null,
+      is_home: true,
+      home_team: displayWorldCupTeamName(home),
+      away_team: displayWorldCupTeamName(away),
+      home_team_slug: (home as any)?.slug ?? null,
+      away_team_slug: (away as any)?.slug ?? null,
+      gols_casa: m.home_score,
+      gols_fora: m.away_score,
+      liga_id: null,
+      liga_nome: "Copa do Mundo FIFA 2026",
+      liga_slug: null,
+    };
+  });
+  const last = rows[0];
+  const placar = last.gols_casa != null && last.gols_fora != null ? `${last.gols_casa} x ${last.gols_fora}` : "placar indisponível";
+  const dateStr = last.data ? ` em ${String(last.data).slice(0, 10)}` : "";
+  return {
+    source: "world_cup_2026_matches",
+    ai: {
+      answer: `O jogo mais recente da **Copa do Mundo FIFA 2026** foi **${last.home_team} ${placar} ${last.away_team}**${dateStr}.`,
+      explanation: "Fonte: world_cup_2026_matches.",
+      has_enough_data: true,
+      confidence: 94,
+    },
+    structured: {
+      kind: "competition_matches",
+      summary: `Copa do Mundo FIFA 2026: exibindo ${rows.length} jogos${wantsLast ? " (mais recentes)" : ""} do banco do StatBall.`,
+      league: { id: "world-cup-2026", name: "Copa do Mundo FIFA 2026", slug: null },
+      year: 2026,
+      source: "world_cup_2026_matches",
+      matches: rows,
+      total_matches: allMatches.length,
+    },
+  };
+}
+
 
 // ---------- slug + post helpers ----------
 function slugify(s: string): string {
