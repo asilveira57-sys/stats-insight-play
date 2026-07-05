@@ -1146,7 +1146,7 @@ async function resolveLastMatch(
           match: {
             id: m.id,
             slug: m.slug ?? null,
-            detail_path: m.slug ? `/partida/${m.slug}` : null,
+            detail_path: `/copa-2026/jogos/${m.id}`,
             date: m.match_date,
             is_home: isHome,
             home_team: isHome ? teamName : (opp?.name ?? "—"),
