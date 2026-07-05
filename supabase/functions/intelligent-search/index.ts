@@ -1746,7 +1746,47 @@ Deno.serve(async (req) => {
 
     // ---------- TEAM STATS / OPEN QUESTION (com time identificado) ----------
     else if (intent === "team_stats" || intent === "open_question") {
-      const topTeam = await resolveTeamCandidate(supabase, query, normalized, results);
+      // Preflight: se a pergunta é sobre uma COMPETIÇÃO (alias como "copa", "libertadores",
+      // "brasileirão") e não sobre um time específico, resolve como competição — evita
+      // interpretações erradas como "copa" -> "New Jersey Copa".
+      const aliasHit = aliasGroupFor(normalized);
+      const teamPhrase = extractTeamPhraseFromStatsQuery(query);
+      const phraseNorm = teamPhrase ? normalize(teamPhrase) : "";
+      const phraseIsAlias = !!aliasHit && (
+        !phraseNorm ||
+        !!aliasGroupFor(phraseNorm) ||
+        aliasHit.some((n) => normalize(n) === phraseNorm)
+      );
+      if (aliasHit && phraseIsAlias) {
+        const candidates = await resolveLeagueCandidates(supabase, query, normalized);
+        const picked = candidates[0] ?? null;
+        if (picked) {
+          const { data: lrow } = await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle();
+          const league = { id: picked.id, name: picked.name, slug: lrow?.slug ?? null };
+          resolved_league = league;
+          league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
+          const overview = await resolveCompetitionOverview(supabase, league, year, false);
+          source = overview.source;
+          ai_answer = overview.ai;
+          structured_answer = overview.structured;
+          if (structured_answer) {
+            post_slug = buildSlug("competicao", [league.name, year]);
+            await persistSearchPost(supabase, {
+              slug: post_slug,
+              question: query,
+              normalized,
+              intent: "entity_lookup",
+              summary: structured_answer.summary,
+              meta_title: `${league.name}${year ? ` ${year}` : ""} — jogos e dados`,
+              meta_description: truncate(structured_answer.summary, 160),
+              answer_payload: structured_answer,
+              entities,
+              confidence: ai_answer.confidence,
+            });
+          }
+        }
+      }
+      const topTeam = structured_answer ? null : await resolveTeamCandidate(supabase, query, normalized, results);
       if (topTeam) {
         // enrich team with slug
         let teamSlug: string | null = topTeam.extra?.slug ?? null;
