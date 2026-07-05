@@ -200,6 +200,7 @@ async function fetchCompetitionMatches(
   leagueId: string,
   year: number | null,
   limit = 12,
+  finishedOnly = false,
 ): Promise<{ rows: any[]; total: number; source: string }> {
   const all: any[] = [];
   const PAGE = 1000;
@@ -211,6 +212,7 @@ async function fetchCompetitionMatches(
       .eq("liga_id", leagueId)
       .order("data", { ascending: false })
       .order("hora", { ascending: false });
+    if (finishedOnly) q = q.eq("status", "finished").not("gols_casa", "is", null).not("gols_fora", "is", null);
     if (year) q = q.gte("data", `${year}-01-01`).lte("data", `${year}-12-31`);
     const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) {
@@ -352,6 +354,7 @@ async function resolveCompetitionOverview(
   league: { id: string; name: string; slug?: string | null },
   year: number | null,
   wantsStandings = false,
+  wantsFinishedMatches = false,
 ): Promise<{ structured: any | null; ai: any; source: string }> {
   const { rows: standings, source: standingsSource } = await resolveStandingsRows(supabase, league.id, year);
   if (wantsStandings && standings.length > 0) {
@@ -375,7 +378,7 @@ async function resolveCompetitionOverview(
     };
   }
 
-  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12);
+  const { rows: matches, total, source: matchesSource } = await fetchCompetitionMatches(supabase, league.id, year, 12, wantsFinishedMatches);
   if (matches.length > 0) {
     const displayMatches = matches.map((m: any) => ({
       ...m,
@@ -1673,7 +1676,7 @@ Deno.serve(async (req) => {
         const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
         league_disambiguation = candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
-        const overview = await resolveCompetitionOverview(supabase, league, year, true);
+          const overview = await resolveCompetitionOverview(supabase, league, year, true, isLastMatchesQuestion(normalized));
         source = overview.source;
         ai_answer = overview.ai;
         structured_answer = overview.structured;
@@ -1857,7 +1860,7 @@ Deno.serve(async (req) => {
           const wantsLast = isLastMatchesQuestion(normalized);
           const overview = isWC
             ? await resolveWorldCupOverview(supabase, wantsLast)
-            : await resolveCompetitionOverview(supabase, league, year, false);
+            : await resolveCompetitionOverview(supabase, league, year, false, wantsLast);
           source = overview.source;
           ai_answer = overview.ai;
           structured_answer = overview.structured;
@@ -2011,7 +2014,7 @@ Deno.serve(async (req) => {
         const league = forcedLeague ?? { id: picked.id, name: picked.name, slug: (await supabase.from("ligas").select("slug").eq("id", picked.id).maybeSingle()).data?.slug ?? null };
         resolved_league = league;
         league_disambiguation = forcedLeague ? await resolveLeagueCandidates(supabase, query, normalized).then((rows) => rows.slice(0, 5).map((c) => ({ id: c.id, name: c.name }))) : candidates.slice(0, 5).map((c) => ({ id: c.id, name: c.name }));
-        const overview = await resolveCompetitionOverview(supabase, league, year, false);
+        const overview = await resolveCompetitionOverview(supabase, league, year, false, isLastMatchesQuestion(normalized));
         source = overview.source;
         ai_answer = overview.ai;
         structured_answer = overview.structured;
