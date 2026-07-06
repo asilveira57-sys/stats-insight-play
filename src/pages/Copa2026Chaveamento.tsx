@@ -273,30 +273,66 @@ export default function Copa2026Chaveamento() {
 
         {!loading && (
           <>
-            <div className="overflow-x-auto">
-              <div className="flex gap-6 min-w-max pb-4">
-                {STAGES.map((s) => {
+            {/* Mobile: tabs por fase (evita scroll horizontal invisível) */}
+            {isMobile && (
+              <div className="flex items-center gap-2 mb-3 overflow-x-auto -mx-4 px-4 pb-1">
+                <button
+                  aria-label="Fase anterior"
+                  onClick={() => setActiveStageIdx((i) => Math.max(0, i - 1))}
+                  className="p-1 rounded border border-border bg-card disabled:opacity-40"
+                  disabled={activeStageIdx === 0}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex gap-1 flex-1 overflow-x-auto">
+                  {STAGES.map((s, i) => (
+                    <button
+                      key={s.projPhase}
+                      onClick={() => setActiveStageIdx(i)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md whitespace-nowrap ${
+                        activeStageIdx === i ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  aria-label="Próxima fase"
+                  onClick={() => setActiveStageIdx((i) => Math.min(STAGES.length - 1, i + 1))}
+                  className="p-1 rounded border border-border bg-card disabled:opacity-40"
+                  disabled={activeStageIdx === STAGES.length - 1}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className={isMobile ? "" : "overflow-x-auto"}>
+              <div className={isMobile ? "flex flex-col gap-4" : "flex gap-6 min-w-max pb-4"}>
+                {STAGES.map((s, sIdx) => {
+                  if (isMobile && sIdx !== activeStageIdx) return null;
                   const list = matches.filter((m) => s.keys.includes(m.stage));
                   return (
                     <div key={s.projPhase} className="flex flex-col gap-3">
-
-                      <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>
-                      <div className="flex flex-col gap-3 justify-around h-full">
+                      {!isMobile && <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>}
+                      <div className={isMobile ? "grid grid-cols-1 gap-3" : "flex flex-col gap-3 justify-around h-full"}>
                         {Array.from({ length: s.n }, (_, i) => {
                           const placeholder = `${s.prefix}-${i + 1}`;
                           const m = list.find((x) => x.bracket_position === placeholder) ?? list[i];
                           const officialHasTeams = !!(m?.home_team && m?.away_team);
                           const proj = projByPhaseSlot.get(`${s.projPhase}:${placeholder}`);
+                          const matchOdds = m ? oddsMap?.get(m.id) ?? null : null;
 
                           if (mode === "oficial") {
-                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
+                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} odds={matchOdds} />;
                           }
                           if (mode === "projecao") {
                             return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                           }
                           // misto: oficial se tiver times reais, senão projeção
                           if (officialHasTeams) {
-                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
+                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} odds={matchOdds} />;
                           }
                           return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                         })}
@@ -307,23 +343,25 @@ export default function Copa2026Chaveamento() {
               </div>
             </div>
 
-            <section className="mt-10">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-3">Disputa do 3º lugar</h2>
-              <div className="max-w-md">
-                {mode === "oficial" ? (
-                  <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />
-                ) : (
-                  (() => {
-                    const proj = projByPhaseSlot.get("third_place:TP-1");
-                    const officialHasTeams = !!(thirdPlace?.home_team && thirdPlace?.away_team);
-                    if (mode === "misto" && officialHasTeams) {
-                      return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />;
-                    }
-                    return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
-                  })()
-                )}
-              </div>
-            </section>
+            {(!isMobile || activeStageIdx === STAGES.length - 1) && (
+              <section className="mt-10">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-3">Disputa do 3º lugar</h2>
+                <div className="max-w-md">
+                  {mode === "oficial" ? (
+                    <MatchCell m={thirdPlace ?? undefined} placeholder="TP" odds={thirdPlace ? oddsMap?.get(thirdPlace.id) ?? null : null} />
+                  ) : (
+                    (() => {
+                      const proj = projByPhaseSlot.get("third_place:TP-1");
+                      const officialHasTeams = !!(thirdPlace?.home_team && thirdPlace?.away_team);
+                      if (mode === "misto" && officialHasTeams) {
+                        return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" odds={thirdPlace ? oddsMap?.get(thirdPlace.id) ?? null : null} />;
+                      }
+                      return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
+                    })()
+                  )}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>
