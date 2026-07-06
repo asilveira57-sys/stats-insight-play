@@ -6,8 +6,10 @@ import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { Link } from "react-router-dom";
 import { useBracketProjection, BracketProjectionRow } from "@/hooks/useBracketProjection";
 import { Button } from "@/components/ui/button";
-import { Sparkles, RefreshCw, Lock, Info } from "lucide-react";
+import { Sparkles, RefreshCw, Lock, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProjectionExplainDialog } from "@/components/copa2026/ProjectionExplainDialog";
+import { useMatchesOdds, MatchOdds } from "@/hooks/useMatchOdds";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Match = {
   id: string; stage: string; bracket_position: string | null; match_date: string | null;
@@ -18,10 +20,10 @@ type Match = {
 
 const STAGES: { keys: string[]; label: string; n: number; prefix: string; projPhase: string }[] = [
   { keys: ["round_of_32", "r32"], label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
-  { keys: ["round_of_16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
-  { keys: ["quarter_final"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
-  { keys: ["semi_final"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
-  { keys: ["final"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
+  { keys: ["round_of_16", "r16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
+  { keys: ["quarter_final", "qf"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
+  { keys: ["semi_final", "sf"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
+  { keys: ["final", "f"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
 ];
 
 
