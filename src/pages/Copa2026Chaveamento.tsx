@@ -43,7 +43,31 @@ function ConfidencePill({ c }: { c: string }) {
   return <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${map[c] ?? map.low}`}>{labels[c] ?? c}</span>;
 }
 
-function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
+function fmtOdd(n: number | null | undefined) {
+  return n && n > 1 ? n.toFixed(2) : "—";
+}
+
+function OddsMini({ odds }: { odds?: MatchOdds | null }) {
+  if (!odds || (!odds.home_win && !odds.draw && !odds.away_win)) return null;
+  return (
+    <div className="grid grid-cols-3 gap-1 mt-1.5 text-[9px] font-mono">
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Vitória mandante">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">1</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.home_win)}</div>
+      </div>
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Empate">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">X</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.draw)}</div>
+      </div>
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Vitória visitante">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">2</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.away_win)}</div>
+      </div>
+    </div>
+  );
+}
+
+function MatchCell({ m, placeholder, odds }: { m?: Match; placeholder: string; odds?: MatchOdds | null }) {
   if (!m) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-2 text-xs min-w-[180px]">
@@ -78,6 +102,7 @@ function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
           {new Date(m.match_date).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}
         </div>
       )}
+      {!finished && <OddsMini odds={odds} />}
     </Link>
   );
 }
