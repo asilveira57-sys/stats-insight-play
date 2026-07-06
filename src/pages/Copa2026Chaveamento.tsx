@@ -6,8 +6,10 @@ import { TeamFlag } from "@/components/copa2026/TeamCard";
 import { Link } from "react-router-dom";
 import { useBracketProjection, BracketProjectionRow } from "@/hooks/useBracketProjection";
 import { Button } from "@/components/ui/button";
-import { Sparkles, RefreshCw, Lock, Info } from "lucide-react";
+import { Sparkles, RefreshCw, Lock, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProjectionExplainDialog } from "@/components/copa2026/ProjectionExplainDialog";
+import { useMatchesOdds, MatchOdds } from "@/hooks/useMatchOdds";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Match = {
   id: string; stage: string; bracket_position: string | null; match_date: string | null;
@@ -18,10 +20,10 @@ type Match = {
 
 const STAGES: { keys: string[]; label: string; n: number; prefix: string; projPhase: string }[] = [
   { keys: ["round_of_32", "r32"], label: "32 avos", n: 16, prefix: "R32", projPhase: "round_of_32" },
-  { keys: ["round_of_16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
-  { keys: ["quarter_final"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
-  { keys: ["semi_final"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
-  { keys: ["final"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
+  { keys: ["round_of_16", "r16"], label: "Oitavas", n: 8, prefix: "R16", projPhase: "round_of_16" },
+  { keys: ["quarter_final", "qf"], label: "Quartas", n: 4, prefix: "QF", projPhase: "quarter_final" },
+  { keys: ["semi_final", "sf"], label: "Semis", n: 2, prefix: "SF", projPhase: "semi_final" },
+  { keys: ["final", "f"], label: "Final", n: 1, prefix: "F", projPhase: "final" },
 ];
 
 
@@ -41,7 +43,31 @@ function ConfidencePill({ c }: { c: string }) {
   return <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${map[c] ?? map.low}`}>{labels[c] ?? c}</span>;
 }
 
-function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
+function fmtOdd(n: number | null | undefined) {
+  return n && n > 1 ? n.toFixed(2) : "—";
+}
+
+function OddsMini({ odds }: { odds?: MatchOdds | null }) {
+  if (!odds || (!odds.home_win && !odds.draw && !odds.away_win)) return null;
+  return (
+    <div className="grid grid-cols-3 gap-1 mt-1.5 text-[9px] font-mono">
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Vitória mandante">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">1</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.home_win)}</div>
+      </div>
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Empate">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">X</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.draw)}</div>
+      </div>
+      <div className="bg-muted/50 rounded px-1 py-0.5 text-center" title="Vitória visitante">
+        <div className="text-[8px] uppercase text-muted-foreground leading-none">2</div>
+        <div className="font-bold tabular-nums">{fmtOdd(odds.away_win)}</div>
+      </div>
+    </div>
+  );
+}
+
+function MatchCell({ m, placeholder, odds }: { m?: Match; placeholder: string; odds?: MatchOdds | null }) {
   if (!m) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-2 text-xs min-w-[180px]">
@@ -76,6 +102,7 @@ function MatchCell({ m, placeholder }: { m?: Match; placeholder: string }) {
           {new Date(m.match_date).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}
         </div>
       )}
+      {!finished && <OddsMini odds={odds} />}
     </Link>
   );
 }
@@ -142,6 +169,8 @@ export default function Copa2026Chaveamento() {
   const [explainOpen, setExplainOpen] = useState(false);
   const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
   const openExplain = (p: BracketProjectionRow) => { setExplainProj(p); setExplainOpen(true); };
+  const isMobile = useIsMobile();
+  const [activeStageIdx, setActiveStageIdx] = useState(1); // Oitavas por padrão no mobile
 
   const { rows: projRows, loading: loadingProj, generatedAt, regenerate } = useBracketProjection("live");
 
@@ -166,6 +195,12 @@ export default function Copa2026Chaveamento() {
     for (const r of projRows) m.set(`${r.phase}:${r.slot_code}`, r);
     return m;
   }, [projRows]);
+
+  const upcomingMatchIds = useMemo(
+    () => matches.filter((m) => m.status !== "finished").map((m) => m.id).concat(thirdPlace && thirdPlace.status !== "finished" ? [thirdPlace.id] : []),
+    [matches, thirdPlace],
+  );
+  const { data: oddsMap } = useMatchesOdds(upcomingMatchIds);
 
   const loading = loadingMatches || loadingProj;
 
@@ -238,30 +273,66 @@ export default function Copa2026Chaveamento() {
 
         {!loading && (
           <>
-            <div className="overflow-x-auto">
-              <div className="flex gap-6 min-w-max pb-4">
-                {STAGES.map((s) => {
+            {/* Mobile: tabs por fase (evita scroll horizontal invisível) */}
+            {isMobile && (
+              <div className="flex items-center gap-2 mb-3 overflow-x-auto -mx-4 px-4 pb-1">
+                <button
+                  aria-label="Fase anterior"
+                  onClick={() => setActiveStageIdx((i) => Math.max(0, i - 1))}
+                  className="p-1 rounded border border-border bg-card disabled:opacity-40"
+                  disabled={activeStageIdx === 0}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex gap-1 flex-1 overflow-x-auto">
+                  {STAGES.map((s, i) => (
+                    <button
+                      key={s.projPhase}
+                      onClick={() => setActiveStageIdx(i)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md whitespace-nowrap ${
+                        activeStageIdx === i ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  aria-label="Próxima fase"
+                  onClick={() => setActiveStageIdx((i) => Math.min(STAGES.length - 1, i + 1))}
+                  className="p-1 rounded border border-border bg-card disabled:opacity-40"
+                  disabled={activeStageIdx === STAGES.length - 1}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className={isMobile ? "" : "overflow-x-auto"}>
+              <div className={isMobile ? "flex flex-col gap-4" : "flex gap-6 min-w-max pb-4"}>
+                {STAGES.map((s, sIdx) => {
+                  if (isMobile && sIdx !== activeStageIdx) return null;
                   const list = matches.filter((m) => s.keys.includes(m.stage));
                   return (
                     <div key={s.projPhase} className="flex flex-col gap-3">
-
-                      <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>
-                      <div className="flex flex-col gap-3 justify-around h-full">
+                      {!isMobile && <h2 className="text-sm font-bold uppercase tracking-wide text-primary">{s.label}</h2>}
+                      <div className={isMobile ? "grid grid-cols-1 gap-3" : "flex flex-col gap-3 justify-around h-full"}>
                         {Array.from({ length: s.n }, (_, i) => {
                           const placeholder = `${s.prefix}-${i + 1}`;
                           const m = list.find((x) => x.bracket_position === placeholder) ?? list[i];
                           const officialHasTeams = !!(m?.home_team && m?.away_team);
                           const proj = projByPhaseSlot.get(`${s.projPhase}:${placeholder}`);
+                          const matchOdds = m ? oddsMap?.get(m.id) ?? null : null;
 
                           if (mode === "oficial") {
-                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
+                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} odds={matchOdds} />;
                           }
                           if (mode === "projecao") {
                             return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                           }
                           // misto: oficial se tiver times reais, senão projeção
                           if (officialHasTeams) {
-                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} />;
+                            return <MatchCell key={placeholder} m={m as any} placeholder={placeholder} odds={matchOdds} />;
                           }
                           return <ProjectionCell key={placeholder} p={proj} placeholder={placeholder} onExplain={openExplain} />;
                         })}
@@ -272,23 +343,25 @@ export default function Copa2026Chaveamento() {
               </div>
             </div>
 
-            <section className="mt-10">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-3">Disputa do 3º lugar</h2>
-              <div className="max-w-md">
-                {mode === "oficial" ? (
-                  <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />
-                ) : (
-                  (() => {
-                    const proj = projByPhaseSlot.get("third_place:TP-1");
-                    const officialHasTeams = !!(thirdPlace?.home_team && thirdPlace?.away_team);
-                    if (mode === "misto" && officialHasTeams) {
-                      return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" />;
-                    }
-                    return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
-                  })()
-                )}
-              </div>
-            </section>
+            {(!isMobile || activeStageIdx === STAGES.length - 1) && (
+              <section className="mt-10">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-3">Disputa do 3º lugar</h2>
+                <div className="max-w-md">
+                  {mode === "oficial" ? (
+                    <MatchCell m={thirdPlace ?? undefined} placeholder="TP" odds={thirdPlace ? oddsMap?.get(thirdPlace.id) ?? null : null} />
+                  ) : (
+                    (() => {
+                      const proj = projByPhaseSlot.get("third_place:TP-1");
+                      const officialHasTeams = !!(thirdPlace?.home_team && thirdPlace?.away_team);
+                      if (mode === "misto" && officialHasTeams) {
+                        return <MatchCell m={thirdPlace ?? undefined} placeholder="TP" odds={thirdPlace ? oddsMap?.get(thirdPlace.id) ?? null : null} />;
+                      }
+                      return <ProjectionCell p={proj} placeholder="TP-1" onExplain={openExplain} />;
+                    })()
+                  )}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>
