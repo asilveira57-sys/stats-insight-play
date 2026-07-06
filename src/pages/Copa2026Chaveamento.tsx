@@ -169,6 +169,8 @@ export default function Copa2026Chaveamento() {
   const [explainOpen, setExplainOpen] = useState(false);
   const [explainProj, setExplainProj] = useState<BracketProjectionRow | undefined>();
   const openExplain = (p: BracketProjectionRow) => { setExplainProj(p); setExplainOpen(true); };
+  const isMobile = useIsMobile();
+  const [activeStageIdx, setActiveStageIdx] = useState(1); // Oitavas por padrão no mobile
 
   const { rows: projRows, loading: loadingProj, generatedAt, regenerate } = useBracketProjection("live");
 
@@ -193,6 +195,12 @@ export default function Copa2026Chaveamento() {
     for (const r of projRows) m.set(`${r.phase}:${r.slot_code}`, r);
     return m;
   }, [projRows]);
+
+  const upcomingMatchIds = useMemo(
+    () => matches.filter((m) => m.status !== "finished").map((m) => m.id).concat(thirdPlace && thirdPlace.status !== "finished" ? [thirdPlace.id] : []),
+    [matches, thirdPlace],
+  );
+  const { data: oddsMap } = useMatchesOdds(upcomingMatchIds);
 
   const loading = loadingMatches || loadingProj;
 
