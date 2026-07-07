@@ -5,7 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Reads finished knockout matches and propagates winner (and SF loser → 3P) to next slot.
+// Reads finished knockout matches and propagates winner (and SF loser → 3P) to empty next slots.
+// API-Football knockout fixtures are official once they exist; never overwrite populated official slots.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const supabase = createClient(
@@ -27,14 +28,28 @@ Deno.serve(async (req) => {
   }
 
   let advanced = 0;
+  let skippedOfficialSlots = 0;
   for (const m of finished ?? []) {
     if (m.next_match_id && m.next_match_slot) {
       const field = m.next_match_slot === "home" ? "home_team_id" : "away_team_id";
-      await supabase
+      const { data: target } = await supabase
         .from("world_cup_2026_matches")
-        .update({ [field]: m.winner_team_id })
-        .eq("id", m.next_match_id);
-      advanced++;
+        .select("id, external_fixture_id, status, home_team_id, away_team_id")
+        .eq("id", m.next_match_id)
+        .maybeSingle();
+
+      const currentSlotValue = target?.[field as "home_team_id" | "away_team_id"];
+      const shouldPreserve = !!target?.external_fixture_id && !!currentSlotValue;
+
+      if (shouldPreserve) {
+        skippedOfficialSlots++;
+      } else if (target?.status !== "finished") {
+        await supabase
+          .from("world_cup_2026_matches")
+          .update({ [field]: m.winner_team_id })
+          .eq("id", m.next_match_id);
+        advanced++;
+      }
     }
     // SF loser → 3P
     if (m.stage === "semi_final") {
@@ -57,7 +72,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ advanced }), {
+  return new Response(JSON.stringify({ advanced, skipped_official_slots: skippedOfficialSlots }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
