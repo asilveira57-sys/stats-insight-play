@@ -1,115 +1,59 @@
-## Diagnóstico do problema
 
-A pesquisa não está “lendo” corretamente porque o motor atual mistura três comportamentos incompatíveis:
+## Diagnóstico
 
-1. **Parser de intenção fraco**
-   - “jogos do Palmeiras em casa em 2025” caiu como `entity_lookup`, não como busca de jogos/time.
-   - “últimos 5 jogos do Flamengo” virou resposta de **um único último jogo**, ignorando o número 5.
-   - “quanto ficou França x Alemanha” caiu como `open_question` e resolveu **Martina Franca** como time, uma interpretação totalmente errada.
+A base tem **duas árvores paralelas de mata-mata** para a mesma Copa 2026:
 
-2. **Resolução de entidades perigosa**
-   - O sistema usa tokens soltos demais: “França” foi usado para achar “Martina Franca”.
-   - “Palmeiras” está pegando registros duplicados/menos canônicos, como Palmeiras-SP ou até contexto incorreto de Série B.
-   - Não há camada rígida para separar: seleção, clube, competição, jogador, ano, mando, quantidade, adversário.
+| Origem | Stages | Times reais? | `bracket_position`? | `next_match_id`? |
+|---|---|---|---|---|
+| Placeholders antigos (seed) | `round_of_32`, `round_of_16`, `quarter_final`, `semi_final`, `final`, `third_place` | não | sim (R32-1…) | sim |
+| Sync real da API-Football | `r32`, `r16`, `qf`, `sf`, `final`, `third` | sim | não | não |
 
-3. **Consulta factual incompleta**
-   - Para “campeão do Brasileirão 2025”, o banco tem 306 partidas finalizadas e consegue calcular a tabela, mas o motor só consulta `team_titles`; como não há título gravado para 2025, retorna “sem resultado”.
-   - Se a tabela agregada existe por partidas, o campeão/líder deveria ser derivado quando a temporada tem dados completos ou, no mínimo, responder “líder pela tabela calculada”, não falhar seco.
+Consequências que o usuário está vendo:
+1. **Chaveamento oficial não avança para as oitavas** — `wc2026-advance-bracket` propaga vencedor via `next_match_id`, mas as linhas reais (`r16`, `qf`) não têm esse link nem `bracket_position`, então o front cai no fallback por índice e mostra "A definir".
+2. **Projeção IA aponta Brasil campeão mesmo eliminado** — `wc2026-project-bracket` lê **somente** as linhas placeholder (`round_of_32/round_of_16/…`), que estão vazias. Como ignora as linhas reais (`r16`), não sabe que o Brasil caiu e roda Monte Carlo puro da fase de grupos, onde o Brasil é favorito.
+3. **Sync-fixtures grava com stages novos** (`r32/r16/qf/sf/third`) e faz upsert por `external_fixture_id`, então nunca reaproveita o placeholder — duplicidade se perpetua a cada sync.
 
-## Plano de correção definitiva
+## Objetivo
 
-### 1. Trocar o núcleo por um parser determinístico antes da IA
-Criar uma camada local que extrai filtros sem gastar crédito:
+Uma única árvore canônica de mata-mata: linhas reais da API-Football, com `bracket_position` e `next_match_id` corretos, e projeção que respeite resultados já ocorridos.
 
-- `intent`: campeão, tabela, jogos_do_time, últimos_jogos, placar/confronto, artilheiro, entidade.
-- `year`: ano explícito ou relativo.
-- `scope`: casa/fora.
-- `limit`: “últimos 5”, “últimos 10”, etc.
-- `teams`: time principal e adversário.
-- `league`: competição.
-- `isNationalTeamQuery`: quando detectar seleções como França, Alemanha, Brasil, Argentina.
+## Passos
 
-A IA só entra como fallback controlado, nunca como primeira ferramenta para perguntas simples.
+### 1. Canonicalizar os stages (migração SQL)
+- Padronizar em `round_of_32`, `round_of_16`, `quarter_final`, `semi_final`, `final`, `third_place` (nomes que o front, o projetor e o `advance-bracket` já usam).
+- Atualizar `wc2026-sync-fixtures` para gravar nesse padrão (mapear `r32 → round_of_32`, `r16 → round_of_16`, `qf → quarter_final`, `sf → semi_final`, `third → third_place`).
+- Migração de dados: para cada linha real (`r32/r16/qf/sf/third`), renomear o stage; onde já existir um placeholder equivalente, mesclar (copiar `external_fixture_id`, times, placar, `winner_team_id` para a linha placeholder que já tem `bracket_position`+`next_match_id`) e apagar a duplicata.
+- Estratégia de match ao mesclar: por `bracket_position` quando ambos tiverem, senão por par `(home_team_id, away_team_id)` dentro do mesmo stage; caso contrário por ordem cronológica de `match_date` dentro do stage.
 
-### 2. Endurecer a resolução de entidades
-Implementar ranking mais seguro:
+### 2. Recalcular `bracket_position` e `next_match_id`
+- Rodar `wc2026-link-bracket` (já existente) após a mesclagem para garantir que toda partida real tem posição no chaveamento e link para a próxima fase.
+- Ajustá-lo se necessário para cobrir `round_of_16` inteiro (hoje 0/8 estão linkados).
 
-- Para confronto `A x B`, resolver dois times/seleções separadamente, não por tokens genéricos.
-- Bloquear matches parciais perigosos: “França” não pode bater em “Martina Franca”.
-- Priorizar times canônicos por `total_matches`, país, slug e nome normalizado.
-- Penalizar categorias U20/U17/Women e sufixos estaduais quando a consulta não menciona isso.
-- Usar aliases explícitos para seleções nacionais.
+### 3. Rodar `wc2026-advance-bracket`
+- Após o passo 2, as vitórias das oitavas já finalizadas propagam automaticamente para as quartas, populando o oficial.
+- O cron de 5 min continua rodando; a partir daqui vai funcionar sozinho.
 
-### 3. Corrigir consultas por tipo
-Implementar respostas factuais específicas:
+### 4. Corrigir o projetor
+- `wc2026-project-bracket` passa a ler somente stages canônicos (sem os `r32/r16/qf` legados).
+- Antes de simular Monte Carlo, **congelar resultados já decididos**: se um confronto do mata-mata tem `status = 'finished'` e `winner_team_id`, esse time é forçado como vencedor no bracket; times já eliminados são removidos do universo de simulação nas fases seguintes.
+- Consequência imediata: Brasil (eliminado no r16 real) deixa de aparecer como campeão projetado. A projeção passa a partir do estado real das oitavas em andamento.
 
-- **Campeão**
-  - Primeiro: `team_titles`.
-  - Segundo: `seasons.winner_team_id`.
-  - Terceiro: tabela calculada por partidas finalizadas quando não houver campeão registrado.
-  - Para temporadas atuais/incompletas: responder “líder atual pela tabela calculada”, não “campeão”, se apropriado.
+### 5. Verificação
+- Consulta SQL confirmando: 16 partidas em `round_of_32` finalizadas, 8 em `round_of_16` (6 finalizadas + 2 agendadas), 4 em `quarter_final` com times populados vindos dos vencedores das oitavas, projeção regerada sem Brasil no top.
+- Abrir `/copa-2026/chaveamento` no modo "Apenas oficial" e conferir que as oitavas mostram os resultados reais e as quartas começam a ser preenchidas.
 
-- **Jogos do time / últimos N jogos**
-  - Retornar lista de partidas, respeitando ano, mando e limite.
-  - Exemplo: “últimos 5 jogos do Flamengo” deve mostrar 5 jogos, não só um.
+## Detalhes técnicos
 
-- **Placar/confronto**
-  - Resolver dois participantes de `França x Alemanha` e buscar confrontos entre eles.
-  - Se houver múltiplos, retornar o mais recente ou pedir desambiguação quando necessário.
+**Arquivos alterados**
+- `supabase/functions/wc2026-sync-fixtures/index.ts` — mapear stages para o padrão canônico.
+- `supabase/functions/wc2026-project-bracket/index.ts` — ler stages canônicos e respeitar `winner_team_id` já definido; remover eliminados do Monte Carlo.
+- `supabase/functions/wc2026-link-bracket/index.ts` — revisar para cobrir todas as 8 oitavas.
+- Nova migração SQL: renomeia stages, mescla duplicatas, deleta órfãs.
 
-- **Tabela/classificação**
-  - Manter fallback por partidas, mas expor que a fonte é “calculada a partir dos jogos”.
+**Depois da migração**, invocar em ordem:
+1. `wc2026-sync-fixtures` (garante dados frescos no padrão novo)
+2. `wc2026-link-bracket` (posições + next_match)
+3. `wc2026-advance-bracket` (propaga vencedores)
+4. `wc2026-project-bracket` (projeção coerente)
 
-### 4. Melhorar resposta e filtros no frontend
-A tela deve mostrar filtros reais extraídos:
-
-- Competição
-- Ano/temporada
-- Time
-- Adversário
-- Mando
-- Quantidade
-- Tipo de busca
-- Fonte dos dados
-
-Também corrigir cards para renderizar:
-
-- lista de jogos;
-- confrontos diretos;
-- campeão/líder calculado;
-- mensagem clara quando realmente faltar dado.
-
-### 5. Reduzir gasto com crédito
-Remover chamadas de IA para:
-
-- classificação de intenção simples;
-- último jogo;
-- jogos de time;
-- campeão;
-- tabela;
-- placar/confronto.
-
-A IA ficará apenas para reformular resposta quando já houver dados, ou fallback raro. Isso reduz custo e evita respostas inventadas/erradas.
-
-### 6. Testar casos críticos antes de considerar pronto
-Validar diretamente na função:
-
-- `campeão do brasileirão 2025`
-- `campeão brasileirão 2022`
-- `tabela do brasileirão 2025`
-- `jogos do Palmeiras em casa em 2025`
-- `últimos 5 jogos do Flamengo`
-- `quanto ficou França x Alemanha`
-- `artilheiro da Copa de 2014`
-- `quem ganhou a Libertadores 2019`
-
-## Arquivos prováveis
-
-- `supabase/functions/intelligent-search/index.ts`
-- `src/hooks/useIntelligentSearch.ts`
-- `src/components/search/AnswerCard.tsx`
-- possivelmente um pequeno ajuste em tipos/cards de lista de jogos
-
-## Resultado esperado
-
-A pesquisa passa a funcionar como motor factual: interpreta a frase, separa filtros, consulta o banco e só responde com dados encontrados/calculados no StatBall, sem depender de IA para entender casos básicos e sem gastar crédito desnecessário.
+O que **não muda**: schema visual do front, cron jobs existentes, tabelas `wc2026_bracket_projections` / `wc2026_match_odds`, integração de odds.
