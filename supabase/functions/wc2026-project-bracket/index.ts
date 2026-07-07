@@ -560,7 +560,10 @@ Deno.serve(async (req) => {
       // Official finished match → freeze projection to real result
       if (official?.status === "finished" && official.home_score != null && official.away_score != null) {
         const hs = official.home_score, as = official.away_score;
-        const winnerId = official.winner_team_id ?? (hs > as ? finalHome.id : hs < as ? finalAway.id : null);
+        const officialWinnerIsParticipant = official.winner_team_id === finalHome.id || official.winner_team_id === finalAway.id;
+        const winnerId = officialWinnerIsParticipant
+          ? official.winner_team_id
+          : hs > as ? finalHome.id : hs < as ? finalAway.id : null;
         const row = {
           phase, slot_code: slot,
           home_team_id: finalHome.id, away_team_id: finalAway.id,
@@ -674,10 +677,99 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
+    const runMonteCarloFromOfficialKnockout = (N: number): MCAggregates => {
+      const agg: MCAggregates = {
+        champion: new Map(), final: new Map(), semi: new Map(),
+        qf: new Map(), r16: new Map(), xGF: new Map(), xGA: new Map(),
+      };
+
+      const getTeam = (id: string | null | undefined) => id ? (teamById.get(id) ?? null) : null;
+      const officialTeam = (m: any, side: "home" | "away") => getTeam(side === "home" ? m?.home_team_id : m?.away_team_id);
+      const validWinner = (winnerId: string | null | undefined, home: Team, away: Team) =>
+        winnerId === home.id || winnerId === away.id;
+
+      const playSlot = (phase: string, slot: string, fallbackHome: Team | null, fallbackAway: Team | null) => {
+        const official = koByPhaseSlot.get(`${phase}:${slot}`);
+        const home = officialTeam(official, "home") ?? fallbackHome;
+        const away = officialTeam(official, "away") ?? fallbackAway;
+        if (!home || !away) return null;
+
+        if (official?.status === "finished" && official.home_score != null && official.away_score != null) {
+          const hs = official.home_score;
+          const as = official.away_score;
+          const winnerId = validWinner(official.winner_team_id, home, away)
+            ? official.winner_team_id
+            : hs > as ? home.id : hs < as ? away.id : null;
+          if (!winnerId) return null;
+          bump(agg.xGF, home.id, hs); bump(agg.xGA, home.id, as);
+          bump(agg.xGF, away.id, as); bump(agg.xGA, away.id, hs);
+          return { winner: teamById.get(winnerId)!, loser: winnerId === home.id ? away : home };
+        }
+
+        const fH = features.get(home.id);
+        const fA = features.get(away.id);
+        if (!fH || !fA) return null;
+        const res = simulateKnockoutMatch(fH, fA);
+        bump(agg.xGF, home.id, res.hs); bump(agg.xGA, home.id, res.as);
+        bump(agg.xGF, away.id, res.as); bump(agg.xGA, away.id, res.hs);
+        return { winner: teamById.get(res.winnerId)!, loser: res.winnerId === home.id ? away : home };
+      };
+
+      const runPhase = (input: Team[], phase: string, prefix: string, count: number) => {
+        const winners: Team[] = [];
+        const losers: Team[] = [];
+        for (let i = 0; i < count; i++) {
+          const r = playSlot(phase, `${prefix}-${i + 1}`, input[i * 2] ?? null, input[i * 2 + 1] ?? null);
+          if (!r) continue;
+          winners.push(r.winner);
+          losers.push(r.loser);
+        }
+        return { winners, losers };
+      };
+
+      const hasOfficialR16 = Array.from({ length: 8 }, (_, i) => koByPhaseSlot.get(`round_of_16:R16-${i + 1}`))
+        .some((m) => m?.home_team_id && m?.away_team_id);
+
+      for (let sim = 0; sim < N; sim++) {
+        let r16Input: Team[] = [];
+
+        if (hasOfficialR16) {
+          for (let i = 0; i < 8; i++) {
+            const m = koByPhaseSlot.get(`round_of_16:R16-${i + 1}`);
+            const home = officialTeam(m, "home");
+            const away = officialTeam(m, "away");
+            if (home && away) r16Input.push(home, away);
+          }
+        } else {
+          const n = Math.min(32, all32.length);
+          const r32Input: Team[] = [];
+          for (let i = 0; i < 16; i++) {
+            const seededHome = all32[i] ? (teamById.get(all32[i].teamId) ?? null) : null;
+            const seededAway = all32[n - 1 - i] ? (teamById.get(all32[n - 1 - i].teamId) ?? null) : null;
+            const r = playSlot("round_of_32", `R32-${i + 1}`, seededHome, seededAway);
+            if (r) r32Input.push(r.winner);
+          }
+          r16Input = r32Input;
+        }
+
+        for (const t of r16Input) bump(agg.r16, t.id, 1);
+        const r16 = runPhase(r16Input, "round_of_16", "R16", 8);
+        for (const t of r16.winners) bump(agg.qf, t.id, 1);
+        const qf = runPhase(r16.winners, "quarter_final", "QF", 4);
+        for (const t of qf.winners) bump(agg.semi, t.id, 1);
+        const sf = runPhase(qf.winners, "semi_final", "SF", 2);
+        for (const t of sf.winners) bump(agg.final, t.id, 1);
+        const f = playSlot("final", "F-1", sf.winners[0] ?? null, sf.winners[1] ?? null);
+        if (f) bump(agg.champion, f.winner.id, 1);
+      }
+
+      return agg;
+    };
+
     // ─── MONTE CARLO ──────────────────────────────────────────────
     console.log(`Running Monte Carlo with ${SIMS} simulations...`);
     const t0 = Date.now();
-    const mc = runMonteCarlo({ teams, features, groupMatches, N: SIMS });
+    const mc = runMonteCarloFromOfficialKnockout(SIMS);
     console.log(`MC done in ${Date.now() - t0}ms`);
 
     // Compute xG averages per team (sum across sims / SIMS / matches per team in groups)
