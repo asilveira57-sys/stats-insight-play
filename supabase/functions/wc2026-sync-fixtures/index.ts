@@ -78,9 +78,13 @@ Deno.serve(async (req) => {
 
       const round: string = fx.league.round ?? "";
       const groupMatch = round.match(/Group ([A-L])/i);
-      const stage = /final/i.test(round) ? (round.match(/quarter/i) ? "qf" : round.match(/semi/i) ? "sf" : /3rd|third/i.test(round) ? "third" : "final")
-        : /round of 32/i.test(round) ? "r32"
-        : /round of 16/i.test(round) ? "r16"
+      const stage = /final/i.test(round)
+          ? (round.match(/quarter/i) ? "quarter_final"
+             : round.match(/semi/i) ? "semi_final"
+             : /3rd|third/i.test(round) ? "third_place"
+             : "final")
+        : /round of 32/i.test(round) ? "round_of_32"
+        : /round of 16/i.test(round) ? "round_of_16"
         : "group";
 
       const newStatus = mapStatus(fx.fixture.status.short);
