@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Trophy, Calendar, Table2, Brain, Goal, Users } from "lucide-react";
+import { Trophy, Calendar, Table2, Brain, Goal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -8,7 +8,6 @@ const TABS = [
   { href: "/brasileirao/classificacao", label: "Classificação", icon: Table2 },
   { href: "/brasileirao/palpites-ia", label: "Palpites IA", icon: Brain },
   { href: "/brasileirao/artilharia", label: "Artilharia", icon: Goal },
-  { href: "/brasileirao/times", label: "Times", icon: Users },
 ];
 
 export function BrasileiraoNav() {

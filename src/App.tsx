@@ -87,6 +87,11 @@ import SearchPostCompetition from "./pages/SearchPostCompetition";
 import PartidaDetalhe from "./pages/PartidaDetalhe";
 import Trends from "./pages/Trends";
 import Copa2026Home from "./pages/Copa2026Home";
+import BrasileiraoHome from "./pages/BrasileiraoHome";
+import BrasileiraoJogos from "./pages/BrasileiraoJogos";
+import BrasileiraoClassificacao from "./pages/BrasileiraoClassificacao";
+import BrasileiraoPalpitesIA from "./pages/BrasileiraoPalpitesIA";
+import BrasileiraoArtilharia from "./pages/BrasileiraoArtilharia";
 import Copa2026Selecoes from "./pages/Copa2026Selecoes";
 import Copa2026SelecaoDetalhe from "./pages/Copa2026SelecaoDetalhe";
 import Copa2026Jogos from "./pages/Copa2026Jogos";
@@ -141,6 +146,11 @@ const App = () => (
            <Route path="/pesquisa/:slug/competicao/:ligaSlug" element={<SearchPostCompetition />} />
            <Route path="/partida/:slug" element={<PartidaDetalhe />} />
             <Route path="/trends" element={<Trends />} />
+            <Route path="/brasileirao" element={<BrasileiraoHome />} />
+            <Route path="/brasileirao/jogos" element={<BrasileiraoJogos />} />
+            <Route path="/brasileirao/classificacao" element={<BrasileiraoClassificacao />} />
+            <Route path="/brasileirao/palpites-ia" element={<BrasileiraoPalpitesIA />} />
+            <Route path="/brasileirao/artilharia" element={<BrasileiraoArtilharia />} />
             <Route path="/copa-2026" element={<Copa2026Home />} />
             <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
             <Route path="/copa-2026/selecoes/:slug" element={<Copa2026SelecaoDetalhe />} />
