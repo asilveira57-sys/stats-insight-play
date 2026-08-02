@@ -179,12 +179,14 @@ export default function Copa2026PalpitesIA() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <StatBox label="Jogos" value={stats.total} />
-          <StatBox label="Encerrados" value={stats.finished} />
-          <StatBox label="Placar exato" value={stats.hit} hint={stats.finished ? `${Math.round(stats.hit/stats.finished*100)}% acerto` : "—"} />
-          <StatBox label="Resultado certo" value={stats.partial} hint={stats.finished ? `${Math.round(stats.partial/stats.finished*100)}% acerto` : "—"} />
+        <div className="mb-6">
+          <AuditDashboard
+            metrics={audit}
+            title="Dashboard de auditoria — Copa do Mundo 2026"
+            subtitle={`${stats.total} jogos no filtro atual · percentuais sobre jogos encerrados com palpite registrado.`}
+          />
         </div>
+
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Select value={stage} onValueChange={setStage}>
