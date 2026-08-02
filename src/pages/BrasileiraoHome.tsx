@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Trophy, Calendar, Table2, Brain, Goal, Radio, Sparkles, Target } from "lucide-react";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
+import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import {
   useBrasileiraoOverview,
   useBrasileiraoRealtime,
