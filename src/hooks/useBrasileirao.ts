@@ -171,6 +171,18 @@ export function useBrasileiraoOverview(season: number = BRASILEIRAO_SEASON) {
   const hitResult = finishedWithPalpite.filter((m) => resultHit(m)).length;
   const hitScore = finishedWithPalpite.filter((m) => scoreHit(m)).length;
 
+  const audit = computeAuditMetrics(
+    finishedWithPalpite.map((m) => ({
+      predHome: m.palpite!.placar_casa_estimado,
+      predAway: m.palpite!.placar_fora_estimado,
+      realHome: m.gols_casa,
+      realAway: m.gols_fora,
+      probHome: m.palpite!.prob_casa,
+      probDraw: m.palpite!.prob_empate,
+      probAway: m.palpite!.prob_fora,
+    }))
+  );
+
   const rodadas = Array.from(
     new Set(matches.map((m) => m.rodada).filter((r): r is number => r != null))
   ).sort((a, b) => a - b);
@@ -189,6 +201,7 @@ export function useBrasileiraoOverview(season: number = BRASILEIRAO_SEASON) {
     matches,
     rodadas,
     currentRodada,
+    audit,
     ia: {
       total: finishedWithPalpite.length,
       hitResult,
