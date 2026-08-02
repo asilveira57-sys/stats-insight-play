@@ -18,7 +18,7 @@ export default function BrasileiraoPalpitesIA() {
   return (
     <Layout>
       <Helmet>
-        <title>Palpites da IA no Brasileirão {BRASILEIRAO_SEASON} — Acertos Auditados | Statball</title>
+        <title>{`Palpites da IA no Brasileirão ${BRASILEIRAO_SEASON} — Acertos Auditados | Statball`}</title>
         <meta
           name="description"
           content={`Palpites da IA do Statball para o Brasileirão Série A ${BRASILEIRAO_SEASON} comparados jogo a jogo com o resultado oficial: taxa de acerto de resultado e de placar exato.`}
