@@ -9,22 +9,23 @@ import {
   useBrasileiraoOverview,
   useBrasileiraoRealtime,
   useBrasileiraoStandings,
-  BRASILEIRAO_SEASON,
+  useBrasileiraoSeason,
 } from "@/hooks/useBrasileirao";
 
 export default function BrasileiraoHome() {
   useBrasileiraoRealtime();
-  const o = useBrasileiraoOverview();
-  const { rows } = useBrasileiraoStandings();
+  const [season] = useBrasileiraoSeason();
+  const o = useBrasileiraoOverview(season);
+  const { rows } = useBrasileiraoStandings(season);
   const top6 = rows.slice(0, 6);
 
   return (
     <Layout>
       <Helmet>
-        <title>{`Brasileirão Série A ${BRASILEIRAO_SEASON} — Jogos, Tabela e Palpites IA | Statball`}</title>
+        <title>{`Brasileirão Série A ${season} — Jogos, Tabela e Palpites IA | Statball`}</title>
         <meta
           name="description"
-          content={`Cobertura completa do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
+          content={`Cobertura completa do Campeonato Brasileiro Série A ${season}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
         />
         <link rel="canonical" href="https://www.statball.com.br/brasileirao" />
       </Helmet>
@@ -36,7 +37,7 @@ export default function BrasileiraoHome() {
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-3">
               <Trophy className="w-4 h-4" /> Campeonato Brasileiro Série A
             </div>
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">Brasileirão {BRASILEIRAO_SEASON}</h1>
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">Brasileirão {season}</h1>
             <p className="text-muted-foreground text-lg mb-8">
               20 clubes · 38 rodadas · palpites da IA auditados contra o resultado oficial
             </p>

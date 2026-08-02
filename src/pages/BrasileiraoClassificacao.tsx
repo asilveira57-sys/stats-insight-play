@@ -3,22 +3,23 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
-import { useBrasileiraoStandings, useBrasileiraoRealtime, BRASILEIRAO_SEASON } from "@/hooks/useBrasileirao";
+import { useBrasileiraoStandings, useBrasileiraoRealtime, useBrasileiraoSeason } from "@/hooks/useBrasileirao";
 
 const zone = (i: number) =>
   i < 4 ? "border-l-2 border-l-emerald-500" : i < 6 ? "border-l-2 border-l-sky-500" : i >= 16 ? "border-l-2 border-l-destructive" : "";
 
 export default function BrasileiraoClassificacao() {
   useBrasileiraoRealtime();
-  const { rows, isLoading } = useBrasileiraoStandings();
+  const [season] = useBrasileiraoSeason();
+  const { rows, isLoading } = useBrasileiraoStandings(season);
 
   return (
     <Layout>
       <Helmet>
-        <title>{`Tabela do Brasileirão ${BRASILEIRAO_SEASON} — Classificação Atualizada | Statball`}</title>
+        <title>{`Tabela do Brasileirão ${season} — Classificação Atualizada | Statball`}</title>
         <meta
           name="description"
-          content={`Classificação do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} calculada a partir dos resultados oficiais: pontos, vitórias, saldo de gols, aproveitamento e últimos 5 jogos.`}
+          content={`Classificação do Campeonato Brasileiro Série A ${season} calculada a partir dos resultados oficiais: pontos, vitórias, saldo de gols, aproveitamento e últimos 5 jogos.`}
         />
         <link rel="canonical" href="https://www.statball.com.br/brasileirao/classificacao" />
       </Helmet>
@@ -27,7 +28,7 @@ export default function BrasileiraoClassificacao() {
 
       <div className="container mx-auto px-4 py-8 space-y-6">
         <header>
-          <h1 className="text-3xl font-bold mb-2">Classificação do Brasileirão {BRASILEIRAO_SEASON}</h1>
+          <h1 className="text-3xl font-bold mb-2">Classificação do Brasileirão {season}</h1>
           <p className="text-muted-foreground">
             Tabela recalculada em tempo real a partir das partidas encerradas registradas no banco do Statball.
           </p>
