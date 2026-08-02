@@ -1,11 +1,50 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRecords } from "@/lib/supabaseHelpers";
+import { computeAuditMetrics } from "@/lib/auditMetrics";
 
 export const BRASILEIRAO_SLUG = "campeonato-brasileiro-serie-a";
 export const BRASILEIRAO_SEASON = 2026;
+
+/** Temporada selecionada via ?temporada=YYYY (default: temporada corrente). */
+export function useBrasileiraoSeason(): [number, (y: number) => void] {
+  const [params, setParams] = useSearchParams();
+  const raw = Number(params.get("temporada"));
+  const season = Number.isFinite(raw) && raw > 1950 && raw < 2100 ? raw : BRASILEIRAO_SEASON;
+  const setSeason = (y: number) => {
+    const next = new URLSearchParams(params);
+    if (y === BRASILEIRAO_SEASON) next.delete("temporada");
+    else next.set("temporada", String(y));
+    setParams(next, { replace: false });
+  };
+  return [season, setSeason];
+}
+
+/** Anos disponíveis para a liga (derivados da primeira e última partida no banco). */
+export function useBrasileiraoSeasons() {
+  const { data: league } = useBrasileiraoLeague();
+  return useQuery({
+    enabled: !!league?.id,
+    queryKey: ["brasileirao", "seasons", league?.id],
+    staleTime: 1000 * 60 * 60,
+    queryFn: async (): Promise<number[]> => {
+      const base = () => supabase.from("partidas").select("data").eq("liga_id", league!.id);
+      const [{ data: first }, { data: last }] = await Promise.all([
+        base().order("data", { ascending: true }).limit(1),
+        base().order("data", { ascending: false }).limit(1),
+      ]);
+      const y0 = first?.[0]?.data ? new Date(first[0].data).getUTCFullYear() : BRASILEIRAO_SEASON;
+      const y1 = last?.[0]?.data ? new Date(last[0].data).getUTCFullYear() : BRASILEIRAO_SEASON;
+      const years: number[] = [];
+      for (let y = Math.max(y1, BRASILEIRAO_SEASON); y >= y0; y--) years.push(y);
+      return years;
+    },
+  });
+}
+
 
 export type BRTeam = {
   id: string;
