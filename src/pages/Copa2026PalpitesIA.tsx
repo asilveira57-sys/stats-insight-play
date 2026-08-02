@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, Download, Target, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
+import { AuditDashboard } from "@/components/audit/AuditDashboard";
+import { computeAuditMetrics } from "@/lib/auditMetrics";
 
 
 const STAGE_LABELS: Record<string, string> = {
@@ -133,17 +135,23 @@ export default function Copa2026PalpitesIA() {
     });
   }, [data, stage, group, conf, status]);
 
-  const stats = useMemo(() => {
-    const total = filtered.length;
-    const hit = filtered.filter(r => r.status === "finished" && r.home_score === r.predicted_home_score && r.away_score === r.predicted_away_score).length;
-    const partial = filtered.filter(r => r.status === "finished" && (
-      (r.home_score! > r.away_score! && r.predicted_home_score! > r.predicted_away_score!) ||
-      (r.home_score! < r.away_score! && r.predicted_home_score! < r.predicted_away_score!) ||
-      (r.home_score! === r.away_score! && r.predicted_home_score! === r.predicted_away_score!)
-    )).length;
-    const finished = filtered.filter(r => r.status === "finished").length;
-    return { total, hit, partial, finished };
-  }, [filtered]);
+  const audit = useMemo(
+    () =>
+      computeAuditMetrics(
+        filtered
+          .filter((r) => r.status === "finished")
+          .map((r) => ({
+            predHome: r.predicted_home_score,
+            predAway: r.predicted_away_score,
+            realHome: r.home_score,
+            realAway: r.away_score,
+          }))
+      ),
+    [filtered]
+  );
+
+  const stats = useMemo(() => ({ total: filtered.length }), [filtered]);
+
 
   const groups = useMemo(() => Array.from(new Set((data ?? []).map(r => r.group_letter).filter(Boolean) as string[])).sort(), [data]);
 
@@ -173,12 +181,14 @@ export default function Copa2026PalpitesIA() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <StatBox label="Jogos" value={stats.total} />
-          <StatBox label="Encerrados" value={stats.finished} />
-          <StatBox label="Placar exato" value={stats.hit} hint={stats.finished ? `${Math.round(stats.hit/stats.finished*100)}% acerto` : "—"} />
-          <StatBox label="Resultado certo" value={stats.partial} hint={stats.finished ? `${Math.round(stats.partial/stats.finished*100)}% acerto` : "—"} />
+        <div className="mb-6">
+          <AuditDashboard
+            metrics={audit}
+            title="Dashboard de auditoria — Copa do Mundo 2026"
+            subtitle={`${stats.total} jogos no filtro atual · percentuais sobre jogos encerrados com palpite registrado.`}
+          />
         </div>
+
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Select value={stage} onValueChange={setStage}>

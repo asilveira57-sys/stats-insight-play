@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
-import { useBrasileiraoOverview, useBrasileiraoRealtime, BRASILEIRAO_SEASON } from "@/hooks/useBrasileirao";
+import { useBrasileiraoOverview, useBrasileiraoRealtime, useBrasileiraoSeason } from "@/hooks/useBrasileirao";
 
 type StatusFilter = "todos" | "scheduled" | "live" | "finished";
 
 export default function BrasileiraoJogos() {
   useBrasileiraoRealtime();
-  const { matches, rodadas, currentRodada, isLoading } = useBrasileiraoOverview();
+  const [season] = useBrasileiraoSeason();
+  const { matches, rodadas, currentRodada, isLoading } = useBrasileiraoOverview(season);
   const [rodada, setRodada] = useState<number | "todas">("todas");
   const [status, setStatus] = useState<StatusFilter>("todos");
 
@@ -30,10 +31,10 @@ export default function BrasileiraoJogos() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Jogos do Brasileirão ${BRASILEIRAO_SEASON} — Tabela de Rodadas | Statball`}</title>
+        <title>{`Jogos do Brasileirão ${season} — Tabela de Rodadas | Statball`}</title>
         <meta
           name="description"
-          content={`Todos os jogos do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} rodada por rodada, com placar oficial, status ao vivo e palpite da IA em cada partida.`}
+          content={`Todos os jogos do Campeonato Brasileiro Série A ${season} rodada por rodada, com placar oficial, status ao vivo e palpite da IA em cada partida.`}
         />
         <link rel="canonical" href="https://www.statball.com.br/brasileirao/jogos" />
       </Helmet>
@@ -42,7 +43,7 @@ export default function BrasileiraoJogos() {
 
       <div className="container mx-auto px-4 py-8 space-y-6">
         <header>
-          <h1 className="text-3xl font-bold mb-2">Jogos do Brasileirão {BRASILEIRAO_SEASON}</h1>
+          <h1 className="text-3xl font-bold mb-2">Jogos do Brasileirão {season}</h1>
           <p className="text-muted-foreground">
             Filtre por rodada e situação. Cada card mostra o placar oficial e o palpite da IA registrado antes do jogo.
           </p>

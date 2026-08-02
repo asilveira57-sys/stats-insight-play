@@ -5,26 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Trophy, Calendar, Table2, Brain, Goal, Radio, Sparkles, Target } from "lucide-react";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
+import { AuditDashboard } from "@/components/audit/AuditDashboard";
 import {
   useBrasileiraoOverview,
   useBrasileiraoRealtime,
   useBrasileiraoStandings,
-  BRASILEIRAO_SEASON,
+  useBrasileiraoSeason,
 } from "@/hooks/useBrasileirao";
 
 export default function BrasileiraoHome() {
   useBrasileiraoRealtime();
-  const o = useBrasileiraoOverview();
-  const { rows } = useBrasileiraoStandings();
+  const [season] = useBrasileiraoSeason();
+  const o = useBrasileiraoOverview(season);
+  const { rows } = useBrasileiraoStandings(season);
   const top6 = rows.slice(0, 6);
 
   return (
     <Layout>
       <Helmet>
-        <title>{`Brasileirão Série A ${BRASILEIRAO_SEASON} — Jogos, Tabela e Palpites IA | Statball`}</title>
+        <title>{`Brasileirão Série A ${season} — Jogos, Tabela e Palpites IA | Statball`}</title>
         <meta
           name="description"
-          content={`Cobertura completa do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
+          content={`Cobertura completa do Campeonato Brasileiro Série A ${season}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
         />
         <link rel="canonical" href="https://www.statball.com.br/brasileirao" />
       </Helmet>
@@ -36,7 +38,7 @@ export default function BrasileiraoHome() {
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-3">
               <Trophy className="w-4 h-4" /> Campeonato Brasileiro Série A
             </div>
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">Brasileirão {BRASILEIRAO_SEASON}</h1>
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">Brasileirão {season}</h1>
             <p className="text-muted-foreground text-lg mb-8">
               20 clubes · 38 rodadas · palpites da IA auditados contra o resultado oficial
             </p>
@@ -53,12 +55,16 @@ export default function BrasileiraoHome() {
       <BrasileiraoNav />
 
       <div className="container mx-auto px-4 py-10 space-y-12">
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Rodada atual" value={o.currentRodada ? `${o.currentRodada}ª` : "—"} />
-          <Stat label="Jogos analisados pela IA" value={String(o.ia.total)} />
-          <Stat label="Acerto de resultado" value={`${o.ia.accResult.toFixed(1)}%`} highlight />
-          <Stat label="Placar exato" value={`${o.ia.accScore.toFixed(1)}%`} />
+        <section className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Stat label="Rodada atual" value={o.currentRodada ? `${o.currentRodada}ª` : "—"} />
+            <Stat label="Jogos analisados pela IA" value={String(o.audit.total)} />
+            <Stat label="Acerto de resultado" value={`${o.audit.accResult.toFixed(1)}%`} highlight />
+            <Stat label="Dupla chance" value={`${o.audit.accDoubleChance.toFixed(1)}%`} />
+          </div>
+          <AuditDashboard metrics={o.audit} />
         </section>
+
 
         {o.live.length > 0 && (
           <section>

@@ -2,19 +2,20 @@ import { Layout } from "@/components/layout/Layout";
 import { Helmet } from "react-helmet-async";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
-import { useBrasileiraoArtilharia, BRASILEIRAO_SEASON } from "@/hooks/useBrasileirao";
+import { useBrasileiraoArtilharia, useBrasileiraoSeason } from "@/hooks/useBrasileirao";
 
 export default function BrasileiraoArtilharia() {
-  const { data, isLoading } = useBrasileiraoArtilharia();
+  const [season] = useBrasileiraoSeason();
+  const { data, isLoading } = useBrasileiraoArtilharia(season);
   const rows = data ?? [];
 
   return (
     <Layout>
       <Helmet>
-        <title>{`Artilharia do Brasileirão ${BRASILEIRAO_SEASON} — Goleadores | Statball`}</title>
+        <title>{`Artilharia do Brasileirão ${season} — Goleadores | Statball`}</title>
         <meta
           name="description"
-          content={`Artilheiros do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}
+          content={`Artilheiros do Campeonato Brasileiro Série A ${season} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}
         />
         <link rel="canonical" href="https://www.statball.com.br/brasileirao/artilharia" />
       </Helmet>
@@ -23,7 +24,7 @@ export default function BrasileiraoArtilharia() {
 
       <div className="container mx-auto px-4 py-8 space-y-6">
         <header>
-          <h1 className="text-3xl font-bold mb-2">Artilharia do Brasileirão {BRASILEIRAO_SEASON}</h1>
+          <h1 className="text-3xl font-bold mb-2">Artilharia do Brasileirão {season}</h1>
           <p className="text-muted-foreground">
             Ranking construído a partir dos gols registrados jogo a jogo no banco do Statball — sem estimativas.
           </p>
