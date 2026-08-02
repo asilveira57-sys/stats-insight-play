@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, Download, Target, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCopa2026Realtime } from "@/hooks/useCopa2026Realtime";
+import { AuditDashboard } from "@/components/audit/AuditDashboard";
+import { computeAuditMetrics } from "@/lib/auditMetrics";
 
 
 const STAGE_LABELS: Record<string, string> = {
