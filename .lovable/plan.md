@@ -1,59 +1,38 @@
+# Plano — Auditoria da IA, temporadas e odds
 
-## Diagnóstico
+Dividido em 3 tarefas independentes, executadas em sequência com poucas chamadas (para gastar menos crédito): cada tarefa é uma rodada de edições em lote + uma verificação.
 
-A base tem **duas árvores paralelas de mata-mata** para a mesma Copa 2026:
+## Fatos verificados no banco
+- Brasileirão Série A (`campeonato-brasileiro-serie-a`) tem partidas de 2012 a 2026: 2026 = 213 (198 encerradas), 2025 = 306, 2024 = 306, 2023 = 306, e anos anteriores parciais.
+- Existem 4.660 palpites da IA em partidas do Brasileirão antes de 2026 — ou seja, o histórico auditado de temporadas passadas já é possível sem nova geração de dados.
+- Odds hoje existem apenas para a Copa (tabela `wc2026_match_odds`). Não há tabela de odds para `partidas` — precisa ser criada.
 
-| Origem | Stages | Times reais? | `bracket_position`? | `next_match_id`? |
-|---|---|---|---|---|
-| Placeholders antigos (seed) | `round_of_32`, `round_of_16`, `quarter_final`, `semi_final`, `final`, `third_place` | não | sim (R32-1…) | sim |
-| Sync real da API-Football | `r32`, `r16`, `qf`, `sf`, `final`, `third` | sim | não | não |
+## Tarefa 1 — Dashboard de auditoria da IA (Brasileirão + Copa)
+Um único componente reutilizável `AuditDashboard`, alimentado por dados já carregados no cliente (sem novas consultas).
 
-Consequências que o usuário está vendo:
-1. **Chaveamento oficial não avança para as oitavas** — `wc2026-advance-bracket` propaga vencedor via `next_match_id`, mas as linhas reais (`r16`, `qf`) não têm esse link nem `bracket_position`, então o front cai no fallback por índice e mostra "A definir".
-2. **Projeção IA aponta Brasil campeão mesmo eliminado** — `wc2026-project-bracket` lê **somente** as linhas placeholder (`round_of_32/round_of_16/…`), que estão vazias. Como ignora as linhas reais (`r16`), não sabe que o Brasil caiu e roda Monte Carlo puro da fase de grupos, onde o Brasil é favorito.
-3. **Sync-fixtures grava com stages novos** (`r32/r16/qf/sf/third`) e faz upsert por `external_fixture_id`, então nunca reaproveita o placeholder — duplicidade se perpetua a cada sync.
+Métricas por campeonato/temporada, sobre jogos encerrados com palpite:
+- **Acerto de resultado (1X2)**: tendência da IA = resultado oficial.
+- **Dupla chance**: acerto se o resultado oficial estiver entre as duas opções mais prováveis da IA (ex.: IA aponta Casa → acerta em Casa ou Empate). Métrica estatística, sem linguagem de aposta.
+- **Erro real**: quando nem a dupla chance acertaria.
+- **Placar exato**.
+- Contagem de jogos auditados + barra de distribuição visual.
 
-## Objetivo
+Aplicado em `/brasileirao/palpites-ia` (substituindo os 4 cartões atuais) e na página equivalente da Copa 2026 (`Copa2026PalpitesIA`), com a mesma lógica de cálculo centralizada em `useBrasileirao`/util compartilhado.
 
-Uma única árvore canônica de mata-mata: linhas reais da API-Football, com `bracket_position` e `next_match_id` corretos, e projeção que respeite resultados já ocorridos.
+## Tarefa 2 — Seletor de temporada por campeonato
+- Adicionar estado de temporada ao hub do Brasileirão (contexto leve via query param `?temporada=2025`), com um `<Select>` de anos.
+- Os anos vêm de uma consulta única e barata (anos distintos com partidas da liga), então nada é hardcoded.
+- Todas as páginas do hub (visão geral, jogos, classificação, palpites IA, artilharia) passam a respeitar a temporada escolhida — os hooks já recebem `season`.
+- Botão "Atualizar" ao lado do seletor que invalida o cache e refaz a busca da temporada selecionada.
 
-## Passos
+## Tarefa 3 — Odds pré-jogo e histórica nos jogos
+- Migração: nova tabela `match_odds` genérica (partida_id, casa de aposta, 1X2, over/under, probabilidades implícitas, snapshot pré-jogo, origem, timestamps) com GRANTs, RLS de leitura pública e escrita restrita a admin/serviço.
+- Nova edge function `sync-match-odds`: busca odds na API-Football usando o mapeamento de fixture já existente (`external_id_map`), grava as odds da Bet365/Betfair quando disponíveis e mantém o snapshot pré-jogo (não sobrescreve depois do início do jogo). Cobre jogos futuros e, quando a API retornar, odds históricas de jogos passados.
+- Exibição: bloco compacto de odds (1 / X / 2) nos cartões de jogo do Brasileirão e na página da partida, com rótulo "pré-jogo" ou "histórica". Quando não houver odds, nada é exibido (sem placeholder inventado).
+- Observação: a API-Football está sujeita a quota/suspensão; a função registra falhas e não sobrescreve dados com valores vazios.
 
-### 1. Canonicalizar os stages (migração SQL)
-- Padronizar em `round_of_32`, `round_of_16`, `quarter_final`, `semi_final`, `final`, `third_place` (nomes que o front, o projetor e o `advance-bracket` já usam).
-- Atualizar `wc2026-sync-fixtures` para gravar nesse padrão (mapear `r32 → round_of_32`, `r16 → round_of_16`, `qf → quarter_final`, `sf → semi_final`, `third → third_place`).
-- Migração de dados: para cada linha real (`r32/r16/qf/sf/third`), renomear o stage; onde já existir um placeholder equivalente, mesclar (copiar `external_fixture_id`, times, placar, `winner_team_id` para a linha placeholder que já tem `bracket_position`+`next_match_id`) e apagar a duplicata.
-- Estratégia de match ao mesclar: por `bracket_position` quando ambos tiverem, senão por par `(home_team_id, away_team_id)` dentro do mesmo stage; caso contrário por ordem cronológica de `match_date` dentro do stage.
-
-### 2. Recalcular `bracket_position` e `next_match_id`
-- Rodar `wc2026-link-bracket` (já existente) após a mesclagem para garantir que toda partida real tem posição no chaveamento e link para a próxima fase.
-- Ajustá-lo se necessário para cobrir `round_of_16` inteiro (hoje 0/8 estão linkados).
-
-### 3. Rodar `wc2026-advance-bracket`
-- Após o passo 2, as vitórias das oitavas já finalizadas propagam automaticamente para as quartas, populando o oficial.
-- O cron de 5 min continua rodando; a partir daqui vai funcionar sozinho.
-
-### 4. Corrigir o projetor
-- `wc2026-project-bracket` passa a ler somente stages canônicos (sem os `r32/r16/qf` legados).
-- Antes de simular Monte Carlo, **congelar resultados já decididos**: se um confronto do mata-mata tem `status = 'finished'` e `winner_team_id`, esse time é forçado como vencedor no bracket; times já eliminados são removidos do universo de simulação nas fases seguintes.
-- Consequência imediata: Brasil (eliminado no r16 real) deixa de aparecer como campeão projetado. A projeção passa a partir do estado real das oitavas em andamento.
-
-### 5. Verificação
-- Consulta SQL confirmando: 16 partidas em `round_of_32` finalizadas, 8 em `round_of_16` (6 finalizadas + 2 agendadas), 4 em `quarter_final` com times populados vindos dos vencedores das oitavas, projeção regerada sem Brasil no top.
-- Abrir `/copa-2026/chaveamento` no modo "Apenas oficial" e conferir que as oitavas mostram os resultados reais e as quartas começam a ser preenchidas.
-
-## Detalhes técnicos
-
-**Arquivos alterados**
-- `supabase/functions/wc2026-sync-fixtures/index.ts` — mapear stages para o padrão canônico.
-- `supabase/functions/wc2026-project-bracket/index.ts` — ler stages canônicos e respeitar `winner_team_id` já definido; remover eliminados do Monte Carlo.
-- `supabase/functions/wc2026-link-bracket/index.ts` — revisar para cobrir todas as 8 oitavas.
-- Nova migração SQL: renomeia stages, mescla duplicatas, deleta órfãs.
-
-**Depois da migração**, invocar em ordem:
-1. `wc2026-sync-fixtures` (garante dados frescos no padrão novo)
-2. `wc2026-link-bracket` (posições + next_match)
-3. `wc2026-advance-bracket` (propaga vencedores)
-4. `wc2026-project-bracket` (projeção coerente)
-
-O que **não muda**: schema visual do front, cron jobs existentes, tabelas `wc2026_bracket_projections` / `wc2026_match_odds`, integração de odds.
+## Notas técnicas
+- Nenhuma métrica é estimada: tudo derivado de `partidas` (placar oficial) + `palpites` (registro pré-jogo).
+- A política de "zero limits" é mantida (paginação via `fetchAllRecords`).
+- Fuso UTC-3 preservado na exibição.
+- Odds nunca aparecem como recomendação de aposta — apenas referência de mercado ao lado da métrica estatística.
