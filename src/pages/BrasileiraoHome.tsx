@@ -54,12 +54,16 @@ export default function BrasileiraoHome() {
       <BrasileiraoNav />
 
       <div className="container mx-auto px-4 py-10 space-y-12">
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Rodada atual" value={o.currentRodada ? `${o.currentRodada}ª` : "—"} />
-          <Stat label="Jogos analisados pela IA" value={String(o.ia.total)} />
-          <Stat label="Acerto de resultado" value={`${o.ia.accResult.toFixed(1)}%`} highlight />
-          <Stat label="Placar exato" value={`${o.ia.accScore.toFixed(1)}%`} />
+        <section className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Stat label="Rodada atual" value={o.currentRodada ? `${o.currentRodada}ª` : "—"} />
+            <Stat label="Jogos analisados pela IA" value={String(o.audit.total)} />
+            <Stat label="Acerto de resultado" value={`${o.audit.accResult.toFixed(1)}%`} highlight />
+            <Stat label="Dupla chance" value={`${o.audit.accDoubleChance.toFixed(1)}%`} />
+          </div>
+          <AuditDashboard metrics={o.audit} />
         </section>
+
 
         {o.live.length > 0 && (
           <section>
