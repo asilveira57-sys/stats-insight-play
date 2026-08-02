@@ -133,17 +133,23 @@ export default function Copa2026PalpitesIA() {
     });
   }, [data, stage, group, conf, status]);
 
-  const stats = useMemo(() => {
-    const total = filtered.length;
-    const hit = filtered.filter(r => r.status === "finished" && r.home_score === r.predicted_home_score && r.away_score === r.predicted_away_score).length;
-    const partial = filtered.filter(r => r.status === "finished" && (
-      (r.home_score! > r.away_score! && r.predicted_home_score! > r.predicted_away_score!) ||
-      (r.home_score! < r.away_score! && r.predicted_home_score! < r.predicted_away_score!) ||
-      (r.home_score! === r.away_score! && r.predicted_home_score! === r.predicted_away_score!)
-    )).length;
-    const finished = filtered.filter(r => r.status === "finished").length;
-    return { total, hit, partial, finished };
-  }, [filtered]);
+  const audit = useMemo(
+    () =>
+      computeAuditMetrics(
+        filtered
+          .filter((r) => r.status === "finished")
+          .map((r) => ({
+            predHome: r.predicted_home_score,
+            predAway: r.predicted_away_score,
+            realHome: r.home_score,
+            realAway: r.away_score,
+          }))
+      ),
+    [filtered]
+  );
+
+  const stats = useMemo(() => ({ total: filtered.length }), [filtered]);
+
 
   const groups = useMemo(() => Array.from(new Set((data ?? []).map(r => r.group_letter).filter(Boolean) as string[])).sort(), [data]);
 
