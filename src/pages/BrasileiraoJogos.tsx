@@ -30,7 +30,7 @@ export default function BrasileiraoJogos() {
   return (
     <Layout>
       <Helmet>
-        <title>Jogos do Brasileirão {BRASILEIRAO_SEASON} — Tabela de Rodadas | Statball</title>
+        <title>{`Jogos do Brasileirão ${BRASILEIRAO_SEASON} — Tabela de Rodadas | Statball`}</title>
         <meta
           name="description"
           content={`Todos os jogos do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} rodada por rodada, com placar oficial, status ao vivo e palpite da IA em cada partida.`}

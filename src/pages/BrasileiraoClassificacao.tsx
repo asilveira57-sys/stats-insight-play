@@ -15,7 +15,7 @@ export default function BrasileiraoClassificacao() {
   return (
     <Layout>
       <Helmet>
-        <title>Tabela do Brasileirão {BRASILEIRAO_SEASON} — Classificação Atualizada | Statball</title>
+        <title>{`Tabela do Brasileirão ${BRASILEIRAO_SEASON} — Classificação Atualizada | Statball`}</title>
         <meta
           name="description"
           content={`Classificação do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} calculada a partir dos resultados oficiais: pontos, vitórias, saldo de gols, aproveitamento e últimos 5 jogos.`}

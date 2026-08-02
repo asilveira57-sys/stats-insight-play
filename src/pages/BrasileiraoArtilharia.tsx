@@ -11,7 +11,7 @@ export default function BrasileiraoArtilharia() {
   return (
     <Layout>
       <Helmet>
-        <title>Artilharia do Brasileirão {BRASILEIRAO_SEASON} — Goleadores | Statball</title>
+        <title>{`Artilharia do Brasileirão ${BRASILEIRAO_SEASON} — Goleadores | Statball`}</title>
         <meta
           name="description"
           content={`Artilheiros do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}

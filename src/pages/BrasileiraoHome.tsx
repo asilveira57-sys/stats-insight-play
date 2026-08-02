@@ -21,7 +21,7 @@ export default function BrasileiraoHome() {
   return (
     <Layout>
       <Helmet>
-        <title>Brasileirão Série A {BRASILEIRAO_SEASON} — Jogos, Tabela e Palpites IA | Statball</title>
+        <title>{`Brasileirão Série A ${BRASILEIRAO_SEASON} — Jogos, Tabela e Palpites IA | Statball`}</title>
         <meta
           name="description"
           content={`Cobertura completa do Campeonato Brasileiro Série A ${BRASILEIRAO_SEASON}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
