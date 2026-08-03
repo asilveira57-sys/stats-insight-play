@@ -205,8 +205,15 @@ export default function PartidaDetalhe() {
             </CardContent>
           </Card>
         </section>
+        {odds && (
+          <section aria-labelledby="odds" className="space-y-3">
+            <h2 id="odds" className="text-xl font-display font-semibold">Odds do jogo</h2>
+            <PartidaOddsBlock odds={odds} homeName={partida.casa?.nome} awayName={partida.fora?.nome} />
+          </section>
+        )}
 
         <section aria-labelledby="gols" className="space-y-3">
+
           <h2 id="gols" className="text-xl font-display font-semibold flex items-center gap-2"><GoalIcon className="h-5 w-5 text-primary" /> Gols</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card><CardContent className="pt-5">
