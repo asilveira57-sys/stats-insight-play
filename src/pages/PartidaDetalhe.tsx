@@ -7,6 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, Loader2, CalendarDays, Trophy, Goal as GoalIcon, Square, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePartidaOdds } from "@/hooks/usePartidaOdds";
+import { PartidaOddsBlock } from "@/components/odds/PartidaOddsBlock";
+
 
 const BASE = "https://www.statball.com.br";
 
