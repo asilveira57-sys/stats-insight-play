@@ -81,7 +81,10 @@ export function BrasileiraoMatchCard({ match, odds }: { match: BRMatch; odds?: P
         </div>
       </div>
 
+      {odds && <OddsMini odds={odds} />}
+
       <div className="mt-auto rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs space-y-1.5">
+
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1 font-semibold text-primary">
             <Brain className="w-3.5 h-3.5" /> Palpite da IA
