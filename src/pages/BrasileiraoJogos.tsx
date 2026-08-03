@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
 import { useBrasileiraoOverview, useBrasileiraoRealtime, useBrasileiraoSeason } from "@/hooks/useBrasileirao";
+import { usePartidasOdds } from "@/hooks/usePartidaOdds";
+
 
 type StatusFilter = "todos" | "scheduled" | "live" | "finished";
 
