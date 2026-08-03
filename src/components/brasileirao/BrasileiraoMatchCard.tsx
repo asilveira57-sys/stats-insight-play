@@ -29,7 +29,7 @@ function confBadge(c: number | null | undefined) {
 
 const outcomeLabel = (o: string | null) => (o === "casa" ? "Casa" : o === "fora" ? "Fora" : o === "empate" ? "Empate" : "—");
 
-export function BrasileiraoMatchCard({ match }: { match: BRMatch }) {
+export function BrasileiraoMatchCard({ match, odds }: { match: BRMatch; odds?: PartidaOdds | null }) {
   const isLive = match.status === "live";
   const isFinished = match.status === "finished";
   const p = match.palpite;
