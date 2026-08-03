@@ -92,7 +92,7 @@ export default function BrasileiraoJogos() {
               {effectiveRodada != null && ` na ${effectiveRodada}ª rodada`}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filtered.map((m) => <BrasileiraoMatchCard key={m.id} match={m} />)}
+              {filtered.map((m) => <BrasileiraoMatchCard key={m.id} match={m} odds={oddsMap?.get(m.id)} />)}
             </div>
           </>
         )}
