@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BrasileiraoNav } from "@/components/brasileirao/BrasileiraoNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
 import { useBrasileiraoOverview, useBrasileiraoRealtime, useBrasileiraoSeason } from "@/hooks/useBrasileirao";
+import { usePartidasOdds } from "@/hooks/usePartidaOdds";
+
 
 type StatusFilter = "todos" | "scheduled" | "live" | "finished";
 
@@ -27,6 +29,9 @@ export default function BrasileiraoJogos() {
       ),
     [matches, effectiveRodada, status]
   );
+
+  const { data: oddsMap } = usePartidasOdds(filtered.map((m) => m.id));
+
 
   return (
     <Layout>
@@ -87,7 +92,7 @@ export default function BrasileiraoJogos() {
               {effectiveRodada != null && ` na ${effectiveRodada}ª rodada`}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filtered.map((m) => <BrasileiraoMatchCard key={m.id} match={m} />)}
+              {filtered.map((m) => <BrasileiraoMatchCard key={m.id} match={m} odds={oddsMap?.get(m.id)} />)}
             </div>
           </>
         )}

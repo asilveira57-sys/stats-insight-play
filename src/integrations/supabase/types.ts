@@ -4031,6 +4031,83 @@ export type Database = {
           },
         ]
       }
+      match_odds: {
+        Row: {
+          away_win: number | null
+          bookmaker: string
+          btts_no: number | null
+          btts_yes: number | null
+          created_at: string
+          draw: number | null
+          external_fixture_id: number | null
+          fetched_at: string
+          home_win: number | null
+          id: string
+          implied_prob_away: number | null
+          implied_prob_draw: number | null
+          implied_prob_home: number | null
+          is_pregame: boolean
+          over_2_5: number | null
+          partida_id: string
+          raw: Json | null
+          source: string
+          under_2_5: number | null
+          updated_at: string
+        }
+        Insert: {
+          away_win?: number | null
+          bookmaker?: string
+          btts_no?: number | null
+          btts_yes?: number | null
+          created_at?: string
+          draw?: number | null
+          external_fixture_id?: number | null
+          fetched_at?: string
+          home_win?: number | null
+          id?: string
+          implied_prob_away?: number | null
+          implied_prob_draw?: number | null
+          implied_prob_home?: number | null
+          is_pregame?: boolean
+          over_2_5?: number | null
+          partida_id: string
+          raw?: Json | null
+          source?: string
+          under_2_5?: number | null
+          updated_at?: string
+        }
+        Update: {
+          away_win?: number | null
+          bookmaker?: string
+          btts_no?: number | null
+          btts_yes?: number | null
+          created_at?: string
+          draw?: number | null
+          external_fixture_id?: number | null
+          fetched_at?: string
+          home_win?: number | null
+          id?: string
+          implied_prob_away?: number | null
+          implied_prob_draw?: number | null
+          implied_prob_home?: number | null
+          is_pregame?: boolean
+          over_2_5?: number | null
+          partida_id?: string
+          raw?: Json | null
+          source?: string
+          under_2_5?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_odds_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       model_versions: {
         Row: {
           created_at: string

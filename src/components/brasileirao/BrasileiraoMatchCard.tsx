@@ -2,7 +2,10 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Brain, Check, X, Radio, Calendar } from "lucide-react";
+import { OddsMini } from "@/components/odds/PartidaOddsBlock";
+import type { PartidaOdds } from "@/hooks/usePartidaOdds";
 import { predictedOutcome, realOutcome, resultHit, scoreHit, type BRMatch } from "@/hooks/useBrasileirao";
+
 
 function fmtDate(iso: string, hora: string | null) {
   const d = new Date(hora ? `${iso.slice(0, 10)}T${hora}` : iso);
@@ -26,7 +29,7 @@ function confBadge(c: number | null | undefined) {
 
 const outcomeLabel = (o: string | null) => (o === "casa" ? "Casa" : o === "fora" ? "Fora" : o === "empate" ? "Empate" : "—");
 
-export function BrasileiraoMatchCard({ match }: { match: BRMatch }) {
+export function BrasileiraoMatchCard({ match, odds }: { match: BRMatch; odds?: PartidaOdds | null }) {
   const isLive = match.status === "live";
   const isFinished = match.status === "finished";
   const p = match.palpite;
@@ -78,7 +81,10 @@ export function BrasileiraoMatchCard({ match }: { match: BRMatch }) {
         </div>
       </div>
 
+      {odds && <OddsMini odds={odds} />}
+
       <div className="mt-auto rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs space-y-1.5">
+
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1 font-semibold text-primary">
             <Brain className="w-3.5 h-3.5" /> Palpite da IA
