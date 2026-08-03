@@ -67,6 +67,10 @@ export default function PartidaDetalhe() {
     },
   });
 
+  const { data: odds } = usePartidaOdds(partida?.id);
+
+
+
   const title = useMemo(() => {
     if (!partida) return "Partida";
     const casa = partida.casa?.nome ?? "?";
