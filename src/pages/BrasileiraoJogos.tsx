@@ -30,6 +30,9 @@ export default function BrasileiraoJogos() {
     [matches, effectiveRodada, status]
   );
 
+  const { data: oddsMap } = usePartidasOdds(filtered.map((m) => m.id));
+
+
   return (
     <Layout>
       <Helmet>
