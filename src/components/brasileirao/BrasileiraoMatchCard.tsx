@@ -2,7 +2,10 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { Brain, Check, X, Radio, Calendar } from "lucide-react";
+import { OddsMini } from "@/components/odds/PartidaOddsBlock";
+import type { PartidaOdds } from "@/hooks/usePartidaOdds";
 import { predictedOutcome, realOutcome, resultHit, scoreHit, type BRMatch } from "@/hooks/useBrasileirao";
+
 
 function fmtDate(iso: string, hora: string | null) {
   const d = new Date(hora ? `${iso.slice(0, 10)}T${hora}` : iso);
