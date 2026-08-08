@@ -382,12 +382,10 @@ serve(async (req) => {
           )
         `)
         .eq("status", "finished")
+        .in("liga_id", leagueFilter)
         .order("data", { ascending: true })
         .range(matchOffset, matchOffset + fetchBatchSize - 1);
 
-      if (leagueId) {
-        query = query.eq("liga_id", leagueId);
-      }
 
       const { data: batchMatches, error: matchError } = await query;
 
