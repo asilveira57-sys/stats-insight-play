@@ -81,6 +81,7 @@ import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
 import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
+import AdminContentAutomation from "./pages/AdminContentAutomation";
 import Pesquisa from "./pages/Pesquisa";
 import SearchPost from "./pages/SearchPost";
 import SearchPostCompetition from "./pages/SearchPostCompetition";
