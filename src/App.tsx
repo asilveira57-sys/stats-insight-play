@@ -81,6 +81,7 @@ import AdminHistoricalSources from "./pages/AdminHistoricalSources";
 import AdminKaggle from "./pages/AdminKaggle";
 import AdminImageManager from "./pages/AdminImageManager";
 import AdminRss from "./pages/AdminRss";
+import AdminContentAutomation from "./pages/AdminContentAutomation";
 import Pesquisa from "./pages/Pesquisa";
 import SearchPost from "./pages/SearchPost";
 import SearchPostCompetition from "./pages/SearchPostCompetition";
@@ -213,6 +214,7 @@ const App = () => (
             <Route path="/admin/editorial" element={<EditorialDashboard />} />
             <Route path="/admin/imagens" element={<AdminImageManager />} />
             <Route path="/admin/rss" element={<AdminRss />} />
+            <Route path="/admin/campeonatos-automaticos" element={<AdminContentAutomation />} />
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/minha-assinatura" element={<MinhaAssinatura />} />
             <Route path="/configuracoes/perfil" element={<Configuracoes />} />

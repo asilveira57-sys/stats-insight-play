@@ -21,6 +21,7 @@ import {
   Image,
   Map,
   Rss,
+  CalendarCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -48,6 +49,7 @@ const menuGroups = [
     label: "Conteúdo",
     items: [
       { title: "Editorial", url: "/admin/editorial", icon: PenTool },
+      { title: "Campeonatos Automáticos", url: "/admin/campeonatos-automaticos", icon: CalendarCheck },
       { title: "Imagens", url: "/admin/imagens", icon: Image },
     ],
   },

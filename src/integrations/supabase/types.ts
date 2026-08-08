@@ -1054,6 +1054,53 @@ export type Database = {
         }
         Relationships: []
       }
+      content_automation_leagues: {
+        Row: {
+          created_at: string
+          days_ahead: number
+          enabled: boolean
+          id: string
+          liga_id: string
+          max_per_run: number
+          notes: string | null
+          post_game_enabled: boolean
+          pre_game_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_ahead?: number
+          enabled?: boolean
+          id?: string
+          liga_id: string
+          max_per_run?: number
+          notes?: string | null
+          post_game_enabled?: boolean
+          pre_game_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_ahead?: number
+          enabled?: boolean
+          id?: string
+          liga_id?: string
+          max_per_run?: number
+          notes?: string | null
+          post_game_enabled?: boolean
+          pre_game_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_automation_leagues_liga_id_fkey"
+            columns: ["liga_id"]
+            isOneToOne: true
+            referencedRelation: "ligas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       csv_imports: {
         Row: {
           created_at: string

@@ -6,6 +6,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isFeatureAllowed, disabledResponse } from "../_shared/killswitch.ts";
+import { getAllowedLeagueIds, noAllowedLeaguesResponse } from "../_shared/contentLeagues.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,6 +151,12 @@ serve(async (req) => {
   const hasTimeLeft = () => Date.now() - startTime < SAFETY_MS;
 
   try {
+    // Campeonatos habilitados para conteúdo PRÉ-JOGO (Admin > Campeonatos Automáticos)
+    const allowedLeagueIds = await getAllowedLeagueIds("pre");
+    if (allowedLeagueIds.length === 0) {
+      return noAllowedLeaguesResponse(corsHeaders, FN_NAME);
+    }
+
     const today = new Date().toISOString().split("T")[0];
     const until = new Date();
     until.setDate(until.getDate() + daysAhead);
@@ -170,7 +177,7 @@ serve(async (req) => {
       off += 1000;
     }
 
-    // 2) Buscar próximas partidas BR (scheduled, próximos N dias)
+    // 2) Buscar próximas partidas dos campeonatos habilitados (scheduled, próximos N dias)
     const { data: matches, error: mErr } = await supabase
       .from("partidas")
       .select(`
@@ -185,6 +192,7 @@ serve(async (req) => {
         )
       `)
       .eq("status", "scheduled")
+      .in("liga_id", allowedLeagueIds)
       .gte("data", today)
       .lte("data", untilStr)
       .order("data", { ascending: true })
@@ -192,12 +200,9 @@ serve(async (req) => {
 
     if (mErr) throw new Error(`Fetch matches: ${mErr.message}`);
 
-    const brMatches = (matches || []).filter((m: any) => {
-      const pais = (m.liga?.pais || "").toLowerCase();
-      return (pais === "brasil" || pais === "brazil") && !existingIds.has(m.id);
-    });
+    const brMatches = (matches || []).filter((m: any) => !existingIds.has(m.id));
 
-    console.log(`[${FN_NAME}] candidatas BR próximas: ${brMatches.length}`);
+    console.log(`[${FN_NAME}] candidatas próximas (ligas habilitadas): ${brMatches.length}`);
 
     const results: any[] = [];
     let processed = 0;

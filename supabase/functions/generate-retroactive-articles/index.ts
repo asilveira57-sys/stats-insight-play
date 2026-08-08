@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isContentGenerationEnabled, disabledResponse } from "../_shared/killswitch.ts";
+import { getAllowedLeagueIds, noAllowedLeaguesResponse } from "../_shared/contentLeagues.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -300,17 +301,25 @@ serve(async (req) => {
   }
 
   try {
+    // Campeonatos habilitados para conteúdo PÓS-JOGO (Admin > Campeonatos Automáticos)
+    const allowedLeagueIds = await getAllowedLeagueIds("post");
+    if (allowedLeagueIds.length === 0) {
+      return noAllowedLeaguesResponse(corsHeaders, "generate-retroactive-articles");
+    }
+    // Uma liga pedida explicitamente só é aceita se estiver habilitada
+    if (leagueId && !allowedLeagueIds.includes(leagueId)) {
+      return noAllowedLeaguesResponse(corsHeaders, "generate-retroactive-articles");
+    }
+    const leagueFilter = leagueId ? [leagueId] : allowedLeagueIds;
+
     // Count total actionable matches (finished + have prediction)
     let totalActionable = 0;
     {
-      let q = supabase
+      const q = supabase
         .from("partidas")
         .select("id, palpites!inner(partida_id)", { count: "exact", head: true })
-        .eq("status", "finished");
-
-      if (leagueId) {
-        q = q.eq("liga_id", leagueId);
-      }
+        .eq("status", "finished")
+        .in("liga_id", leagueFilter);
 
       const { count } = await q;
       totalActionable = count || 0;
@@ -374,12 +383,10 @@ serve(async (req) => {
           )
         `)
         .eq("status", "finished")
+        .in("liga_id", leagueFilter)
         .order("data", { ascending: true })
         .range(matchOffset, matchOffset + fetchBatchSize - 1);
 
-      if (leagueId) {
-        query = query.eq("liga_id", leagueId);
-      }
 
       const { data: batchMatches, error: matchError } = await query;
 
