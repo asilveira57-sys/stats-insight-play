@@ -21,6 +21,7 @@ import {
   Image,
   Map,
   Rss,
+  CalendarCheck,
 } from "lucide-react";
 import {
   Sidebar,
