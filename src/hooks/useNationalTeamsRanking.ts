@@ -75,13 +75,21 @@ export const useNationalTeamsRanking = (competitionFilter?: string) => {
         if (m.time_fora_id) teamIds.add(m.time_fora_id);
       });
 
-      // Fetch team details
-      const { data: teams, error: teamsError } = await supabase
-        .from('times')
-        .select('id, nome, escudo_url, cores')
-        .in('id', Array.from(teamIds));
+      // Fetch team details in chunks (avoids URL length limits with many IDs)
+      const idList = Array.from(teamIds);
+      const chunkSize = 150;
+      const teams: { id: string; nome: string; escudo_url: string | null; cores: unknown }[] = [];
 
-      if (teamsError) throw teamsError;
+      for (let i = 0; i < idList.length; i += chunkSize) {
+        const chunk = idList.slice(i, i + chunkSize);
+        const { data, error: teamsError } = await supabase
+          .from('times')
+          .select('id, nome, escudo_url, cores')
+          .in('id', chunk);
+
+        if (teamsError) throw teamsError;
+        if (data) teams.push(...data);
+      }
 
       // Build ranking map
       const rankingMap = new Map<string, {
