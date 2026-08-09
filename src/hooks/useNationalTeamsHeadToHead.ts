@@ -7,7 +7,16 @@ export interface NationalTeam {
   nome: string;
   escudo_url: string | null;
   cores: { primary?: string; secondary?: string } | null;
+  pais: string | null;
+  estado: string | null;
+  ligaIds: string[];
 }
+
+export interface NationalCompetition {
+  id: string;
+  nome: string;
+}
+
 
 export interface HeadToHeadMatch {
   id: string;
