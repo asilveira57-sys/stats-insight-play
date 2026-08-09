@@ -77,16 +77,26 @@ export function useNationalTeamsList() {
 
       if (teamIds.size === 0) return [];
 
-      // Fetch team details
-      const { data: teams, error: teamsError } = await supabase
-        .from('times')
-        .select('id, nome, escudo_url, cores')
-        .in('id', Array.from(teamIds))
-        .order('nome');
+      // Fetch team details in chunks to avoid oversized URLs when the
+      // international match history contains many different selections.
+      const idList = Array.from(teamIds);
+      const chunkSize = 150;
+      const teams: { id: string; nome: string; escudo_url: string | null; cores: unknown }[] = [];
 
-      if (teamsError) throw teamsError;
+      for (let index = 0; index < idList.length; index += chunkSize) {
+        const chunk = idList.slice(index, index + chunkSize);
+        const { data, error: teamsError } = await supabase
+          .from('times')
+          .select('id, nome, escudo_url, cores')
+          .in('id', chunk);
 
-      return (teams || []).map(team => ({
+        if (teamsError) throw teamsError;
+        if (data) teams.push(...data);
+      }
+
+      return teams
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map(team => ({
         ...team,
         cores: team.cores as { primary?: string; secondary?: string } | null
       }));
