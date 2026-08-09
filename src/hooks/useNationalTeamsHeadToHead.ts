@@ -55,10 +55,15 @@ const INTERNATIONAL_KEYWORDS = [
   'euro', 'eurocopa', 'nations league', 'liga das nações'
 ];
 
+export interface NationalTeamsCatalog {
+  teams: NationalTeam[];
+  competitions: NationalCompetition[];
+}
+
 export function useNationalTeamsList() {
   return useQuery({
-    queryKey: ['national-teams-list'],
-    queryFn: async (): Promise<NationalTeam[]> => {
+    queryKey: ['national-teams-catalog'],
+    queryFn: async (): Promise<NationalTeamsCatalog> => {
       // Get international leagues
       const { data: ligas, error: ligasError } = await supabase
         .from('ligas')
@@ -66,53 +71,71 @@ export function useNationalTeamsList() {
         .or('nome.ilike.%world%,nome.ilike.%copa america%,nome.ilike.%euro%,nome.ilike.%nations%');
 
       if (ligasError) throw ligasError;
-      
+
       const ligaIds = ligas?.map(l => l.id) || [];
-      if (ligaIds.length === 0) return [];
+      if (ligaIds.length === 0) return { teams: [], competitions: [] };
 
       // Get matches from international leagues - sem limite
-      const matches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null }>(
+      const matches = await fetchAllRecords<{ time_casa_id: string | null; time_fora_id: string | null; liga_id: string | null }>(
         'partidas',
-        'time_casa_id, time_fora_id',
+        'time_casa_id, time_fora_id, liga_id',
         (q) => q.in('liga_id', ligaIds)
       );
 
-      // Get unique team IDs
-      const teamIds = new Set<string>();
+      // Map team -> competitions it played in
+      const teamLigas = new Map<string, Set<string>>();
+      const addTeam = (teamId: string | null, ligaId: string | null) => {
+        if (!teamId) return;
+        if (!teamLigas.has(teamId)) teamLigas.set(teamId, new Set());
+        if (ligaId) teamLigas.get(teamId)!.add(ligaId);
+      };
       matches.forEach(m => {
-        if (m.time_casa_id) teamIds.add(m.time_casa_id);
-        if (m.time_fora_id) teamIds.add(m.time_fora_id);
+        addTeam(m.time_casa_id, m.liga_id);
+        addTeam(m.time_fora_id, m.liga_id);
       });
 
-      if (teamIds.size === 0) return [];
+      if (teamLigas.size === 0) return { teams: [], competitions: [] };
 
       // Fetch team details in chunks to avoid oversized URLs when the
       // international match history contains many different selections.
-      const idList = Array.from(teamIds);
+      const idList = Array.from(teamLigas.keys());
       const chunkSize = 150;
-      const teams: { id: string; nome: string; escudo_url: string | null; cores: unknown }[] = [];
+      const rows: { id: string; nome: string; escudo_url: string | null; cores: unknown; pais: string | null; estado: string | null }[] = [];
 
       for (let index = 0; index < idList.length; index += chunkSize) {
         const chunk = idList.slice(index, index + chunkSize);
         const { data, error: teamsError } = await supabase
           .from('times')
-          .select('id, nome, escudo_url, cores')
+          .select('id, nome, escudo_url, cores, pais, estado')
           .in('id', chunk);
 
         if (teamsError) throw teamsError;
-        if (data) teams.push(...data);
+        if (data) rows.push(...data);
       }
 
-      return teams
+      const teams: NationalTeam[] = rows
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
         .map(team => ({
-        ...team,
-        cores: team.cores as { primary?: string; secondary?: string } | null
-      }));
+          id: team.id,
+          nome: team.nome,
+          escudo_url: team.escudo_url,
+          pais: team.pais,
+          estado: team.estado,
+          ligaIds: Array.from(teamLigas.get(team.id) ?? []),
+          cores: team.cores as { primary?: string; secondary?: string } | null,
+        }));
+
+      const usedLigaIds = new Set(teams.flatMap(t => t.ligaIds));
+      const competitions: NationalCompetition[] = (ligas ?? [])
+        .filter(l => usedLigaIds.has(l.id))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+      return { teams, competitions };
     },
     staleTime: 1000 * 60 * 10,
   });
 }
+
 
 export function useNationalTeamsHeadToHead(team1Id: string | null, team2Id: string | null) {
   return useQuery({
