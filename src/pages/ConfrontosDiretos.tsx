@@ -1,27 +1,60 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNationalTeamsList, useNationalTeamsHeadToHead } from "@/hooks/useNationalTeamsHeadToHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Swords, Trophy, Target, Calendar, ArrowRightLeft, TrendingUp, Flame, Award, BarChart3 } from "lucide-react";
+import { Swords, Trophy, Target, Calendar, ArrowRightLeft, TrendingUp, Flame, Award, BarChart3, Filter } from "lucide-react";
 import { TeamBadge } from "@/components/ui/TeamBadge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+const ALL = "all";
+
 export default function ConfrontosDiretos() {
   const [team1Id, setTeam1Id] = useState<string>("");
   const [team2Id, setTeam2Id] = useState<string>("");
-  
-  const { data: teams, isLoading: loadingTeams } = useNationalTeamsList();
+  const [ligaFilter, setLigaFilter] = useState<string>(ALL);
+  const [paisFilter, setPaisFilter] = useState<string>(ALL);
+  const [search, setSearch] = useState("");
+
+  const { data, isLoading: loadingTeams } = useNationalTeamsList();
+  const allTeams = data?.teams;
+  const competitions = data?.competitions ?? [];
+
   const { data: h2h, isLoading: loadingH2H } = useNationalTeamsHeadToHead(
     team1Id || null, 
     team2Id || null
   );
 
-  const team1 = teams?.find(t => t.id === team1Id);
-  const team2 = teams?.find(t => t.id === team2Id);
+  const paises = useMemo(() => {
+    const set = new Set<string>();
+    (allTeams ?? []).forEach(t => {
+      if (t.pais) set.add(t.pais);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [allTeams]);
+
+  const filteredTeams = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (allTeams ?? []).filter(t => {
+      if (ligaFilter !== ALL && !t.ligaIds.includes(ligaFilter)) return false;
+      if (paisFilter !== ALL && t.pais !== paisFilter) return false;
+      if (term && !t.nome.toLowerCase().includes(term)) return false;
+      return true;
+    });
+  }, [allTeams, ligaFilter, paisFilter, search]);
+
+  const team1 = allTeams?.find(t => t.id === team1Id);
+  const team2 = allTeams?.find(t => t.id === team2Id);
+
+  const resetFilters = () => {
+    setLigaFilter(ALL);
+    setPaisFilter(ALL);
+    setSearch("");
+  };
 
   const swapTeams = () => {
     const temp = team1Id;
@@ -41,6 +74,60 @@ export default function ConfrontosDiretos() {
           </p>
         </div>
 
+        {/* Filters */}
+        <Card className="mb-4 bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="w-4 h-4 text-primary" />
+              Filtre para reduzir as opções
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Select value={ligaFilter} onValueChange={setLigaFilter}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="Competição" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todas as competições</SelectItem>
+                  {competitions.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={paisFilter} onValueChange={setPaisFilter}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="País / Região" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todos os países</SelectItem>
+                  {paises.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar seleção por nome..."
+                className="bg-background border-border"
+              />
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-muted-foreground">
+                {loadingTeams ? "Carregando seleções..." : `${filteredTeams.length} seleções disponíveis`}
+              </p>
+              {(ligaFilter !== ALL || paisFilter !== ALL || search) && (
+                <button onClick={resetFilters} className="text-xs text-primary hover:underline">
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Team Selection */}
         <Card className="mb-8 bg-card/50 border-border/50">
           <CardHeader>
@@ -59,8 +146,10 @@ export default function ConfrontosDiretos() {
                   <SelectContent>
                     {loadingTeams ? (
                       <div className="p-2">Carregando...</div>
+                    ) : filteredTeams.filter(t => t.id !== team2Id).length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Nenhuma seleção com esses filtros</div>
                     ) : (
-                      teams?.filter(t => t.id !== team2Id).map(team => (
+                      filteredTeams.filter(t => t.id !== team2Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
                             <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
@@ -90,8 +179,10 @@ export default function ConfrontosDiretos() {
                   <SelectContent>
                     {loadingTeams ? (
                       <div className="p-2">Carregando...</div>
+                    ) : filteredTeams.filter(t => t.id !== team1Id).length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Nenhuma seleção com esses filtros</div>
                     ) : (
-                      teams?.filter(t => t.id !== team1Id).map(team => (
+                      filteredTeams.filter(t => t.id !== team1Id).map(team => (
                         <SelectItem key={team.id} value={team.id}>
                           <div className="flex items-center gap-2">
                             <TeamBadge name={team.nome} primaryColor={team.cores?.primary} secondaryColor={team.cores?.secondary} size="sm" />
@@ -106,6 +197,7 @@ export default function ConfrontosDiretos() {
             </div>
           </CardContent>
         </Card>
+
 
         {/* Loading State */}
         {loadingH2H && team1Id && team2Id && (
