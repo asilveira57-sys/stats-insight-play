@@ -156,6 +156,10 @@ const App = () => (
             <Route path="/brasileirao/classificacao" element={<BrasileiraoClassificacao />} />
             <Route path="/brasileirao/palpites-ia" element={<BrasileiraoPalpitesIA />} />
             <Route path="/brasileirao/artilharia" element={<BrasileiraoArtilharia />} />
+            <Route path="/copa-do-brasil" element={<CopaBrasilHome />} />
+            <Route path="/copa-do-brasil/jogos" element={<CopaBrasilJogos />} />
+            <Route path="/copa-do-brasil/palpites-ia" element={<CopaBrasilPalpitesIA />} />
+            <Route path="/copa-do-brasil/artilharia" element={<CopaBrasilArtilharia />} />
             <Route path="/copa-2026" element={<Copa2026Home />} />
             <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
             <Route path="/copa-2026/selecoes/:slug" element={<Copa2026SelecaoDetalhe />} />
