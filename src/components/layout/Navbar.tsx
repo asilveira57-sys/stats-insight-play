@@ -36,6 +36,7 @@ const menuStructure = {
       { href: "/copa-2026", label: "Copa do Mundo 2026", description: "Cobertura completa da Copa 2026" },
       { href: "/campeonatos", label: "Todos os Campeonatos", description: "Explorar todas as competições" },
       { href: "/brasileirao", label: "Brasileirão Série A", description: "Principal liga do Brasil" },
+      { href: "/copa-do-brasil", label: "Copa do Brasil", description: "Mata-mata nacional, fase a fase" },
       { href: "/artilheiros", label: "Artilheiros", description: "Ranking de goleadores" },
     ]
   },
