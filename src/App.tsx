@@ -93,6 +93,10 @@ import BrasileiraoJogos from "./pages/BrasileiraoJogos";
 import BrasileiraoClassificacao from "./pages/BrasileiraoClassificacao";
 import BrasileiraoPalpitesIA from "./pages/BrasileiraoPalpitesIA";
 import BrasileiraoArtilharia from "./pages/BrasileiraoArtilharia";
+import CopaBrasilHome from "./pages/CopaBrasilHome";
+import CopaBrasilJogos from "./pages/CopaBrasilJogos";
+import CopaBrasilPalpitesIA from "./pages/CopaBrasilPalpitesIA";
+import CopaBrasilArtilharia from "./pages/CopaBrasilArtilharia";
 import Copa2026Selecoes from "./pages/Copa2026Selecoes";
 import Copa2026SelecaoDetalhe from "./pages/Copa2026SelecaoDetalhe";
 import Copa2026Jogos from "./pages/Copa2026Jogos";
@@ -152,6 +156,10 @@ const App = () => (
             <Route path="/brasileirao/classificacao" element={<BrasileiraoClassificacao />} />
             <Route path="/brasileirao/palpites-ia" element={<BrasileiraoPalpitesIA />} />
             <Route path="/brasileirao/artilharia" element={<BrasileiraoArtilharia />} />
+            <Route path="/copa-do-brasil" element={<CopaBrasilHome />} />
+            <Route path="/copa-do-brasil/jogos" element={<CopaBrasilJogos />} />
+            <Route path="/copa-do-brasil/palpites-ia" element={<CopaBrasilPalpitesIA />} />
+            <Route path="/copa-do-brasil/artilharia" element={<CopaBrasilArtilharia />} />
             <Route path="/copa-2026" element={<Copa2026Home />} />
             <Route path="/copa-2026/selecoes" element={<Copa2026Selecoes />} />
             <Route path="/copa-2026/selecoes/:slug" element={<Copa2026SelecaoDetalhe />} />
