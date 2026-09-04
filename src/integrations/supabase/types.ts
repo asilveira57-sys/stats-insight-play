@@ -7818,6 +7818,17 @@ export type Database = {
         }
         Returns: Json
       }
+      get_championship_prediction_stats: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          human_correct: number
+          human_total: number
+          ia_correct: number
+          ia_total: number
+          liga_nome: string
+          liga_slug: string
+        }[]
+      }
       get_suggested_duplicates: {
         Args: { p_limit?: number }
         Returns: {
@@ -7951,6 +7962,16 @@ export type Database = {
           p_start_date?: string
         }
         Returns: number
+      }
+      get_weekly_prediction_evolution: {
+        Args: { p_weeks?: number }
+        Returns: {
+          human_correct: number
+          human_total: number
+          ia_correct: number
+          total_games: number
+          week_start: string
+        }[]
       }
       grant_days_to_user: {
         Args: {
