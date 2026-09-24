@@ -162,53 +162,17 @@ export default function EvolucaoSemanal() {
   }, [weeklyStats]);
 
   const championshipStats = useMemo(() => {
-    if (!comparisonData) return [];
+    if (!championshipRows) return [];
+    return championshipRows.map((row) => ({
+      name: row.liga_nome,
+      slug: row.liga_slug,
+      iaTotal: Number(row.ia_total) || 0,
+      iaCorrect: Number(row.ia_correct) || 0,
+      humanTotal: Number(row.human_total) || 0,
+      humanCorrect: Number(row.human_correct) || 0,
+    }));
+  }, [championshipRows]);
 
-    const champMap = new Map<string, { 
-      name: string; 
-      slug: string | null;
-      iaCorrect: number; 
-      iaTotal: number;
-      humanCorrect: number;
-      humanTotal: number;
-    }>();
-
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
-    comparisonData
-      .filter(item => new Date(item.created_at || '') >= twoWeeksAgo)
-      .forEach(item => {
-        const liga = item.partidas?.ligas;
-        if (!liga) return;
-
-        const key = liga.nome;
-        if (!champMap.has(key)) {
-          champMap.set(key, { 
-            name: liga.nome, 
-            slug: liga.slug,
-            iaCorrect: 0, 
-            iaTotal: 0,
-            humanCorrect: 0,
-            humanTotal: 0,
-          });
-        }
-
-        const stats = champMap.get(key)!;
-        stats.iaTotal++;
-        if (item.sistema_acertou_resultado) stats.iaCorrect++;
-        
-        if (item.total_usuarios_palpitaram && item.total_usuarios_palpitaram > 0) {
-          stats.humanTotal += item.total_usuarios_palpitaram;
-          stats.humanCorrect += item.usuarios_acertaram_resultado || 0;
-        }
-      });
-
-    return Array.from(champMap.values())
-      .filter(c => c.iaTotal >= 3)
-      .sort((a, b) => b.iaTotal - a.iaTotal)
-      .slice(0, 5);
-  }, [comparisonData]);
 
   const chartConfig = {
     ia: {
