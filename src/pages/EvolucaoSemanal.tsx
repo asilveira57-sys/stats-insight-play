@@ -28,22 +28,23 @@ import {
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Legend } from "recharts";
 
-interface ComparisonData {
-  id: string;
-  partida_id: string;
-  sistema_acertou_resultado: boolean | null;
-  total_usuarios_palpitaram: number | null;
-  usuarios_acertaram_resultado: number | null;
-  created_at: string | null;
-  partidas?: {
-    data: string;
-    liga_id: string | null;
-    ligas?: {
-      nome: string;
-      slug: string | null;
-    } | null;
-  } | null;
+interface WeeklyRow {
+  week_start: string;
+  total_games: number;
+  ia_correct: number;
+  human_total: number;
+  human_correct: number;
 }
+
+interface ChampionshipRow {
+  liga_nome: string;
+  liga_slug: string | null;
+  ia_total: number;
+  ia_correct: number;
+  human_total: number;
+  human_correct: number;
+}
+
 
 interface WeeklyStats {
   weekNumber: number;
