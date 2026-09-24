@@ -75,90 +75,56 @@ function formatDateRange(start: string, end: string): string {
 }
 
 export default function EvolucaoSemanal() {
-  const { data: comparisonData, isLoading } = useQuery({
-    queryKey: ['weekly-evolution-data'],
+  const { data: weeklyRows, isLoading } = useQuery({
+    queryKey: ['weekly-evolution-agg'],
     queryFn: async () => {
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      
-      const data = await fetchAllRecords<ComparisonData>(
-        'comparativo_resultados',
-        `id, partida_id, sistema_acertou_resultado, total_usuarios_palpitaram,
-         usuarios_acertaram_resultado, created_at, partidas(data, liga_id, ligas(nome, slug))`,
-        (q) => q.gte('created_at', sixMonthsAgo.toISOString()),
-        { column: 'created_at', ascending: true }
-      );
-      return data;
+      const { data, error } = await supabase.rpc('get_weekly_prediction_evolution', { p_weeks: 12 });
+      if (error) throw error;
+      return (data ?? []) as WeeklyRow[];
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
-  const weeklyStats = useMemo(() => {
-    if (!comparisonData || comparisonData.length === 0) return [];
+  const { data: championshipRows } = useQuery({
+    queryKey: ['weekly-evolution-championships'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_championship_prediction_stats', { p_days: 14, p_limit: 5 });
+      if (error) throw error;
+      return (data ?? []) as ChampionshipRow[];
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
-    const weekMap = new Map<string, {
-      weekNumber: number;
-      year: number;
-      games: ComparisonData[];
-      startDate: Date;
-      endDate: Date;
-    }>();
+  const weeklyStats = useMemo<WeeklyStats[]>(() => {
+    if (!weeklyRows || weeklyRows.length === 0) return [];
 
-    comparisonData.forEach(item => {
-      const date = new Date(item.partidas?.data || item.created_at || '');
-      const weekNum = getWeekNumber(date);
-      const year = date.getFullYear();
-      const key = `${year}-${weekNum}`;
+    return weeklyRows.map((row) => {
+      const startDate = new Date(`${row.week_start}T00:00:00`);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
 
-      if (!weekMap.has(key)) {
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - date.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
+      const totalGames = Number(row.total_games) || 0;
+      const iaCorrect = Number(row.ia_correct) || 0;
+      const humanTotal = Number(row.human_total) || 0;
+      const humanCorrect = Number(row.human_correct) || 0;
+      const weekNum = getWeekNumber(startDate);
 
-        weekMap.set(key, {
-          weekNumber: weekNum,
-          year,
-          games: [],
-          startDate: startOfWeek,
-          endDate: endOfWeek,
-        });
-      }
-      weekMap.get(key)!.games.push(item);
-    });
-
-    const stats: WeeklyStats[] = [];
-    weekMap.forEach((value, key) => {
-      const totalGames = value.games.length;
-      const iaCorrect = value.games.filter(g => g.sistema_acertou_resultado === true).length;
-      
-      let humanCorrect = 0;
-      let humanTotal = 0;
-      value.games.forEach(g => {
-        if (g.total_usuarios_palpitaram && g.total_usuarios_palpitaram > 0) {
-          humanTotal += g.total_usuarios_palpitaram;
-          humanCorrect += g.usuarios_acertaram_resultado || 0;
-        }
-      });
-
-      stats.push({
-        weekNumber: value.weekNumber,
-        weekLabel: getWeekLabel(value.weekNumber, value.year),
-        startDate: value.startDate.toISOString(),
-        endDate: value.endDate.toISOString(),
+      return {
+        weekNumber: weekNum,
+        weekLabel: getWeekLabel(weekNum, startDate.getFullYear()),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         totalGames,
         iaAccuracy: totalGames > 0 ? (iaCorrect / totalGames) * 100 : 0,
         humanAccuracy: humanTotal > 0 ? (humanCorrect / humanTotal) * 100 : 0,
         iaCorrect,
         humanCorrect,
-      });
+      };
     });
+  }, [weeklyRows]);
 
-    return stats.sort((a, b) => {
-      const dateA = new Date(a.startDate);
-      const dateB = new Date(b.startDate);
-      return dateA.getTime() - dateB.getTime();
-    }).slice(-12);
-  }, [comparisonData]);
 
   const currentWeek = weeklyStats[weeklyStats.length - 1];
   const previousWeek = weeklyStats[weeklyStats.length - 2];
