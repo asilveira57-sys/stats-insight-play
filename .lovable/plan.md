@@ -1,38 +1,33 @@
-# Plano — Auditoria da IA, temporadas e odds
+# Plano — Rebranding completo para Aleball
 
-Dividido em 3 tarefas independentes, executadas em sequência com poucas chamadas (para gastar menos crédito): cada tarefa é uma rodada de edições em lote + uma verificação.
+## Resultado
+Trocar a marca visível e técnica de Statball para **Aleball** em toda a plataforma, adotando **https://www.aleball.com** como endereço oficial.
 
-## Fatos verificados no banco
-- Brasileirão Série A (`campeonato-brasileiro-serie-a`) tem partidas de 2012 a 2026: 2026 = 213 (198 encerradas), 2025 = 306, 2024 = 306, 2023 = 306, e anos anteriores parciais.
-- Existem 4.660 palpites da IA em partidas do Brasileirão antes de 2026 — ou seja, o histórico auditado de temporadas passadas já é possível sem nova geração de dados.
-- Odds hoje existem apenas para a Copa (tabela `wc2026_match_odds`). Não há tabela de odds para `partidas` — precisa ser criada.
+## 1. Identidade visual
+- Criar um novo símbolo e um novo logotipo Aleball, mantendo o estilo esportivo, o fundo transparente e a paleta atual em azul-escuro, ciano e verde.
+- Substituir logotipo principal, ícone da navegação e favicon.
+- Atualizar textos alternativos, rótulos de acessibilidade e nomes exibidos em computador e celular.
 
-## Tarefa 1 — Dashboard de auditoria da IA (Brasileirão + Copa)
-Um único componente reutilizável `AuditDashboard`, alimentado por dados já carregados no cliente (sem novas consultas).
+## 2. Todas as páginas e mensagens
+- Substituir “Statball”, “StatBall” e “STATBALL” por “Aleball” em páginas públicas, área administrativa, autenticação, pagamentos, cookies, avisos legais, e-mails e respostas de pesquisa.
+- Atualizar “Clube Statball” e “IA Statball” para “Clube Aleball” e “IA Aleball”.
+- Preservar os nomes técnicos internos e o histórico de migrações quando renomeá-los puder quebrar dados ou integrações; eles não serão exibidos ao visitante.
 
-Métricas por campeonato/temporada, sobre jogos encerrados com palpite:
-- **Acerto de resultado (1X2)**: tendência da IA = resultado oficial.
-- **Dupla chance**: acerto se o resultado oficial estiver entre as duas opções mais prováveis da IA (ex.: IA aponta Casa → acerta em Casa ou Empate). Métrica estatística, sem linguagem de aposta.
-- **Erro real**: quando nem a dupla chance acertaria.
-- **Placar exato**.
-- Contagem de jogos auditados + barra de distribuição visual.
+## 3. SEO e endereço oficial
+- Atualizar títulos, descrições, dados estruturados, links canônicos, RSS, sitemap e robots para `https://www.aleball.com`.
+- Trocar o e-mail público para `contato@aleball.com` nos textos e links.
+- Remover imagens sociais antigas da marca e deixar a hospedagem gerar a prévia até existir uma imagem social Aleball definitiva.
+- Atualizar geradores automáticos de artigos, pesquisa e sitemap para que novos conteúdos já nasçam com a marca e o domínio Aleball.
 
-Aplicado em `/brasileirao/palpites-ia` (substituindo os 4 cartões atuais) e na página equivalente da Copa 2026 (`Copa2026PalpitesIA`), com a mesma lógica de cálculo centralizada em `useBrasileirao`/util compartilhado.
+## 4. Conteúdo já salvo
+- Localizar textos públicos existentes no banco que contenham a marca antiga e atualizar apenas ocorrências institucionais da marca, sem alterar nomes de times, estatísticas ou fatos históricos.
+- Não renomear identificadores internos, chaves ou registros técnicos que possam afetar a operação.
 
-## Tarefa 2 — Seletor de temporada por campeonato
-- Adicionar estado de temporada ao hub do Brasileirão (contexto leve via query param `?temporada=2025`), com um `<Select>` de anos.
-- Os anos vêm de uma consulta única e barata (anos distintos com partidas da liga), então nada é hardcoded.
-- Todas as páginas do hub (visão geral, jogos, classificação, palpites IA, artilharia) passam a respeitar a temporada escolhida — os hooks já recebem `season`.
-- Botão "Atualizar" ao lado do seletor que invalida o cache e refaz a busca da temporada selecionada.
+## 5. Domínio
+- Solicitar a conexão de `aleball.com` e `www.aleball.com`, definindo `www.aleball.com` como principal quando a configuração do domínio estiver pronta.
+- O domínio atual continuará funcionando como redirecionamento após a ativação do novo endereço.
 
-## Tarefa 3 — Odds pré-jogo e histórica nos jogos
-- Migração: nova tabela `match_odds` genérica (partida_id, casa de aposta, 1X2, over/under, probabilidades implícitas, snapshot pré-jogo, origem, timestamps) com GRANTs, RLS de leitura pública e escrita restrita a admin/serviço.
-- Nova edge function `sync-match-odds`: busca odds na API-Football usando o mapeamento de fixture já existente (`external_id_map`), grava as odds da Bet365/Betfair quando disponíveis e mantém o snapshot pré-jogo (não sobrescreve depois do início do jogo). Cobre jogos futuros e, quando a API retornar, odds históricas de jogos passados.
-- Exibição: bloco compacto de odds (1 / X / 2) nos cartões de jogo do Brasileirão e na página da partida, com rótulo "pré-jogo" ou "histórica". Quando não houver odds, nada é exibido (sem placeholder inventado).
-- Observação: a API-Football está sujeita a quota/suspensão; a função registra falhas e não sobrescreve dados com valores vazios.
-
-## Notas técnicas
-- Nenhuma métrica é estimada: tudo derivado de `partidas` (placar oficial) + `palpites` (registro pré-jogo).
-- A política de "zero limits" é mantida (paginação via `fetchAllRecords`).
-- Fuso UTC-3 preservado na exibição.
-- Odds nunca aparecem como recomendação de aposta — apenas referência de mercado ao lado da métrica estatística.
+## Verificação
+- Confirmar que não restam referências públicas à marca anterior no código e no conteúdo exibido.
+- Verificar página inicial, navegação, rodapé, pesquisa, páginas da Copa/ Brasileirão, pagamentos e páginas legais em computador e celular.
+- Validar compilação, links canônicos, sitemap, favicon e ausência de erros no navegador.
