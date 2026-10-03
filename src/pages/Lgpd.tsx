@@ -45,13 +45,13 @@ const Lgpd = () => {
                 Compromisso com a Privacidade
               </h2>
               <p className="leading-relaxed text-muted-foreground">
-                O Statball respeita a privacidade, a segurança e a proteção dos dados pessoais de todos os usuários da plataforma.
+                O Aleball respeita a privacidade, a segurança e a proteção dos dados pessoais de todos os usuários da plataforma.
               </p>
               <p className="leading-relaxed text-muted-foreground mt-4">
                 Esta página tem como objetivo explicar de forma transparente como os dados podem ser coletados, utilizados, armazenados e protegidos, em conformidade com a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).
               </p>
               <p className="leading-relaxed text-muted-foreground mt-4">
-                O Statball busca adotar práticas responsáveis de tratamento de dados, priorizando:
+                O Aleball busca adotar práticas responsáveis de tratamento de dados, priorizando:
               </p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-4 mt-3">
                 <li>Transparência</li>
@@ -87,8 +87,8 @@ const Lgpd = () => {
                   <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-foreground">Contato oficial para privacidade e proteção de dados</p>
-                    <a href="mailto:contato@statball.com.br" className="text-primary hover:underline">
-                      contato@statball.com.br
+                    <a href="mailto:contato@aleball.com" className="text-primary hover:underline">
+                      contato@aleball.com
                     </a>
                   </div>
                 </div>
@@ -102,7 +102,7 @@ const Lgpd = () => {
                 Quais dados podem ser coletados
               </h2>
               <p className="text-muted-foreground mb-4">
-                Dependendo da navegação e interação do usuário, o Statball poderá coletar informações como:
+                Dependendo da navegação e interação do usuário, o Aleball poderá coletar informações como:
               </p>
               <div className="space-y-4">
                 <div>
@@ -198,7 +198,7 @@ const Lgpd = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball utiliza cookies e tecnologias semelhantes para melhorar a experiência do usuário e compreender como a plataforma é utilizada.
+                  O Aleball utiliza cookies e tecnologias semelhantes para melhorar a experiência do usuário e compreender como a plataforma é utilizada.
                 </p>
                 <p>Os cookies podem ser utilizados para:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -229,7 +229,7 @@ const Lgpd = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball poderá utilizar serviços de publicidade de terceiros, incluindo o Google AdSense.
+                  O Aleball poderá utilizar serviços de publicidade de terceiros, incluindo o Google AdSense.
                 </p>
                 <p>Esses parceiros podem utilizar cookies, identificadores e tecnologias similares para:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -264,7 +264,7 @@ const Lgpd = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p className="font-medium text-foreground">
-                  O Statball não comercializa dados pessoais de usuários.
+                  O Aleball não comercializa dados pessoais de usuários.
                 </p>
                 <p>Informações poderão ser compartilhadas apenas:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -285,7 +285,7 @@ const Lgpd = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball busca utilizar medidas técnicas e organizacionais adequadas para proteger os dados contra:
+                  O Aleball busca utilizar medidas técnicas e organizacionais adequadas para proteger os dados contra:
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Acesso não autorizado</li>
@@ -325,8 +325,8 @@ const Lgpd = () => {
                   <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-foreground">As solicitações poderão ser realizadas através do e-mail:</p>
-                    <a href="mailto:contato@statball.com.br" className="text-primary hover:underline font-medium">
-                      contato@statball.com.br
+                    <a href="mailto:contato@aleball.com" className="text-primary hover:underline font-medium">
+                      contato@aleball.com
                     </a>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ const Lgpd = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball pode conter links para sites externos de terceiros.
+                  O Aleball pode conter links para sites externos de terceiros.
                 </p>
                 <p>
                   Não somos responsáveis pelas políticas, práticas ou conteúdos de plataformas externas acessadas através desses links.
@@ -399,8 +399,8 @@ const Lgpd = () => {
                   <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-foreground">E-mail de contato</p>
-                    <a href="mailto:contato@statball.com.br" className="text-primary hover:underline">
-                      contato@statball.com.br
+                    <a href="mailto:contato@aleball.com" className="text-primary hover:underline">
+                      contato@aleball.com
                     </a>
                   </div>
                 </div>

@@ -19,9 +19,9 @@ export default function Copa2026Home() {
   return (
     <Layout>
       <Helmet>
-        <title>Copa do Mundo 2026 — Cobertura Completa | Statball</title>
+        <title>Copa do Mundo 2026 — Cobertura Completa | Aleball</title>
         <meta name="description" content="Cobertura completa da Copa do Mundo 2026: jogos ao vivo, últimos resultados, próximos confrontos, grupos, chaveamento, palpites IA e análises por seleção." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026" />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">
@@ -104,7 +104,7 @@ export default function Copa2026Home() {
               <h2 className="text-lg font-bold">Palpites IA em lote</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Veja em uma única tela o placar previsto pelo Statball para todos os jogos da Copa, com nível de confiança e taxa de acerto.
+              Veja em uma única tela o placar previsto pelo Aleball para todos os jogos da Copa, com nível de confiança e taxa de acerto.
             </p>
             <Button asChild size="sm"><Link to="/copa-2026/palpites-ia">Abrir painel IA</Link></Button>
           </div>

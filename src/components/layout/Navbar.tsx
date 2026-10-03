@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import statballIcon from "@/assets/statball-icon.png";
+import aleballIcon from "@/assets/aleball-icon.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,8 +163,8 @@ export function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
             <img 
-              src={statballIcon} 
-              alt="StatBall" 
+              src={aleballIcon} 
+              alt="Aleball" 
               className="h-9 w-9 object-contain bg-transparent"
               style={{ background: 'none' }}
             />
@@ -328,7 +328,7 @@ export function Navbar() {
                 <Link to="/precos" onClick={() => setIsOpen(false)}>
                   <Button variant="premium" className="w-full">
                     <Crown className="w-4 h-4" />
-                    Clube Statball
+                    Clube Aleball
                   </Button>
                 </Link>
               </div>

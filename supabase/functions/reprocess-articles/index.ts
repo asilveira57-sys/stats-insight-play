@@ -396,10 +396,10 @@ REESCREVA completamente seguindo esta estrutura HTML:
 - Quem chega melhor, justificado com dados (150+ palavras)
 - Placar esperado ${placarCasa} x ${placarFora}: por que esse cenário
 
-<h2>Análise Atualizada pelo Statball</h2>
+<h2>Análise Atualizada pelo Aleball</h2>
 - Leitura de cenário direta, estilo especialista (100+ palavras)
 - "O cenário indica..." com conclusão técnica
-- Reforce a autoridade analítica do Statball
+- Reforce a autoridade analítica do Aleball
 
 REGRAS CRÍTICAS:
 - TODA afirmação deve ter justificativa com dados

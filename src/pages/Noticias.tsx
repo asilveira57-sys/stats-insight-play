@@ -156,7 +156,7 @@ export default function Noticias() {
 
             <div className="mt-12 p-6 rounded-xl bg-muted/30 text-center">
               <p className="text-sm text-muted-foreground mb-4">
-                O Statball produz análises estatísticas de futebol baseadas em dados.
+                O Aleball produz análises estatísticas de futebol baseadas em dados.
                 Cada artigo apresenta leitura tática, probabilidades e cenários possíveis
                 para os principais confrontos das competições acompanhadas.
               </p>

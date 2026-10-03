@@ -95,12 +95,12 @@ export default function Trends() {
   return (
     <Layout>
       <Helmet>
-        <title>Tendências de Pesquisa | Statball</title>
+        <title>Tendências de Pesquisa | Aleball</title>
         <meta
           name="description"
-          content="O que o Brasil está pesquisando sobre futebol no Statball: times, campeonatos e jogadores mais buscados, além das páginas de pesquisa indexadas no Google."
+          content="O que o Brasil está pesquisando sobre futebol no Aleball: times, campeonatos e jogadores mais buscados, além das páginas de pesquisa indexadas no Google."
         />
-        <link rel="canonical" href="https://www.statball.com.br/trends" />
+        <link rel="canonical" href="https://www.aleball.com/trends" />
       </Helmet>
       <div className="container mx-auto px-4 py-8 space-y-8">
         <header>
@@ -109,7 +109,7 @@ export default function Trends() {
             Tendências de Pesquisa
           </h1>
           <p className="text-muted-foreground text-sm md:text-base mt-2 max-w-3xl">
-            O que o Brasil está pesquisando sobre futebol no Statball. Veja os termos, times,
+            O que o Brasil está pesquisando sobre futebol no Aleball. Veja os termos, times,
             campeonatos e jogadores mais buscados em tempo real — e explore as páginas de
             pesquisa indexadas, geradas a partir de perguntas reais dos usuários.
           </p>
@@ -141,7 +141,7 @@ export default function Trends() {
             <Eye className="h-5 w-5 text-primary" /> Pesquisas mais acessadas
           </h2>
           <p className="text-sm text-muted-foreground">
-            Páginas de respostas geradas pela inteligência do Statball com maior número de visualizações.
+            Páginas de respostas geradas pela inteligência do Aleball com maior número de visualizações.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {(popularPosts || []).map((p: any) => (

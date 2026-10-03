@@ -347,11 +347,11 @@ serve(async (req) => {
       }
     }
 
-    // Map Cartola clubs to Statball teams via external_id_map
-    await mapClubesStatball(supabase, clubeCache, errors);
+    // Map Cartola clubs to Aleball teams via external_id_map
+    await mapClubesAleball(supabase, clubeCache, errors);
 
-    // Map Cartola partidas to Statball partidas
-    await mapPartidasStatball(supabase, seasons, errors);
+    // Map Cartola partidas to Aleball partidas
+    await mapPartidasAleball(supabase, seasons, errors);
 
     // Final log
     const finalStatus = totalFailed > 0 && totalInserted === 0 ? "failed" : "completed";
@@ -741,7 +741,7 @@ async function importFromCartolaFCDados(
 }
 
 // Map cartola_clubes -> times via external_id_map
-async function mapClubesStatball(supabase: any, clubeCache: Map<number, string>, errors: string[]) {
+async function mapClubesAleball(supabase: any, clubeCache: Map<number, string>, errors: string[]) {
   try {
     const existingMaps = await fetchAll(supabase, "external_id_map", "external_id, internal_id", {
       entity_type: "team",
@@ -790,7 +790,7 @@ async function mapClubesStatball(supabase: any, clubeCache: Map<number, string>,
 }
 
 // Map cartola_partidas -> partidas via external_id_map
-async function mapPartidasStatball(supabase: any, seasons: number[], errors: string[]) {
+async function mapPartidasAleball(supabase: any, seasons: number[], errors: string[]) {
   try {
     const teamMaps = await fetchAll(supabase, "external_id_map", "external_id, internal_id", {
       entity_type: "team",
@@ -807,7 +807,7 @@ async function mapPartidasStatball(supabase: any, seasons: number[], errors: str
     if (!liga) {
       const { data: liga2 } = await supabase.from("ligas").select("id").ilike("nome", "%Brasileir%").limit(1).maybeSingle();
       if (!liga2) {
-        errors.push("Liga Brasileirão não encontrada no Statball para mapeamento");
+        errors.push("Liga Brasileirão não encontrada no Aleball para mapeamento");
         return;
       }
     }
@@ -817,7 +817,7 @@ async function mapPartidasStatball(supabase: any, seasons: number[], errors: str
       
       for (const p of partidas) {
         if (isTimeLimitClose()) break;
-        if (p.partida_statball_id) continue;
+        if (p.partida_aleball_id) continue;
         const homeSbId = teamMap.get(p.casa_clube_id);
         const awaySbId = teamMap.get(p.visitante_clube_id);
         if (!homeSbId || !awaySbId) continue;
@@ -832,7 +832,7 @@ async function mapPartidasStatball(supabase: any, seasons: number[], errors: str
 
         if (existing) {
           await supabase.from("cartola_partidas").update({
-            partida_statball_id: existing.id,
+            partida_aleball_id: existing.id,
           }).eq("id", p.id);
 
           if (p.placar_casa !== null && p.placar_visitante !== null) {

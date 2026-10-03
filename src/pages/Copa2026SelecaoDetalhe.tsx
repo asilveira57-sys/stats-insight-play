@@ -19,7 +19,7 @@ export default function Copa2026SelecaoDetalhe() {
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading } = useWC2026Team(slug);
 
-  const url = `https://www.statball.com.br/copa-2026/selecoes/${slug}`;
+  const url = `https://www.aleball.com/copa-2026/selecoes/${slug}`;
 
   const faqs = useMemo(() => {
     if (!data) return [];
@@ -132,7 +132,7 @@ export default function Copa2026SelecaoDetalhe() {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Fonte: FIFA / curadoria editorial Statball.</p>
+            <p className="text-xs text-muted-foreground mt-2">Fonte: FIFA / curadoria editorial Aleball.</p>
           </section>
         ) : (
           <section className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">

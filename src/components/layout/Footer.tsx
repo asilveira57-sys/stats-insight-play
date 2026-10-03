@@ -69,7 +69,7 @@ export function Footer() {
   return (
     <footer
       role="contentinfo"
-      aria-label="Rodapé do Statball"
+      aria-label="Rodapé do Aleball"
       className="dark relative bg-gradient-to-b from-surface-1 to-background border-t border-border/50 mt-auto"
     >
       {/* Top neon accent line */}
@@ -80,12 +80,12 @@ export function Footer() {
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
           {/* COLUNA 1 — MARCA */}
           <div className="lg:col-span-4">
-            <Link to="/" className="flex items-center gap-2.5 mb-5 group" aria-label="Statball — Página inicial">
+            <Link to="/" className="flex items-center gap-2.5 mb-5 group" aria-label="Aleball — Página inicial">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.35)] group-hover:shadow-[0_0_28px_hsl(var(--primary)/0.55)] transition-shadow">
                 <Zap className="w-6 h-6 text-primary-foreground" />
               </div>
               <span className="font-display font-bold text-2xl gradient-text tracking-wide">
-                STATBALL
+                ALEBALL
               </span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-sm">
@@ -110,11 +110,11 @@ export function Footer() {
             </div>
 
             <a
-              href="mailto:contato@statball.com"
+              href="mailto:contato@aleball.com"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-5"
             >
               <Mail className="w-4 h-4" />
-              contato@statball.com
+              contato@aleball.com
             </a>
 
             <div className="rounded-lg border border-border/40 bg-surface-2/50 p-3 flex items-start gap-2.5">
@@ -203,12 +203,12 @@ export function Footer() {
         <div className="md:hidden">
           {/* Brand block always visible on mobile */}
           <div className="mb-6">
-            <Link to="/" className="flex items-center gap-2.5 mb-4" aria-label="Statball">
+            <Link to="/" className="flex items-center gap-2.5 mb-4" aria-label="Aleball">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
                 <Zap className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="font-display font-bold text-xl gradient-text tracking-wide">
-                STATBALL
+                ALEBALL
               </span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
@@ -231,11 +231,11 @@ export function Footer() {
               ))}
             </div>
             <a
-              href="mailto:contato@statball.com"
+              href="mailto:contato@aleball.com"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground"
             >
               <Mail className="w-4 h-4" />
-              contato@statball.com
+              contato@aleball.com
             </a>
           </div>
 
@@ -309,7 +309,7 @@ export function Footer() {
       <div className="border-t border-border/40 bg-background/60 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground text-center md:text-left">
-            © {year} <span className="text-foreground/90 font-semibold">Statball</span>. Todos os direitos reservados.
+            © {year} <span className="text-foreground/90 font-semibold">Aleball</span>. Todos os direitos reservados.
           </p>
 
           <div className="flex items-center gap-4 text-xs">

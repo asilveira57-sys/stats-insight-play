@@ -286,7 +286,7 @@ serve(async (req) => {
     // GitHub headers
     const ghHeaders: Record<string, string> = {
       Accept: "application/vnd.github.v3+json",
-      "User-Agent": "Statball-Importer",
+      "User-Agent": "Aleball-Importer",
     };
     const ghToken = Deno.env.get("GITHUB_TOKEN");
     if (ghToken) ghHeaders["Authorization"] = `Bearer ${ghToken}`;

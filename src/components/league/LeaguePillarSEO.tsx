@@ -8,7 +8,7 @@ interface LeaguePillarSEOProps {
 }
 
 export function LeaguePillarSEO({ leagueName, country, description, url }: LeaguePillarSEOProps) {
-  const title = `${leagueName} - Análise Estatística Completa | Statball`;
+  const title = `${leagueName} - Análise Estatística Completa | Aleball`;
   
   const metaDescription = description || 
     `Análise estatística completa da ${leagueName}${country ? ` (${country})` : ""}. Times, estatísticas, tendências e análises detalhadas da temporada.`;

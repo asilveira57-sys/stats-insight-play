@@ -90,7 +90,7 @@ export default function TimeAnalises() {
 
   return (
     <Layout>
-      <title>{team ? `Análises do ${team.nome} | Statball` : "Análises | Statball"}</title>
+      <title>{team ? `Análises do ${team.nome} | Aleball` : "Análises | Aleball"}</title>
       <meta
         name="description"
         content={

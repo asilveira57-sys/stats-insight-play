@@ -17,11 +17,11 @@ export function ArticleSEO({
   imageAlt,
   url,
   publishedTime,
-  author = "Statball",
+  author = "Aleball",
 }: ArticleSEOProps) {
   useEffect(() => {
     const originalTitle = document.title;
-    document.title = `${title} | Statball`;
+    document.title = `${title} | Aleball`;
 
     const updateMeta = (name: string, content: string, isProperty = false) => {
       const attr = isProperty ? "property" : "name";
@@ -82,15 +82,15 @@ export function ArticleSEO({
     datePublished: publishedTime,
     author: {
       "@type": "Organization",
-      name: "Statball",
-      url: "https://www.statball.com.br",
+      name: "Aleball",
+      url: "https://www.aleball.com",
     },
     publisher: {
       "@type": "Organization",
-      name: "Statball",
+      name: "Aleball",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.statball.com.br/favicon.ico",
+        url: "https://www.aleball.com/favicon.ico",
       },
     },
   };

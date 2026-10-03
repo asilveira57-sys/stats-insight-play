@@ -16,12 +16,12 @@ export default function Copa2026Artilharia() {
   return (
     <Layout>
       <Helmet>
-        <title>Artilharia da Copa do Mundo 2026 — Statball</title>
+        <title>Artilharia da Copa do Mundo 2026 — Aleball</title>
         <meta
           name="description"
           content="Ranking de artilheiros da Copa do Mundo 2026 atualizado em tempo real: gols, pênaltis, jogos disputados pela seleção e média de gols por partida."
         />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/artilharia" />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/artilharia" />
       </Helmet>
 
       <section className="border-b border-border bg-gradient-to-br from-primary/15 via-background to-background">

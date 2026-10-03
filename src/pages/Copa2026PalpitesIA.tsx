@@ -158,20 +158,20 @@ export default function Copa2026PalpitesIA() {
   return (
     <Layout>
       <Helmet>
-        <title>Palpites IA em Lote — Copa do Mundo 2026 | Statball</title>
-        <meta name="description" content="Veja em uma única tela os placares previstos pelo Statball para todos os jogos da Copa 2026 com confiança, taxa de acerto e exportação em CSV." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/palpites-ia" />
+        <title>Palpites IA em Lote — Copa do Mundo 2026 | Aleball</title>
+        <meta name="description" content="Veja em uma única tela os placares previstos pelo Aleball para todos os jogos da Copa 2026 com confiança, taxa de acerto e exportação em CSV." />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/palpites-ia" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-1">
-              <Sparkles className="w-4 h-4" /> Inteligência Statball
+              <Sparkles className="w-4 h-4" /> Inteligência Aleball
             </div>
             <h1 className="text-3xl font-bold">Palpites IA em lote — Copa 2026</h1>
             <p className="text-muted-foreground mt-1 text-sm max-w-2xl">
-              Placares previstos pelo modelo estatístico do Statball para cada um dos jogos da Copa, com nível de confiança e cruzamento com o resultado real.
+              Placares previstos pelo modelo estatístico do Aleball para cada um dos jogos da Copa, com nível de confiança e cruzamento com o resultado real.
             </p>
           </div>
           <div className="flex gap-2">

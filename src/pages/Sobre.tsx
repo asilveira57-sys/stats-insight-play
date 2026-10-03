@@ -97,7 +97,7 @@ const Sobre = () => {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Sobre o Statball
+              Sobre o Aleball
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Conheça a plataforma que está transformando a forma como fãs,
@@ -108,7 +108,7 @@ const Sobre = () => {
           {/* Introdução */}
           <section className="bg-card rounded-xl p-6 md:p-8 border border-border mb-8">
             <p className="text-muted-foreground leading-relaxed mb-4">
-              O Statball é uma plataforma digital especializada em{" "}
+              O Aleball é uma plataforma digital especializada em{" "}
               <strong className="text-foreground">
                 análise esportiva, estatísticas de futebol, tendências,
                 desempenho de equipes, comparativos históricos e conteúdos
@@ -186,7 +186,7 @@ const Sobre = () => {
               </p>
               <p>
                 Com experiência em desenvolvimento de soluções inteligentes e projetos
-                digitais de grande volume de dados, Alexandre idealizou o Statball como
+                digitais de grande volume de dados, Alexandre idealizou o Aleball como
                 uma plataforma capaz de unir tecnologia, automação e informação esportiva
                 em uma experiência moderna, rápida e transparente.
               </p>
@@ -201,7 +201,7 @@ const Sobre = () => {
             </h2>
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                Grande parte da estrutura do Statball utiliza recursos automatizados
+                Grande parte da estrutura do Aleball utiliza recursos automatizados
                 para coleta, processamento, organização e apresentação de dados
                 esportivos, permitindo a geração contínua de análises, tendências e
                 conteúdos estatísticos em larga escala.
@@ -221,7 +221,7 @@ const Sobre = () => {
               Nossos Compromissos
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Mesmo com forte utilização de tecnologia e automação, o Statball busca
+              Mesmo com forte utilização de tecnologia e automação, o Aleball busca
               manter compromisso contínuo com:
             </p>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -245,7 +245,7 @@ const Sobre = () => {
             </h2>
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                O Statball{" "}
+                O Aleball{" "}
                 <strong className="text-foreground">
                   não possui vínculo oficial com clubes, federações, emissoras,
                   organizadores de competições ou plataformas de apostas

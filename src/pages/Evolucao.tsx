@@ -476,7 +476,7 @@ export default function Evolucao() {
           <h2 className="text-xl font-semibold mb-4">Sobre a Evolução de Performance</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              O módulo de Evolução do Statball oferece uma análise temporal única da precisão das previsões 
+              O módulo de Evolução do Aleball oferece uma análise temporal única da precisão das previsões 
               matemáticas. Ao acompanhar a evolução semanal, você pode identificar padrões, entender melhor 
               o comportamento do modelo em diferentes períodos da temporada e comparar objetivamente a 
               performance da inteligência artificial com os palpites da comunidade. Esta análise é 

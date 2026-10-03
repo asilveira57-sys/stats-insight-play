@@ -55,22 +55,22 @@ const Contato = () => {
 
     setLoading(true);
     try {
-      const subject = encodeURIComponent(`[Statball] ${parsed.data.assunto}`);
+      const subject = encodeURIComponent(`[Aleball] ${parsed.data.assunto}`);
       const body = encodeURIComponent(
         `Nome: ${parsed.data.nome}\nE-mail: ${parsed.data.email}\nTelefone: ${parsed.data.telefone || "-"}\n\n${parsed.data.mensagem}`
       );
-      window.location.href = `mailto:contato@statball.com.br?subject=${subject}&body=${body}`;
+      window.location.href = `mailto:contato@aleball.com?subject=${subject}&body=${body}`;
       toast({
         title: "Mensagem pronta para envio",
         description:
-          "Sua mensagem foi enviada com sucesso. A equipe do Statball vai analisar sua solicitação e responder pelo canal informado.",
+          "Sua mensagem foi enviada com sucesso. A equipe do Aleball vai analisar sua solicitação e responder pelo canal informado.",
       });
       setForm({ nome: "", email: "", telefone: "", assunto: "", mensagem: "" });
     } catch {
       toast({
         title: "Erro ao enviar",
         description:
-          "Não foi possível enviar sua mensagem neste momento. Tente novamente ou envie um e-mail para contato@statball.com.br.",
+          "Não foi possível enviar sua mensagem neste momento. Tente novamente ou envie um e-mail para contato@aleball.com.",
         variant: "destructive",
       });
     } finally {
@@ -89,10 +89,10 @@ const Contato = () => {
               CANAL OFICIAL
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Fale com o Statball
+              Fale com o Aleball
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              O Statball mantém este canal aberto para dúvidas, sugestões, correções,
+              O Aleball mantém este canal aberto para dúvidas, sugestões, correções,
               assuntos institucionais, parcerias e demais contatos relacionados à plataforma.
             </p>
           </div>
@@ -111,7 +111,7 @@ const Contato = () => {
                 Fundador da Mlfacil Consultoria e Sistemas
               </p>
               <p className="text-sm text-foreground/80 leading-relaxed">
-                Responsável pelo desenvolvimento, estratégia e evolução da plataforma Statball.
+                Responsável pelo desenvolvimento, estratégia e evolução da plataforma Aleball.
                 Atua com tecnologia, automação, inteligência artificial, ecommerce, marketplaces
                 e desenvolvimento de sistemas digitais voltados para análise de dados,
                 produtividade e geração de conteúdo estruturado.
@@ -129,7 +129,7 @@ const Contato = () => {
               </p>
               <p className="text-sm text-foreground/80 leading-relaxed">
                 Empresa responsável pelo desenvolvimento, manutenção tecnológica e operação
-                contínua da plataforma Statball, com foco em estatísticas esportivas, análise
+                contínua da plataforma Aleball, com foco em estatísticas esportivas, análise
                 de dados e conteúdos automatizados.
               </p>
             </article>
@@ -143,13 +143,13 @@ const Contato = () => {
             </h2>
             <div className="grid sm:grid-cols-2 gap-4 mb-6">
               <a
-                href="mailto:contato@statball.com.br"
+                href="mailto:contato@aleball.com"
                 className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors"
               >
                 <Mail className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-xs text-muted-foreground">E-mail oficial</p>
-                  <p className="text-sm font-semibold text-foreground">contato@statball.com.br</p>
+                  <p className="text-sm font-semibold text-foreground">contato@aleball.com</p>
                 </div>
               </a>
               <a
@@ -185,7 +185,7 @@ const Contato = () => {
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
               Preencha o formulário abaixo para enviar sua mensagem diretamente à equipe
-              responsável pelo Statball.
+              responsável pelo Aleball.
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -228,7 +228,7 @@ const Contato = () => {
               responder à solicitação recebida.
             </p>
             <p className="text-sm text-foreground/80 leading-relaxed">
-              O Statball não vende, compartilha ou comercializa dados pessoais enviados por meio
+              O Aleball não vende, compartilha ou comercializa dados pessoais enviados por meio
               desta página. Para mais informações, acesse nossa{" "}
               <Link to="/privacidade" className="text-primary hover:underline">
                 Política de Privacidade
@@ -244,7 +244,7 @@ const Contato = () => {
               Observação importante
             </h2>
             <p className="text-sm text-foreground/80 leading-relaxed">
-              O Statball é uma plataforma informativa de estatísticas, análises e conteúdos
+              O Aleball é uma plataforma informativa de estatísticas, análises e conteúdos
               esportivos. <strong>Não somos uma plataforma de apostas</strong>, não intermediamos
               apostas e não garantimos resultados esportivos. As informações publicadas possuem
               finalidade estatística, editorial, informativa e recreativa.

@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
-    const prompt = `Você é um analista esportivo do Statball. Gere um texto descritivo, factual e variado sobre o desempenho do ${team_name}${league_name ? ` no ${league_name}` : ""} na temporada ${season}.
+    const prompt = `Você é um analista esportivo do Aleball. Gere um texto descritivo, factual e variado sobre o desempenho do ${team_name}${league_name ? ` no ${league_name}` : ""} na temporada ${season}.
 
 Estatísticas reais:
 - Jogos: ${stats.jogos} (${stats.vitorias}V / ${stats.empates}E / ${stats.derrotas}D)

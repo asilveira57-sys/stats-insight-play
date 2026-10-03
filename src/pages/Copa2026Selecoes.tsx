@@ -15,7 +15,7 @@ export default function Copa2026Selecoes() {
 
   return (
     <Layout>
-      <Helmet><title>Seleções — Copa 2026 | Statball</title></Helmet>
+      <Helmet><title>Seleções — Copa 2026 | Aleball</title></Helmet>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Seleções da Copa 2026</h1>
         <p className="text-muted-foreground mb-6">{filtered.length} seleções</p>

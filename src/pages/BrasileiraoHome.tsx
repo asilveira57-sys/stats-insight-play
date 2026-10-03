@@ -23,12 +23,12 @@ export default function BrasileiraoHome() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Brasileirão Série A ${season} — Jogos, Tabela e Palpites IA | Statball`}</title>
+        <title>{`Brasileirão Série A ${season} — Jogos, Tabela e Palpites IA | Aleball`}</title>
         <meta
           name="description"
           content={`Cobertura completa do Campeonato Brasileiro Série A ${season}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/brasileirao" />
+        <link rel="canonical" href="https://www.aleball.com/brasileirao" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">
@@ -152,7 +152,7 @@ export default function BrasileiraoHome() {
           </div>
           <p className="text-sm text-muted-foreground mb-4">
             Cada palpite é gerado antes da bola rolar e comparado, jogo a jogo, com o resultado oficial já corrigido no banco
-            do Statball. Nada é reescrito depois do apito final.
+            do Aleball. Nada é reescrito depois do apito final.
           </p>
           <Button asChild size="sm" variant="outline"><Link to="/brasileirao/palpites-ia">Ver painel de acertos</Link></Button>
         </section>

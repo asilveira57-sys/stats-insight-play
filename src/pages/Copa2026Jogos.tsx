@@ -42,9 +42,9 @@ export default function Copa2026Jogos() {
   return (
     <Layout>
       <Helmet>
-        <title>Jogos da Copa do Mundo 2026 — Tabela completa | Statball</title>
+        <title>Jogos da Copa do Mundo 2026 — Tabela completa | Aleball</title>
         <meta name="description" content="Calendário completo da Copa do Mundo 2026: fase de grupos, mata-mata, datas, horários e estádios. Filtre por fase, grupo ou status." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/jogos" />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/jogos" />
       </Helmet>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Jogos da Copa 2026</h1>

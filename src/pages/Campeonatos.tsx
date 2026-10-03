@@ -277,7 +277,7 @@ export default function Campeonatos() {
         <div className="mt-12 pt-8 border-t border-border">
           <h2 className="text-lg font-semibold mb-4">Sobre as Competições</h2>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-            O Statball acompanha as principais competições de futebol do Brasil e do mundo.
+            O Aleball acompanha as principais competições de futebol do Brasil e do mundo.
             Desde os campeonatos estaduais até as grandes ligas europeias e torneios internacionais,
             oferecemos estatísticas completas, análises detalhadas e previsões baseadas em dados.
           </p>

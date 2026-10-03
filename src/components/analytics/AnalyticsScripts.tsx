@@ -131,7 +131,7 @@ export function trackPixelEvent(eventName: string, params?: Record<string, any>)
   }
 }
 
-// Predefined events for Clube Statball
+// Predefined events for Clube Aleball
 export const AnalyticsEvents = {
   viewContent: (params?: { content_name?: string; content_category?: string }) => {
     trackGA4Event('view_content', params);

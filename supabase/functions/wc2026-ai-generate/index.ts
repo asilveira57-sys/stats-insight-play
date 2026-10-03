@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `Você é um analista esportivo do Statball cobrindo a Copa do Mundo 2026.
+const SYSTEM_PROMPT = `Você é um analista esportivo do Aleball cobrindo a Copa do Mundo 2026.
 Escreva em português brasileiro, tom jornalístico, claro e informativo.
 NUNCA use linguagem de apostas. Palpites são previsões editoriais esportivas.
 Use APENAS os dados reais fornecidos no contexto. Se faltarem dados, sinalize cobertura parcial.

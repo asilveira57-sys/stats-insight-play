@@ -1,4 +1,4 @@
-// Dynamic sitemap generator for Statball
+// Dynamic sitemap generator for Aleball
 // Routes:
 //   /sitemap.xml                 -> sitemap index
 //   /sitemap-static.xml          -> static pages
@@ -9,7 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const SITE = "https://www.statball.com.br";
+const SITE = "https://www.aleball.com";
 const PAGE_SIZE = 10000; // urls per sub-sitemap (well under 50k cap)
 
 const corsHeaders = {

@@ -538,7 +538,7 @@ export default function EvolucaoSemanal() {
               Sobre Este Dashboard
             </h2>
             <p>
-              O dashboard de evolução semanal do Statball oferece uma visão clara e transparente 
+              O dashboard de evolução semanal do Aleball oferece uma visão clara e transparente 
               de como as previsões de futebol evoluem ao longo do tempo. Comparamos sistematicamente 
               o desempenho da nossa IA com os palpites dos usuários, sempre utilizando os resultados 
               reais das partidas como base de validação.

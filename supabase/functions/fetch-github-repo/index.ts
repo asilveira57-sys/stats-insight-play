@@ -32,7 +32,7 @@ serve(async (req) => {
 
     const headers: Record<string, string> = {
       "Accept": "application/vnd.github.v3+json",
-      "User-Agent": "Statball-Importer",
+      "User-Agent": "Aleball-Importer",
     };
 
     // Optional: use GitHub token for higher rate limits

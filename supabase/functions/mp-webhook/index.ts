@@ -113,12 +113,12 @@ async function handlePayment(supabase: any, mpAccessToken: string, paymentId: st
   console.log("Payment data:", JSON.stringify(payment));
 
   const externalReference = payment.external_reference;
-  if (!externalReference?.startsWith("statball_")) {
-    console.log("Not a StatBall payment, skipping");
+  if (!externalReference?.startsWith("aleball_")) {
+    console.log("Not a Aleball payment, skipping");
     return;
   }
 
-  // Parse external reference: statball_{user_id}_{plan_id}_{timestamp}
+  // Parse external reference: aleball_{user_id}_{plan_id}_{timestamp}
   const parts = externalReference.split("_");
   const userId = parts[1];
 

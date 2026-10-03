@@ -16,12 +16,12 @@ export default function CopaBrasilHome() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Copa do Brasil ${season} — Jogos, Fases e Palpites IA | Statball`}</title>
+        <title>{`Copa do Brasil ${season} — Jogos, Fases e Palpites IA | Aleball`}</title>
         <meta
           name="description"
           content={`Cobertura completa da Copa do Brasil ${season}: jogos por fase, resultados oficiais, artilharia e palpites da IA auditados contra o resultado real.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/copa-do-brasil" />
+        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">
@@ -108,7 +108,7 @@ export default function CopaBrasilHome() {
           </div>
           <p className="text-sm text-muted-foreground mb-4">
             Cada palpite da Copa do Brasil é gerado antes da bola rolar e comparado, jogo a jogo, com o resultado oficial já
-            registrado no banco do Statball. Nada é reescrito depois do apito final.
+            registrado no banco do Aleball. Nada é reescrito depois do apito final.
           </p>
           <Button asChild size="sm" variant="outline"><Link to="/copa-do-brasil/palpites-ia">Ver painel de acertos</Link></Button>
         </section>

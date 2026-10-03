@@ -133,7 +133,7 @@ REGRAS ABSOLUTAS:
 - PROIBIDO frases genéricas: "jogo promete ser equilibrado", "duas equipes fortes", "qualquer coisa pode acontecer"
 - Use estrutura HTML com H2 para seções principais`;
 
-  const userPrompt = `Escreva uma análise pré-jogo completa e diferenciada para o Statball:
+  const userPrompt = `Escreva uma análise pré-jogo completa e diferenciada para o Aleball:
 
 DADOS DO CONFRONTO:
 - ${timeCasa} x ${timeFora}
@@ -175,7 +175,7 @@ ESTRUTURA OBRIGATÓRIA (mínimo 1200 palavras, HTML com h2, h3, p, ul, li, stron
 - Cenários alternativos prováveis
 - NÃO revelar resultado real
 
-<h2>Leitura de Cenário Statball</h2>
+<h2>Leitura de Cenário Aleball</h2>
 - Análise direta estilo especialista (150+ palavras)
 - Formato: "O cenário indica um jogo com tendência X, principalmente pela Y do time Z..."
 - Cenário provável: ofensivo, defensivo, equilibrado etc.

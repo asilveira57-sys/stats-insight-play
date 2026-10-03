@@ -27,7 +27,7 @@ export default function EstatisticasRanking() {
   const { data, isLoading } = useTeamRankings(metric, season, null, 50);
 
   const label = RANKING_LABELS[metric];
-  const title = `Ranking: ${label} ${season} | Statball`;
+  const title = `Ranking: ${label} ${season} | Aleball`;
   const description = `Top 50 times do futebol em ${label.toLowerCase()} na temporada ${season}. Estatísticas atualizadas e ordenadas.`;
 
   useEffect(() => {

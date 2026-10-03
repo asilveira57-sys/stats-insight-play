@@ -9,12 +9,12 @@ export default function TransparenciaIA() {
   return (
     <Layout>
       <Helmet>
-        <title>Transparência da IA Statball | Como prevemos e auditamos</title>
+        <title>Transparência da IA Aleball | Como prevemos e auditamos</title>
         <meta
           name="description"
-          content="Como a IA Statball gera, registra e audita suas previsões. Metodologia, fontes, níveis de acerto e detecção de alucinações."
+          content="Como a IA Aleball gera, registra e audita suas previsões. Metodologia, fontes, níveis de acerto e detecção de alucinações."
         />
-        <link rel="canonical" href="https://www.statball.com.br/transparencia-ia" />
+        <link rel="canonical" href="https://www.aleball.com/transparencia-ia" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
@@ -22,7 +22,7 @@ export default function TransparenciaIA() {
           <Badge variant="outline" className="gap-1">
             <ShieldCheck className="h-3 w-3" /> Página institucional
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold">Transparência da IA Statball</h1>
+          <h1 className="text-3xl md:text-4xl font-bold">Transparência da IA Aleball</h1>
           <p className="text-muted-foreground text-lg">
             Toda previsão publicada é registrada, datada e comparada ao resultado real.
             Você pode auditar, contestar e acompanhar a evolução da nossa precisão em tempo real.
@@ -118,7 +118,7 @@ export default function TransparenciaIA() {
             <li>Nunca apagamos uma previsão errada para esconder o erro.</li>
             <li>Nunca alteramos previsões depois que o jogo começou.</li>
             <li>A taxa de acerto é calculada automaticamente, sem intervenção humana.</li>
-            <li>Statball é uma ferramenta de análise estatística — não é casa de apostas.</li>
+            <li>Aleball é uma ferramenta de análise estatística — não é casa de apostas.</li>
           </ul>
         </Section>
 

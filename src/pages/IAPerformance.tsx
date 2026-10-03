@@ -29,12 +29,12 @@ export default function IAPerformance() {
   return (
     <Layout>
       <Helmet>
-        <title>Performance da IA Statball | Auditoria pública de previsões</title>
+        <title>Performance da IA Aleball | Auditoria pública de previsões</title>
         <meta
           name="description"
-          content="Painel público com a taxa de acerto da IA Statball: vencedor, tendência, diferença de gols e placar exato, com evolução temporal."
+          content="Painel público com a taxa de acerto da IA Aleball: vencedor, tendência, diferença de gols e placar exato, com evolução temporal."
         />
-        <link rel="canonical" href="https://www.statball.com.br/ia-performance" />
+        <link rel="canonical" href="https://www.aleball.com/ia-performance" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 space-y-8">
@@ -42,7 +42,7 @@ export default function IAPerformance() {
           <Badge variant="outline" className="gap-1">
             <ShieldCheck className="h-3 w-3" /> Auditoria pública
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold">Performance da IA Statball</h1>
+          <h1 className="text-3xl md:text-4xl font-bold">Performance da IA Aleball</h1>
           <p className="text-muted-foreground max-w-3xl">
             Toda previsão é registrada com data e hora e comparada com o resultado real.
             Medimos 4 níveis de acerto: vencedor, tendência, diferença de gols e placar exato.

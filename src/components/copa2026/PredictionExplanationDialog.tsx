@@ -47,7 +47,7 @@ export function PredictionExplanationDialog({ matchId, source = "wc2026" }: { ma
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Por que essa previsão?</DialogTitle>
-          <DialogDescription>Pesos auditáveis usados pelo modelo Statball AI.</DialogDescription>
+          <DialogDescription>Pesos auditáveis usados pelo modelo Aleball AI.</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

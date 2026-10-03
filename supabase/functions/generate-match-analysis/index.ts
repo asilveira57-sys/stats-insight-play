@@ -107,7 +107,7 @@ async function generateLongFormContent(matchData: MatchData, GEMINI_API_KEY: str
   const forcaFora = palpite?.forca_time_fora?.toFixed(0) || '50';
   const confianca = palpite?.confianca?.toFixed(0) || '50';
 
-  const prompt = `Você é um analista esportivo brasileiro experiente e renomado, especialista em análise estatística e tática de futebol. Seu objetivo é gerar uma página de análise pré-jogo para o Statball que pareça escrita por especialista humano, interprete dados de forma útil e aumente o tempo de permanência do leitor.
+  const prompt = `Você é um analista esportivo brasileiro experiente e renomado, especialista em análise estatística e tática de futebol. Seu objetivo é gerar uma página de análise pré-jogo para o Aleball que pareça escrita por especialista humano, interprete dados de forma útil e aumente o tempo de permanência do leitor.
 
 DADOS COMPLETOS DA PARTIDA:
 - Competição: ${liga}
@@ -146,7 +146,7 @@ ESTRUTURA OBRIGATÓRIA DO ARTIGO (HTML com h2, h3, p, ul, li, strong, em):
 
 <!-- INSERIR CTA PREMIUM AQUI -->
 <div class="premium-cta">
-<p><strong>Quer análises ainda mais detalhadas?</strong> Usuários do Clube Statball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto.</p>
+<p><strong>Quer análises ainda mais detalhadas?</strong> Usuários do Clube Aleball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto.</p>
 </div>
 
 <h2>Fator Casa/Fora</h2>
@@ -161,7 +161,7 @@ ESTRUTURA OBRIGATÓRIA DO ARTIGO (HTML com h2, h3, p, ul, li, strong, em):
 - Discuta cenários alternativos
 - Mínimo 250 palavras
 
-<h2>Leitura de Cenário Statball</h2>
+<h2>Leitura de Cenário Aleball</h2>
 - Análise direta estilo especialista em 1-2 parágrafos
 - Exemplo: "O cenário indica um jogo com tendência X, principalmente pela Y do time Z, enquanto o time W costuma..."
 - Cenário provável: jogo aberto, equilibrado, defensivo, etc.
@@ -169,7 +169,7 @@ ESTRUTURA OBRIGATÓRIA DO ARTIGO (HTML com h2, h3, p, ul, li, strong, em):
 
 <!-- INSERIR CTA FINAL -->
 <div class="premium-cta-final">
-<p>Esta análise foi gerada pelo sistema de inteligência estatística do Statball. Para acompanhar análises detalhadas de todos os confrontos, conheça o <strong>Clube Statball Premium</strong>.</p>
+<p>Esta análise foi gerada pelo sistema de inteligência estatística do Aleball. Para acompanhar análises detalhadas de todos os confrontos, conheça o <strong>Clube Aleball Premium</strong>.</p>
 </div>
 
 REGRAS CRÍTICAS:

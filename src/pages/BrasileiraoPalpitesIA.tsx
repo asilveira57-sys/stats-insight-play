@@ -20,12 +20,12 @@ export default function BrasileiraoPalpitesIA() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Palpites da IA no Brasileirão ${season} — Acertos Auditados | Statball`}</title>
+        <title>{`Palpites da IA no Brasileirão ${season} — Acertos Auditados | Aleball`}</title>
         <meta
           name="description"
-          content={`Palpites da IA do Statball para o Brasileirão Série A ${season} comparados jogo a jogo com o resultado oficial: taxa de acerto de resultado, dupla chance e placar exato.`}
+          content={`Palpites da IA do Aleball para o Brasileirão Série A ${season} comparados jogo a jogo com o resultado oficial: taxa de acerto de resultado, dupla chance e placar exato.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/brasileirao/palpites-ia" />
+        <link rel="canonical" href="https://www.aleball.com/brasileirao/palpites-ia" />
       </Helmet>
 
       <BrasileiraoNav />

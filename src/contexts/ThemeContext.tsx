@@ -13,7 +13,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     // Check localStorage first
-    const stored = localStorage.getItem("statball-theme");
+    const stored = localStorage.getItem("aleball-theme");
     if (stored === "light" || stored === "dark") {
       return stored;
     }
@@ -31,7 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.add(theme);
     
     // Store preference
-    localStorage.setItem("statball-theme", theme);
+    localStorage.setItem("aleball-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

@@ -35,7 +35,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import statballLogo from "@/assets/statball-logo.png";
+import aleballLogo from "@/assets/aleball-logo.png";
 
 const menuGroups = [
   {
@@ -100,7 +100,7 @@ export function AdminSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-1">
-          <img src={statballLogo} alt="Statball" className="h-6 w-6 rounded" />
+          <img src={aleballLogo} alt="Aleball" className="h-6 w-6 rounded" />
           {!collapsed && (
             <span className="font-display text-sm font-bold tracking-wide text-sidebar-foreground">
               ADMIN

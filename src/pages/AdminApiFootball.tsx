@@ -156,13 +156,13 @@ export default function AdminApiFootball() {
     });
   }
 
-  function selectStatballPriority() {
+  function selectAleballPriority() {
     const next: Record<number, Set<number>> = {};
     inventory.filter(l => l.is_priority).forEach(l => {
       next[l.league_id] = new Set(l.seasons.map(s => s.year));
     });
     setSelected(next);
-    toast({ title: "Prioridade Statball selecionada", description: `${Object.keys(next).length} ligas marcadas` });
+    toast({ title: "Prioridade Aleball selecionada", description: `${Object.keys(next).length} ligas marcadas` });
   }
 
   const totals = useMemo(() => {
@@ -345,8 +345,8 @@ export default function AdminApiFootball() {
 
             <div className="flex gap-2 items-center flex-wrap">
               <Input placeholder="Filtrar por liga ou país..." value={search} onChange={e => setSearch(e.target.value)} className="max-w-sm" />
-              <Button variant="outline" onClick={selectStatballPriority}>
-                <Star className="h-4 w-4 mr-2" /> Prioridade Statball
+              <Button variant="outline" onClick={selectAleballPriority}>
+                <Star className="h-4 w-4 mr-2" /> Prioridade Aleball
               </Button>
               <Button variant="outline" onClick={() => setSelected({})}>Limpar seleção</Button>
               <Button variant="secondary" onClick={enqueueAll} disabled={enqueuingAll || inventory.length === 0}>

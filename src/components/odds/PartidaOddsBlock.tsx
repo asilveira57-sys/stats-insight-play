@@ -73,7 +73,7 @@ export function PartidaOddsBlock({
         </div>
       )}
       <p className="text-[10px] text-muted-foreground">
-        Dados de mercado exibidos apenas como referência estatística ao lado da análise do Statball. Não é
+        Dados de mercado exibidos apenas como referência estatística ao lado da análise do Aleball. Não é
         recomendação de aposta.
       </p>
     </div>

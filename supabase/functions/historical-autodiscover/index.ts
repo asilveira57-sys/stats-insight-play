@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
 
     // Fetch the index page
     const response = await fetch(index_url, {
-      headers: { 'User-Agent': 'StatballBot/1.0 (historical data research)', 'Accept': 'text/html, text/plain, */*' },
+      headers: { 'User-Agent': 'AleballBot/1.0 (historical data research)', 'Accept': 'text/html, text/plain, */*' },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const html = await response.text();

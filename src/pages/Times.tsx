@@ -435,7 +435,7 @@ export default function Times() {
           <h2 className="text-xl font-semibold mb-4">Sobre os Times</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              O Statball oferece cobertura completa dos principais clubes e seleções do mundo. 
+              O Aleball oferece cobertura completa dos principais clubes e seleções do mundo. 
               Cada página de time é uma central de informações com estatísticas atualizadas, 
               resultados recentes, próximos jogos, histórico de desempenho e análises matemáticas 
               exclusivas. Nossa cobertura prioriza o futebol brasileiro (clubes da Série A e B) 

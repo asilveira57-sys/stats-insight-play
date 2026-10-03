@@ -62,11 +62,11 @@ export function useCartolaSyncRound() {
 export function useCartolaMapClube() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ cartolaId, statballTeamId, nome }: { cartolaId: number; statballTeamId: string; nome: string }) => {
+    mutationFn: async ({ cartolaId, aleballTeamId, nome }: { cartolaId: number; aleballTeamId: string; nome: string }) => {
       const { error } = await supabase.from("external_id_map").upsert({
         entity_type: "team",
         external_id: `cartola:${cartolaId}`,
-        internal_id: statballTeamId,
+        internal_id: aleballTeamId,
         confidence: "high",
         metadata: { source: "cartola", cartola_clube_id: cartolaId, nome, manual: true },
       });

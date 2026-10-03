@@ -181,7 +181,7 @@ Texto persuasivo comparando previsão x realidade
 - Linguagem analítica, sem promessas
 - Mínimo 250 palavras
 
-<h2>A Leitura da Equipe Statball</h2>
+<h2>A Leitura da Equipe Aleball</h2>
 - Apresente a perspectiva humana da análise
 - Discuta fatores qualitativos que a IA pode não capturar
 - Mencione contexto tático e emocional
@@ -208,7 +208,7 @@ Texto persuasivo comparando previsão x realidade
 
 <!-- INSERIR CTA PREMIUM -->
 <div class="premium-cta">
-<p><strong>Membros do Clube Statball</strong> acompanham análises completas de validação como esta, com métricas avançadas e histórico de acertos.</p>
+<p><strong>Membros do Clube Aleball</strong> acompanham análises completas de validação como esta, com métricas avançadas e histórico de acertos.</p>
 </div>
 
 <h2>Aprendizados do Confronto</h2>
@@ -226,7 +226,7 @@ Texto persuasivo comparando previsão x realidade
 
 <!-- INSERIR CTA FINAL -->
 <div class="premium-cta-final">
-<p>Esta análise de validação foi gerada pelo Statball. Para acompanhar todas as comparações entre previsões e resultados reais, conheça o <strong>Clube Statball Premium</strong> — onde dados e transparência caminham juntos.</p>
+<p>Esta análise de validação foi gerada pelo Aleball. Para acompanhar todas as comparações entre previsões e resultados reais, conheça o <strong>Clube Aleball Premium</strong> — onde dados e transparência caminham juntos.</p>
 </div>
 
 REGRAS IMPORTANTES:

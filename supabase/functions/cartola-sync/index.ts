@@ -38,7 +38,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(url, {
-        headers: { "User-Agent": "Statball/1.0", "Accept": "application/json" },
+        headers: { "User-Agent": "Aleball/1.0", "Accept": "application/json" },
       });
       if (res.ok) return res;
       if (res.status === 429) {
@@ -228,8 +228,8 @@ async function syncSeason(supabase: any, season: number) {
       await new Promise(r => setTimeout(r, 300));
     }
 
-    // Step D: Map clubs to Statball
-    await mapClubesStatball(supabase, errors);
+    // Step D: Map clubs to Aleball
+    await mapClubesAleball(supabase, errors);
 
     const finalStatus = errors.length > 5 ? "partial" : "completed";
     if (logId) {
@@ -397,7 +397,7 @@ async function syncRound(supabase: any, season: number, rodada: number) {
   }
 }
 
-async function mapClubesStatball(supabase: any, errors: string[]) {
+async function mapClubesAleball(supabase: any, errors: string[]) {
   try {
     const allClubes = await fetchAll(supabase, "cartola_clubes", "cartola_clube_id, nome, slug, abreviacao");
     const existingMaps = await fetchAll(supabase, "external_id_map", "external_id, internal_id", { entity_type: "team" });

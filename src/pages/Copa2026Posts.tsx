@@ -12,9 +12,9 @@ export default function Copa2026Posts() {
   return (
     <Layout>
       <Helmet>
-        <title>Cobertura Copa do Mundo 2026 — Notícias e crônicas | Statball</title>
-        <meta name="description" content="Cobertura editorial e crônicas pós-jogo da Copa do Mundo 2026, gerada pela redação automatizada do Statball." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/posts" />
+        <title>Cobertura Copa do Mundo 2026 — Notícias e crônicas | Aleball</title>
+        <meta name="description" content="Cobertura editorial e crônicas pós-jogo da Copa do Mundo 2026, gerada pela redação automatizada do Aleball." />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/posts" />
       </Helmet>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Cobertura Copa 2026</h1>

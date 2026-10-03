@@ -1,4 +1,4 @@
-// Gera crônica pós-jogo (Statball) para uma partida da Copa 2026.
+// Gera crônica pós-jogo (Aleball) para uma partida da Copa 2026.
 // Usa OpenAI (gpt-4o-mini + DALL·E 3) via OPENAI_API_KEY.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { chatCompletion, getTextContent, generateImage } from "../_shared/lovableAI.ts";
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       `${e.minute}' ${e.event_type.toUpperCase()} — ${e.description}`
     ).join("\n");
 
-    const prompt = `Você é redator esportivo sênior do Statball. Escreva uma CRÔNICA PÓS-JOGO da partida da Copa do Mundo 2026.
+    const prompt = `Você é redator esportivo sênior do Aleball. Escreva uma CRÔNICA PÓS-JOGO da partida da Copa do Mundo 2026.
 
 Dados oficiais:
 - Confronto: ${homeName} ${placar} ${awayName}

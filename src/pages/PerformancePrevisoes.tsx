@@ -312,7 +312,7 @@ export default function PerformancePrevisoes() {
   return (
     <Layout>
       {/* SEO Meta */}
-      <title>Performance de previsões no futebol: IA x Humanos | Statball</title>
+      <title>Performance de previsões no futebol: IA x Humanos | Aleball</title>
       <meta name="description" content="Análise completa da performance de previsões de futebol. Compare o desempenho da Inteligência Artificial com palpites humanos. Metodologia transparente e dados históricos validados." />
       
       <div className="container mx-auto px-4 py-8">
@@ -363,7 +363,7 @@ export default function PerformancePrevisoes() {
               </h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
                 <p>
-                  No Statball, acreditamos que <strong>transparência é a base da credibilidade</strong>. 
+                  No Aleball, acreditamos que <strong>transparência é a base da credibilidade</strong>. 
                   Não basta gerar previsões — é fundamental validá-las, aprender com os erros e 
                   evoluir continuamente.
                 </p>
@@ -405,7 +405,7 @@ export default function PerformancePrevisoes() {
             Metodologia de Previsões
           </h2>
           <p className="text-muted-foreground mb-6">
-            Entenda como cada tipo de previsão é gerado e validado no Statball.
+            Entenda como cada tipo de previsão é gerado e validado no Aleball.
           </p>
           
           <div className="grid md:grid-cols-2 gap-6">
@@ -586,7 +586,7 @@ export default function PerformancePrevisoes() {
         <div className="mb-10">
           <PremiumCTA 
             variant="subtle"
-            message="Membros do Clube Statball acompanham análises completas e sem anúncios."
+            message="Membros do Clube Aleball acompanham análises completas e sem anúncios."
           />
         </div>
 
@@ -825,7 +825,7 @@ export default function PerformancePrevisoes() {
                 <p className="text-muted-foreground text-sm">
                   Os dados mostram que IA e leitura humana não competem — se complementam. 
                   A IA oferece consistência estatística; os humanos trazem contexto e intuição. 
-                  A combinação das duas perspectivas é o diferencial do Statball.
+                  A combinação das duas perspectivas é o diferencial do Aleball.
                 </p>
               </div>
             </CardContent>

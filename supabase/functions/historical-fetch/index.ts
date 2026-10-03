@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     try {
       const response = await fetch(urlRecord.url, {
         headers: {
-          'User-Agent': 'StatballBot/1.0 (historical data research)',
+          'User-Agent': 'AleballBot/1.0 (historical data research)',
           'Accept': 'text/html, text/plain, */*',
         },
       });
