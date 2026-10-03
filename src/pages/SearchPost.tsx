@@ -12,11 +12,11 @@ import { MatchesList } from "@/components/search/MatchesList";
 import { TopScorersTable } from "@/components/search/TopScorersTable";
 import type { StructuredAnswer } from "@/hooks/useIntelligentSearch";
 
-const BASE_URL = "https://www.statball.com.br";
+const BASE_URL = "https://www.aleball.com";
 
 function buildIntro(payload: StructuredAnswer | null, question: string): string {
   if (!payload) {
-    return `Nesta página você encontra a resposta completa para a pergunta "${question}", com dados oficiais reunidos pelo Statball a partir de partidas, campeonatos e estatísticas atualizadas diariamente.`;
+    return `Nesta página você encontra a resposta completa para a pergunta "${question}", com dados oficiais reunidos pelo Aleball a partir de partidas, campeonatos e estatísticas atualizadas diariamente.`;
   }
   if (payload.kind === "team_stats") {
     const t = payload.team.name;
@@ -28,7 +28,7 @@ function buildIntro(payload: StructuredAnswer | null, question: string): string 
   if (payload.kind === "top_scorer") {
     return `Lista atualizada dos artilheiros ${payload.league.name ? `da ${payload.league.name}` : ""}${payload.year ? ` na temporada ${payload.year}` : ""}, com nome do jogador, clube e total de gols marcados. Os dados são atualizados após cada rodada e podem ser conferidos diretamente nas páginas dos atletas.`;
   }
-  return `Resposta completa para "${question}", com dados oficiais Statball.`;
+  return `Resposta completa para "${question}", com dados oficiais Aleball.`;
 }
 
 function buildFaqs(payload: StructuredAnswer | null, question: string): { q: string; a: string }[] {
@@ -50,7 +50,7 @@ function buildFaqs(payload: StructuredAnswer | null, question: string): { q: str
     const top = payload.top_scorers[0];
     return [
       ...(top ? [{ q: `Quem é o artilheiro ${payload.league.name ? `da ${payload.league.name}` : ""}${payload.year ? ` em ${payload.year}` : ""}?`, a: `${top.jogador}${top.time ? ` (${top.time})` : ""} lidera com ${top.gols} gols marcados.` }] : []),
-      { q: `Como o Statball calcula a artilharia?`, a: `Somamos todos os gols oficiais marcados pelo jogador na competição informada, considerando apenas partidas com status finalizado e gols confirmados pelas fontes oficiais.` },
+      { q: `Como o Aleball calcula a artilharia?`, a: `Somamos todos os gols oficiais marcados pelo jogador na competição informada, considerando apenas partidas com status finalizado e gols confirmados pelas fontes oficiais.` },
     ];
   }
   return [];
@@ -142,7 +142,7 @@ export default function SearchPost() {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Início", item: `${BASE_URL}/` },
-        { "@type": "ListItem", position: 2, name: "Pesquisa Statball", item: `${BASE_URL}/pesquisa` },
+        { "@type": "ListItem", position: 2, name: "Pesquisa Aleball", item: `${BASE_URL}/pesquisa` },
         { "@type": "ListItem", position: 3, name: data.question, item: canonical },
       ],
     },
@@ -182,7 +182,7 @@ export default function SearchPost() {
           <Link to="/" className="hover:text-primary">Início</Link>
           <ChevronRight className="h-3 w-3" />
           <Link to="/pesquisa" className="hover:text-primary inline-flex items-center gap-1">
-            <SearchIcon className="h-3 w-3" /> Pesquisa Statball
+            <SearchIcon className="h-3 w-3" /> Pesquisa Aleball
           </Link>
           <ChevronRight className="h-3 w-3" />
           <span className="text-foreground/70 line-clamp-1">{data.question}</span>
@@ -192,7 +192,7 @@ export default function SearchPost() {
         <header className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-display font-bold leading-tight">{data.question}</h1>
           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-            <span>Publicado por <strong className="text-foreground/80">Statball</strong></span>
+            <span>Publicado por <strong className="text-foreground/80">Aleball</strong></span>
             <span>·</span>
             <span>Atualizado em {new Date(data.updated_at).toLocaleDateString("pt-BR")}</span>
             {data.confidence != null && (
@@ -312,9 +312,9 @@ export default function SearchPost() {
 
         {/* Metodologia */}
         <section aria-labelledby="metodologia" className="space-y-2">
-          <h2 id="metodologia" className="text-xl font-display font-semibold">Como o Statball calculou esta resposta</h2>
+          <h2 id="metodologia" className="text-xl font-display font-semibold">Como o Aleball calculou esta resposta</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            O Statball cruza dados de partidas oficiais, campeonatos e jogadores em tempo real. Apenas jogos com placar finalizado são considerados nas estatísticas. Sempre que possível, a resposta inclui links para a página de cada time, campeonato e partida, permitindo verificar os dados na fonte. A página é gerada automaticamente a partir da pergunta do usuário e atualizada quando novos jogos entram na base.
+            O Aleball cruza dados de partidas oficiais, campeonatos e jogadores em tempo real. Apenas jogos com placar finalizado são considerados nas estatísticas. Sempre que possível, a resposta inclui links para a página de cada time, campeonato e partida, permitindo verificar os dados na fonte. A página é gerada automaticamente a partir da pergunta do usuário e atualizada quando novos jogos entram na base.
           </p>
         </section>
 
@@ -344,7 +344,7 @@ export default function SearchPost() {
             to="/pesquisa"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition text-sm font-medium"
           >
-            <SearchIcon className="h-4 w-4" /> Fazer nova pesquisa no Statball
+            <SearchIcon className="h-4 w-4" /> Fazer nova pesquisa no Aleball
           </Link>
         </section>
       </article>

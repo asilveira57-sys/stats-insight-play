@@ -71,7 +71,7 @@ export default function AdminCsvImport() {
   return (
     <>
       <Helmet>
-        <title>Importar CSV | Admin Statball</title>
+        <title>Importar CSV | Admin Aleball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <AdminLayout>

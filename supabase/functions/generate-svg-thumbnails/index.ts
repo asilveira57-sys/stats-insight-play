@@ -134,8 +134,8 @@ function generateSvgThumbnail(
   </defs>
   <rect y="400" width="1200" height="275" fill="url(#textbg)"/>
   
-  <!-- Statball branding -->
-  <text x="1160" y="640" font-family="Arial, sans-serif" font-size="14" fill="white" opacity="0.4" text-anchor="end">STATBALL</text>
+  <!-- Aleball branding -->
+  <text x="1160" y="640" font-family="Arial, sans-serif" font-size="14" fill="white" opacity="0.4" text-anchor="end">ALEBALL</text>
 </svg>`;
 
   return svg;

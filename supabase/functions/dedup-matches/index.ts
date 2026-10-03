@@ -219,8 +219,8 @@ Deno.serve(async (req) => {
 
         // cartola_partidas
         await supabase.from('cartola_partidas')
-          .update({ partida_statball_id: keeper.id })
-          .in('partida_statball_id', removeIds);
+          .update({ partida_aleball_id: keeper.id })
+          .in('partida_aleball_id', removeIds);
 
         // kaggle_staging_matches
         await supabase.from('kaggle_staging_matches' as any)

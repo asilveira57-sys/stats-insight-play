@@ -18,7 +18,7 @@ export function AIAnswerCard({ answer, sources = [] }: Props) {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
-            Resposta da IA Statball
+            Resposta da IA Aleball
           </CardTitle>
           <Badge variant={hasData ? "default" : "destructive"} className="text-[10px]">
             {hasData ? (
@@ -62,7 +62,7 @@ export function AIAnswerCard({ answer, sources = [] }: Props) {
         )}
         {!hasData && (
           <p className="text-xs text-muted-foreground">
-            A IA Statball nunca inventa dados. Quando o banco interno não tem informação suficiente, ela informa explicitamente.
+            A IA Aleball nunca inventa dados. Quando o banco interno não tem informação suficiente, ela informa explicitamente.
           </p>
         )}
       </CardContent>

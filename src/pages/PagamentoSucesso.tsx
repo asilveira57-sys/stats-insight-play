@@ -31,7 +31,7 @@ export default function PagamentoSucesso() {
             </h1>
             
             <p className="text-muted-foreground mb-6">
-              Seu pagamento foi processado com sucesso. Você agora tem acesso completo ao StatBall Premium.
+              Seu pagamento foi processado com sucesso. Você agora tem acesso completo ao Aleball Premium.
             </p>
 
             <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 mb-6">

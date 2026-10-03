@@ -1,5 +1,5 @@
 // Background batch: for every WC2026 match in a given stage, ensure a rich pre_match
-// AI analysis exists (Statball editorial standard), generate a UNIQUE OG image (1536x1024)
+// AI analysis exists (Aleball editorial standard), generate a UNIQUE OG image (1536x1024)
 // via OpenAI Images, upload to storage and publish a noticia linked to the match.
 // Resilient: retries, idempotent, resumable. Use force=true to fully regenerate text+image.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -73,7 +73,7 @@ async function invokePreview(matchId: string, force: boolean) {
 }
 
 function extractMeta(content: string): { meta: any; body: string } {
-  const m = content.match(/^<!--STATBALL_META:(.+?)-->\n?/);
+  const m = content.match(/^<!--ALEBALL_META:(.+?)-->\n?/);
   if (!m) return { meta: {}, body: content };
   try { return { meta: JSON.parse(m[1]), body: content.slice(m[0].length) }; }
   catch { return { meta: {}, body: content }; }
@@ -186,7 +186,7 @@ async function publishOne(supabase: any, match: any, force: boolean) {
   }
   let { data: analysis } = await supabase.from("world_cup_2026_ai_analyses")
     .select("*").eq("match_id", match.id).eq("analysis_type", "pre_match").maybeSingle();
-  if (!analysis || !/Prognóstico Statball/i.test(analysis.content ?? "")) {
+  if (!analysis || !/Prognóstico Aleball/i.test(analysis.content ?? "")) {
     await withRetry(() => invokePreview(match.id, true), 3, `preview ${match.id}`);
     ({ data: analysis } = await supabase.from("world_cup_2026_ai_analyses")
       .select("*").eq("match_id", match.id).eq("analysis_type", "pre_match").maybeSingle());
@@ -203,7 +203,7 @@ async function publishOne(supabase: any, match: any, force: boolean) {
   const homeName = match.home?.name ?? "Seleção A";
   const awayName = match.away?.name ?? "Seleção B";
   const seoTitle = (meta.seo_title || `Copa 2026: ${homeName} x ${awayName}${match.group_letter ? ` (Grupo ${match.group_letter})` : ""}`).slice(0, 60);
-  const resumo = (meta.meta_description || `${homeName} encara ${awayName} pela Copa do Mundo 2026. Análise pré-jogo, escalações, prognóstico Statball e o que está em jogo na ${stageLabel}.`).slice(0, 160);
+  const resumo = (meta.meta_description || `${homeName} encara ${awayName} pela Copa do Mundo 2026. Análise pré-jogo, escalações, prognóstico Aleball e o que está em jogo na ${stageLabel}.`).slice(0, 160);
 
   const slug = `copa-2026-${slugify(match.home?.slug || homeName)}-x-${slugify(match.away?.slug || awayName)}-${match.stage}${match.group_letter ? `-grupo-${match.group_letter.toLowerCase()}` : ""}`;
 

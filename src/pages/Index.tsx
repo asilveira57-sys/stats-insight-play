@@ -45,19 +45,19 @@ export default function Index() {
         </section>
       )}
 
-      {/* BLOCO 2 — O QUE É O STATBALL */}
+      {/* BLOCO 2 — O QUE É O ALEBALL */}
       <section className="py-16 md:py-24 bg-card/50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold font-display mb-8 text-center">
-              O que é o Statball
+              O que é o Aleball
             </h2>
             <div className="prose prose-lg prose-invert max-w-none text-muted-foreground leading-relaxed space-y-6">
               <p className="text-lg md:text-xl">
-                O Statball é uma <strong className="text-foreground">biblioteca viva de futebol</strong>. Uma plataforma que reúne, organiza e atualiza dados de partidas, campeonatos e times de todo o mundo — do passado ao presente, jogo após jogo.
+                O Aleball é uma <strong className="text-foreground">biblioteca viva de futebol</strong>. Uma plataforma que reúne, organiza e atualiza dados de partidas, campeonatos e times de todo o mundo — do passado ao presente, jogo após jogo.
               </p>
               <p>
-                Mais do que um banco de dados, o Statball é um <strong className="text-foreground">registro histórico</strong> que cresce continuamente. Cada partida disputada é integrada à base, enriquecendo o histórico de confrontos, desempenhos e tendências de cada equipe.
+                Mais do que um banco de dados, o Aleball é um <strong className="text-foreground">registro histórico</strong> que cresce continuamente. Cada partida disputada é integrada à base, enriquecendo o histórico de confrontos, desempenhos e tendências de cada equipe.
               </p>
               <p>
                 Aqui, você encontra informações organizadas por <strong className="text-foreground">campeonatos, times e temporadas</strong> — prontas para consulta, comparação e análise. Uma estrutura feita para quem quer entender o futebol com profundidade, contexto e consistência.
@@ -67,12 +67,12 @@ export default function Index() {
         </div>
       </section>
 
-      {/* BLOCO 3 — COMO O STATBALL FUNCIONA */}
+      {/* BLOCO 3 — COMO O ALEBALL FUNCIONA */}
       <section id="como-funciona" className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold font-display mb-8 text-center">
-              Como o Statball funciona
+              Como o Aleball funciona
             </h2>
             <p className="text-lg text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
               O sistema opera em três etapas contínuas, garantindo que a base de conhecimento esteja sempre atualizada e confiável.
@@ -134,7 +134,7 @@ export default function Index() {
             
             <div className="prose prose-lg prose-invert max-w-none text-muted-foreground leading-relaxed space-y-6">
               <p className="text-lg md:text-xl">
-                O Statball não apenas analisa — ele <strong className="text-foreground">valida</strong>. Cada análise feita antes de uma partida é confrontada com o resultado real assim que o jogo termina.
+                O Aleball não apenas analisa — ele <strong className="text-foreground">valida</strong>. Cada análise feita antes de uma partida é confrontada com o resultado real assim que o jogo termina.
               </p>
               <p>
                 Esse processo contínuo de <strong className="text-foreground">comparação entre expectativa e realidade</strong> gera um histórico transparente: o que foi previsto, o que aconteceu, e o que pode ser aprendido com a diferença.
@@ -282,13 +282,13 @@ export default function Index() {
             
             <div className="prose prose-lg prose-invert max-w-none text-muted-foreground leading-relaxed space-y-6">
               <p className="text-lg md:text-xl">
-                O Statball utiliza <strong className="text-foreground">inteligência artificial</strong> como ferramenta de apoio — não como oráculo. A IA ajuda a processar grandes volumes de dados, identificar padrões e gerar análises contextualizadas.
+                O Aleball utiliza <strong className="text-foreground">inteligência artificial</strong> como ferramenta de apoio — não como oráculo. A IA ajuda a processar grandes volumes de dados, identificar padrões e gerar análises contextualizadas.
               </p>
               <p>
                 Mas o resultado final sempre passa por uma <strong className="text-foreground">camada de curadoria e contexto humano</strong>. Números sozinhos não contam a história completa do futebol — é preciso entender circunstâncias, histórico e nuances de cada confronto.
               </p>
               <p>
-                Essa combinação de <strong className="text-foreground">dados, tecnologia e leitura crítica</strong> é o que diferencia o Statball de simples agregadores de estatísticas.
+                Essa combinação de <strong className="text-foreground">dados, tecnologia e leitura crítica</strong> é o que diferencia o Aleball de simples agregadores de estatísticas.
               </p>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function Index() {
                 
                 <div className="prose prose-lg prose-invert max-w-none text-muted-foreground leading-relaxed space-y-4">
                   <p className="text-lg">
-                    O Statball <strong className="text-foreground">não é uma plataforma de apostas</strong>. Não incentivamos, intermediamos ou oferecemos qualquer tipo de serviço relacionado a jogos de azar.
+                    O Aleball <strong className="text-foreground">não é uma plataforma de apostas</strong>. Não incentivamos, intermediamos ou oferecemos qualquer tipo de serviço relacionado a jogos de azar.
                   </p>
                   <p>
                     Não fazemos promessas de ganho financeiro. O que entregamos é <strong className="text-foreground">informação, análise e contexto</strong> — ferramentas para quem quer entender o futebol de forma mais profunda e fundamentada.
@@ -327,12 +327,12 @@ export default function Index() {
         </div>
       </section>
 
-      {/* BLOCO 8 — PARA QUEM É O STATBALL */}
+      {/* BLOCO 8 — PARA QUEM É O ALEBALL */}
       <section className="py-16 md:py-24 bg-card/50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold font-display mb-8 text-center">
-              Para quem é o Statball
+              Para quem é o Aleball
             </h2>
             <p className="text-lg text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
               Uma plataforma para quem valoriza conhecimento, contexto e profundidade.
@@ -417,10 +417,10 @@ export default function Index() {
             
             <div className="prose prose-lg prose-invert max-w-none text-muted-foreground leading-relaxed space-y-6 text-left md:text-center mb-12">
               <p className="text-lg md:text-xl">
-                A <strong className="text-foreground">biblioteca pública do Statball é gratuita</strong>. Você pode explorar campeonatos, times, resultados e análises sem custo.
+                A <strong className="text-foreground">biblioteca pública do Aleball é gratuita</strong>. Você pode explorar campeonatos, times, resultados e análises sem custo.
               </p>
               <p>
-                Para quem deseja ir além, o <strong className="text-foreground">Clube Statball</strong> oferece acesso Premium com recursos avançados: análises mais profundas, validações detalhadas, simuladores e uma experiência sem anúncios.
+                Para quem deseja ir além, o <strong className="text-foreground">Clube Aleball</strong> oferece acesso Premium com recursos avançados: análises mais profundas, validações detalhadas, simuladores e uma experiência sem anúncios.
               </p>
               <p>
                 O Premium libera <strong className="text-foreground">profundidade</strong>, não bloqueia o conteúdo base. A biblioteca continua acessível para todos.
@@ -431,7 +431,7 @@ export default function Index() {
               <Button asChild size="xl" variant="premium" className="text-lg">
                 <Link to="/precos">
                   <Sparkles className="mr-2 h-5 w-5" />
-                  Conhecer o Clube Statball
+                  Conhecer o Clube Aleball
                 </Link>
               </Button>
               <Button asChild variant="outline" size="xl" className="text-lg">
@@ -453,7 +453,7 @@ export default function Index() {
               <Library className="h-10 w-10 text-primary" />
             </div>
             <p className="text-xl md:text-2xl lg:text-3xl font-display text-foreground leading-relaxed mb-4">
-              Statball é registro, análise e evolução.
+              Aleball é registro, análise e evolução.
             </p>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
               A maior biblioteca de futebol do mundo, construída jogo após jogo.

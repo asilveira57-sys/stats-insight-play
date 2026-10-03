@@ -38,7 +38,7 @@ const TransparenciaEditorial = () => {
                 Nosso Compromisso
               </h2>
               <p className="leading-relaxed">
-                O Statball acredita que transparência, clareza das informações e
+                O Aleball acredita que transparência, clareza das informações e
                 responsabilidade editorial são fundamentais para construir uma
                 experiência confiável para os usuários da plataforma.
               </p>
@@ -62,7 +62,7 @@ const TransparenciaEditorial = () => {
               </h2>
               <p className="leading-relaxed text-muted-foreground">
                 Mesmo utilizando tecnologia avançada para processamento das
-                informações, o Statball entende que o futebol e o esporte em
+                informações, o Aleball entende que o futebol e o esporte em
                 geral envolvem fatores imprevisíveis, subjetivos e variáveis
                 que não podem ser totalmente determinados por algoritmos,
                 estatísticas ou modelos matemáticos.
@@ -90,7 +90,7 @@ const TransparenciaEditorial = () => {
                 Monitoramento e Precisão
               </h2>
               <p className="leading-relaxed text-muted-foreground">
-                O Statball realiza monitoramento constante das informações
+                O Aleball realiza monitoramento constante das informações
                 disponibilizadas na plataforma, buscando manter a maior
                 precisão possível nos dados apresentados. Ainda assim, podem
                 ocorrer:
@@ -162,7 +162,7 @@ const TransparenciaEditorial = () => {
                 Jogo Responsável
               </h2>
               <p className="leading-relaxed text-muted-foreground">
-                O Statball reforça que não incentiva apostas irresponsáveis,
+                O Aleball reforça que não incentiva apostas irresponsáveis,
                 jogos ilegais ou qualquer prática financeira baseada
                 exclusivamente em previsões esportivas automatizadas.
               </p>
@@ -211,7 +211,7 @@ const TransparenciaEditorial = () => {
               </Link>
               <span className="text-muted-foreground">•</span>
               <Link to="/sobre" className="text-primary hover:underline">
-                Sobre o Statball
+                Sobre o Aleball
               </Link>
               <span className="text-muted-foreground">•</span>
               <Link to="/" className="text-primary hover:underline">

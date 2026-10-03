@@ -13,7 +13,7 @@ export default function EstatisticasLeague() {
 
   useEffect(() => {
     if (!data) return;
-    const title = `Estatísticas ${data.nome} – Times e Desempenho | Statball`;
+    const title = `Estatísticas ${data.nome} – Times e Desempenho | Aleball`;
     const desc = `Estatísticas completas de todos os times do ${data.nome}: gols, médias, aproveitamento e análises por temporada.`;
     document.title = title;
     const setMeta = (n: string, c: string, prop = false) => {

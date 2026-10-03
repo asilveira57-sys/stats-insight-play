@@ -1,4 +1,4 @@
-// Pre-match analysis generator — Statball editorial standard.
+// Pre-match analysis generator — Aleball editorial standard.
 // Produces a structured JSON with all sections required by the editorial spec:
 // intro, momento das seleções, jogadores, comparativo, tática, em jogo, prognóstico,
 // resumo + SEO (titulo ≤60, meta desc 140-160) + image_concept.
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
         .from("world_cup_2026_ai_analyses")
         .select("id, content").eq("match_id", match_id).eq("analysis_type", "pre_match").maybeSingle();
       // Only skip if it already follows the new editorial standard (contains the comparative table header)
-      if (existing?.content && /Prognóstico Statball/i.test(existing.content)) {
+      if (existing?.content && /Prognóstico Aleball/i.test(existing.content)) {
         return new Response(JSON.stringify({ success: true, skipped: true }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
     }
@@ -90,7 +90,7 @@ SELEÇÃO B (visitante na tabela): ${match.away?.name}
 
     const prompt = `${facts}
 
-Você é editor-chefe do Statball, portal brasileiro de análise esportiva (referências de estilo: Globo Esporte, ESPN, The Athletic, Goal.com). Produza uma ANÁLISE PRÉ-JOGO completa, jornalística e densa, em português brasileiro, parágrafos curtos (máx. 4 linhas).
+Você é editor-chefe do Aleball, portal brasileiro de análise esportiva (referências de estilo: Globo Esporte, ESPN, The Athletic, Goal.com). Produza uma ANÁLISE PRÉ-JOGO completa, jornalística e densa, em português brasileiro, parágrafos curtos (máx. 4 linhas).
 
 REGRAS DURAS:
 - NUNCA escreva frases genéricas como "Cada ponto é fundamental", "Ambas querem avançar", "Será um duelo importante".
@@ -103,7 +103,7 @@ Devolva APENAS um JSON estrito com este formato (todos os campos obrigatórios):
 {
   "seo_title": "título ≤60 caracteres, com 'Copa 2026', as duas seleções e o grupo se houver",
   "meta_description": "resumo entre 140 e 160 caracteres, atrativo, sem clickbait",
-  "keywords": ["Copa do Mundo 2026", "${match.home?.name}", "${match.away?.name}", "${groupLabel}", "Statball"],
+  "keywords": ["Copa do Mundo 2026", "${match.home?.name}", "${match.away?.name}", "${groupLabel}", "Aleball"],
   "headline": "manchete jornalística curta (≤90 chars), diferente do seo_title",
   "intro": "2 a 3 parágrafos apresentando competição, ${groupLabel}, estádio, data e horário, sem repetir o título",
   "momento": "2+ parágrafos sobre o momento de cada seleção (histórico recente, últimas competições, expectativa)",
@@ -123,7 +123,7 @@ Devolva APENAS um JSON estrito com este formato (todos os campos obrigatórios):
   "predicted_home_score": 0,
   "predicted_away_score": 0,
   "confidence": "high" | "medium" | "low",
-  "prognostico_text": "2 parágrafos justificando o palpite Statball, sem clichês",
+  "prognostico_text": "2 parágrafos justificando o palpite Aleball, sem clichês",
   "resumo_final": "1 parágrafo de fechamento jornalístico, sem repetir o que já foi dito",
   "image_concept": "descrição curta (≤180 chars) de uma cena ÚNICA: estádio estilizado de ${hostCity} ao entardecer/noite, gramado iluminado, formas geométricas modernas com as cores das bandeiras de ${match.home?.name} e ${match.away?.name}, sem brasões/logos oficiais"
 }
@@ -220,8 +220,8 @@ ${parsed.tatica ?? ""}
 ### O que está em jogo
 ${parsed.em_jogo ?? ""}
 
-### Prognóstico Statball
-**Favoritismo Statball**
+### Prognóstico Aleball
+**Favoritismo Aleball**
 - ${homeName}: **${pH}%**
 - Empate: **${pD}%**
 - ${awayName}: **${pA}%**
@@ -243,7 +243,7 @@ ${parsed.resumo_final ?? ""}`;
     };
 
     // Stash SEO metadata at the start as an HTML comment (publish-news reads it)
-    const contentWithMeta = `<!--STATBALL_META:${JSON.stringify(seoMeta)}-->\n${fullContent}`;
+    const contentWithMeta = `<!--ALEBALL_META:${JSON.stringify(seoMeta)}-->\n${fullContent}`;
 
     const { error: upsertError } = await supabase.from("world_cup_2026_ai_analyses").upsert({
       match_id,

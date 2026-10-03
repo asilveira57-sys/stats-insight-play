@@ -158,7 +158,7 @@ Texto persuasivo resumindo a performance semanal
 
 <!-- INSERIR CTA PREMIUM -->
 <div class="premium-cta">
-<p><strong>Membros do Clube Statball</strong> acompanham análises semanais completas com métricas avançadas e histórico detalhado de performance.</p>
+<p><strong>Membros do Clube Aleball</strong> acompanham análises semanais completas com métricas avançadas e histórico detalhado de performance.</p>
 </div>
 
 <h2>Jogos-Chave da Semana</h2>
@@ -185,7 +185,7 @@ Texto persuasivo resumindo a performance semanal
 
 <!-- INSERIR CTA FINAL -->
 <div class="premium-cta-final">
-<p>Esta validação semanal é parte do compromisso do Statball com transparência. Para análises ainda mais profundas, conheça o <strong>Clube Statball Premium</strong> — onde dados e clareza se encontram.</p>
+<p>Esta validação semanal é parte do compromisso do Aleball com transparência. Para análises ainda mais profundas, conheça o <strong>Clube Aleball Premium</strong> — onde dados e clareza se encontram.</p>
 </div>
 
 REGRAS IMPORTANTES:
@@ -330,7 +330,7 @@ async function uploadImage(
 function addInternalLinks(texto: string, weeklyData: WeeklyData): string {
   let processedText = texto;
   
-  const performanceLink = `<p class="internal-links"><strong>📊 Metodologia:</strong> <a href="/performance/previsoes">Entenda como validamos previsões no Statball</a></p>`;
+  const performanceLink = `<p class="internal-links"><strong>📊 Metodologia:</strong> <a href="/performance/previsoes">Entenda como validamos previsões no Aleball</a></p>`;
   const rankingLink = `<p class="internal-links"><strong>🏆 Ranking Histórico:</strong> <a href="/ranking/ia-vs-humanos">Veja o ranking completo IA vs Humanos</a></p>`;
   const leagueLink = weeklyData.league.slug 
     ? `<p class="internal-links"><strong>⚽ Campeonato:</strong> <a href="/campeonatos/${weeklyData.league.slug}">Página do ${weeklyData.league.nome}</a></p>`

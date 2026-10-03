@@ -36,12 +36,12 @@ export default function BrasileiraoJogos() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Jogos do Brasileirão ${season} — Tabela de Rodadas | Statball`}</title>
+        <title>{`Jogos do Brasileirão ${season} — Tabela de Rodadas | Aleball`}</title>
         <meta
           name="description"
           content={`Todos os jogos do Campeonato Brasileiro Série A ${season} rodada por rodada, com placar oficial, status ao vivo e palpite da IA em cada partida.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/brasileirao/jogos" />
+        <link rel="canonical" href="https://www.aleball.com/brasileirao/jogos" />
       </Helmet>
 
       <BrasileiraoNav />

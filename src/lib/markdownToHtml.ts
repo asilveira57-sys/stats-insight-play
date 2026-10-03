@@ -19,7 +19,7 @@ export function looksLikeMarkdown(text: string): boolean {
 }
 
 export function markdownToHtml(md: string): string {
-  const lines = md.replace(/\r/g, "").replace(/<!--STATBALL_META:[\s\S]*?-->\n?/, "").split("\n");
+  const lines = md.replace(/\r/g, "").replace(/<!--ALEBALL_META:[\s\S]*?-->\n?/, "").split("\n");
   const out: string[] = [];
   let para: string[] = [];
   let list: string[] | null = null;

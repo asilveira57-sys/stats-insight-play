@@ -479,7 +479,7 @@ export default function TimePilar() {
 
             <div className="mt-8 p-4 rounded-lg bg-muted/30 text-sm text-muted-foreground">
               <p>
-                <strong>Aviso:</strong> O Statball é uma plataforma de análise estatística de futebol.
+                <strong>Aviso:</strong> O Aleball é uma plataforma de análise estatística de futebol.
                 Este conteúdo tem caráter informativo e não constitui recomendação de apostas.
               </p>
             </div>

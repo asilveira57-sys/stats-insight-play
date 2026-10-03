@@ -85,7 +85,7 @@ serve(async (req) => {
       });
     }
 
-    const externalReference = `statball_sub_${user.id}_${plan_id}_${Date.now()}`;
+    const externalReference = `aleball_sub_${user.id}_${plan_id}_${Date.now()}`;
 
     // If we have a preapproval_plan_id in the plan, use it
     // Otherwise create a subscription directly
@@ -126,7 +126,7 @@ serve(async (req) => {
     } else {
       // Create subscription without a preapproval plan (flexible subscription)
       const subscriptionBody = {
-        reason: `StatBall Premium - ${plan.name}`,
+        reason: `Aleball Premium - ${plan.name}`,
         external_reference: externalReference,
         payer_email: payer_email || user.email,
         auto_recurring: {

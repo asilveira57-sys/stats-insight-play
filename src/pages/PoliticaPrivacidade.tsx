@@ -29,12 +29,12 @@ const PoliticaPrivacidade = () => {
                 Introdução
               </h2>
               <p className="leading-relaxed">
-                O Statball ("nós", "nosso" ou "plataforma") valoriza a privacidade dos seus usuários. 
+                O Aleball ("nós", "nosso" ou "plataforma") valoriza a privacidade dos seus usuários. 
                 Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos 
                 suas informações pessoais quando você utiliza nossa plataforma de estatísticas de futebol.
               </p>
               <p className="leading-relaxed mt-4">
-                Ao utilizar o Statball, você concorda com as práticas descritas nesta política. 
+                Ao utilizar o Aleball, você concorda com as práticas descritas nesta política. 
                 Recomendamos a leitura completa deste documento.
               </p>
             </section>
@@ -119,7 +119,7 @@ const PoliticaPrivacidade = () => {
                 <div>
                   <h3 className="font-medium text-foreground mb-2">Google AdSense</h3>
                   <p>
-                    O Statball utiliza o Google AdSense para exibir anúncios aos usuários do plano gratuito. 
+                    O Aleball utiliza o Google AdSense para exibir anúncios aos usuários do plano gratuito. 
                     O Google pode usar cookies para exibir anúncios baseados em visitas anteriores 
                     a este e outros sites. Você pode desativar a publicidade personalizada nas 
                     <a 
@@ -195,7 +195,7 @@ const PoliticaPrivacidade = () => {
             <section className="bg-card rounded-xl p-6 border border-border">
               <h2 className="text-xl font-semibold mb-4">Menores de Idade</h2>
               <p className="text-muted-foreground">
-                O Statball não é direcionado a menores de 18 anos. Não coletamos intencionalmente 
+                O Aleball não é direcionado a menores de 18 anos. Não coletamos intencionalmente 
                 dados de menores. Se tomarmos conhecimento de que coletamos dados de um menor, 
                 tomaremos medidas para excluí-los.
               </p>
@@ -222,7 +222,7 @@ const PoliticaPrivacidade = () => {
                 ou sobre o tratamento de seus dados, entre em contato:
               </p>
               <p className="mt-4 text-primary font-medium">
-                contato@statball.com.br
+                contato@aleball.com
               </p>
             </section>
 

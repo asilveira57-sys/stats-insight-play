@@ -65,7 +65,7 @@ export default function AdminContentAutomation() {
   return (
     <AdminLayout>
       <Helmet>
-        <title>{`Campeonatos Automáticos | Admin Statball`}</title>
+        <title>{`Campeonatos Automáticos | Admin Aleball`}</title>
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
 

@@ -60,7 +60,7 @@ export default function Copa2026JogoDetalhe() {
 
   return (
     <Layout>
-      <Helmet><title>{match.home?.name} x {match.away?.name} — Copa 2026 | Statball</title></Helmet>
+      <Helmet><title>{match.home?.name} x {match.away?.name} — Copa 2026 | Aleball</title></Helmet>
       <div className="container mx-auto px-4 py-8 space-y-8">
         <header className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-4 flex-wrap gap-2">
@@ -99,7 +99,7 @@ export default function Copa2026JogoDetalhe() {
 
         {status === "finished" && !postgame && (
           <section className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Crônica pós-jogo sendo gerada pela IA Statball. Atualize em alguns minutos.
+            Crônica pós-jogo sendo gerada pela IA Aleball. Atualize em alguns minutos.
           </section>
         )}
 

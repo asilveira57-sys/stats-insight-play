@@ -109,10 +109,10 @@ export default function ValidacaoSemanal() {
 
   return (
     <Layout>
-      <title>Série Semanal de Validação — IA x Humanos | Statball</title>
+      <title>Série Semanal de Validação — IA x Humanos | Aleball</title>
       <meta
         name="description"
-        content="Acompanhe a série semanal de validação de previsões do Statball. Comparamos IA e leitura humana com resultados reais a cada rodada."
+        content="Acompanhe a série semanal de validação de previsões do Aleball. Comparamos IA e leitura humana com resultados reais a cada rodada."
       />
 
       <div className="container mx-auto px-4 py-8">
@@ -209,7 +209,7 @@ export default function ValidacaoSemanal() {
         <div className="mb-8">
           <PremiumCTA
             variant="subtle"
-            message="Membros do Clube Statball acompanham validações completas e sem anúncios."
+            message="Membros do Clube Aleball acompanham validações completas e sem anúncios."
           />
         </div>
 

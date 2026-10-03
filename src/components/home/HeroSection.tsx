@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Library, ArrowRight } from "lucide-react";
-import statballLogo from "@/assets/statball-logo.png";
+import aleballLogo from "@/assets/aleball-logo.png";
 import heroBackground from "@/assets/hero-background.jpg";
 import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
@@ -31,8 +31,8 @@ export function HeroSection() {
           {/* Hero Logo - 200-250% larger than navbar for maximum impact */}
           <div className="mb-10 flex justify-center">
             <img 
-              src={statballLogo} 
-              alt="StatBall" 
+              src={aleballLogo} 
+              alt="Aleball" 
               className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)] bg-transparent"
               style={{ background: 'none' }}
             />
@@ -63,7 +63,7 @@ export function HeroSection() {
             </Button>
             <Button asChild variant="outline" size="xl" className="text-lg bg-background/50 backdrop-blur-sm">
               <Link to="/precos">
-                Conhecer o Clube Statball
+                Conhecer o Clube Aleball
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>

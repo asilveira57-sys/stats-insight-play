@@ -317,7 +317,7 @@ export default function EditorialDashboard() {
           <div>
             <h1 className="text-3xl font-bold font-display mb-2">Dashboard Editorial</h1>
             <p className="text-muted-foreground">
-              Gerencie toda a produção de conteúdo automático do Statball
+              Gerencie toda a produção de conteúdo automático do Aleball
             </p>
           </div>
           <div className="flex gap-2 mt-4 md:mt-0">

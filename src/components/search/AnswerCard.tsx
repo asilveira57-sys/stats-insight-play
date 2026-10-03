@@ -11,7 +11,7 @@ interface Props {
   postSlug?: string | null;
 }
 
-function HeaderRow({ postSlug, title = "Resposta Statball", icon: Icon = Sparkles }: { postSlug?: string | null; title?: string; icon?: any }) {
+function HeaderRow({ postSlug, title = "Resposta Aleball", icon: Icon = Sparkles }: { postSlug?: string | null; title?: string; icon?: any }) {
   return (
     <div className="flex items-start justify-between gap-3 flex-wrap">
       <CardTitle className="text-base flex items-center gap-2">
@@ -186,7 +186,7 @@ export function AnswerCard({ data, postSlug }: Props) {
   if (data.kind === "external") {
     return (
       <Card className="border-yellow-500/40">
-        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Resposta Statball" icon={Database} /></CardHeader>
+        <CardHeader className="pb-3"><HeaderRow postSlug={postSlug} title="Resposta Aleball" icon={Database} /></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-base leading-relaxed whitespace-pre-wrap">{data.summary}</p>
           <p className="text-xs text-muted-foreground">{data.note}</p>

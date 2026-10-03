@@ -165,7 +165,7 @@ const punchText = (x: number, y: number, size: number, content: string, fill = "
 ${punchText(W/2, H/2 + 40, 48, "VS", "#22D3EE", 10)}
 ${punchText(W/2, H/2 + 118, 78, tf)}`
     : (() => {
-        const lines = wrapLines(titulo || "Statball", 22, 3);
+        const lines = wrapLines(titulo || "Aleball", 22, 3);
         const fontSize = lines.length === 1 ? 90 : lines.length === 2 ? 76 : 62;
         const lineHeight = fontSize + 14;
         const totalH = lines.length * lineHeight;
@@ -204,7 +204,7 @@ ${punchText(W/2, H/2 + 118, 78, tf)}`
   ${matchupBlock}
 
   <!-- Footer brand -->
-  <text x="60" y="${H - 50}" font-family="Inter" font-size="24" font-weight="700" fill="#FFFFFF" opacity="0.95">statball.com.br</text>
+  <text x="60" y="${H - 50}" font-family="Inter" font-size="24" font-weight="700" fill="#FFFFFF" opacity="0.95">aleball.com.br</text>
   <text x="60" y="${H - 25}" font-family="Inter" font-size="16" font-weight="600" fill="#94A3B8">análise estatística de futebol</text>
 
   ${badgeBlock}
@@ -225,12 +225,12 @@ function slugify(s: string): string {
 function buildAlt(args: { timeCasa: string; timeFora: string; liga: string; data: string; tipo: string; hasMatch: boolean; titulo: string }): string {
   const tipoLabel = args.tipo === "PRÉVIA" ? "Prévia" : args.tipo === "PÓS-JOGO" ? "Pós-jogo" : "Análise";
   if (!args.hasMatch) {
-    return `${tipoLabel}: ${args.titulo} — Statball`;
+    return `${tipoLabel}: ${args.titulo} — Aleball`;
   }
   const parts = [`${tipoLabel}: ${args.timeCasa} vs ${args.timeFora}`];
   if (args.liga) parts.push(`pela ${args.liga}`);
   if (args.data) parts.push(`em ${args.data}`);
-  parts.push("— análise estatística Statball");
+  parts.push("— análise estatística Aleball");
   return parts.join(" ");
 }
 
@@ -322,7 +322,7 @@ serve(async (req) => {
         const corFora = pickColor(m?.time_fora?.cores, "#7f1d1d");
         const timeCasa = m?.time_casa?.nome || "";
         const timeFora = m?.time_fora?.nome || "";
-        const liga = m?.liga?.nome || "Statball";
+        const liga = m?.liga?.nome || "Aleball";
         const dataStr = fmtDateBR(m?.data) || "";
         const ligaLogo = m?.liga?.logo_url || null;
         const tipo = detectTipo(art.titulo || "");
@@ -337,7 +337,7 @@ serve(async (req) => {
           ? slugify(art.slug)
           : slugify(hasMatch ? `${timeCasa}-vs-${timeFora}-${liga}-${tipoSlug}` : `${titulo}-${tipoSlug}`);
         const shortId = String(art.id).replace(/-/g, "").slice(0, 6);
-        const fileName = `${baseSlug || "statball-card"}-${shortId}.svg`;
+        const fileName = `${baseSlug || "aleball-card"}-${shortId}.svg`;
 
         const { error: upErr } = await supabase.storage
           .from("news-thumbnails")

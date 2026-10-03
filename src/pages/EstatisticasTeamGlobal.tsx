@@ -18,7 +18,7 @@ export default function EstatisticasTeamGlobal() {
   const { data, isLoading } = useTeamSeoStats(slug ?? null, null, null);
 
   const title = useMemo(
-    () => (data ? `Estatísticas Gerais do ${data.team.nome} | Statball` : "Estatísticas | Statball"),
+    () => (data ? `Estatísticas Gerais do ${data.team.nome} | Aleball` : "Estatísticas | Aleball"),
     [data],
   );
   const description = useMemo(

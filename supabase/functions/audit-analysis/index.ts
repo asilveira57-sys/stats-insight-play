@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       analysis_source: source,
       analysis_id,
       match_id: analysis.match_id,
-      model_version: "statball-ai-v1",
+      model_version: "aleball-ai-v1",
       data_source_count: dataSources,
       verified_claims: verified,
       unverified_claims: unverified,

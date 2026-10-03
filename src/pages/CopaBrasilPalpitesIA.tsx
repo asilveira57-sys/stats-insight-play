@@ -21,12 +21,12 @@ export default function CopaBrasilPalpitesIA() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Palpites da IA na Copa do Brasil ${season} — Acertos Auditados | Statball`}</title>
+        <title>{`Palpites da IA na Copa do Brasil ${season} — Acertos Auditados | Aleball`}</title>
         <meta
           name="description"
-          content={`Palpites da IA do Statball para a Copa do Brasil ${season} comparados jogo a jogo com o resultado oficial: acerto de resultado, dupla chance e placar exato.`}
+          content={`Palpites da IA do Aleball para a Copa do Brasil ${season} comparados jogo a jogo com o resultado oficial: acerto de resultado, dupla chance e placar exato.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/copa-do-brasil/palpites-ia" />
+        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil/palpites-ia" />
       </Helmet>
 
       <CopaBrasilNav />

@@ -35,9 +35,9 @@ export default function AdminCartola() {
   const [selectedClubeForMapping, setSelectedClubeForMapping] = useState<any>(null);
   const [teamSearch, setTeamSearch] = useState("");
 
-  // Fetch Statball teams for manual mapping
-  const { data: statballTeams } = useQuery({
-    queryKey: ["statball-teams-mapping", teamSearch],
+  // Fetch Aleball teams for manual mapping
+  const { data: aleballTeams } = useQuery({
+    queryKey: ["aleball-teams-mapping", teamSearch],
     queryFn: async () => {
       let query = supabase.from("times").select("id, nome, slug").order("nome");
       if (teamSearch) query = query.ilike("nome", `%${teamSearch}%`);
@@ -100,7 +100,7 @@ export default function AdminCartola() {
     try {
       await mapClube.mutateAsync({
         cartolaId: selectedClubeForMapping.cartola_clube_id,
-        statballTeamId: teamId,
+        aleballTeamId: teamId,
         nome: selectedClubeForMapping.nome,
       });
       toast({ title: `${selectedClubeForMapping.nome} mapeado com sucesso!` });
@@ -123,7 +123,7 @@ export default function AdminCartola() {
   return (
     <>
       <Helmet>
-        <title>Integração Cartola | Admin Statball</title>
+        <title>Integração Cartola | Admin Aleball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <AdminLayout>
@@ -400,12 +400,12 @@ export default function AdminCartola() {
           </DialogHeader>
           <div className="space-y-4">
             <Input
-              placeholder="Buscar time no Statball..."
+              placeholder="Buscar time no Aleball..."
               value={teamSearch}
               onChange={e => setTeamSearch(e.target.value)}
             />
             <div className="max-h-60 overflow-y-auto space-y-1">
-              {statballTeams?.map((team: any) => (
+              {aleballTeams?.map((team: any) => (
                 <Button
                   key={team.id}
                   variant="ghost"
@@ -417,7 +417,7 @@ export default function AdminCartola() {
                   <span className="ml-auto text-xs text-muted-foreground">{team.slug}</span>
                 </Button>
               ))}
-              {statballTeams?.length === 0 && (
+              {aleballTeams?.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum time encontrado</p>
               )}
             </div>

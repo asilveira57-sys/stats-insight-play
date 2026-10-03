@@ -71,7 +71,7 @@ serve(async (req) => {
       });
     }
 
-    const externalReference = `statball_${user.id}_${plan_id}_${Date.now()}`;
+    const externalReference = `aleball_${user.id}_${plan_id}_${Date.now()}`;
 
     // Create payment record
     const { data: paymentRecord, error: paymentRecordError } = await supabaseClient
@@ -102,7 +102,7 @@ serve(async (req) => {
       items: [
         {
           id: plan_id,
-          title: `StatBall Premium - ${plan.name}`,
+          title: `Aleball Premium - ${plan.name}`,
           description: plan.description || `Acesso premium por ${plan.days} dias`,
           quantity: 1,
           currency_id: "BRL",
@@ -120,7 +120,7 @@ serve(async (req) => {
       },
       auto_return: "approved",
       notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
-      statement_descriptor: "STATBALL",
+      statement_descriptor: "ALEBALL",
       expires: true,
       expiration_date_from: new Date().toISOString(),
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),

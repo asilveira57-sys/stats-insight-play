@@ -19,7 +19,7 @@ interface Props {
 
 export function Copa2026SelecaoSEO({ team, history, players, faqs = [], url }: Props) {
   const titleBase = `${team.name} na Copa do Mundo 2026`;
-  const title = `${titleBase} — Histórico, Elenco e Jogos | Statball`;
+  const title = `${titleBase} — Histórico, Elenco e Jogos | Aleball`;
   const description = (team.meta_description as string | null)
     ?? `${titleBase}: ${team.participations_count ?? history.length} participações em Copas, ${team.titles_count ?? 0} título(s) mundial(is)${team.coach_name ? `, técnico ${team.coach_name}` : ""}. Histórico completo, elenco convocado e calendário.`;
   const trimmed = description.length > 158 ? description.slice(0, 155) + "..." : description;
@@ -28,9 +28,9 @@ export function Copa2026SelecaoSEO({ team, history, players, faqs = [], url }: P
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Statball", item: "https://www.statball.com.br/" },
-      { "@type": "ListItem", position: 2, name: "Copa 2026", item: "https://www.statball.com.br/copa-2026" },
-      { "@type": "ListItem", position: 3, name: "Seleções", item: "https://www.statball.com.br/copa-2026/selecoes" },
+      { "@type": "ListItem", position: 1, name: "Aleball", item: "https://www.aleball.com/" },
+      { "@type": "ListItem", position: 2, name: "Copa 2026", item: "https://www.aleball.com/copa-2026" },
+      { "@type": "ListItem", position: 3, name: "Seleções", item: "https://www.aleball.com/copa-2026/selecoes" },
       { "@type": "ListItem", position: 4, name: team.name, item: url },
     ],
   };

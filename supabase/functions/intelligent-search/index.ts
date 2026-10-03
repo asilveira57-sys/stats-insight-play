@@ -1,4 +1,4 @@
-// Pesquisa Inteligente Statball — v2
+// Pesquisa Inteligente Aleball — v2
 // Intenções nomeadas + desambiguação de liga + resolvers factuais (artilheiros, time, jogador)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -363,7 +363,7 @@ async function resolveCompetitionOverview(
       source: standingsSource,
       ai: {
         answer: `A tabela da **${league.name}**${year ? ` em **${year}**` : ""} tem **${leader.out_team_nome}** na liderança com **${leader.out_points} pontos**.`,
-        explanation: "Fonte: classificação oficial armazenada no StatBall.",
+        explanation: "Fonte: classificação oficial armazenada no Aleball.",
         has_enough_data: true,
         confidence: 95,
       },
@@ -391,14 +391,14 @@ async function resolveCompetitionOverview(
     return {
       source: matchesSource,
       ai: {
-        answer: `Encontrei **${total} jogos** da **${league.name}**${year ? ` em **${year}**` : ""} no banco do StatBall. Último registro: **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}.`,
-        explanation: "Fonte: tabela de partidas do StatBall.",
+        answer: `Encontrei **${total} jogos** da **${league.name}**${year ? ` em **${year}**` : ""} no banco do Aleball. Último registro: **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}.`,
+        explanation: "Fonte: tabela de partidas do Aleball.",
         has_enough_data: true,
         confidence: 92,
       },
       structured: {
         kind: "competition_matches",
-        summary: `${league.name}${year ? ` ${year}` : ""}: ${total} jogos encontrados no banco do StatBall.`,
+        summary: `${league.name}${year ? ` ${year}` : ""}: ${total} jogos encontrados no banco do Aleball.`,
         league: { id: league.id, name: league.name, slug: league.slug ?? null },
         year,
         source: matchesSource,
@@ -411,7 +411,7 @@ async function resolveCompetitionOverview(
   return {
     source: "none",
     structured: null,
-    ai: notFoundAnswer(`A competição ${league.name} foi identificada, mas não há jogos${year ? ` em ${year}` : ""} cadastrados no banco do StatBall.`),
+    ai: notFoundAnswer(`A competição ${league.name} foi identificada, mas não há jogos${year ? ` em ${year}` : ""} cadastrados no banco do Aleball.`),
   };
 }
 
@@ -953,8 +953,8 @@ async function lovableAiChat(body: any): Promise<any | null> {
 }
 
 async function callAI(context: string, question: string) {
-  const system = `Você é o assistente do Statball, plataforma de estatísticas de futebol.
-Regras: 1) Responda em PT-BR, conciso. 2) Use APENAS o CONTEXTO. 3) Se faltar dado, responda "Ainda não há dados suficientes no Statball para responder com precisão." 4) JSON: { answer, explanation, has_enough_data, confidence }.`;
+  const system = `Você é o assistente do Aleball, plataforma de estatísticas de futebol.
+Regras: 1) Responda em PT-BR, conciso. 2) Use APENAS o CONTEXTO. 3) Se faltar dado, responda "Ainda não há dados suficientes no Aleball para responder com precisão." 4) JSON: { answer, explanation, has_enough_data, confidence }.`;
   const data = await lovableAiChat({
     model: AI_MODEL,
     messages: [
@@ -964,20 +964,20 @@ Regras: 1) Responda em PT-BR, conciso. 2) Use APENAS o CONTEXTO. 3) Se faltar da
     response_format: { type: "json_object" },
   });
   if (!data) {
-    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "IA indisponível.", has_enough_data: false, confidence: 0 };
+    return { answer: "Ainda não há dados suficientes no Aleball para responder com precisão.", explanation: "IA indisponível.", has_enough_data: false, confidence: 0 };
   }
   try {
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
     const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     return {
-      answer: parsed.answer ?? "Ainda não há dados suficientes no Statball para responder com precisão.",
+      answer: parsed.answer ?? "Ainda não há dados suficientes no Aleball para responder com precisão.",
       explanation: parsed.explanation ?? "",
       has_enough_data: !!parsed.has_enough_data,
       confidence: Number(parsed.confidence ?? 0),
     };
   } catch (e) {
     console.error("callAI parse", e);
-    return { answer: "Ainda não há dados suficientes no Statball para responder com precisão.", explanation: "Falha ao interpretar IA.", has_enough_data: false, confidence: 0 };
+    return { answer: "Ainda não há dados suficientes no Aleball para responder com precisão.", explanation: "Falha ao interpretar IA.", has_enough_data: false, confidence: 0 };
   }
 }
 
@@ -1019,7 +1019,7 @@ Use null quando não houver. NÃO invente nomes.`;
 }
 
 // Política de "não encontrado": jamais inventar resposta a partir do conhecimento do modelo.
-const NOT_FOUND_MESSAGE = "Não encontrei esse dado no banco de dados do StatBall.";
+const NOT_FOUND_MESSAGE = "Não encontrei esse dado no banco de dados do Aleball.";
 
 function notFoundAnswer(detail?: string) {
   return {
@@ -1447,7 +1447,7 @@ async function resolveWorldCupOverview(
     return {
       source: "world_cup_2026_matches",
       structured: null,
-      ai: notFoundAnswer("Não localizei jogos da Copa do Mundo no banco do StatBall."),
+      ai: notFoundAnswer("Não localizei jogos da Copa do Mundo no banco do Aleball."),
     };
   }
   const finished = allMatches.filter((m: any) =>
@@ -1491,7 +1491,7 @@ async function resolveWorldCupOverview(
     },
     structured: {
       kind: "competition_matches",
-      summary: `Copa do Mundo FIFA 2026: exibindo ${rows.length} jogos${wantsLast ? " (mais recentes)" : ""} do banco do StatBall.`,
+      summary: `Copa do Mundo FIFA 2026: exibindo ${rows.length} jogos${wantsLast ? " (mais recentes)" : ""} do banco do Aleball.`,
       league: { id: "world-cup-2026", name: "Copa do Mundo FIFA 2026", slug: null },
       year: 2026,
       source: "world_cup_2026_matches",
@@ -1623,7 +1623,7 @@ Deno.serve(async (req) => {
         top_scorers = rows;
         if (rows.length === 0) {
           ai_answer = {
-            answer: `Ainda não há dados de artilharia da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} no Statball.`,
+            answer: `Ainda não há dados de artilharia da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} no Aleball.`,
             explanation: "Sem registros internos para essa liga/ano.",
             has_enough_data: false,
             confidence: 0,
@@ -1631,7 +1631,7 @@ Deno.serve(async (req) => {
         } else {
           const top = rows[0];
           const list = rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.jogador}${r.time ? ` (${r.time})` : ""} — ${r.gols} gols`).join("\n");
-          const sourceLabel = src === "artilharia_agregada" ? "artilharia agregada Statball" : src === "gols_partida" ? "agregação de eventos de gol" : "eventos oficiais da Copa 2026 no Statball";
+          const sourceLabel = src === "artilharia_agregada" ? "artilharia agregada Aleball" : src === "gols_partida" ? "agregação de eventos de gol" : "eventos oficiais da Copa 2026 no Aleball";
           contextStr = `Liga: ${league.name}${scorerYear ? ` (${scorerYear})` : ""}\nTop 10 artilheiros (fonte: ${src}):\n${list}\n\nTotal de jogadores no ranking: ${rows.length}`;
           const summary = `${top.jogador}${top.time ? ` (${top.time})` : ""} é o maior artilheiro da ${league.name}${scorerYear ? ` em ${scorerYear}` : ""} com ${top.gols} gols.`;
           ai_answer = {
@@ -1655,7 +1655,7 @@ Deno.serve(async (req) => {
             normalized,
             intent,
             summary,
-            meta_title: `Artilheiros da ${league.name}${scorerYear ? ` ${scorerYear}` : ""} — Statball`,
+            meta_title: `Artilheiros da ${league.name}${scorerYear ? ` ${scorerYear}` : ""} — Aleball`,
             meta_description: `${summary} Veja o ranking completo dos 10 maiores goleadores.`,
             answer_payload: structured_answer,
             entities,
@@ -1688,7 +1688,7 @@ Deno.serve(async (req) => {
             normalized,
             intent: "standings",
             summary: structured_answer.summary,
-            meta_title: `Tabela da ${league.name}${year ? ` ${year}` : ""} — Statball`,
+            meta_title: `Tabela da ${league.name}${year ? ` ${year}` : ""} — Aleball`,
             meta_description: truncate(structured_answer.summary, 160),
             answer_payload: structured_answer,
             entities,
@@ -1712,7 +1712,7 @@ Deno.serve(async (req) => {
       if (!champ) {
         ai_answer = notFoundAnswer(
           compLabel
-            ? `Sem registro de campeão da ${compLabel}${year ? ` em ${year}` : ""} no banco do StatBall.`
+            ? `Sem registro de campeão da ${compLabel}${year ? ` em ${year}` : ""} no banco do Aleball.`
             : "Não consegui identificar a competição. Tente especificar o nome (ex.: 'Brasileirão Série A 2022').",
         );
       } else {
@@ -1740,7 +1740,7 @@ Deno.serve(async (req) => {
           normalized,
           intent: "champion",
           summary,
-          meta_title: `Campeão da ${champ.competition}${champ.year ? ` ${champ.year}` : ""} — Statball`,
+          meta_title: `Campeão da ${champ.competition}${champ.year ? ` ${champ.year}` : ""} — Aleball`,
           meta_description: truncate(summary, 160),
           answer_payload: structured_answer,
           entities,
@@ -1798,7 +1798,7 @@ Deno.serve(async (req) => {
             if (rows.length > 0) {
               const last = rows[0];
               const placar = `${last.gols_casa ?? "?"} x ${last.gols_fora ?? "?"}`;
-              const summary = `${last.home_team} ${placar} ${last.away_team}${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}. Foram encontrados ${total} confrontos no banco do StatBall.`;
+              const summary = `${last.home_team} ${placar} ${last.away_team}${last.data ? ` em ${String(last.data).slice(0, 10)}` : ""}. Foram encontrados ${total} confrontos no banco do Aleball.`;
               ai_answer = {
                 answer: `O confronto mais recente foi **${last.home_team} ${placar} ${last.away_team}**${last.data ? ` em **${String(last.data).slice(0, 10)}**` : ""}.`,
                 explanation: `Fonte: ${src}.`,
@@ -1828,7 +1828,7 @@ Deno.serve(async (req) => {
                 confidence: 94,
               });
             } else {
-              ai_answer = notFoundAnswer(`Não localizei confrontos entre ${left.name} e ${right.name}${year ? ` em ${year}` : ""} no banco do StatBall.`);
+              ai_answer = notFoundAnswer(`Não localizei confrontos entre ${left.name} e ${right.name}${year ? ` em ${year}` : ""} no banco do Aleball.`);
             }
           }
         }
@@ -1993,7 +1993,7 @@ Deno.serve(async (req) => {
             normalized,
             intent,
             summary,
-            meta_title: `${topTeam.name}${year ? ` em ${year}` : ""}: ${agg.total} jogos — Statball`,
+            meta_title: `${topTeam.name}${year ? ` em ${year}` : ""}: ${agg.total} jogos — Aleball`,
             meta_description: summary,
             answer_payload: structured_answer,
             entities,
@@ -2093,7 +2093,7 @@ Deno.serve(async (req) => {
               normalized,
               intent: "last_match",
               summary,
-              meta_title: `Último jogo do ${team.name}${lm.competition?.name ? ` na ${lm.competition.name}` : ""} — Statball`,
+              meta_title: `Último jogo do ${team.name}${lm.competition?.name ? ` na ${lm.competition.name}` : ""} — Aleball`,
               meta_description: summary,
               answer_payload: structured_answer,
               entities,
@@ -2107,7 +2107,7 @@ Deno.serve(async (req) => {
       if (!structured_answer && (!ai_answer || !ai_answer.has_enough_data)) {
         ai_answer = notFoundAnswer(
           refinedTeam
-            ? `Não localizei dados de "${refinedTeam}"${refinedLeague ? ` na ${refinedLeague}` : ""}${refinedYear ? ` em ${refinedYear}` : ""} no banco do StatBall.`
+            ? `Não localizei dados de "${refinedTeam}"${refinedLeague ? ` na ${refinedLeague}` : ""}${refinedYear ? ` em ${refinedYear}` : ""} no banco do Aleball.`
             : "Tente reformular incluindo nome do time, jogador ou competição.",
         );
       }

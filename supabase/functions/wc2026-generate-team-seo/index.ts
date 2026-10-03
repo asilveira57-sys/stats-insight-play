@@ -9,7 +9,7 @@ const MODEL = "gpt-4o";
 const MIN_CHARS = 900;
 const MAX_CHARS = 1800;
 
-const SYSTEM_PROMPT = `Você é um redator esportivo do Statball especializado em SEO e enciclopédia futebolística.
+const SYSTEM_PROMPT = `Você é um redator esportivo do Aleball especializado em SEO e enciclopédia futebolística.
 REGRAS RÍGIDAS:
 - Use APENAS os fatos numerados fornecidos pelo usuário.
 - NUNCA invente jogadores, gols, frases, narrativas ou estatísticas que não estejam nos fatos.

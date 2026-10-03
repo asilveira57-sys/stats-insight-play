@@ -1,4 +1,4 @@
-// Statball RSS feeds — public, cacheable, multi-tipo.
+// Aleball RSS feeds — public, cacheable, multi-tipo.
 // Routes (via ?feed=... or path segments after /rss):
 //   all | make | noticias | pre-jogo | pos-jogo | analises | validacao
 //   estatisticas | times | ligas | arquivo
@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SITE = "https://www.statball.com.br";
+const SITE = "https://www.aleball.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,11 +92,11 @@ function buildRss(opts: {
         ? `\n      <media:content url="${esc(n.imagem_url)}" medium="image"><media:description>${esc(n.imagem_alt || n.titulo)}</media:description></media:content>`
         : "";
       const extras = [
-        timeCasa ? `<statball:home>${esc(timeCasa)}</statball:home>` : "",
-        timeFora ? `<statball:away>${esc(timeFora)}</statball:away>` : "",
-        liga ? `<statball:league>${esc(liga)}</statball:league>` : "",
-        `<statball:type>${esc(n.tipo || "noticia")}</statball:type>`,
-        `<statball:slug>${esc(n.slug || n.id)}</statball:slug>`,
+        timeCasa ? `<aleball:home>${esc(timeCasa)}</aleball:home>` : "",
+        timeFora ? `<aleball:away>${esc(timeFora)}</aleball:away>` : "",
+        liga ? `<aleball:league>${esc(liga)}</aleball:league>` : "",
+        `<aleball:type>${esc(n.tipo || "noticia")}</aleball:type>`,
+        `<aleball:slug>${esc(n.slug || n.id)}</aleball:slug>`,
       ]
         .filter(Boolean)
         .join("\n      ");
@@ -118,7 +118,7 @@ function buildRss(opts: {
 <rss version="2.0"
      xmlns:atom="http://www.w3.org/2005/Atom"
      xmlns:media="http://search.yahoo.com/mrss/"
-     xmlns:statball="https://www.statball.com.br/ns/rss">
+     xmlns:aleball="https://www.aleball.com/ns/rss">
   <channel>
     <title>${esc(title)}</title>
     <link>${SITE}</link>
@@ -126,7 +126,7 @@ function buildRss(opts: {
     <description>${esc(description)}</description>
     <language>pt-BR</language>
     <lastBuildDate>${now}</lastBuildDate>
-    <generator>Statball RSS</generator>
+    <generator>Aleball RSS</generator>
 ${itemsXml}
   </channel>
 </rss>`;
@@ -204,8 +204,8 @@ Deno.serve(async (req) => {
 
   try {
     let items: FeedItem[] = [];
-    let title = "Statball — Estatísticas e Palpites de Futebol";
-    let description = "Últimas publicações do Statball";
+    let title = "Aleball — Estatísticas e Palpites de Futebol";
+    let description = "Últimas publicações do Aleball";
 
     const TYPE_MAP: Record<string, string | string[]> = {
       "pre-jogo": "pre-jogo",
@@ -222,19 +222,19 @@ Deno.serve(async (req) => {
       items = await queryItems((q) => q, 100);
     } else if (kind === "make") {
       items = await queryItems((q) => q, 150);
-      title = "Statball — Feed Automação (Make)";
-      description = "Conteúdos públicos do Statball para automações externas";
+      title = "Aleball — Feed Automação (Make)";
+      description = "Conteúdos públicos do Aleball para automações externas";
     } else if (TYPE_MAP[kind]) {
       const t = TYPE_MAP[kind];
       items = await queryItems(
         (q) => (Array.isArray(t) ? q.in("tipo", t) : q.eq("tipo", t)),
         100,
       );
-      title = `Statball — ${TIPO_CATEGORIA[Array.isArray(t) ? t[0] : t] || kind}`;
+      title = `Aleball — ${TIPO_CATEGORIA[Array.isArray(t) ? t[0] : t] || kind}`;
       description = `Últimas publicações: ${kind}`;
     } else if (kind === "times" || kind === "ligas") {
       items = await queryItems((q) => q.not("partida_id", "is", null), 100);
-      title = `Statball — ${kind === "times" ? "Times" : "Ligas"}`;
+      title = `Aleball — ${kind === "times" ? "Times" : "Ligas"}`;
     } else if (kind === "time" && param) {
       const { data: t } = await supabase
         .from("times").select("id,nome,slug").eq("slug", param).maybeSingle();
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         }
         items = results.slice(0, 100);
       }
-      title = `Statball — ${t.nome}`;
+      title = `Aleball — ${t.nome}`;
       description = `Últimas publicações sobre ${t.nome}`;
     } else if (kind === "liga" && param) {
       const { data: l } = await supabase
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
         }
         items = results.slice(0, 100);
       }
-      title = `Statball — ${l.nome}`;
+      title = `Aleball — ${l.nome}`;
       description = `Últimas publicações da ${l.nome}`;
     } else if (kind === "temporada" && param) {
       const year = parseInt(param, 10);
@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
         (q) => q.gte("data_publicacao", `${year}-01-01`).lte("data_publicacao", `${year}-12-31T23:59:59`),
         100,
       );
-      title = `Statball — Temporada ${year}`;
+      title = `Aleball — Temporada ${year}`;
       description = `Publicações da temporada ${year}`;
     } else {
       await logEvent("error", { status: 404, error_message: `Feed desconhecido: ${feedKey}` });

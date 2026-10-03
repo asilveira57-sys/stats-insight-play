@@ -24,7 +24,7 @@ export interface LgpdConfig {
   updated_by: string | null;
 }
 
-const CONSENT_STORAGE_KEY = 'statball_cookie_consent';
+const CONSENT_STORAGE_KEY = 'aleball_cookie_consent';
 
 // Generate anonymous visitor hash
 function generateVisitorHash(): string {

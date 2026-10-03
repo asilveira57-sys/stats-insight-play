@@ -202,12 +202,12 @@ export default function Artilheiros() {
   return (
     <Layout>
       <Helmet>
-        <title>Artilheiros {temporada || ""} — Ranking de Goleadores | Statball</title>
+        <title>Artilheiros {temporada || ""} — Ranking de Goleadores | Aleball</title>
         <meta
           name="description"
           content={`Ranking de artilheiros ${temporada || ""} com filtros por temporada, região e campeonato: gols, times e líderes de cada competição.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/artilheiros" />
+        <link rel="canonical" href="https://www.aleball.com/artilheiros" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">

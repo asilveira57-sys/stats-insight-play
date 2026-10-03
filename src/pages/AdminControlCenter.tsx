@@ -845,7 +845,7 @@ export default function AdminControlCenter() {
   return (
     <>
       <Helmet>
-        <title>Admin Control Center | Statball</title>
+        <title>Admin Control Center | Aleball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       

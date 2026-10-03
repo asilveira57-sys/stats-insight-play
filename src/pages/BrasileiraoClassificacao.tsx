@@ -16,12 +16,12 @@ export default function BrasileiraoClassificacao() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Tabela do Brasileirão ${season} — Classificação Atualizada | Statball`}</title>
+        <title>{`Tabela do Brasileirão ${season} — Classificação Atualizada | Aleball`}</title>
         <meta
           name="description"
           content={`Classificação do Campeonato Brasileiro Série A ${season} calculada a partir dos resultados oficiais: pontos, vitórias, saldo de gols, aproveitamento e últimos 5 jogos.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/brasileirao/classificacao" />
+        <link rel="canonical" href="https://www.aleball.com/brasileirao/classificacao" />
       </Helmet>
 
       <BrasileiraoNav />
@@ -30,7 +30,7 @@ export default function BrasileiraoClassificacao() {
         <header>
           <h1 className="text-3xl font-bold mb-2">Classificação do Brasileirão {season}</h1>
           <p className="text-muted-foreground">
-            Tabela recalculada em tempo real a partir das partidas encerradas registradas no banco do Statball.
+            Tabela recalculada em tempo real a partir das partidas encerradas registradas no banco do Aleball.
           </p>
         </header>
 

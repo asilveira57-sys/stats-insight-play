@@ -31,7 +31,7 @@ const PoliticaCookies = () => {
               </h1>
             </div>
             <p className="text-muted-foreground">
-              Como o Statball utiliza cookies e tecnologias semelhantes
+              Como o Aleball utiliza cookies e tecnologias semelhantes
             </p>
           </div>
 
@@ -45,7 +45,7 @@ const PoliticaCookies = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p className="leading-relaxed">
-                  Esta Política de Cookies explica como o Statball utiliza cookies e tecnologias semelhantes durante a navegação dos usuários em nossa plataforma.
+                  Esta Política de Cookies explica como o Aleball utiliza cookies e tecnologias semelhantes durante a navegação dos usuários em nossa plataforma.
                 </p>
                 <p className="leading-relaxed">
                   Cookies são pequenos arquivos armazenados no navegador ou dispositivo do usuário quando um site é acessado. Eles ajudam a melhorar a experiência de navegação, lembrar preferências, coletar informações estatísticas e oferecer funcionalidades importantes para o funcionamento da plataforma.
@@ -63,7 +63,7 @@ const PoliticaCookies = () => {
                 Como utilizamos os cookies
               </h2>
               <p className="text-muted-foreground mb-4">
-                O Statball utiliza cookies para:
+                O Aleball utiliza cookies para:
               </p>
               <ul className="space-y-2 text-muted-foreground">
                 <li className="flex items-start gap-2">
@@ -141,7 +141,7 @@ const PoliticaCookies = () => {
                     Cookies de Desempenho e Estatísticas
                   </h3>
                   <p className="text-muted-foreground text-sm mb-3">
-                    Utilizados para entender como os usuários utilizam o Statball.
+                    Utilizados para entender como os usuários utilizam o Aleball.
                   </p>
                   <p className="text-muted-foreground text-sm mb-2">Esses cookies ajudam a identificar:</p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm ml-2">
@@ -179,7 +179,7 @@ const PoliticaCookies = () => {
                     Cookies de Publicidade
                   </h3>
                   <p className="text-muted-foreground text-sm mb-2">
-                    O Statball poderá utilizar cookies de publicidade para:
+                    O Aleball poderá utilizar cookies de publicidade para:
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground text-sm ml-2">
                     <li>Exibição de anúncios</li>
@@ -203,7 +203,7 @@ const PoliticaCookies = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball poderá utilizar serviços do Google AdSense e outras plataformas de publicidade.
+                  O Aleball poderá utilizar serviços do Google AdSense e outras plataformas de publicidade.
                 </p>
                 <p>O Google e parceiros podem utilizar cookies para:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -301,7 +301,7 @@ const PoliticaCookies = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  Ao continuar utilizando o Statball, o usuário concorda com o uso de cookies conforme descrito nesta Política de Cookies.
+                  Ao continuar utilizando o Aleball, o usuário concorda com o uso de cookies conforme descrito nesta Política de Cookies.
                 </p>
                 <p>
                   O consentimento poderá ser atualizado, alterado ou revogado através das configurações do navegador ou do banner de consentimento exibido na plataforma.
@@ -317,7 +317,7 @@ const PoliticaCookies = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball busca utilizar cookies de maneira responsável, transparente e alinhada às boas práticas de privacidade e proteção de dados.
+                  O Aleball busca utilizar cookies de maneira responsável, transparente e alinhada às boas práticas de privacidade e proteção de dados.
                 </p>
                 <p>
                   As informações coletadas seguem as diretrizes descritas em nossa{" "}
@@ -364,11 +364,11 @@ const PoliticaCookies = () => {
               </p>
               <div className="space-y-3">
                 <a
-                  href="mailto:contato@statball.com.br"
+                  href="mailto:contato@aleball.com"
                   className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
                 >
                   <Mail className="w-4 h-4" />
-                  contato@statball.com.br
+                  contato@aleball.com
                 </a>
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-2/50 border border-border/40">
                   <UserCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />

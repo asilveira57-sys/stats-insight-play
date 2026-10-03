@@ -34,12 +34,12 @@ export default function CopaBrasilJogos() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Jogos da Copa do Brasil ${season} — Fases e Resultados | Statball`}</title>
+        <title>{`Jogos da Copa do Brasil ${season} — Fases e Resultados | Aleball`}</title>
         <meta
           name="description"
           content={`Todos os jogos da Copa do Brasil ${season} fase por fase, com placar oficial, status ao vivo e palpite da IA em cada partida.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/copa-do-brasil/jogos" />
+        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil/jogos" />
       </Helmet>
 
       <CopaBrasilNav />

@@ -17,7 +17,7 @@ export function PremiumCTA({ variant = "inline", message }: PremiumCTAProps) {
           </div>
           <div className="flex-1 text-center md:text-left">
             <h3 className="text-xl font-display font-bold mb-2">
-              Clube Statball Premium
+              Clube Aleball Premium
             </h3>
             <p className="text-muted-foreground">
               {message || "Acesse análises ainda mais detalhadas, estatísticas avançadas e dados exclusivos. Experiência sem anúncios e recursos premium."}
@@ -40,7 +40,7 @@ export function PremiumCTA({ variant = "inline", message }: PremiumCTAProps) {
         <div className="flex items-center gap-3">
           <Crown className="w-5 h-5 text-primary shrink-0" />
           <p className="text-sm text-muted-foreground flex-1">
-            {message || "Membros do Clube Statball acompanham análises completas e sem anúncios."}
+            {message || "Membros do Clube Aleball acompanham análises completas e sem anúncios."}
           </p>
           <Button asChild variant="ghost" size="sm" className="shrink-0">
             <Link to="/precos">
@@ -62,7 +62,7 @@ export function PremiumCTA({ variant = "inline", message }: PremiumCTAProps) {
           </div>
           <div className="flex-1 text-center md:text-left">
             <h3 className="text-xl font-display font-bold mb-2">
-              Clube Statball Premium
+              Clube Aleball Premium
             </h3>
             <p className="text-muted-foreground">
               {message || "Acesse análises ainda mais detalhadas, estatísticas avançadas e dados exclusivos de todos os confrontos. Experiência sem anúncios e recursos premium."}
@@ -88,7 +88,7 @@ export function PremiumCTA({ variant = "inline", message }: PremiumCTAProps) {
         <div className="flex-1">
           <p className="text-sm text-muted-foreground mb-3">
             <strong className="text-foreground">Quer análises ainda mais detalhadas?</strong>{" "}
-            {message || "Usuários do Clube Statball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto."}
+            {message || "Usuários do Clube Aleball Premium acessam estatísticas avançadas, dados exclusivos e análises complementares de cada confronto."}
           </p>
           <Button asChild variant="outline" size="sm">
             <Link to="/precos">

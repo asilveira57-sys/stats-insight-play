@@ -125,7 +125,7 @@ export default function AdminLgpdPage() {
   return (
     <AdminLayout>
       <Helmet>
-        <title>LGPD e Privacidade | Admin | Statball</title>
+        <title>LGPD e Privacidade | Admin | Aleball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

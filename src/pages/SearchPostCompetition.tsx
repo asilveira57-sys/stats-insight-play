@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MatchesList } from "@/components/search/MatchesList";
 import type { MatchRow, StructuredAnswer } from "@/hooks/useIntelligentSearch";
 
-const BASE = "https://www.statball.com.br";
+const BASE = "https://www.aleball.com";
 
 export default function SearchPostCompetition() {
   const { slug, ligaSlug } = useParams<{ slug: string; ligaSlug: string }>();
@@ -75,7 +75,7 @@ export default function SearchPostCompetition() {
   const goalsCon = matches.reduce((s, m) => s + (m.is_home ? (m.gols_fora ?? 0) : (m.gols_casa ?? 0)), 0);
 
   const title = `${team.name} na ${competition.name}${year ? ` ${year}` : ""}`;
-  const metaTitle = `${title} — ${competition.total} jogos, ${competition.w}V ${competition.d}E ${competition.l}D | Statball`;
+  const metaTitle = `${title} — ${competition.total} jogos, ${competition.w}V ${competition.d}E ${competition.l}D | Aleball`;
   const metaDesc = `Desempenho completo do ${team.name} na ${competition.name}${year ? ` em ${year}` : ""}: ${competition.total} partidas, ${competition.w} vitórias, ${competition.d} empates, ${competition.l} derrotas e ${goalsPro} gols marcados.`;
   const canonical = `${BASE}/pesquisa/${slug}/competicao/${ligaSlug}`;
 
@@ -88,14 +88,14 @@ export default function SearchPostCompetition() {
       url: canonical,
       datePublished: post.created_at,
       dateModified: post.updated_at,
-      author: { "@type": "Organization", name: "Statball" },
+      author: { "@type": "Organization", name: "Aleball" },
     },
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Início", item: `${BASE}/` },
-        { "@type": "ListItem", position: 2, name: "Pesquisa Statball", item: `${BASE}/pesquisa` },
+        { "@type": "ListItem", position: 2, name: "Pesquisa Aleball", item: `${BASE}/pesquisa` },
         { "@type": "ListItem", position: 3, name: post.question, item: `${BASE}/pesquisa/${slug}` },
         { "@type": "ListItem", position: 4, name: competition.name, item: canonical },
       ],
@@ -180,7 +180,7 @@ export default function SearchPostCompetition() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             Esta página é gerada automaticamente a partir da pergunta{" "}
             <Link to={`/pesquisa/${slug}`} className="text-primary hover:underline">"{post.question}"</Link>{" "}
-            e cruza apenas dados oficiais de partidas finalizadas registradas na base do Statball. Cada linha da tabela acima é clicável e leva à ficha completa do jogo, com gols (minuto, autor e assistência) e cartões aplicados.
+            e cruza apenas dados oficiais de partidas finalizadas registradas na base do Aleball. Cada linha da tabela acima é clicável e leva à ficha completa do jogo, com gols (minuto, autor e assistência) e cartões aplicados.
           </p>
         </section>
       </article>

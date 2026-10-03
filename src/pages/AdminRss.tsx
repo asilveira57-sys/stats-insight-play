@@ -122,7 +122,7 @@ export default function AdminRss() {
               RSS & Automação
             </h1>
             <p className="text-sm text-muted-foreground">
-              Feeds públicos do Statball para Make, Zapier, leitores RSS e automações.
+              Feeds públicos do Aleball para Make, Zapier, leitores RSS e automações.
             </p>
           </div>
           <div className="flex gap-2">

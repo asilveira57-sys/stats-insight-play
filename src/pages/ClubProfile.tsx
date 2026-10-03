@@ -66,7 +66,7 @@ export default function ClubProfile() {
     );
   }
 
-  const title = `${club.nome} - Análise Estatística Completa | Statball`;
+  const title = `${club.nome} - Análise Estatística Completa | Aleball`;
   const description = `Análise estatística completa do ${club.nome}${club.pais ? ` (${club.pais})` : ""}. Histórico, estatísticas, artilheiros e confrontos históricos.`;
 
   return (

@@ -70,7 +70,7 @@ REGRAS ABSOLUTAS:
 - Proibido: "jogo equilibrado", "duas equipes fortes", "qualquer coisa pode acontecer"
 - HTML com h2, h3, p, ul, li, strong, em`;
 
-  const userPrompt = `Análise pré-jogo para o Statball:
+  const userPrompt = `Análise pré-jogo para o Aleball:
 
 CONFRONTO:
 - ${timeCasa} x ${timeFora}
@@ -87,7 +87,7 @@ ESTRUTURA (mínimo 1200 palavras):
 <h2>Análise Tática e Fatores Decisivos</h2>
 <h2>Fator Casa/Fora e Histórico</h2>
 <h2>Tendência e Placar Estimado (${placarCasa} x ${placarFora})</h2>
-<h2>Leitura de Cenário Statball</h2>
+<h2>Leitura de Cenário Aleball</h2>
 
 REGRAS: toda afirmação justificada com dados; comparar lado a lado; sem revelar resultado.`;
 

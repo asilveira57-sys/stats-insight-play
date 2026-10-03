@@ -12,12 +12,12 @@ export default function CopaBrasilArtilharia() {
   return (
     <Layout>
       <Helmet>
-        <title>{`Artilharia da Copa do Brasil ${season} — Goleadores | Statball`}</title>
+        <title>{`Artilharia da Copa do Brasil ${season} — Goleadores | Aleball`}</title>
         <meta
           name="description"
           content={`Artilheiros da Copa do Brasil ${season} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}
         />
-        <link rel="canonical" href="https://www.statball.com.br/copa-do-brasil/artilharia" />
+        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil/artilharia" />
       </Helmet>
 
       <CopaBrasilNav />
@@ -26,7 +26,7 @@ export default function CopaBrasilArtilharia() {
         <header>
           <h1 className="text-3xl font-bold mb-2">Artilharia da Copa do Brasil {season}</h1>
           <p className="text-muted-foreground">
-            Ranking construído a partir dos gols registrados jogo a jogo no banco do Statball — sem estimativas.
+            Ranking construído a partir dos gols registrados jogo a jogo no banco do Aleball — sem estimativas.
           </p>
         </header>
 

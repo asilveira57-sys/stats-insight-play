@@ -58,7 +58,7 @@ export default function Pesquisa() {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-3">
           <h1 className="text-2xl md:text-3xl font-display font-bold">
-            Pesquisa Inteligente Statball
+            Pesquisa Inteligente Aleball
           </h1>
           <p className="text-muted-foreground text-sm md:text-base max-w-2xl mx-auto">
             Times, jogadores, campeonatos, estatísticas e perguntas em linguagem natural — tudo num só lugar.
@@ -87,7 +87,7 @@ export default function Pesquisa() {
               <Card className="border-dashed">
                 <CardContent className="py-8 text-center space-y-3">
                   <SearchIcon className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-base font-medium">Não encontrei esse dado no banco de dados do StatBall.</p>
+                  <p className="text-base font-medium">Não encontrei esse dado no banco de dados do Aleball.</p>
                   <p className="text-sm text-muted-foreground">
                     {data.ai_answer?.explanation || "Tente reformular incluindo nome do time, jogador ou competição."}
                   </p>
@@ -179,7 +179,7 @@ export default function Pesquisa() {
                 <CardTitle className="text-sm">Como funciona</CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
-                <p>• A IA Statball responde com base apenas em dados do nosso banco.</p>
+                <p>• A IA Aleball responde com base apenas em dados do nosso banco.</p>
                 <p>• Quando faltam dados, ela avisa em vez de inventar.</p>
                 <p>• Cada busca alimenta tendências públicas.</p>
               </CardContent>

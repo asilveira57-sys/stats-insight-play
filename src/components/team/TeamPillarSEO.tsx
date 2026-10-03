@@ -9,8 +9,8 @@ interface TeamPillarSEOProps {
 
 export function TeamPillarSEO({ teamName, leagueName, description, url }: TeamPillarSEOProps) {
   const title = leagueName 
-    ? `${teamName} - Análise Estatística | ${leagueName} | Statball`
-    : `${teamName} - Análise Estatística Completa | Statball`;
+    ? `${teamName} - Análise Estatística | ${leagueName} | Aleball`
+    : `${teamName} - Análise Estatística Completa | Aleball`;
   
   const metaDescription = description || 
     `Análise estatística completa do ${teamName}${leagueName ? ` na ${leagueName}` : ""}. Desempenho, tendências, forma recente e estatísticas detalhadas.`;

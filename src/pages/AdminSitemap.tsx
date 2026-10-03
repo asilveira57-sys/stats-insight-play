@@ -90,7 +90,7 @@ export default function AdminSitemap() {
 
   return (
     <AdminLayout>
-      <Helmet><title>Sitemap | Admin Statball</title></Helmet>
+      <Helmet><title>Sitemap | Admin Aleball</title></Helmet>
       <div className="space-y-6 p-6 max-w-5xl">
         <div>
           <h1 className="text-3xl font-bold">Sitemap</h1>
@@ -106,7 +106,7 @@ export default function AdminSitemap() {
           <CardContent className="text-sm space-y-2">
             <p>
               Os arquivos em <code className="bg-muted px-1 rounded">public/sitemap*.xml</code> são
-              servidos no domínio <code className="bg-muted px-1 rounded">www.statball.com.br/sitemap.xml</code>{" "}
+              servidos no domínio <code className="bg-muted px-1 rounded">www.aleball.com.br/sitemap.xml</code>{" "}
               após cada deploy.
             </p>
             <p>

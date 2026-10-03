@@ -26,12 +26,12 @@ const TermosUso = () => {
             <section className="bg-card rounded-xl p-6 border border-border">
               <h2 className="text-xl font-semibold mb-4">1. Aceitação dos Termos</h2>
               <p className="leading-relaxed text-muted-foreground">
-                Ao acessar ou utilizar o Statball ("plataforma", "serviço", "nós"), você concorda 
+                Ao acessar ou utilizar o Aleball ("plataforma", "serviço", "nós"), você concorda 
                 em cumprir estes Termos de Uso. Se você não concordar com qualquer parte destes 
                 termos, não utilize nossa plataforma.
               </p>
               <p className="leading-relaxed mt-4 text-muted-foreground">
-                O Statball reserva-se o direito de modificar estes termos a qualquer momento. 
+                O Aleball reserva-se o direito de modificar estes termos a qualquer momento. 
                 Alterações entrarão em vigor imediatamente após a publicação. O uso continuado 
                 da plataforma constitui aceitação das alterações.
               </p>
@@ -42,7 +42,7 @@ const TermosUso = () => {
               <h2 className="text-xl font-semibold mb-4">2. Descrição do Serviço</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball é uma <strong className="text-foreground">plataforma de estatísticas e análises de futebol</strong> que 
+                  O Aleball é uma <strong className="text-foreground">plataforma de estatísticas e análises de futebol</strong> que 
                   oferece:
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -62,7 +62,7 @@ const TermosUso = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p className="font-medium text-foreground">
-                  O Statball NÃO é uma plataforma de apostas.
+                  O Aleball NÃO é uma plataforma de apostas.
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
                   <li>
@@ -153,7 +153,7 @@ const TermosUso = () => {
                 6. Uso Aceitável
               </h2>
               <div className="space-y-4 text-muted-foreground">
-                <p>Ao utilizar o Statball, você concorda em NÃO:</p>
+                <p>Ao utilizar o Aleball, você concorda em NÃO:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Usar o serviço para fins ilegais ou não autorizados</li>
                   <li>Tentar acessar áreas restritas do sistema</li>
@@ -170,9 +170,9 @@ const TermosUso = () => {
             <section className="bg-card rounded-xl p-6 border border-border">
               <h2 className="text-xl font-semibold mb-4">7. Propriedade Intelectual</h2>
               <p className="text-muted-foreground">
-                Todo o conteúdo do Statball, incluindo mas não limitado a textos, gráficos, 
+                Todo o conteúdo do Aleball, incluindo mas não limitado a textos, gráficos, 
                 logos, ícones, imagens, clipes de áudio, downloads digitais e compilações de dados, 
-                é propriedade do Statball ou de seus fornecedores de conteúdo e está protegido 
+                é propriedade do Aleball ou de seus fornecedores de conteúdo e está protegido 
                 por leis de direitos autorais.
               </p>
             </section>
@@ -185,7 +185,7 @@ const TermosUso = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  O Statball fornece informações e análises "como estão", sem garantias de 
+                  O Aleball fornece informações e análises "como estão", sem garantias de 
                   qualquer tipo, expressas ou implícitas.
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -195,7 +195,7 @@ const TermosUso = () => {
                   <li>Não nos responsabilizamos por perdas decorrentes do uso das informações</li>
                 </ul>
                 <p className="mt-4 font-medium text-foreground">
-                  O uso de qualquer informação disponibilizada pelo Statball é de inteira 
+                  O uso de qualquer informação disponibilizada pelo Aleball é de inteira 
                   responsabilidade do usuário.
                 </p>
               </div>
@@ -227,7 +227,7 @@ const TermosUso = () => {
                 Para dúvidas sobre estes Termos de Uso, entre em contato:
               </p>
               <p className="mt-4 text-primary font-medium">
-                contato@statball.com.br
+                contato@aleball.com
               </p>
             </section>
 

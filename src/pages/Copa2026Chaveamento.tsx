@@ -214,9 +214,9 @@ export default function Copa2026Chaveamento() {
   return (
     <Layout>
       <Helmet>
-        <title>Chaveamento Copa do Mundo 2026 — Projeção IA | Statball</title>
+        <title>Chaveamento Copa do Mundo 2026 — Projeção IA | Aleball</title>
         <meta name="description" content="Chaveamento completo da Copa do Mundo 2026 com projeção automática da IA: campeão, vice, 3º lugar e todos os confrontos do mata-mata projetados em tempo real." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/chaveamento" />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/chaveamento" />
       </Helmet>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Chaveamento Copa 2026 — Fases Finais</h1>

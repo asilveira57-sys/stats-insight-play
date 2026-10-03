@@ -173,11 +173,11 @@ export default function Precos() {
         <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-6">
             <Crown className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Planos Statball</span>
+            <span className="text-sm font-medium text-primary">Planos Aleball</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
             Escolha como você quer{" "}
-            <span className="gradient-text">usar o Statball</span>
+            <span className="gradient-text">usar o Aleball</span>
           </h1>
           <p className="text-muted-foreground">
             {hasAccess 

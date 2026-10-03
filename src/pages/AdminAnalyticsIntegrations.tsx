@@ -153,7 +153,7 @@ export default function AdminAnalyticsIntegrations() {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Integrações de Analytics | Admin | Statball</title>
+        <title>Integrações de Analytics | Admin | Aleball</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
@@ -319,7 +319,7 @@ export default function AdminAnalyticsIntegrations() {
                     <Label htmlFor="ga4-property">Nome da Propriedade (opcional)</Label>
                     <Input
                       id="ga4-property"
-                      placeholder="Ex: Statball - Produção"
+                      placeholder="Ex: Aleball - Produção"
                       value={ga4PropertyName}
                       onChange={(e) => setGa4PropertyName(e.target.value)}
                     />
@@ -453,7 +453,7 @@ export default function AdminAnalyticsIntegrations() {
                     <Label htmlFor="pixel-account">Nome da Conta (opcional)</Label>
                     <Input
                       id="pixel-account"
-                      placeholder="Ex: Statball Ads"
+                      placeholder="Ex: Aleball Ads"
                       value={pixelAccountName}
                       onChange={(e) => setPixelAccountName(e.target.value)}
                     />
@@ -502,7 +502,7 @@ export default function AdminAnalyticsIntegrations() {
                       <li>✓ PageView (todas as páginas)</li>
                       <li>✓ ViewContent (preparado)</li>
                       <li>✓ Lead (preparado)</li>
-                      <li>✓ Subscribe (Clube Statball)</li>
+                      <li>✓ Subscribe (Clube Aleball)</li>
                       <li>✓ InitiateCheckout (preparado)</li>
                       <li>✓ Purchase (preparado)</li>
                     </ul>

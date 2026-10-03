@@ -92,9 +92,9 @@ export default function Copa2026Projecao() {
   return (
     <Layout>
       <Helmet>
-        <title>Projeção Oficial Copa 2026 | Statball</title>
+        <title>Projeção Oficial Copa 2026 | Aleball</title>
         <meta name="description" content="Projeção automatizada do chaveamento completo da Copa do Mundo 2026: campeão, vice, semifinalistas e probabilidades de título." />
-        <link rel="canonical" href="https://www.statball.com.br/copa-2026/projecao" />
+        <link rel="canonical" href="https://www.aleball.com/copa-2026/projecao" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 space-y-8">
@@ -108,7 +108,7 @@ export default function Copa2026Projecao() {
             <div>
               <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
                 <Sparkles className="h-8 w-8 text-primary" />
-                Projeção Oficial Statball
+                Projeção Oficial Aleball
               </h1>
               <p className="text-muted-foreground mt-2 max-w-2xl">
                 Simulação completa do chaveamento usando IA, ranking FIFA, Elo e histórico de Copas. Atualiza após cada jogo encerrado.

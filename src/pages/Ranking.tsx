@@ -114,7 +114,7 @@ export default function Ranking() {
           <Trophy className="w-8 h-8 text-primary" />
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-bold">Ranking</h1>
-            <p className="text-muted-foreground">Os melhores palpiteiros do StatBall</p>
+            <p className="text-muted-foreground">Os melhores palpiteiros do Aleball</p>
           </div>
         </div>
 

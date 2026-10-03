@@ -381,7 +381,7 @@ export default function RankingIAvsHumanos() {
           <CardContent className="p-6">
             <h2 className="text-xl font-semibold mb-3">O que é o Ranking Histórico?</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              O Ranking Histórico do Statball compara, de forma transparente e contínua, o desempenho 
+              O Ranking Histórico do Aleball compara, de forma transparente e contínua, o desempenho 
               das previsões geradas pela <strong>Inteligência Artificial</strong> (modelo matemático 
               baseado em estatísticas) com os palpites da <strong>comunidade de usuários</strong> 
               (leitura humana coletiva).
@@ -799,7 +799,7 @@ export default function RankingIAvsHumanos() {
         <div className="mt-12 p-6 rounded-xl bg-muted/30 border border-border/50">
           <h2 className="text-lg font-semibold mb-3">Metodologia do Ranking</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-            O Ranking Histórico do Statball é atualizado automaticamente após cada jogo finalizado. 
+            O Ranking Histórico do Aleball é atualizado automaticamente após cada jogo finalizado. 
             As previsões da IA são geradas por um modelo matemático baseado em estatísticas históricas, 
             força dos times, desempenho recente e fatores de mando de campo. Os palpites dos usuários 
             são agregados de forma anônima para calcular a taxa de acerto coletiva.
@@ -807,7 +807,7 @@ export default function RankingIAvsHumanos() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             <strong>Tipos de acerto:</strong> "Resultado" significa acertar vitória do mandante, 
             visitante ou empate. "Placar Exato" significa acertar o resultado numérico completo 
-            (ex: 2x1). Os dados apresentados são exclusivos do Statball e não constituem 
+            (ex: 2x1). Os dados apresentados são exclusivos do Aleball e não constituem 
             recomendação de apostas.
           </p>
         </div>

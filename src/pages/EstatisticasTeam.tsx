@@ -24,19 +24,19 @@ type ViewVariation = "geral" | "gols" | "mandante" | "visitante";
 
 const VARIATION_META: Record<ViewVariation, { title: (t: string, s: number, l?: string) => string; desc: (t: string, s: number) => string }> = {
   geral: {
-    title: (t, s, l) => `Estatísticas do ${t} ${s}${l ? ` – ${l}` : ""} | Statball`,
+    title: (t, s, l) => `Estatísticas do ${t} ${s}${l ? ` – ${l}` : ""} | Aleball`,
     desc: (t, s) => `Estatísticas completas do ${t} na temporada ${s}: gols, médias, aproveitamento e desempenho.`,
   },
   gols: {
-    title: (t, s) => `${t} ${s}: Gols Marcados, Sofridos e Médias | Statball`,
+    title: (t, s) => `${t} ${s}: Gols Marcados, Sofridos e Médias | Aleball`,
     desc: (t, s) => `Análise de gols do ${t} em ${s}: marcados, sofridos, médias por jogo, Over 2.5 e BTTS.`,
   },
   mandante: {
-    title: (t, s) => `${t} como Mandante ${s}: Desempenho em Casa | Statball`,
+    title: (t, s) => `${t} como Mandante ${s}: Desempenho em Casa | Aleball`,
     desc: (t, s) => `Estatísticas do ${t} como mandante em ${s}: vitórias em casa, gols e aproveitamento.`,
   },
   visitante: {
-    title: (t, s) => `${t} como Visitante ${s}: Desempenho Fora de Casa | Statball`,
+    title: (t, s) => `${t} como Visitante ${s}: Desempenho Fora de Casa | Aleball`,
     desc: (t, s) => `Estatísticas do ${t} como visitante em ${s}: vitórias fora, gols marcados e aproveitamento.`,
   },
 };
@@ -111,7 +111,7 @@ export default function EstatisticasTeam() {
 
   // SEO meta
   const title = useMemo(() => {
-    if (!data) return "Estatísticas | Statball";
+    if (!data) return "Estatísticas | Aleball";
     const fallback = VARIATION_META[variation].title(data.team.nome, data.season, data.league?.nome);
     return variation === "geral" ? (seoContent?.meta_title || fallback) : fallback;
   }, [data, seoContent, variation]);

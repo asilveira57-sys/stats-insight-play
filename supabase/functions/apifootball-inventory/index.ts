@@ -30,7 +30,7 @@ const WORLD_LEAGUE_IDS = [
   73,  // Copa do Brasil (BR)
 ];
 
-// Marcadores de prioridade Statball
+// Marcadores de prioridade Aleball
 const PRIORITY_LEAGUE_IDS = new Set<number>([
   // Brasil
   71, 72, 73, 75,

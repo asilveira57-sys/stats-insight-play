@@ -11,7 +11,7 @@ import { usePartidaOdds } from "@/hooks/usePartidaOdds";
 import { PartidaOddsBlock } from "@/components/odds/PartidaOddsBlock";
 
 
-const BASE = "https://www.statball.com.br";
+const BASE = "https://www.aleball.com";
 
 function formatDate(d: string | null) {
   if (!d) return "—";
@@ -82,7 +82,7 @@ export default function PartidaDetalhe() {
 
   const dateLabel = partida ? formatDate(partida.data) : "";
   const ligaName = partida?.liga?.nome;
-  const metaTitle = partida ? `${title} — ${ligaName ?? ""} ${partida.data ? new Date(partida.data).getFullYear() : ""} | Statball` : "Partida | Statball";
+  const metaTitle = partida ? `${title} — ${ligaName ?? ""} ${partida.data ? new Date(partida.data).getFullYear() : ""} | Aleball` : "Partida | Aleball";
   const metaDesc = partida
     ? `Resumo completo do jogo ${title} pelo ${ligaName ?? "campeonato"} em ${dateLabel}. Gols, cartões, minutos e ficha técnica oficial.`
     : "";
@@ -191,7 +191,7 @@ export default function PartidaDetalhe() {
             <Badge variant="outline" className="text-[10px] uppercase">{partida.status}</Badge>
           </div>
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Ficha técnica completa do jogo entre <strong className="text-foreground/90">{partida.casa?.nome}</strong> e <strong className="text-foreground/90">{partida.fora?.nome}</strong>{ligaName ? <> pelo <strong className="text-foreground/90">{ligaName}</strong></> : null}, disputado em {dateLabel}. Veja abaixo o resumo do placar, os gols marcados, os cartões aplicados e as estatísticas oficiais — tudo extraído da base de dados Statball, sem invenções.
+            Ficha técnica completa do jogo entre <strong className="text-foreground/90">{partida.casa?.nome}</strong> e <strong className="text-foreground/90">{partida.fora?.nome}</strong>{ligaName ? <> pelo <strong className="text-foreground/90">{ligaName}</strong></> : null}, disputado em {dateLabel}. Veja abaixo o resumo do placar, os gols marcados, os cartões aplicados e as estatísticas oficiais — tudo extraído da base de dados Aleball, sem invenções.
           </p>
         </header>
 

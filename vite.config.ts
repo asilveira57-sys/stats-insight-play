@@ -21,7 +21,7 @@ const SITEMAP_FILES: { filename: string; type: string; page?: number }[] = [
 // Fails soft: if the function is unreachable, keeps the existing files and logs a warning.
 function sitemapRegenPlugin(): Plugin {
   return {
-    name: "statball-sitemap-regen",
+    name: "aleball-sitemap-regen",
     apply: "build",
     async buildStart() {
       console.log("[sitemap] regenerating from edge function...");
