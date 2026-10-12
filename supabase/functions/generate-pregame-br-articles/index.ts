@@ -39,7 +39,90 @@ function countWords(text: string) {
   return text.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length;
 }
 
-async function generateArticleContent(match: any, apiKey: string) {
+// Cadeia de modelos: tenta o mais barato primeiro, com nova tentativa em sobrecarga (503)
+// e troca de provedor quando a cota do Gemini acaba (429). Custo típico: < US$ 0,002 por artigo.
+const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"];
+const MAX_OUTPUT_TOKENS = 2500;
+
+class QuotaError extends Error {}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function callGemini(model: string, systemPrompt: string, userPrompt: string, apiKey: string): Promise<string> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: MAX_OUTPUT_TOKENS },
+        }),
+      },
+    );
+    if (response.ok) {
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.map((x: any) => x.text).filter(Boolean).join("") || "";
+      if (text.trim()) return text;
+      throw new Error(`AI ${model}: resposta vazia`);
+    }
+    const body = (await response.text()).slice(0, 200);
+    if (response.status === 429) throw new QuotaError(`AI ${model} 429: ${body}`);
+    if (response.status === 503 || response.status === 500) {
+      await sleep(2000 * attempt * attempt); // 2s, 8s, 18s
+      continue;
+    }
+    throw new Error(`AI ${model} ${response.status}: ${body}`);
+  }
+  throw new Error(`AI ${model}: indisponível após 3 tentativas`);
+}
+
+async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) throw new Error("OPENAI_API_KEY não configurada");
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+  if (!response.ok) throw new Error(`AI openai ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  const data = await response.json();
+  return data?.choices?.[0]?.message?.content || "";
+}
+
+let geminiQuotaExhausted = false;
+
+async function generateWithFallback(systemPrompt: string, userPrompt: string, apiKey: string | undefined): Promise<string> {
+  const errors: string[] = [];
+  if (apiKey && !geminiQuotaExhausted) {
+    for (const model of GEMINI_MODELS) {
+      try {
+        return await callGemini(model, systemPrompt, userPrompt, apiKey);
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+        if (e instanceof QuotaError) { geminiQuotaExhausted = true; break; }
+      }
+    }
+  }
+  try {
+    return await callOpenAI(systemPrompt, userPrompt);
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+  throw new Error(errors.join(" | "));
+}
+
+async function generateArticleContent(match: any, apiKey: string | undefined) {
   const timeCasa = match.time_casa?.nome || "Time Casa";
   const timeFora = match.time_fora?.nome || "Time Fora";
   const liga = match.liga?.nome || "Campeonato";
@@ -63,7 +146,7 @@ CONTEXTO TEMPORAL CRÍTICO:
 - Use verbos no futuro ao se referir ao jogo
 
 REGRAS ABSOLUTAS:
-- Mínimo 1200 palavras, ideal 1500-1800
+- Entre 700 e 900 palavras, direto ao ponto
 - Português brasileiro, jornalístico e analítico
 - NÃO referenciar apostas, odds ou casas de apostas
 - Interprete dados; não repita números
@@ -81,7 +164,7 @@ ${match.rodada ? `- Rodada: ${match.rodada}` : ""}
 - Probabilidades: ${timeCasa} ${probCasa.toFixed(1)}% | Empate ${probEmpate.toFixed(1)}% | ${timeFora} ${probFora.toFixed(1)}%
 - Placar estimado: ${placarCasa} x ${placarFora}
 
-ESTRUTURA (mínimo 1200 palavras):
+ESTRUTURA (700 a 900 palavras no total):
 <h2>Introdução: Contexto do Confronto</h2>
 <h2>Momento das Equipes no ${liga}</h2>
 <h2>Análise Tática e Fatores Decisivos</h2>
@@ -91,27 +174,7 @@ ESTRUTURA (mínimo 1200 palavras):
 
 REGRAS: toda afirmação justificada com dados; comparar lado a lado; sem revelar resultado.`;
 
-  const model = "gemini-2.5-flash";
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.75, maxOutputTokens: 8000 },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const txt = await response.text();
-    throw new Error(`AI ${response.status}: ${txt.slice(0, 200)}`);
-  }
-  const data = await response.json();
-  const content =
-    data?.candidates?.[0]?.content?.parts?.map((x: any) => x.text).filter(Boolean).join("") || "";
+  const content = await generateWithFallback(systemPrompt, userPrompt, apiKey);
   const title = `${timeCasa} x ${timeFora}: Análise - ${liga}`.slice(0, 60);
   const summary = `Análise completa de ${timeCasa} x ${timeFora} pela ${liga} em ${matchDate}.`.slice(0, 155);
   return { content, title, summary };
@@ -127,10 +190,10 @@ serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const geminiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
 
-  if (!geminiKey) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
+  if (!geminiKey && !Deno.env.get("OPENAI_API_KEY")) {
+    return new Response(JSON.stringify({ error: "Nenhuma chave de IA configurada (GEMINI_API_KEY ou OPENAI_API_KEY)" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -274,8 +337,9 @@ serve(async (req) => {
           success: false,
           error: err instanceof Error ? err.message : String(err),
         });
-        if (err instanceof Error && (err.message.includes("429") || err.message.includes("402"))) {
-          break; // circuit breaker
+        // Para tudo se nenhum provedor respondeu (evita gastar tentativas à toa)
+        if (err instanceof Error && err.message.includes("openai")) {
+          break;
         }
       }
     }
