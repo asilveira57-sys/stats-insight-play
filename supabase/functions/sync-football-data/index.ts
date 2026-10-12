@@ -9,7 +9,9 @@ const corsHeaders = {
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 
 // Competitions to sync (free tier available)
-const COMPETITIONS_TO_SYNC = ['PL', 'PD', 'SA', 'BL1', 'FL1', 'BSA', 'CL'];
+// Brasileirão (BSA) sai daqui: a Série A vem só da API-Football (liga 71).
+// Manter as duas fontes recriava cada jogo em dobro.
+const COMPETITIONS_TO_SYNC = ['PL', 'PD', 'SA', 'BL1', 'FL1', 'CL'];
 
 interface FootballDataTeam {
   id: number;
