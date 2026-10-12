@@ -27,7 +27,7 @@ export function useConfidenceAccuracy(competitionCode: string = "ALL") {
         .from("confidence_accuracy")
         .select("*")
         .eq("competition_code", competitionCode)
-        .eq("model_version", "aleball-ai-v1");
+        .eq("model_version", "statball-ai-v1");
       if (error) throw error;
       const rows = (data ?? []) as ConfidenceAccuracyRow[];
       const byBand: Record<ConfidenceBand, ConfidenceAccuracyRow | null> = {

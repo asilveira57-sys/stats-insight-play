@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       prediction_source: source,
       prediction_id: prediction.id,
       match_id,
-      model_version: "aleball-ai-v1",
+      model_version: "statball-ai-v1",
       weights,
       rationale,
       top_factors: topFactors,
