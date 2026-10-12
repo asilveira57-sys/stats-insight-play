@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -705,7 +705,7 @@ export type Database = {
           created_at: string
           data_partida: string | null
           id: string
-          partida_aleball_id: string | null
+          partida_statball_id: string | null
           placar_casa: number | null
           placar_visitante: number | null
           rodada: number
@@ -720,7 +720,7 @@ export type Database = {
           created_at?: string
           data_partida?: string | null
           id?: string
-          partida_aleball_id?: string | null
+          partida_statball_id?: string | null
           placar_casa?: number | null
           placar_visitante?: number | null
           rodada: number
@@ -735,7 +735,7 @@ export type Database = {
           created_at?: string
           data_partida?: string | null
           id?: string
-          partida_aleball_id?: string | null
+          partida_statball_id?: string | null
           placar_casa?: number | null
           placar_visitante?: number | null
           rodada?: number
@@ -753,8 +753,8 @@ export type Database = {
             referencedColumns: ["cartola_clube_id"]
           },
           {
-            foreignKeyName: "cartola_partidas_partida_aleball_id_fkey"
-            columns: ["partida_aleball_id"]
+            foreignKeyName: "cartola_partidas_partida_statball_id_fkey"
+            columns: ["partida_statball_id"]
             isOneToOne: false
             referencedRelation: "partidas"
             referencedColumns: ["id"]

@@ -100,7 +100,7 @@ export default function AdminCartola() {
     try {
       await mapClube.mutateAsync({
         cartolaId: selectedClubeForMapping.cartola_clube_id,
-        aleballTeamId: teamId,
+        statballTeamId: teamId,
         nome: selectedClubeForMapping.nome,
       });
       toast({ title: `${selectedClubeForMapping.nome} mapeado com sucesso!` });
