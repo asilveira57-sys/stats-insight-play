@@ -9,6 +9,7 @@ import { ChevronRight, Loader2, CalendarDays, Trophy, Goal as GoalIcon, Square, 
 import { supabase } from "@/integrations/supabase/client";
 import { usePartidaOdds } from "@/hooks/usePartidaOdds";
 import { PartidaOddsBlock } from "@/components/odds/PartidaOddsBlock";
+import { isFocusLiga, ROBOTS_INDEX, ROBOTS_NOINDEX } from "@/lib/seoFocus";
 
 
 const BASE = "https://www.aleball.com";
@@ -96,6 +97,7 @@ export default function PartidaDetalhe() {
   if (!partida) {
     return (
       <Layout>
+        <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
         <div className="container mx-auto px-4 py-16 text-center space-y-3">
           <h1 className="text-2xl font-bold">Partida não encontrada</h1>
           <Link to="/resultados" className="text-primary hover:underline">Ver resultados</Link>
@@ -108,6 +110,14 @@ export default function PartidaDetalhe() {
   const golsFora = (gols ?? []).filter((g: any) => g.time_id === partida.fora?.id);
   const cartoesCasa = (cartoes ?? []).filter((c: any) => c.time_id === partida.casa?.id);
   const cartoesFora = (cartoes ?? []).filter((c: any) => c.time_id === partida.fora?.id);
+
+  // Indexar só jogos do foco (Série A/B, Copa do Brasil) que tenham resultado
+  // ou que aconteçam nos próximos 30 dias. Jogo antigo sem placar ou de liga
+  // fora do foco fica acessível, mas com noindex.
+  const kickoff = partida.data ? new Date(partida.data).getTime() : NaN;
+  const hasScore = partida.gols_casa != null && partida.gols_fora != null;
+  const upcomingSoon = !isNaN(kickoff) && kickoff >= Date.now() - 86400000 && kickoff <= Date.now() + 30 * 86400000;
+  const indexable = isFocusLiga(partida.liga?.slug) && (hasScore || upcomingSoon);
 
   const jsonLd: any[] = [
     {
@@ -157,7 +167,7 @@ export default function PartidaDetalhe() {
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={canonical} />
         <meta property="og:type" content="article" />
-        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+        <meta name="robots" content={indexable ? ROBOTS_INDEX : ROBOTS_NOINDEX} />
         {jsonLd.map((s, i) => <script key={i} type="application/ld+json">{JSON.stringify(s)}</script>)}
       </Helmet>
 

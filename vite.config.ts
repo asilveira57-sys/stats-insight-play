@@ -12,7 +12,6 @@ const SITEMAP_FILES: { filename: string; type: string; page?: number }[] = [
   { filename: "sitemap-static.xml", type: "static" },
   { filename: "sitemap-noticias-1.xml", type: "noticias", page: 1 },
   { filename: "sitemap-partidas-1.xml", type: "partidas", page: 1 },
-  { filename: "sitemap-partidas-2.xml", type: "partidas", page: 2 },
   { filename: "sitemap-times.xml", type: "times" },
   { filename: "sitemap-estatisticas.xml", type: "estatisticas" },
 ];

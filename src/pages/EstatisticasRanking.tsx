@@ -1,3 +1,5 @@
+import { SeoTags } from "@/components/seo/SeoTags";
+import { SITE } from "@/lib/seoFocus";
 import { useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -45,13 +47,6 @@ export default function EstatisticasRanking() {
     setMeta("description", description);
     setMeta("og:title", title, true);
     setMeta("og:description", description, true);
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = `${window.location.origin}/estatisticas/rankings/${metric}/${season}`;
   }, [title, description, metric, season]);
 
   const seasonOptions = useMemo(() => {
@@ -78,6 +73,7 @@ export default function EstatisticasRanking() {
 
   return (
     <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/rankings/${metric}/${season}`} />
       <div className="container mx-auto px-4 py-6 space-y-6">
         <nav className="text-sm text-muted-foreground flex items-center gap-1">
           <Link to="/estatisticas" className="hover:text-foreground">Estatísticas</Link>

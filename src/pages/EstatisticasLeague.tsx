@@ -1,3 +1,5 @@
+import { SeoTags } from "@/components/seo/SeoTags";
+import { SITE, isFocusLiga } from "@/lib/seoFocus";
 import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -30,18 +32,12 @@ export default function EstatisticasLeague() {
     setMeta("og:title", title, true);
     setMeta("og:description", desc, true);
 
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = `${window.location.origin}/estatisticas/${data.slug}`;
   }, [data]);
 
   if (isLoading) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}`} index={isFocusLiga(liga)} />
         <div className="container mx-auto px-4 py-8 space-y-4">
           <Skeleton className="h-24" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -55,6 +51,7 @@ export default function EstatisticasLeague() {
   if (!data) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}`} index={isFocusLiga(liga)} />
         <div className="container mx-auto px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">Liga não encontrada</h1>
           <Link to="/estatisticas" className="text-primary underline">Voltar</Link>
@@ -65,6 +62,7 @@ export default function EstatisticasLeague() {
 
   return (
     <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}`} index={isFocusLiga(liga)} />
       <div className="container mx-auto px-4 py-6 space-y-6">
         <nav className="text-sm text-muted-foreground flex items-center gap-1">
           <Link to="/estatisticas" className="hover:text-foreground">Estatísticas</Link>

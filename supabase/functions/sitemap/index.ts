@@ -62,26 +62,67 @@ function wrapIndex(entries: { loc: string; lastmod?: string }[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}</sitemapindex>\n`;
 }
 
-async function countTable(table: string, filter?: (q: any) => any): Promise<number> {
-  let q: any = supabase.from(table).select("*", { count: "exact", head: true });
-  if (filter) q = filter(q);
-  const { count } = await q;
-  return count || 0;
+// ---------- foco editorial ----------
+// Só entram no sitemap páginas do futebol brasileiro principal (mesma lista de
+// src/lib/seoFocus.ts). Jogos e estatísticas recentes; nada de variações rasas.
+const FOCUS_LIGA_SLUGS = ["campeonato-brasileiro-serie-a", "campeonato-brasileiro-serie-b", "copa-do-brasil"];
+const CHUNK = 1000; // limite de linhas por consulta do PostgREST
+
+function sinceYear(): number {
+  return new Date().getFullYear() - 1; // temporada atual + anterior
 }
 
-async function fetchPage<T>(
-  table: string,
-  select: string,
-  page: number,
-  filter?: (q: any) => any,
-  orderBy: { column: string; ascending?: boolean } = { column: "created_at", ascending: false },
-): Promise<T[]> {
-  const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-  let q: any = supabase.from(table).select(select).order(orderBy.column, { ascending: orderBy.ascending ?? false }).range(from, to);
-  if (filter) q = filter(q);
-  const { data } = await q;
-  return (data as T[]) || [];
+async function fetchAll<T>(build: (from: number, to: number) => any, max = 20000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < max; from += CHUNK) {
+    const { data, error } = await build(from, from + CHUNK - 1);
+    if (error) throw error;
+    const rows = (data as T[]) || [];
+    out.push(...rows);
+    if (rows.length < CHUNK) break;
+  }
+  return out;
+}
+
+async function focusLigas(): Promise<{ id: string; slug: string }[]> {
+  const { data } = await supabase.from("ligas").select("id, slug").in("slug", FOCUS_LIGA_SLUGS);
+  return (data as { id: string; slug: string }[]) || [];
+}
+
+type FocusMatch = {
+  slug: string | null;
+  data: string;
+  updated_at: string | null;
+  gols_casa: number | null;
+  gols_fora: number | null;
+  liga_id: string;
+  casa: { slug: string | null } | null;
+  fora: { slug: string | null } | null;
+};
+
+// Jogos do foco desde o início da temporada anterior: com placar, ou nos próximos 30 dias.
+async function focusMatches(): Promise<FocusMatch[]> {
+  const ligas = await focusLigas();
+  const ids = ligas.map((l) => l.id);
+  if (ids.length === 0) return [];
+  const since = `${sinceYear()}-01-01`;
+  const until = new Date(Date.now() + 30 * 86400000).toISOString();
+  const rows = await fetchAll<FocusMatch>((from, to) =>
+    supabase
+      .from("partidas")
+      .select("slug, data, updated_at, gols_casa, gols_fora, liga_id, casa:times!partidas_time_casa_id_fkey(slug), fora:times!partidas_time_fora_id_fkey(slug)")
+      .in("liga_id", ids)
+      .gte("data", since)
+      .lte("data", until)
+      .order("data", { ascending: false })
+      .range(from, to)
+  );
+  const now = Date.now();
+  return rows.filter((r) => {
+    const hasScore = r.gols_casa != null && r.gols_fora != null;
+    const t = new Date(r.data).getTime();
+    return hasScore || t >= now - 86400000;
+  });
 }
 
 // ---------- builders ----------
@@ -90,26 +131,12 @@ async function buildIndex(): Promise<string> {
   const today = new Date().toISOString();
   const entries: { loc: string; lastmod?: string }[] = [
     { loc: `${SITE}/sitemap-static.xml`, lastmod: today },
+    { loc: `${SITE}/sitemap-noticias-1.xml`, lastmod: today },
+    { loc: `${SITE}/sitemap-partidas-1.xml`, lastmod: today },
+    { loc: `${SITE}/sitemap-times.xml`, lastmod: today },
+    { loc: `${SITE}/sitemap-estatisticas.xml`, lastmod: today },
   ];
-
-  const noticiasCount = await countTable("noticias", (q) => q.eq("publicada", true));
-  for (let i = 0; i < Math.ceil(noticiasCount / PAGE_SIZE); i++) {
-    entries.push({ loc: `${SITE}/sitemap-noticias-${i + 1}.xml`, lastmod: today });
-  }
-
-  const partidasCount = await countTable("partidas", (q) => q.not("slug", "is", null));
-  for (let i = 0; i < Math.ceil(partidasCount / PAGE_SIZE); i++) {
-    entries.push({ loc: `${SITE}/sitemap-partidas-${i + 1}.xml`, lastmod: today });
-  }
-
-  entries.push({ loc: `${SITE}/sitemap-times.xml`, lastmod: today });
-  entries.push({ loc: `${SITE}/sitemap-estatisticas.xml`, lastmod: today });
-
-  const pesquisasCount = await countTable("search_posts");
-  for (let i = 0; i < Math.ceil(pesquisasCount / PAGE_SIZE); i++) {
-    entries.push({ loc: `${SITE}/sitemap-pesquisas-${i + 1}.xml`, lastmod: today });
-  }
-
+  // Páginas de /pesquisa ficam fora: são geradas a partir de buscas e muitas fogem do foco.
   return wrapIndex(entries);
 }
 
@@ -117,23 +144,30 @@ function buildStatic(): string {
   const today = new Date().toISOString().split("T")[0];
   const pages: [string, string, number][] = [
     ["/", "daily", 1.0],
-    ["/dashboard", "daily", 0.9],
+    ["/brasileirao", "daily", 0.9],
+    ["/brasileirao/jogos", "daily", 0.9],
+    ["/brasileirao/classificacao", "daily", 0.9],
+    ["/brasileirao/palpites-ia", "daily", 0.8],
+    ["/brasileirao/artilharia", "weekly", 0.7],
+    ["/copa-do-brasil", "daily", 0.8],
+    ["/copa-do-brasil/jogos", "daily", 0.8],
+    ["/copa-do-brasil/palpites-ia", "daily", 0.7],
+    ["/copa-do-brasil/artilharia", "weekly", 0.6],
+    ["/copa-2026", "weekly", 0.7],
     ["/noticias", "daily", 0.9],
-    ["/campeonatos", "weekly", 0.8],
-    ["/times", "weekly", 0.8],
-    ["/estatisticas", "daily", 0.9],
-    ["/artilheiros", "weekly", 0.7],
-    ["/ranking", "weekly", 0.7],
-    ["/ranking-selecoes", "weekly", 0.6],
     ["/palpites", "daily", 0.8],
     ["/resultados", "daily", 0.8],
-    ["/evolucao", "weekly", 0.6],
-    ["/pesquisa", "daily", 0.8],
-    ["/trends", "daily", 0.7],
-    ["/precos", "monthly", 0.7],
-    ["/auth", "monthly", 0.5],
-    ["/termos", "yearly", 0.3],
-    ["/privacidade", "yearly", 0.3],
+    ["/estatisticas", "daily", 0.8],
+    ["/artilheiros", "weekly", 0.6],
+    ["/campeonatos", "weekly", 0.6],
+    ["/times", "weekly", 0.6],
+    ["/transparencia", "monthly", 0.4],
+    ["/sobre", "yearly", 0.4],
+    ["/contato", "yearly", 0.3],
+    ["/precos", "monthly", 0.4],
+    ["/termos", "yearly", 0.2],
+    ["/privacidade", "yearly", 0.2],
+    ["/cookies", "yearly", 0.2],
   ];
   let body = "";
   for (const [path, freq, prio] of pages) {
@@ -142,14 +176,16 @@ function buildStatic(): string {
   return wrapUrlset(body);
 }
 
-async function buildNoticias(page: number): Promise<string> {
-  const rows = await fetchPage<{ slug: string; data_publicacao: string | null; created_at: string }>(
-    "noticias",
-    "slug, data_publicacao, created_at",
-    page,
-    (q) => q.eq("publicada", true).not("slug", "is", null),
-    { column: "data_publicacao", ascending: false },
-  );
+async function buildNoticias(_page: number): Promise<string> {
+  const rows = await fetchAll<{ slug: string; data_publicacao: string | null; created_at: string }>((from, to) =>
+    supabase
+      .from("noticias")
+      .select("slug, data_publicacao, created_at")
+      .eq("publicada", true)
+      .not("slug", "is", null)
+      .order("data_publicacao", { ascending: false })
+      .range(from, to)
+  , PAGE_SIZE);
   let body = "";
   for (const r of rows) {
     if (!r.slug) continue;
@@ -159,13 +195,8 @@ async function buildNoticias(page: number): Promise<string> {
 }
 
 async function buildPartidas(page: number): Promise<string> {
-  const rows = await fetchPage<{ slug: string; data: string; updated_at: string }>(
-    "partidas",
-    "slug, data, updated_at",
-    page,
-    (q) => q.not("slug", "is", null),
-    { column: "data", ascending: false },
-  );
+  if (page > 0) return wrapUrlset("");
+  const rows = await focusMatches();
   let body = "";
   for (const r of rows) {
     if (!r.slug) continue;
@@ -175,12 +206,9 @@ async function buildPartidas(page: number): Promise<string> {
 }
 
 async function buildPesquisas(page: number): Promise<string> {
-  const rows = await fetchPage<{ slug: string; updated_at: string }>(
-    "search_posts",
-    "slug, updated_at",
-    page,
-    undefined,
-    { column: "updated_at", ascending: false },
+  if (page > 0) return wrapUrlset("");
+  const rows = await fetchAll<{ slug: string; updated_at: string }>((from, to) =>
+    supabase.from("search_posts").select("slug, updated_at").order("updated_at", { ascending: false }).range(from, to)
   );
   let body = "";
   for (const r of rows) {
@@ -190,93 +218,53 @@ async function buildPesquisas(page: number): Promise<string> {
   return wrapUrlset(body);
 }
 
+// Times que jogaram competições do foco desde a temporada anterior.
 async function buildTimes(): Promise<string> {
-  // Teams are ~1k; one file is fine
-  const all: { slug: string; updated_at: string }[] = [];
-  let page = 0;
-  while (true) {
-    const rows = await fetchPage<{ slug: string; updated_at: string }>(
-      "times",
-      "slug, updated_at",
-      page,
-      (q) => q.eq("status", "active").not("slug", "is", null),
-      { column: "nome", ascending: true },
-    );
-    if (rows.length === 0) break;
-    all.push(...rows);
-    if (rows.length < PAGE_SIZE) break;
-    page++;
+  const matches = await focusMatches();
+  const slugs = new Set<string>();
+  for (const m of matches) {
+    if (m.casa?.slug) slugs.add(m.casa.slug);
+    if (m.fora?.slug) slugs.add(m.fora.slug);
   }
   const today = new Date().toISOString().split("T")[0];
   let body = "";
-  for (const t of all) {
-    if (!t.slug) continue;
-    const lm = t.updated_at || today;
-    body += urlEntry(`${SITE}/times/${t.slug}`, lm, "weekly", 0.7);
-    body += urlEntry(`${SITE}/times/${t.slug}/analises`, lm, "weekly", 0.6);
-    body += urlEntry(`${SITE}/estatisticas/times/${t.slug}`, lm, "weekly", 0.6);
+  for (const slug of [...slugs].sort()) {
+    body += urlEntry(`${SITE}/times/${slug}`, today, "weekly", 0.7);
   }
   return wrapUrlset(body);
 }
 
 async function buildEstatisticas(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
+  const ligas = await focusLigas();
+  const slugById = new Map(ligas.map((l) => [l.id, l.slug]));
   let body = "";
 
-  // League hubs
-  const { data: ligas } = await supabase
-    .from("ligas")
-    .select("slug")
-    .not("slug", "is", null);
-  for (const l of (ligas as { slug: string }[]) || []) {
-    if (!l.slug) continue;
+  for (const l of ligas) {
     body += urlEntry(`${SITE}/estatisticas/${l.slug}`, today, "weekly", 0.7);
   }
 
-  // Team x season pages — derive from finished matches
-  // Pull distinct (liga_slug, team_slug, year) via paginated matches
+  // Time × temporada, só competições do foco e só a página principal (sem variações).
   const seen = new Set<string>();
-  let page = 0;
-  while (true) {
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const { data } = await supabase
-      .from("partidas")
-      .select("data, liga:ligas(slug), casa:times!partidas_time_casa_id_fkey(slug), fora:times!partidas_time_fora_id_fkey(slug)")
-      .eq("status", "finished")
-      .not("gols_casa", "is", null)
-      .range(from, to);
-    const rows = (data as any[]) || [];
-    if (rows.length === 0) break;
-    for (const r of rows) {
-      const ligaSlug = r.liga?.slug;
-      const year = r.data ? new Date(r.data).getFullYear() : null;
-      if (!ligaSlug || !year) continue;
-      for (const team of [r.casa?.slug, r.fora?.slug]) {
-        if (!team) continue;
-        seen.add(`${ligaSlug}|${team}|${year}`);
-      }
+  for (const m of await focusMatches()) {
+    if (m.gols_casa == null || m.gols_fora == null) continue;
+    const liga = slugById.get(m.liga_id);
+    const year = new Date(m.data).getFullYear();
+    if (!liga) continue;
+    for (const team of [m.casa?.slug, m.fora?.slug]) {
+      if (team) seen.add(`${liga}|${team}|${year}`);
     }
-    if (rows.length < PAGE_SIZE) break;
-    page++;
-    if (page > 50) break; // safety
   }
-
-  for (const key of seen) {
+  for (const key of [...seen].sort()) {
     const [liga, time, ano] = key.split("|");
-    const base = `${SITE}/estatisticas/${liga}/${time}/${ano}`;
-    body += urlEntry(base, today, "weekly", 0.6);
-    body += urlEntry(`${base}/gols`, today, "monthly", 0.5);
-    body += urlEntry(`${base}/mandante`, today, "monthly", 0.5);
-    body += urlEntry(`${base}/visitante`, today, "monthly", 0.5);
+    body += urlEntry(`${SITE}/estatisticas/${liga}/${time}/${ano}`, today, "weekly", 0.6);
   }
 
-  // Rankings
   const metricas = ["pontos", "melhores-ataques", "melhores-defesas", "mais-gols", "mais-vitorias", "aproveitamento"];
   const currentYear = new Date().getFullYear();
-  for (let y = currentYear; y >= currentYear - 5; y--) {
+  for (const y of [currentYear, currentYear - 1]) {
     for (const m of metricas) {
-      body += urlEntry(`${SITE}/estatisticas/rankings/${m}/${y}`, today, "weekly", 0.6);
+      body += urlEntry(`${SITE}/estatisticas/rankings/${m}/${y}`, today, "weekly", 0.5);
     }
   }
 

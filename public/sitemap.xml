@@ -2,18 +2,22 @@
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>https://www.aleball.com/sitemap-static.xml</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-11-13</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.aleball.com/sitemap-noticias-1.xml</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-11-13</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://www.aleball.com/sitemap-partidas-1.xml</loc>
+    <lastmod>2026-11-13</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.aleball.com/sitemap-times.xml</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-11-13</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.aleball.com/sitemap-estatisticas.xml</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-11-13</lastmod>
   </sitemap>
 </sitemapindex>

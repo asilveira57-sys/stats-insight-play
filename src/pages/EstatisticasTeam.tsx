@@ -1,3 +1,5 @@
+import { SeoTags } from "@/components/seo/SeoTags";
+import { SITE, isFocusLiga } from "@/lib/seoFocus";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -139,14 +141,6 @@ export default function EstatisticasTeam() {
     setMeta("og:description", description, true);
     setMeta("og:type", "website", true);
 
-    // canonical
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = `${window.location.origin}${window.location.pathname}`;
 
     // JSON-LD
     const old = document.querySelector("script[data-team-stats-jsonld]");
@@ -171,6 +165,7 @@ export default function EstatisticasTeam() {
   if (isLoading) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}/${time}${ano ? `/${ano}` : ""}${view ? `/${view}` : ""}`} index={isFocusLiga(liga) && !view} />
         <div className="container mx-auto px-4 py-8 space-y-6">
           <Skeleton className="h-32" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -186,6 +181,7 @@ export default function EstatisticasTeam() {
   if (!data) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}/${time}${ano ? `/${ano}` : ""}${view ? `/${view}` : ""}`} index={isFocusLiga(liga) && !view} />
         <div className="container mx-auto px-4 py-12 text-center">
           <h1 className="text-2xl font-bold mb-2">Time não encontrado</h1>
           <Link to="/estatisticas" className="text-primary underline">
@@ -201,6 +197,7 @@ export default function EstatisticasTeam() {
 
   return (
     <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/${liga}/${time}${ano ? `/${ano}` : ""}${view ? `/${view}` : ""}`} index={isFocusLiga(liga) && !view} />
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Breadcrumb */}
         <nav className="text-sm text-muted-foreground flex items-center flex-wrap gap-1">

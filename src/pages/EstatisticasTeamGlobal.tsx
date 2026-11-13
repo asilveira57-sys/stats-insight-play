@@ -1,3 +1,5 @@
+import { SeoTags } from "@/components/seo/SeoTags";
+import { SITE } from "@/lib/seoFocus";
 import { useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -41,18 +43,12 @@ export default function EstatisticasTeamGlobal() {
       el.content = c;
     };
     setMeta("description", description);
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = `${window.location.origin}/estatisticas/times/${slug}`;
   }, [title, description, slug]);
 
   if (isLoading) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/times/${slug}`} />
         <div className="container mx-auto px-4 py-8 space-y-4">
           <Skeleton className="h-32" />
           <Skeleton className="h-64" />
@@ -64,6 +60,7 @@ export default function EstatisticasTeamGlobal() {
   if (!data) {
     return (
       <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/times/${slug}`} />
         <div className="container mx-auto px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">Time não encontrado</h1>
           <Link to="/estatisticas" className="text-primary underline">Voltar</Link>
@@ -76,6 +73,7 @@ export default function EstatisticasTeamGlobal() {
 
   return (
     <Layout>
+      <SeoTags canonical={`${SITE}/estatisticas/times/${slug}`} />
       <div className="container mx-auto px-4 py-6 space-y-6">
         <nav className="text-sm text-muted-foreground flex items-center gap-1 flex-wrap">
           <Link to="/estatisticas" className="hover:text-foreground">Estatísticas</Link>

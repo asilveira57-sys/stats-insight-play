@@ -35,7 +35,6 @@ const AD_BLOCKED_PATHS = ["/precos", "/checkout", "/pagamento", "/assinatura"];
  * AdSense slot component with automatic Premium detection.
  * - Free users: see ads
  * - Premium users: component renders nothing
- * - Googlebot: always sees Free version (ads markup present for indexing)
  * - Blocked pages: no ads on pricing/checkout
  */
 export function AdSlot({ position, className = "" }: AdSlotProps) {
@@ -48,11 +47,8 @@ export function AdSlot({ position, className = "" }: AdSlotProps) {
     location.pathname.startsWith(path)
   );
 
-  // Check if user is Premium (but Googlebot should always see ads)
-  const isGooglebot = typeof navigator !== "undefined" && 
-    /Googlebot|AdsBot/i.test(navigator.userAgent);
-  
-  const isPremium = !isGooglebot && userPlan?.isPremium;
+  // Premium users never see ads. Robots and people get exactly the same page.
+  const isPremium = !!userPlan?.isPremium;
 
   // Initialize AdSense when component mounts (production only)
   useEffect(() => {
@@ -72,7 +68,7 @@ export function AdSlot({ position, className = "" }: AdSlotProps) {
   }
 
   // Show loading placeholder while checking plan
-  if (isLoading && !isGooglebot) {
+  if (isLoading) {
     return null;
   }
 
