@@ -1,6 +1,6 @@
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Link } from "react-router-dom";
 import {
-  Zap,
   Twitter,
   Instagram,
   Youtube,
@@ -81,12 +81,7 @@ export function Footer() {
           {/* COLUNA 1 — MARCA */}
           <div className="lg:col-span-4">
             <Link to="/" className="flex items-center gap-2.5 mb-5 group" aria-label="Aleball — Página inicial">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.35)] group-hover:shadow-[0_0_28px_hsl(var(--primary)/0.55)] transition-shadow">
-                <Zap className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-2xl gradient-text tracking-wide">
-                ALEBALL
-              </span>
+              <BrandLogo variant="full" className="h-10 w-auto text-foreground" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-sm">
               Portal inteligente de estatísticas, análises e tendências do futebol.
@@ -204,12 +199,7 @@ export function Footer() {
           {/* Brand block always visible on mobile */}
           <div className="mb-6">
             <Link to="/" className="flex items-center gap-2.5 mb-4" aria-label="Aleball">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
-                <Zap className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-xl gradient-text tracking-wide">
-                ALEBALL
-              </span>
+              <BrandLogo variant="full" className="h-9 w-auto text-foreground" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               Portal inteligente de estatísticas, análises e tendências do futebol.

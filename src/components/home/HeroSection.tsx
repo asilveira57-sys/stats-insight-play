@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Library, ArrowRight } from "lucide-react";
-import aleballLogo from "@/assets/aleball-logo.png";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import heroBackground from "@/assets/hero-background.jpg";
 import { SmartSearchBar } from "@/components/search/SmartSearchBar";
 
@@ -30,11 +30,9 @@ export function HeroSection() {
         <div className="max-w-4xl mx-auto text-center">
           {/* Hero Logo - 200-250% larger than navbar for maximum impact */}
           <div className="mb-10 flex justify-center">
-            <img 
-              src={aleballLogo} 
-              alt="Aleball" 
-              className="h-28 md:h-36 lg:h-44 xl:h-52 object-contain drop-shadow-[0_0_40px_hsl(var(--primary)/0.4)] bg-transparent"
-              style={{ background: 'none' }}
+            <BrandLogo
+              variant="full"
+              className="h-16 md:h-20 lg:h-24 w-auto text-foreground drop-shadow-[0_0_40px_hsl(var(--primary)/0.35)]"
             />
           </div>
           

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import aleballIcon from "@/assets/aleball-icon.png";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -161,13 +161,9 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
-            <img 
-              src={aleballIcon} 
-              alt="Aleball" 
-              className="h-9 w-9 object-contain bg-transparent"
-              style={{ background: 'none' }}
-            />
+          <Link to="/" className="flex items-center gap-3 group flex-shrink-0 mr-3 2xl:mr-6">
+            <BrandLogo variant="mark" className="h-9 w-9 text-foreground 2xl:hidden" />
+            <BrandLogo variant="full" className="hidden 2xl:block h-8 w-auto text-foreground" />
           </Link>
 
           {/* Desktop Navigation */}

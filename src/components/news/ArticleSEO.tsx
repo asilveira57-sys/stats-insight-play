@@ -90,7 +90,7 @@ export function ArticleSEO({
       name: "Aleball",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.aleball.com/favicon.ico",
+        url: "https://www.aleball.com/icon-512.png",
       },
     },
   };
