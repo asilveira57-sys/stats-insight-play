@@ -35,7 +35,8 @@ const PRIORITY_LEAGUE_IDS = new Set<number>([
   // Brasil
   71, 72, 73, 75,
   // Estaduais BR
-  422, 423, 425, 428, 440, 441, 442, 444, 461, 475, 519,
+  // IDs corrigidos em 15/11/2026 (os antigos 422/423/425/428/440-444/461/519 eram ligas de outros países)
+  475, 477, 602, 604, 606, 609, 612, 622, 624, 628, 629,
   // Conmebol
   11, 13,
   // Big-5 + cups Europa

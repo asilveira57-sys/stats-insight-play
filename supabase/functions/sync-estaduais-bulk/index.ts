@@ -10,16 +10,16 @@ const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io';
 // All estadual leagues to sync
 const ESTADUAIS: Record<number, { code: string; name: string }> = {
   475: { code: 'SPA', name: 'Campeonato Paulista' },
-  423: { code: 'RJA', name: 'Campeonato Carioca' },
-  425: { code: 'MGA', name: 'Campeonato Mineiro' },
-  442: { code: 'RSA', name: 'Campeonato Gaúcho' },
-  444: { code: 'PRA', name: 'Campeonato Paranaense' },
-  422: { code: 'PEA', name: 'Campeonato Pernambucano' },
-  441: { code: 'CEA', name: 'Campeonato Cearense' },
-  440: { code: 'BAA', name: 'Campeonato Baiano' },
-  519: { code: 'SCA', name: 'Campeonato Catarinense' },
-  428: { code: 'GOA', name: 'Campeonato Goiano' },
-  461: { code: 'CNE', name: 'Copa do Nordeste' },
+  624: { code: 'RJA', name: 'Campeonato Carioca' },
+  629: { code: 'MGA', name: 'Campeonato Mineiro' },
+  477: { code: 'RSA', name: 'Campeonato Gaúcho' },
+  606: { code: 'PRA', name: 'Campeonato Paranaense' },
+  622: { code: 'PEA', name: 'Campeonato Pernambucano' },
+  609: { code: 'CEA', name: 'Campeonato Cearense' },
+  602: { code: 'BAA', name: 'Campeonato Baiano' },
+  604: { code: 'SCA', name: 'Campeonato Catarinense' },
+  628: { code: 'GOA', name: 'Campeonato Goiano' },
+  612: { code: 'CNE', name: 'Copa do Nordeste' },
 };
 
 interface RateLimitState {

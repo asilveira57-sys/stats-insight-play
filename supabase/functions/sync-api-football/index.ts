@@ -23,16 +23,16 @@ const API_FOOTBALL_LEAGUES: Record<number, {
   
   // Estaduais Brasileiros
   475: { code: 'SPA', name: 'Campeonato Paulista', country: 'Brazil', tipo: 'ESTADUAL', estado: 'São Paulo' },
-  423: { code: 'RJA', name: 'Campeonato Carioca', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio de Janeiro' },
-  425: { code: 'MGA', name: 'Campeonato Mineiro', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Minas Gerais' },
-  442: { code: 'RSA', name: 'Campeonato Gaúcho', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio Grande do Sul' },
-  444: { code: 'PRA', name: 'Campeonato Paranaense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Paraná' },
-  422: { code: 'PEA', name: 'Campeonato Pernambucano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Pernambuco' },
-  441: { code: 'CEA', name: 'Campeonato Cearense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Ceará' },
-  440: { code: 'BAA', name: 'Campeonato Baiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Bahia' },
-  519: { code: 'SCA', name: 'Campeonato Catarinense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Santa Catarina' },
-  428: { code: 'GOA', name: 'Campeonato Goiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Goiás' },
-  461: { code: 'CNE', name: 'Copa do Nordeste', country: 'Brazil', tipo: 'COPA' },
+  624: { code: 'RJA', name: 'Campeonato Carioca', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio de Janeiro' },
+  629: { code: 'MGA', name: 'Campeonato Mineiro', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Minas Gerais' },
+  477: { code: 'RSA', name: 'Campeonato Gaúcho', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Rio Grande do Sul' },
+  606: { code: 'PRA', name: 'Campeonato Paranaense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Paraná' },
+  622: { code: 'PEA', name: 'Campeonato Pernambucano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Pernambuco' },
+  609: { code: 'CEA', name: 'Campeonato Cearense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Ceará' },
+  602: { code: 'BAA', name: 'Campeonato Baiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Bahia' },
+  604: { code: 'SCA', name: 'Campeonato Catarinense', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Santa Catarina' },
+  628: { code: 'GOA', name: 'Campeonato Goiano', country: 'Brazil', tipo: 'ESTADUAL', estado: 'Goiás' },
+  612: { code: 'CNE', name: 'Copa do Nordeste', country: 'Brazil', tipo: 'COPA' },
 };
 
 interface ApiFootballTeam {
