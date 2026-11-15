@@ -5446,6 +5446,27 @@ export type Database = {
         }
         Relationships: []
       }
+      slug_redirects: {
+        Row: {
+          created_at: string | null
+          entity: string
+          new_slug: string
+          old_slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity: string
+          new_slug: string
+          old_slug: string
+        }
+        Update: {
+          created_at?: string | null
+          entity?: string
+          new_slug?: string
+          old_slug?: string
+        }
+        Relationships: []
+      }
       standings: {
         Row: {
           drawn: number | null
@@ -6134,6 +6155,60 @@ export type Database = {
           {
             foreignKeyName: "team_seo_content_team_id_fkey"
             columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_similarity_review: {
+        Row: {
+          analisado_em: string
+          chave: string | null
+          confrontos_diretos: number | null
+          dias_em_conflito: number | null
+          jogos_a: number | null
+          jogos_b: number | null
+          jogos_em_comum: number | null
+          team_a_id: string
+          team_b_id: string
+          veredito: string
+        }
+        Insert: {
+          analisado_em?: string
+          chave?: string | null
+          confrontos_diretos?: number | null
+          dias_em_conflito?: number | null
+          jogos_a?: number | null
+          jogos_b?: number | null
+          jogos_em_comum?: number | null
+          team_a_id: string
+          team_b_id: string
+          veredito: string
+        }
+        Update: {
+          analisado_em?: string
+          chave?: string | null
+          confrontos_diretos?: number | null
+          dias_em_conflito?: number | null
+          jogos_a?: number | null
+          jogos_b?: number | null
+          jogos_em_comum?: number | null
+          team_a_id?: string
+          team_b_id?: string
+          veredito?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_similarity_review_team_a_id_fkey"
+            columns: ["team_a_id"]
+            isOneToOne: false
+            referencedRelation: "times"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_similarity_review_team_b_id_fkey"
+            columns: ["team_b_id"]
             isOneToOne: false
             referencedRelation: "times"
             referencedColumns: ["id"]
@@ -7756,6 +7831,10 @@ export type Database = {
       }
     }
     Functions: {
+      analisar_times_parecidos: {
+        Args: { p_somente_brasil?: boolean }
+        Returns: Json
+      }
       calculate_level: { Args: { p_total_xp: number }; Returns: number }
       compute_prediction_levels: {
         Args: { p_away: number; p_home: number; r_away: number; r_home: number }
@@ -7792,6 +7871,8 @@ export type Database = {
         Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
         Returns: string
       }
+      find_team_by_name: { Args: { p_nome: string }; Returns: string }
+      follow_team_merge: { Args: { p_team_id: string }; Returns: string }
       generate_match_slug: {
         Args: { p_data: string; p_time_casa_id: string; p_time_fora_id: string }
         Returns: string
@@ -8064,6 +8145,7 @@ export type Database = {
         }
         Returns: string
       }
+      requeue_temporada_atual_br: { Args: never; Returns: number }
       resolve_competition: {
         Args: { p_query: string }
         Returns: {
@@ -8167,8 +8249,23 @@ export type Database = {
       slugify: { Args: { input_text: string }; Returns: string }
       slugify_player_name: { Args: { name: string }; Returns: string }
       start_grace_period: { Args: { p_user_id: string }; Returns: Json }
+      team_name_key: { Args: { p: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
       update_user_streak: { Args: { p_user_id: string }; Returns: Json }
+      upsert_partida_temporada: {
+        Args: {
+          p_casa: string
+          p_data: string
+          p_fora: string
+          p_gols_casa: number
+          p_gols_fora: number
+          p_hora: string
+          p_liga_id: string
+          p_rodada: number
+          p_status: string
+        }
+        Returns: string
+      }
       validate_nickname: {
         Args: { p_nickname: string; p_user_id?: string }
         Returns: {
