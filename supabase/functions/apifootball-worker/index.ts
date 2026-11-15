@@ -6,7 +6,11 @@ const corsHeaders = {
 };
 
 const BASE = 'https://v3.football.api-sports.io';
-const QUOTA_BUFFER = 5000; // não passar de (limit - 5000) para deixar folga
+// Folga de cota: no plano pago guarda 5.000 chamadas; no grátis (100/dia) guarda 5.
+const quotaBuffer = (limit: number) => (limit <= 1000 ? 5 : 5000);
+// No plano grátis só buscamos jogos/placares (1 chamada por liga/temporada);
+// eventos, escalações e estatísticas custam 1 chamada POR JOGO e ficam para o plano pago.
+const isFreePlan = (limit: number) => limit <= 1000;
 const MAX_JOBS_PER_INVOCATION = 8; // número de jobs (não fixtures) por chamada
 const TIME_BUDGET_MS = 110_000; // sai antes do idle timeout de 150s
 
@@ -197,14 +201,16 @@ async function runWorker(background = false): Promise<any> {
   );
 
   const { used, limit } = await syncQuota(supabase, apiKey);
-  if (used >= limit - QUOTA_BUFFER) {
+  if (used >= limit - quotaBuffer(limit)) {
     return { ok: true, paused: true, used, limit };
   }
 
-  const { data: jobs } = await supabase
+  let jobsQuery = supabase
     .from('api_football_import_jobs')
     .select('id, league_id, league_name, season, depth, fixtures_total, requests_used')
-    .eq('status', 'queued')
+    .eq('status', 'queued');
+  if (isFreePlan(limit)) jobsQuery = jobsQuery.eq('depth', 'fixtures');
+  const { data: jobs } = await jobsQuery
     .order('priority', { ascending: true })
     .order('depth', { ascending: true })
     .limit(MAX_JOBS_PER_INVOCATION);
@@ -252,7 +258,7 @@ async function runWorker(background = false): Promise<any> {
     }
 
     const q = await syncQuota(supabase, apiKey);
-    if (q.used >= q.limit - QUOTA_BUFFER) break;
+    if (q.used >= q.limit - quotaBuffer(q.limit)) break;
   }
 
   // Auto re-invoca em background se ainda houver jobs queued

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePartidaOdds } from "@/hooks/usePartidaOdds";
 import { PartidaOddsBlock } from "@/components/odds/PartidaOddsBlock";
 import { isFocusLiga, ROBOTS_INDEX, ROBOTS_NOINDEX } from "@/lib/seoFocus";
+import { PartidaAlmanaque } from "@/components/partida/PartidaAlmanaque";
 
 
 const BASE = "https://www.aleball.com";
@@ -210,7 +211,18 @@ export default function PartidaDetalhe() {
           <Card className="border-primary/30">
             <CardContent className="pt-6">
               <p className="text-base leading-relaxed">
-                {partida.casa?.nome} {(partida.gols_casa ?? 0) > (partida.gols_fora ?? 0) ? "venceu" : (partida.gols_casa ?? 0) < (partida.gols_fora ?? 0) ? "perdeu para" : "empatou com"} {partida.fora?.nome} por <strong>{partida.gols_casa ?? 0} a {partida.gols_fora ?? 0}</strong>{ligaName ? <> em partida válida pelo <strong>{ligaName}</strong></> : null}{partida.rodada ? <>, na rodada {partida.rodada}</> : null}. Foram <strong>{(gols ?? []).length}</strong> gols marcados e <strong>{(cartoes ?? []).length}</strong> cartões registrados ao longo do jogo.
+                {partida.gols_casa != null && partida.gols_fora != null ? (
+                  <>
+                    {partida.casa?.nome} {partida.gols_casa > partida.gols_fora ? "venceu" : partida.gols_casa < partida.gols_fora ? "perdeu para" : "empatou com"} {partida.fora?.nome} por <strong>{partida.gols_casa} a {partida.gols_fora}</strong>{ligaName ? <> em partida válida pelo <strong>{ligaName}</strong></> : null}{partida.rodada ? <>, na rodada {partida.rodada}</> : null}, em {dateLabel}.{" "}
+                    {(gols ?? []).length > 0 || (cartoes ?? []).length > 0
+                      ? <>O acervo registra <strong>{(gols ?? []).length}</strong> gols com autor e <strong>{(cartoes ?? []).length}</strong> cartões neste jogo.</>
+                      : <>Os autores dos gols e os cartões deste jogo ainda não constam no acervo.</>}
+                  </>
+                ) : (
+                  <>
+                    {partida.casa?.nome} e {partida.fora?.nome} {partida.status === "scheduled" ? "se enfrentam" : "se enfrentariam"} em {dateLabel}{partida.hora ? `, às ${String(partida.hora).slice(0, 5)}` : ""}{ligaName ? <>, pelo <strong>{ligaName}</strong></> : null}{partida.rodada ? <>, rodada {partida.rodada}</> : null}. O placar ainda não consta no acervo do Aleball.
+                  </>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -221,6 +233,8 @@ export default function PartidaDetalhe() {
             <PartidaOddsBlock odds={odds} homeName={partida.casa?.nome} awayName={partida.fora?.nome} />
           </section>
         )}
+
+        <PartidaAlmanaque partidaId={partida.id} data={partida.data} casa={partida.casa} fora={partida.fora} />
 
         <section aria-labelledby="gols" className="space-y-3">
 
