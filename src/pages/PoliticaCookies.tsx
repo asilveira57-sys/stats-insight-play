@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -20,6 +21,7 @@ import {
 const PoliticaCookies = () => {
   return (
     <Layout>
+      <PageSeo title="Política de Cookies" description="Quais cookies o Aleball usa, para que servem (essenciais, análise e publicidade) e como gerenciar suas preferências." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

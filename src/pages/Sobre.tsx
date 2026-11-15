@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -92,6 +93,7 @@ const compromissos = [
 const Sobre = () => {
   return (
     <Layout>
+      <PageSeo title="Sobre o Aleball" description="O Aleball é um acervo de resultados e estatísticas de futebol com probabilidades calculadas por modelo matemático. Não é site de apostas." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-5xl">
           {/* Header */}

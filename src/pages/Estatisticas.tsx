@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -159,6 +160,7 @@ export default function Estatisticas() {
 
   return (
     <Layout>
+      <PageSeo title="Estatísticas de futebol: times, ligas e rankings" description="Estatísticas de times e campeonatos de futebol: gols, aproveitamento, mandante e visitante, rankings por temporada e histórico de desempenho." />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

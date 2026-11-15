@@ -30,9 +30,9 @@ export default function Index() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const title = "Aleball — Brasileirão e Copa do Brasil: resultados, estatísticas e probabilidades";
+  const title = "Aleball — resultados, estatísticas e história do futebol do Brasil e do mundo";
   const description =
-    "Resultados, classificação, estatísticas de times e probabilidades calculadas por modelo matemático para o Brasileirão Série A e B e a Copa do Brasil. Não é site de apostas.";
+    "Acervo de resultados e estatísticas de futebol: Brasileirão, Copa do Brasil e campeonatos do mundo todo, com histórico de partidas e probabilidades de modelo matemático. Não é site de apostas.";
 
   return (
     <Layout>

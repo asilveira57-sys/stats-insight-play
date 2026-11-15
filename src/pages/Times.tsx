@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAllRecords } from "@/lib/supabaseHelpers";
@@ -196,6 +197,7 @@ export default function Times() {
 
   return (
     <Layout>
+      <PageSeo title="Times de futebol" description="Times de futebol do Brasil e do mundo com resultados, estatísticas, histórico de confrontos e desempenho por temporada." />
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">

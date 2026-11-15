@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { MatchCard } from "@/components/cards/MatchCard";
@@ -129,6 +130,7 @@ export default function Resultados() {
 
   return (
     <Layout>
+      <PageSeo title="Resultados de futebol" description="Resultados de jogos de futebol do Brasil e do mundo: placares, datas, competições e acesso ao detalhe de cada partida." />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

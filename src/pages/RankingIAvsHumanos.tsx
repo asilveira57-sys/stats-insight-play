@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -338,6 +339,7 @@ export default function RankingIAvsHumanos() {
 
   return (
     <Layout>
+      <PageSeo title="Ranking histórico: IA vs humanos" description="Comparação histórica entre os palpites do modelo de inteligência artificial do Aleball e os palpites dos usuários, rodada a rodada." />
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb className="mb-6">

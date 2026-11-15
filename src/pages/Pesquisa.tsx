@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -55,6 +56,7 @@ export default function Pesquisa() {
 
   return (
     <Layout>
+      <PageSeo title="Pesquisa de futebol: times, jogos e campeonatos" description="Pesquise resultados, confrontos, times, campeonatos e estatísticas do futebol brasileiro e mundial no acervo do Aleball." />
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-3">
           <h1 className="text-2xl md:text-3xl font-display font-bold">

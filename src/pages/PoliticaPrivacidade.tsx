@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Shield, Eye, Database, Cookie, Mail, UserCheck } from "lucide-react";
@@ -5,6 +6,7 @@ import { Shield, Eye, Database, Cookie, Mail, UserCheck } from "lucide-react";
 const PoliticaPrivacidade = () => {
   return (
     <Layout>
+      <PageSeo title="Política de Privacidade" description="Como o Aleball coleta, usa e protege seus dados, incluindo cookies, análise de audiência e anúncios do Google AdSense." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

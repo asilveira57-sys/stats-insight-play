@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -116,6 +117,7 @@ export default function Campeonatos() {
 
   return (
     <Layout>
+      <PageSeo title="Campeonatos de futebol do Brasil e do mundo" description="Campeonatos de futebol do Brasil e do mundo com resultados, classificações e estatísticas históricas: Brasileirão, Copa do Brasil, ligas europeias e competições internacionais." />
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">

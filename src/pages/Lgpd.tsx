@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -21,6 +22,7 @@ import {
 const Lgpd = () => {
   return (
     <Layout>
+      <PageSeo title="LGPD — seus dados pessoais no Aleball" description="Como o Aleball trata seus dados pessoais conforme a Lei Geral de Proteção de Dados (LGPD) e como exercer seus direitos de titular." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

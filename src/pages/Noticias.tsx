@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -56,6 +57,7 @@ export default function Noticias() {
 
   return (
     <Layout>
+      <PageSeo title="Análises e notícias de futebol" description="Análises estatísticas de jogos e campeonatos de futebol, com dados, probabilidades do modelo matemático e contexto de cada partida." />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

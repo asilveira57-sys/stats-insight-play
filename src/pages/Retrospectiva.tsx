@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,6 +155,7 @@ export default function Retrospectiva() {
 
   return (
     <Layout>
+      <PageSeo title="Retrospectiva do Brasileirão" description="Retrospectiva do Campeonato Brasileiro com os números de cada temporada: resultados, desempenho dos times e destaques." />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

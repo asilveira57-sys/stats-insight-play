@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -109,6 +110,7 @@ function RankingTable({ period }: { period: string }) {
 export default function Ranking() {
   return (
     <Layout>
+      <PageSeo title="Ranking de palpiteiros" description="Ranking dos usuários com os palpites mais certeiros no Aleball." />
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-3xl">
         <div className="flex items-center gap-3 mb-8">
           <Trophy className="w-8 h-8 text-primary" />

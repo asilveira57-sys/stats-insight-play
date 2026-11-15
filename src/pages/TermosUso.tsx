@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { FileText, AlertTriangle, CreditCard, Ban, Scale, RefreshCw } from "lucide-react";
@@ -5,6 +6,7 @@ import { FileText, AlertTriangle, CreditCard, Ban, Scale, RefreshCw } from "luci
 const TermosUso = () => {
   return (
     <Layout>
+      <PageSeo title="Termos de Uso" description="Termos e condições de uso do Aleball, incluindo planos, conteúdo, responsabilidades e regras de uso do site." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

@@ -1,3 +1,4 @@
+import { PageSeo } from "@/components/seo/PageSeo";
 import { useState } from "react";
 import { ArrowLeft, Trophy, Target, TrendingUp, Medal, Filter, ChevronUp, ChevronDown } from "lucide-react";
 import { TeamBadge } from "@/components/ui/TeamBadge";
@@ -70,6 +71,7 @@ const RankingSelecoes = () => {
 
   return (
     <Layout>
+      <PageSeo title="Ranking de seleções de futebol" description="Ranking das seleções nacionais de futebol com pontuação, desempenho recente e histórico de resultados." />
       <div className="container mx-auto py-6 px-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
