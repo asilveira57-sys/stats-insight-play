@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       byStage[m.stage].push(m);
     }
 
-    const updates: Promise<any>[] = [];
+    const updates: any[] = [];
     const posById = new Map<string, string>();
 
     for (const cfg of STAGE_ORDER) {
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       idByStageSlot.set(`${stage}:${pos}`, id);
     }
 
-    const linkUpdates: Promise<any>[] = [];
+    const linkUpdates: any[] = [];
     for (const cfg of STAGE_ORDER) {
       if (!cfg.nextStage || !cfg.nextPrefix || !cfg.nextCount) continue;
       for (let k = 1; k <= cfg.count; k++) {
