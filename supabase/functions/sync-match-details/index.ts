@@ -353,7 +353,7 @@ serve(async (req) => {
     const minDate = '2023-01-01';
     const maxDate = '2025-12-31';
     
-    let query = supabase
+    let query: any = supabase
       .from('partidas')
       .select('id, api_id, time_casa_id, time_fora_id, data, liga_id')
       .eq('status', 'finished')
