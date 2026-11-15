@@ -66,6 +66,22 @@ export function saveConsent(consent: CookieConsent): void {
   } catch (e) {
     console.error('Error saving consent to storage:', e);
   }
+  applyConsentMode(consent);
+}
+
+// Repassa a escolha do banner ao Google (Consent Mode): AdSense e GA respeitam.
+export function applyConsentMode(consent: Pick<CookieConsent, 'analytics' | 'marketing'> | null): void {
+  if (typeof window === 'undefined') return;
+  const w = window as any;
+  w.dataLayer = w.dataLayer || [];
+  const gtag = w.gtag || function () { w.dataLayer.push(arguments); };
+  const ads = consent?.marketing ? 'granted' : 'denied';
+  gtag('consent', 'update', {
+    ad_storage: ads,
+    ad_user_data: ads,
+    ad_personalization: ads,
+    analytics_storage: consent?.analytics ? 'granted' : 'denied',
+  });
 }
 
 // Clear consent from localStorage
@@ -75,6 +91,7 @@ export function clearConsent(): void {
   } catch (e) {
     console.error('Error clearing consent from storage:', e);
   }
+  applyConsentMode(null);
 }
 
 // Check if consent has been given

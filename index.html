@@ -20,6 +20,21 @@
     <link rel="alternate" type="application/rss+xml" title="Aleball — RSS Geral" href="https://wlvwcbxegrmobefloikr.supabase.co/functions/v1/rss?feed=all" />
     <link rel="alternate" type="application/rss+xml" title="Aleball — Notícias" href="https://wlvwcbxegrmobefloikr.supabase.co/functions/v1/rss?feed=noticias" />
     <link rel="alternate" type="application/rss+xml" title="Aleball — Análises" href="https://wlvwcbxegrmobefloikr.supabase.co/functions/v1/rss?feed=analises" />
+    <!-- Consent Mode (LGPD): anúncios e análise começam negados; liberados pelo banner de cookies -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      (function () {
+        var c = null;
+        try { c = JSON.parse(localStorage.getItem('statball_cookie_consent') || 'null'); } catch (e) {}
+        var ads = c && c.marketing ? 'granted' : 'denied';
+        var an = c && c.analytics ? 'granted' : 'denied';
+        gtag('consent', 'default', {
+          ad_storage: ads, ad_user_data: ads, ad_personalization: ads,
+          analytics_storage: an, wait_for_update: 500
+        });
+      })();
+    </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2204887945491050" crossorigin="anonymous"></script>
   </head>
 

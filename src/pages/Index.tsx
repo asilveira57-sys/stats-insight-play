@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Link, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,19 @@ export default function Index() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const title = "Aleball — Brasileirão e Copa do Brasil: resultados, estatísticas e probabilidades";
+  const description =
+    "Resultados, classificação, estatísticas de times e probabilidades calculadas por modelo matemático para o Brasileirão Série A e B e a Copa do Brasil. Não é site de apostas.";
+
   return (
     <Layout>
+      <Helmet>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content="https://www.aleball.com/" />
+      </Helmet>
       {/* BLOCO 1 — HERO */}
       <HeroSection />
 

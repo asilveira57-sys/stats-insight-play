@@ -44,3 +44,8 @@ export function canonicalFor(pathname: string): string {
 
 export const ROBOTS_INDEX = "index, follow, max-snippet:-1, max-image-preview:large";
 export const ROBOTS_NOINDEX = "noindex, follow";
+
+// Odds ficam desligadas no site em português (MP 1.394/2026 proíbe publicidade
+// e intermediação de apostas no Brasil). Serão religadas só nas páginas EN/ES,
+// servidas por função que bloqueia visitantes do Brasil.
+export const SHOW_ODDS_PT = false;

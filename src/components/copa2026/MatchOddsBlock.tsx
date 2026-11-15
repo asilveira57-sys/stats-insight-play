@@ -1,3 +1,4 @@
+import { SHOW_ODDS_PT } from "@/lib/seoFocus";
 import { useMatchOdds } from "@/hooks/useMatchOdds";
 import { Coins, TrendingUp } from "lucide-react";
 
@@ -12,7 +13,12 @@ function fmt(n: number | null | undefined) {
   return n && n > 1 ? n.toFixed(2) : "—";
 }
 
-export function MatchOddsBlock({ matchId, homeName, awayName, compact = false }: Props) {
+export function MatchOddsBlock(props: Props) {
+  if (!SHOW_ODDS_PT) return null;
+  return <MatchOddsBlockInner {...props} />;
+}
+
+function MatchOddsBlockInner({ matchId, homeName, awayName, compact = false }: Props) {
   const { data: odds, isLoading } = useMatchOdds(matchId);
 
   if (isLoading) return null;

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { SHOW_ODDS_PT } from "@/lib/seoFocus";
 
 export type PartidaOdds = {
   id: string;
@@ -23,7 +24,7 @@ export type PartidaOdds = {
 /** Odds de uma única partida (tabela genérica `match_odds`). */
 export function usePartidaOdds(partidaId?: string | null) {
   return useQuery({
-    enabled: !!partidaId,
+    enabled: SHOW_ODDS_PT && !!partidaId,
     queryKey: ["match-odds", partidaId],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
@@ -41,7 +42,7 @@ export function usePartidaOdds(partidaId?: string | null) {
 export function usePartidasOdds(partidaIds: string[]) {
   const key = [...partidaIds].sort().join(",");
   return useQuery({
-    enabled: partidaIds.length > 0,
+    enabled: SHOW_ODDS_PT && partidaIds.length > 0,
     queryKey: ["match-odds-bulk", key],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
