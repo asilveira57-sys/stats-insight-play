@@ -15,7 +15,7 @@ interface SampleGame {
   gols_casa: number | null;
   gols_fora: number | null;
   context: string; // "oldest" | "newest" | "notable_opponent" | "unusual_score"
-  team?: "A" | "B";
+  team?: string;
   teamName?: string;
 }
 
