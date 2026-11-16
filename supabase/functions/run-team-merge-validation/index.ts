@@ -15,6 +15,8 @@ interface SampleGame {
   gols_casa: number | null;
   gols_fora: number | null;
   context: string; // "oldest" | "newest" | "notable_opponent" | "unusual_score"
+  team?: "A" | "B";
+  teamName?: string;
 }
 
 interface SearchEvidence {
@@ -400,7 +402,7 @@ Deno.serve(async (req) => {
         if (mergeError) throw mergeError;
 
         // Save alias for old name
-        await supabase.from("team_aliases").insert([
+        await supabase.from("team_aliases").upsert(
           {
             team_id: kept_team_id,
             alias: teamB.nome,
@@ -408,7 +410,8 @@ Deno.serve(async (req) => {
             source: "merge_validation",
             confidence: 100,
           },
-        ]).onConflict("DO NOTHING" as any);
+          { onConflict: "team_id,normalized_alias", ignoreDuplicates: true },
+        );
 
         // Record merge decision
         await supabase.from("team_merge_decisions").insert({
@@ -426,7 +429,7 @@ Deno.serve(async (req) => {
         mergeResult = mergeData;
       } catch (e) {
         console.error("Auto-merge failed:", e);
-        mergeResult = { error: e.message };
+        mergeResult = { error: e instanceof Error ? e.message : String(e) };
       }
     }
 
@@ -444,7 +447,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Validation error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
