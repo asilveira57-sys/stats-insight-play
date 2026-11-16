@@ -3,6 +3,7 @@
 // - sempre: /status (plano, cota) — 1 chamada
 // - leagueIds: /leagues?id=X para cada id (máx. 12)
 // - country: /leagues?country=X (1 chamada) — lista resumida das ligas do país
+// - fixtures: {league, season} — /fixtures (1 chamada), devolve só contagem, erros e amostra (não grava)
 // Recusa rodar se a cota do dia já passou de 80% (para não esgotar o plano grátis).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -42,6 +43,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const leagueIds: number[] = Array.isArray(body.leagueIds) ? body.leagueIds.map(Number).filter(Boolean).slice(0, 12) : [];
   const country: string | null = typeof body.country === 'string' ? body.country : null;
+  const fx = body.fixtures && body.fixtures.league && body.fixtures.season ? body.fixtures : null;
 
   const status = await af('/status', key);
   const acc = status?.response ?? {};
@@ -64,7 +66,7 @@ Deno.serve(async (req) => {
       { onConflict: 'day' },
     );
   }
-  if (limit && used != null && used + leagueIds.length + (country ? 1 : 0) > limit * 0.8) {
+  if (limit && used != null && used + leagueIds.length + (country ? 1 : 0) + (fx ? 1 : 0) > limit * 0.8) {
     out.skipped = 'quota above 80%';
     return json(out);
   }
@@ -80,6 +82,20 @@ Deno.serve(async (req) => {
     const r = await af(`/leagues?country=${encodeURIComponent(country)}`, key);
     out.country_leagues = (r.response ?? []).map(summarizeLeague);
     if (!r.response) out.country_errors = r.errors;
+  }
+  if (fx) {
+    const r = await af(`/fixtures?league=${Number(fx.league)}&season=${Number(fx.season)}`, key);
+    const list = (r.response ?? []) as any[];
+    const finished = list.filter((f) => f.goals?.home != null && f.goals?.away != null);
+    out.fixtures = {
+      league: Number(fx.league),
+      season: Number(fx.season),
+      errors: r.errors,
+      total: list.length,
+      com_placar: finished.length,
+      ultimo_com_placar: finished.map((f) => f.fixture?.date?.slice(0, 10)).sort().pop() ?? null,
+      amostra: finished.slice(-3).map((f) => `${f.fixture?.date?.slice(0, 10)} ${f.teams?.home?.name} ${f.goals?.home}x${f.goals?.away} ${f.teams?.away?.name}`),
+    };
   }
   return json(out);
 });
