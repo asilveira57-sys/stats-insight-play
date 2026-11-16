@@ -225,6 +225,7 @@ async function runWorker(background = false): Promise<any> {
   }
 
   const results: any[] = [];
+  let rateLimited = false;
   for (const job of ordered as Job[]) {
     if (Date.now() - startedAt > TIME_BUDGET_MS) {
       console.log('time budget reached, deferring remaining jobs');
@@ -251,14 +252,26 @@ async function runWorker(background = false): Promise<any> {
       }).eq('id', job.id);
       results.push({ job_id: job.id, ...result });
     } catch (e) {
+      const msg = String(e);
+      if (/rateLimit|requests/i.test(msg) && !/plan/i.test(msg)) {
+        // Limite por minuto/dia: devolve à fila e encerra esta rodada.
+        await supabase.from('api_football_import_jobs').update({
+          status: 'queued', started_at: null, error: msg,
+        }).eq('id', job.id);
+        results.push({ job_id: job.id, requeued: true, error: msg });
+        rateLimited = true;
+        break;
+      }
       await supabase.from('api_football_import_jobs').update({
-        status: 'failed', error: String(e), finished_at: new Date().toISOString(),
+        status: 'failed', error: msg, finished_at: new Date().toISOString(),
       }).eq('id', job.id);
-      results.push({ job_id: job.id, error: String(e) });
+      results.push({ job_id: job.id, error: msg });
     }
 
     const q = await syncQuota(supabase, apiKey);
     if (q.used >= q.limit - quotaBuffer(q.limit)) break;
+    // Plano grátis: máx. 10 chamadas/minuto (cada job = 1 /fixtures + 1 /status).
+    if (isFreePlan(q.limit)) await new Promise((r) => setTimeout(r, 13000));
   }
 
   // Auto re-invoca em background se ainda houver jobs queued
@@ -267,7 +280,8 @@ async function runWorker(background = false): Promise<any> {
       .from('api_football_import_jobs')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'queued');
-    if ((count ?? 0) > 0) {
+    // Se bateu no limite da API, não se re-invoca: a próxima rodada agendada continua.
+    if ((count ?? 0) > 0 && !rateLimited) {
       const selfUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apifootball-worker`;
       fetch(selfUrl, {
         method: 'POST',
