@@ -210,3 +210,6 @@ verify_jwt = false
 
 [functions.sync-brasileirao-fd]
 verify_jwt = false
+
+[functions.sync-sportmonks]
+verify_jwt = false
