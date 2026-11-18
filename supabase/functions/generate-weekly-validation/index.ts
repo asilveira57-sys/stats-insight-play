@@ -494,7 +494,7 @@ async function processOneWeeklyArticle(
   
   if (matchError) throw new Error(`Fetch matches: ${matchError.message}`);
   
-  const validMatches = (matches || []).filter(m => {
+  const validMatches = (matches || []).filter((m: any) => {
     const comp = Array.isArray(m.comparativo) ? m.comparativo[0] : m.comparativo;
     return comp !== null;
   });

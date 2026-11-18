@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isContentGenerationEnabled, disabledResponse } from '../_shared/killswitch.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

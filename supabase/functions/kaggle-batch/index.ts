@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
               continue;
             }
           }
-        } catch (err) {
+        } catch (err: any) {
           const errMsg = err.message || "Unknown error";
           results.push({ job_id: job.id, error: errMsg });
           await supabase.from("kaggle_import_jobs").update({ 
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
             updated: promResult.data?.updated || 0,
             resolve_complete: resolveComplete,
           });
-        } catch (err) {
+        } catch (err: any) {
           results.push({ ...item, status: "failed", error: err.message });
         }
       }
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

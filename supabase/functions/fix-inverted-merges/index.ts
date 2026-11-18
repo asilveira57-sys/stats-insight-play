@@ -79,14 +79,12 @@ Deno.serve(async (req) => {
 
         // 2. Migrate matches from dup → canonical
         const { count: homeCount } = await supabase.from('partidas')
-          .update({ time_casa_id: canonical.id, updated_at: new Date().toISOString() })
-          .eq('time_casa_id', dup.id)
-          .select('id', { count: 'exact', head: true });
+          .update({ time_casa_id: canonical.id, updated_at: new Date().toISOString() }, { count: 'exact' })
+          .eq('time_casa_id', dup.id);
 
         const { count: awayCount } = await supabase.from('partidas')
-          .update({ time_fora_id: canonical.id, updated_at: new Date().toISOString() })
-          .eq('time_fora_id', dup.id)
-          .select('id', { count: 'exact', head: true });
+          .update({ time_fora_id: canonical.id, updated_at: new Date().toISOString() }, { count: 'exact' })
+          .eq('time_fora_id', dup.id);
 
         // 3. Migrate gols_partida
         await supabase.from('gols_partida')

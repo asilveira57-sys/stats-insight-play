@@ -103,7 +103,7 @@ async function generateArticleContent(
   pubDate.setDate(pubDate.getDate() - 2);
   const analysisDate = pubDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
-  const palpite = match.palpite || {};
+  const palpite: any = match.palpite || {};
   const probCasa = palpite.prob_casa || 33;
   const probEmpate = palpite.prob_empate || 34;
   const probFora = palpite.prob_fora || 33;

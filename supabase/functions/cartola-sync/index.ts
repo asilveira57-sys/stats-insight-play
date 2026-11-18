@@ -114,7 +114,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Cartola sync error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -164,7 +164,7 @@ async function syncSeason(supabase: any, season: number) {
       } else {
         errors.push(`Clubes API: HTTP ${clubesRes.status}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       errors.push(`Clubes: ${e.message}`);
     }
 
@@ -179,7 +179,7 @@ async function syncSeason(supabase: any, season: number) {
           if (finished.length > 0) currentRound = finished[0].rodada_id;
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       errors.push(`Rodadas: ${e.message}`);
     }
 
@@ -219,7 +219,7 @@ async function syncSeason(supabase: any, season: number) {
             }
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         errors.push(`Partidas rodada ${round}: ${e.message}`);
         failed++;
       }
@@ -253,7 +253,7 @@ async function syncSeason(supabase: any, season: number) {
       errors: errors.slice(0, 20),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (err) {
+  } catch (err: any) {
     if (logId) {
       await supabase.from("sync_logs").update({
         status: "failed",
@@ -365,7 +365,7 @@ async function syncRound(supabase: any, season: number, rodada: number) {
           }
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       errors.push(`Pontuados: ${e.message}`);
     }
 
@@ -387,7 +387,7 @@ async function syncRound(supabase: any, season: number, rodada: number) {
       success: true, status: finalStatus, inserted, updated, failed, errors,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (err) {
+  } catch (err: any) {
     if (logId) {
       await supabase.from("sync_logs").update({
         status: "failed", completed_at: new Date().toISOString(), error_message: err.message,
@@ -441,7 +441,7 @@ async function mapClubesAleball(supabase: any, errors: string[]) {
         }, { onConflict: "entity_type,external_id,source_id", ignoreDuplicates: true });
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     errors.push(`MapClubes: ${e.message}`);
   }
 }

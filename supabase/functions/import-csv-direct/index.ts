@@ -258,8 +258,8 @@ serve(async (req) => {
           });
           if (herr || !hid) { failed++; errors.push(`Team resolve failed: ${match.home_team}`); return; }
           homeId = hid;
-          teamCache.set(homeNorm, homeId);
-          teamCache.set(homeSlug, homeId);
+          teamCache.set(homeNorm, homeId as string);
+          teamCache.set(homeSlug, homeId as string);
         }
 
         // Resolve away team
@@ -272,8 +272,8 @@ serve(async (req) => {
           });
           if (aerr || !aid) { failed++; errors.push(`Team resolve failed: ${match.away_team}`); return; }
           awayId = aid;
-          teamCache.set(awayNorm, awayId);
-          teamCache.set(awaySlug, awayId);
+          teamCache.set(awayNorm, awayId as string);
+          teamCache.set(awaySlug, awayId as string);
         }
 
         // Check existing
@@ -384,7 +384,7 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("Import error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),

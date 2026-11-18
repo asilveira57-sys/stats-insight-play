@@ -375,7 +375,7 @@ serve(async (req) => {
           return { path: p, content: null, error: `HTTP ${res.status}` };
         });
         filesData = await Promise.all(fetchPromises);
-      } catch (e) {
+      } catch (e: any) {
         errors.push(`Erro ao buscar arquivos: ${e.message}`);
         failed += fileBatch.length;
         processedFiles += fileBatch.length;
@@ -432,8 +432,8 @@ serve(async (req) => {
               });
               if (lerr || !lid) { skipped++; return; }
               leagueId = lid;
-              leagueCache.set(leagueNorm, leagueId);
-              leagueCache.set(leagueSlug, leagueId);
+              leagueCache.set(leagueNorm, leagueId as string);
+              leagueCache.set(leagueSlug, leagueId as string);
             }
 
             // Resolve home team (cache-first, then RPC)
@@ -448,8 +448,8 @@ serve(async (req) => {
               });
               if (herr || !hid) { failed++; return; }
               homeId = hid;
-              teamCache.set(homeNorm, homeId);
-              teamCache.set(homeSlug, homeId);
+              teamCache.set(homeNorm, homeId as string);
+              teamCache.set(homeSlug, homeId as string);
             }
 
             // Resolve away team (cache-first, then RPC)
@@ -464,8 +464,8 @@ serve(async (req) => {
               });
               if (aerr || !aid) { failed++; return; }
               awayId = aid;
-              teamCache.set(awayNorm, awayId);
-              teamCache.set(awaySlug, awayId);
+              teamCache.set(awayNorm, awayId as string);
+              teamCache.set(awaySlug, awayId as string);
             }
 
             // Resolve/create match via RPC (single DB call)
@@ -564,7 +564,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, status: finalStatus, inserted, updated, skipped, failed, processedFiles, totalFiles: files.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("Import error:", err);
     if (batchId) {
       await updateBatch(

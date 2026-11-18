@@ -378,7 +378,7 @@ serve(async (req) => {
       errors: errors.slice(0, 20),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Cartola import error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -620,7 +620,7 @@ async function importFromCartolaFCDados(
         clubeCache.set(id, nome);
       }
     }
-  } catch (e) { errors.push(`${season}/Clubes.csv: ${e.message}`); }
+  } catch (e: any) { errors.push(`${season}/Clubes.csv: ${e.message}`); }
 
   // 2. Import Atletas
   try {
@@ -646,7 +646,7 @@ async function importFromCartolaFCDados(
         }
       }
     }
-  } catch (e) { errors.push(`${season}/Atletas.csv: ${e.message}`); }
+  } catch (e: any) { errors.push(`${season}/Atletas.csv: ${e.message}`); }
 
   // 3. Import Partidas
   try {
@@ -691,7 +691,7 @@ async function importFromCartolaFCDados(
         }
       }
     }
-  } catch (e) { errors.push(`${season}/Partidas.csv: ${e.message}`); counters.failed++; }
+  } catch (e: any) { errors.push(`${season}/Partidas.csv: ${e.message}`); counters.failed++; }
 
   // 4. Import Scouts
   try {
@@ -737,7 +737,7 @@ async function importFromCartolaFCDados(
         }
       }
     }
-  } catch (e) { errors.push(`${season}/Scouts.csv: ${e.message}`); }
+  } catch (e: any) { errors.push(`${season}/Scouts.csv: ${e.message}`); }
 }
 
 // Map cartola_clubes -> times via external_id_map
@@ -786,7 +786,7 @@ async function mapClubesAleball(supabase: any, clubeCache: Map<number, string>, 
         }, { onConflict: "entity_type,external_id,source_id", ignoreDuplicates: true });
       }
     }
-  } catch (e) { errors.push(`Mapeamento clubes: ${e.message}`); }
+  } catch (e: any) { errors.push(`Mapeamento clubes: ${e.message}`); }
 }
 
 // Map cartola_partidas -> partidas via external_id_map
@@ -845,5 +845,5 @@ async function mapPartidasAleball(supabase: any, seasons: number[], errors: stri
         }
       }
     }
-  } catch (e) { errors.push(`Mapeamento partidas: ${e.message}`); }
+  } catch (e: any) { errors.push(`Mapeamento partidas: ${e.message}`); }
 }

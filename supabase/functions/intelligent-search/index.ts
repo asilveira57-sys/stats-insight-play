@@ -469,7 +469,7 @@ async function resolveWorldCup2026TopScorers(
 
   const counts = new Map<string, { jogador: string; slug: string | null; time_id: string | null; gols: number }>();
   for (const e of events) {
-    const player = e.player_id ? pmap.get(e.player_id) : null;
+    const player: any = e.player_id ? pmap.get(e.player_id) : null;
     const scorer = player?.name || parseGoalScorer(e.description);
     if (!scorer) continue;
     const key = `${normalize(scorer)}|${e.team_id ?? ""}`;

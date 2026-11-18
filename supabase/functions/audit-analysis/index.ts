@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       ok: true, audit_score: auditScore, audit_grade: grade, badge,
       verified, unverified, inconsistent, data_sources: dataSources, claims,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
+  } catch (e: any) {
     return new Response(JSON.stringify({ error: String(e?.message ?? e) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

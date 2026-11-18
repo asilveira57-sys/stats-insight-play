@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       competitions: { resolved: compsResolved, created: compsCreated },
       matches: { resolved: matchesResolved, partial: matchesPartial, unmatched: matchesUnmatched },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
     try {
       const body = await req.clone().json().catch(() => ({}));
