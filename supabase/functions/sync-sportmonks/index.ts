@@ -15,7 +15,9 @@
 // Segurança contra duplicatas (mesma linha do sync-brasileirao-fd):
 //   - times são achados por nome/apelido (find_team_by_name) e NUNCA criados;
 //   - o jogo é procurado pelo par mandante/visitante na liga, até 4 dias de distância;
-//     em ligas de pontos corridos ("liga") também vale o mesmo par no mesmo ano;
+//     em ligas de pontos corridos ("liga") também vale o mesmo par no mesmo ano, mas só
+//     se aquele jogo ainda não tiver placar (evita confundir turno com mata-mata);
+//   - jogo encerrado nunca volta para "agendado"; placar só é gravado se o jogo começou;
 //   - só cria um jogo novo quando nenhum desses casa.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -165,8 +167,9 @@ Deno.serve(async (req) => {
 
       const { data: dt, hora } = brDateTime(fx.starting_at);
       const status = mapState(fx.state?.developer_name ?? fx.state?.state);
-      const gc = goals(fx, "home");
-      const gf = goals(fx, "away");
+      const temPlacar = status === "finished" || status === "live";
+      const gc = temPlacar ? goals(fx, "home") : null;
+      const gf = temPlacar ? goals(fx, "away") : null;
 
       // 1) mesmo par, até 4 dias de distância
       let { data: cand } = await supabase.from("partidas")
@@ -181,6 +184,7 @@ Deno.serve(async (req) => {
           .select("id, data, hora, status, gols_casa, gols_fora")
           .eq("liga_id", cfg.liga_id).eq("time_casa_id", h).eq("time_fora_id", aw)
           .gte("data", `${y}-01-01`).lte("data", `${y}-12-31`)
+          .is("gols_casa", null)
           .limit(5));
       }
       const dist = (d: string) => Math.abs(new Date(d).getTime() - new Date(dt).getTime());
@@ -195,6 +199,10 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      if (match.gols_casa != null && match.status === "finished" && status !== "finished" && status !== "live") {
+        bump("ignorado_encerrado");
+        continue;
+      }
       const novo = {
         data: dt,
         hora,
