@@ -253,7 +253,7 @@ async function runWorker(background = false): Promise<any> {
       results.push({ job_id: job.id, ...result });
     } catch (e) {
       const msg = String(e);
-      if (/rateLimit|requests/i.test(msg) && !/plan/i.test(msg)) {
+      if ((/rateLimit|requests|-> 429/i.test(msg)) && !/plan/i.test(msg)) {
         // Limite por minuto/dia: devolve à fila e encerra esta rodada.
         await supabase.from('api_football_import_jobs').update({
           status: 'queued', started_at: null, error: msg,
@@ -270,8 +270,9 @@ async function runWorker(background = false): Promise<any> {
 
     const q = await syncQuota(supabase, apiKey);
     if (q.used >= q.limit - quotaBuffer(q.limit)) break;
-    // Plano grátis: máx. 10 chamadas/minuto (cada job = 1 /fixtures + 1 /status).
-    if (isFreePlan(q.limit)) await new Promise((r) => setTimeout(r, 13000));
+    // Plano grátis: máx. 10 chamadas/minuto (cada job = 1 /fixtures + 1 /status, mais a
+    // checagem de cota no início de cada rodada). 20 s dá folga.
+    if (isFreePlan(q.limit)) await new Promise((r) => setTimeout(r, 20000));
   }
 
   // Auto re-invoca em background se ainda houver jobs queued
