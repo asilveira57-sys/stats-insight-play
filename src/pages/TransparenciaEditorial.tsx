@@ -15,7 +15,7 @@ import {
 const TransparenciaEditorial = () => {
   return (
     <Layout>
-      <PageSeo title="Transparência editorial" description="Como o Aleball produz seu conteúdo: fontes de dados, uso de inteligência artificial, revisão e critérios editoriais." />
+      <PageSeo title="Transparência editorial" description="Como o Aleball produz seu conteúdo: fontes de dados, uso de inteligência artificial, limites da tecnologia e critérios editoriais." />
       <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

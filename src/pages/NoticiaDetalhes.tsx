@@ -326,6 +326,26 @@ export default function NoticiaDetalhes() {
               </div>
             ))}
 
+            {/* Transparência: texto automatizado + link para os dados conferidos */}
+            <aside className="mt-10 p-4 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground space-y-2">
+              <p className="font-semibold text-foreground">Sobre este texto</p>
+              <p>
+                Este texto foi produzido com apoio de inteligência artificial a partir dos dados de jogos e
+                estatísticas do acervo do Aleball. Pode conter imprecisões de redação; os números oficiais da
+                partida (placar, data, competição e histórico do confronto) ficam na ficha do jogo.
+              </p>
+              <p className="flex flex-wrap gap-x-4 gap-y-1">
+                {(noticia as any).partida?.slug && (
+                  <Link to={`/partida/${(noticia as any).partida.slug}`} className="text-primary hover:underline">
+                    Ver a ficha do jogo
+                  </Link>
+                )}
+                <Link to="/transparencia" className="text-primary hover:underline">
+                  Como produzimos nosso conteúdo
+                </Link>
+              </p>
+            </aside>
+
             {/* Premium CTA - Footer */}
             <PremiumCTA variant="footer" />
 

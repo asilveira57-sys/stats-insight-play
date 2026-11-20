@@ -174,7 +174,7 @@ export function useNoticiaBySlug(slug: string | null) {
       if (!slug) return null;
       const { data, error } = await supabase
         .from("noticias")
-        .select("*")
+        .select("*, partida:partida_id(slug)")
         .eq("slug", slug)
         .eq("publicada", true)
         .maybeSingle();
