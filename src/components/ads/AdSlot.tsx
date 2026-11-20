@@ -12,17 +12,17 @@ interface AdSlotProps {
 // Slot IDs mapping - replace with actual AdSense slot IDs
 const SLOT_CONFIG: Record<AdPosition, { slot: string; format: string; style: React.CSSProperties }> = {
   "article-intro": {
-    slot: "1234567890", // TODO: Replace with actual slot ID
+    slot: "", // preencher com o ID real do bloco criado no painel do AdSense
     format: "fluid",
     style: { minHeight: "100px" },
   },
   "article-mid": {
-    slot: "1234567891", // TODO: Replace with actual slot ID
+    slot: "", // preencher com o ID real do bloco criado no painel do AdSense
     format: "fluid",
     style: { minHeight: "120px" },
   },
   "article-end": {
-    slot: "1234567892", // TODO: Replace with actual slot ID
+    slot: "", // preencher com o ID real do bloco criado no painel do AdSense
     format: "auto",
     style: { minHeight: "250px" },
   },
@@ -74,6 +74,11 @@ export function AdSlot({ position, className = "" }: AdSlotProps) {
 
   const config = SLOT_CONFIG[position];
   const isProduction = import.meta.env.PROD;
+
+  // Sem ID real de bloco não há anúncio manual (o anúncio automático do <head> continua).
+  if (isProduction && !config.slot) {
+    return null;
+  }
 
   // Development placeholder
   if (!isProduction) {

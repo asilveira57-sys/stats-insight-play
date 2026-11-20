@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/seoFocus";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 
@@ -75,7 +76,7 @@ export default function CampeonatoPilar() {
     );
   }
 
-  const pageUrl = `${window.location.origin}/campeonatos/${slug}`;
+  const pageUrl = `${SITE}/campeonatos/${slug}`;
   const { stats } = league;
 
   return (

@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/seoFocus";
 import { useParams, Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { Layout } from "@/components/layout/Layout";
@@ -146,7 +147,7 @@ export default function NoticiaDetalhes() {
   const articleHtml = ensureHtml(noticia.texto);
   const readingTime = calculateReadingTime(articleHtml);
   const { intro, sections, hasCta, isLongPost } = processContent(articleHtml);
-  const articleUrl = `${window.location.origin}/noticias/${slug}`;
+  const articleUrl = `${SITE}/noticias/${slug}`;
   
   // Determine where to insert mid-article ad (after ~40% of sections)
   const midAdIndex = Math.max(1, Math.floor(sections.length * 0.4));

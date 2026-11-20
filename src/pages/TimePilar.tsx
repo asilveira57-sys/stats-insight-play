@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/seoFocus";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useTeamBySlug, useTeamRelatedNews, useTeamCurriculum, TeamTitle } from "@/hooks/useTeamPillar";
@@ -135,7 +136,7 @@ export default function TimePilar() {
   }
 
   const displayName = cleanTeamName(team.nome);
-  const pageUrl = `${window.location.origin}/times/${slug}`;
+  const pageUrl = `${SITE}/times/${slug}`;
   const { stats } = team;
   const profile = curriculum?.profile;
 
