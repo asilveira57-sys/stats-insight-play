@@ -86,17 +86,23 @@ export function PartidaAlmanaque({
     enabled: !!a && !!b && !!data,
     queryKey: ["partida-h2h", a, b, data],
     queryFn: async () => {
-      const { data: rows } = await supabase
-        .from("partidas")
-        .select(SELECT)
-        .or(`and(time_casa_id.eq.${a},time_fora_id.eq.${b}),and(time_casa_id.eq.${b},time_fora_id.eq.${a})`)
-        .lt("data", data)
-        .not("gols_casa", "is", null)
-        .not("gols_fora", "is", null)
-        .neq("id", partidaId)
-        .order("data", { ascending: false })
-        .limit(500);
-      return (rows ?? []) as unknown as Row[];
+      const dir = (home: string, away: string) =>
+        supabase
+          .from("partidas")
+          .select(SELECT)
+          .eq("time_casa_id", home)
+          .eq("time_fora_id", away)
+          .lt("data", data)
+          .not("gols_casa", "is", null)
+          .not("gols_fora", "is", null)
+          .neq("id", partidaId)
+          .order("data", { ascending: false })
+          .limit(500);
+      const [ab, ba] = await Promise.all([dir(a!, b!), dir(b!, a!)]);
+      const rows = [...((ab.data ?? []) as unknown as Row[]), ...((ba.data ?? []) as unknown as Row[])]
+        .sort((x, y) => (x.data < y.data ? 1 : x.data > y.data ? -1 : 0))
+        .slice(0, 500);
+      return rows;
     },
   });
 
@@ -104,16 +110,21 @@ export function PartidaAlmanaque({
     enabled: !!teamId && !!data,
     queryKey: ["partida-forma", teamId, data],
     queryFn: async () => {
-      const { data: rows } = await supabase
-        .from("partidas")
-        .select(SELECT)
-        .or(`time_casa_id.eq.${teamId},time_fora_id.eq.${teamId}`)
-        .lt("data", data)
-        .not("gols_casa", "is", null)
-        .not("gols_fora", "is", null)
-        .order("data", { ascending: false })
-        .limit(5);
-      return (rows ?? []) as unknown as Row[];
+      // Duas consultas simples (mandante e visitante) usam os índices por time+data
+      // e são muito mais leves que um OR entre as duas colunas.
+      const base = (col: "time_casa_id" | "time_fora_id") =>
+        supabase
+          .from("partidas")
+          .select(SELECT)
+          .eq(col, teamId!)
+          .lt("data", data)
+          .not("gols_casa", "is", null)
+          .not("gols_fora", "is", null)
+          .order("data", { ascending: false })
+          .limit(5);
+      const [home, away] = await Promise.all([base("time_casa_id"), base("time_fora_id")]);
+      const rows = [...((home.data ?? []) as unknown as Row[]), ...((away.data ?? []) as unknown as Row[])];
+      return rows.sort((x, y) => (x.data < y.data ? 1 : x.data > y.data ? -1 : 0)).slice(0, 5);
     },
   });
   const { data: formaCasa } = useQuery(recent(a));

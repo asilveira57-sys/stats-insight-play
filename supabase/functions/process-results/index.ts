@@ -52,24 +52,34 @@ Deno.serve(async (req) => {
 
     console.log('Starting automatic result processing...')
 
-    // Get all finished matches (paginated)
+    // Só jogos encerrados que TÊM palpite do sistema, numa janela recente.
+    // Antes lia as ~700 mil partidas encerradas e as ~275 mil linhas de
+    // comparativo_resultados a cada execução, o que pesava no banco à toa.
+    const DIAS_JANELA = 30
+    const desde = new Date(Date.now() - DIAS_JANELA * 86_400_000).toISOString().slice(0, 10)
+
     const finishedMatches = await fetchAll<{
       id: string; gols_casa: number | null; gols_fora: number | null;
       time_casa_id: string | null; time_fora_id: string | null; liga_id: string | null;
     }>(
       supabase, 'partidas',
-      'id, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id',
-      (q: any) => q.eq('status', 'finished').not('gols_casa', 'is', null).not('gols_fora', 'is', null)
+      'id, gols_casa, gols_fora, time_casa_id, time_fora_id, liga_id, palpites!palpites_partida_id_fkey!inner(id)',
+      (q: any) => q.eq('status', 'finished').gte('data', desde).not('gols_casa', 'is', null).not('gols_fora', 'is', null)
     )
 
-    console.log(`Found ${finishedMatches.length} finished matches`)
+    console.log(`Found ${finishedMatches.length} finished matches with system prediction since ${desde}`)
 
-    // Get already processed matches (paginated)
-    const processedMatches = await fetchAll<{ partida_id: string }>(
-      supabase, 'comparativo_resultados', 'partida_id'
-    )
-
-    const processedIds = new Set(processedMatches.map(p => p.partida_id))
+    // Quais desses já foram processados (consulta só pelos ids da janela)
+    const processedIds = new Set<string>()
+    const ids = finishedMatches.map(m => m.id)
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: done, error: doneErr } = await supabase
+        .from('comparativo_resultados')
+        .select('partida_id')
+        .in('partida_id', ids.slice(i, i + 200))
+      if (doneErr) throw doneErr
+      for (const d of done || []) processedIds.add(d.partida_id)
+    }
 
     // Filter matches that need processing
     const matchesToProcess = finishedMatches.filter(m => !processedIds.has(m.id))
