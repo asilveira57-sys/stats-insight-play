@@ -18,6 +18,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+import { SeloMLFacil } from "@/components/SeloMLFacil";
+
 const nav = [
   { to: "/", label: "Início" },
   { to: "/resultados", label: "Resultados" },
@@ -301,6 +303,8 @@ export function Footer() {
           <p className="text-xs text-muted-foreground text-center md:text-left">
             © {year} <span className="text-foreground/90 font-semibold">Aleball</span>. Todos os direitos reservados.
           </p>
+
+          <SeloMLFacil projeto="aleball" origem="aleball.com" />
 
           <div className="flex items-center gap-4 text-xs">
             <Link to="/privacidade" className="text-muted-foreground hover:text-primary transition-colors">
