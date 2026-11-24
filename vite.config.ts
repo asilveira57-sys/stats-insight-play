@@ -30,7 +30,8 @@ function sitemapRegenPlugin(): Plugin {
           if (f.page) params.set("page", String(f.page));
           const res = await fetch(`${SITEMAP_FN}?${params}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const xml = await res.text();
+          // Garante o domínio oficial mesmo se a função publicada ainda usar o antigo
+          const xml = (await res.text()).replace(/https:\/\/www\.aleball\.com(?!\.br)/g, "https://www.aleball.com.br");
           writeFileSync(path.resolve(__dirname, "public", f.filename), xml);
           console.log(`[sitemap] wrote public/${f.filename} (${xml.length}b)`);
         } catch (e) {

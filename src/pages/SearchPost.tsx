@@ -12,7 +12,7 @@ import { MatchesList } from "@/components/search/MatchesList";
 import { TopScorersTable } from "@/components/search/TopScorersTable";
 import type { StructuredAnswer } from "@/hooks/useIntelligentSearch";
 
-const BASE_URL = "https://www.aleball.com";
+const BASE_URL = "https://www.aleball.com.br";
 
 function buildIntro(payload: StructuredAnswer | null, question: string): string {
   if (!payload) {

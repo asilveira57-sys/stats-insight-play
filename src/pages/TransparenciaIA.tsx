@@ -14,7 +14,7 @@ export default function TransparenciaIA() {
           name="description"
           content="Como a IA Aleball gera, registra e audita suas previsões. Metodologia, fontes, níveis de acerto e detecção de alucinações."
         />
-        <link rel="canonical" href="https://www.aleball.com/transparencia-ia" />
+        <link rel="canonical" href="https://www.aleball.com.br/transparencia-ia" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">

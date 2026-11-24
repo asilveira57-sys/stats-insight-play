@@ -21,7 +21,7 @@ export default function Copa2026Home() {
       <Helmet>
         <title>Copa do Mundo 2026 — Cobertura Completa | Aleball</title>
         <meta name="description" content="Cobertura completa da Copa do Mundo 2026: jogos ao vivo, últimos resultados, próximos confrontos, grupos, chaveamento, palpites IA e análises por seleção." />
-        <link rel="canonical" href="https://www.aleball.com/copa-2026" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-2026" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">

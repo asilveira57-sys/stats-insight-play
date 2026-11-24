@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SITE = "https://www.aleball.com";
+const SITE = "https://www.aleball.com.br";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +118,7 @@ function buildRss(opts: {
 <rss version="2.0"
      xmlns:atom="http://www.w3.org/2005/Atom"
      xmlns:media="http://search.yahoo.com/mrss/"
-     xmlns:aleball="https://www.aleball.com/ns/rss">
+     xmlns:aleball="https://www.aleball.com.br/ns/rss">
   <channel>
     <title>${esc(title)}</title>
     <link>${SITE}</link>

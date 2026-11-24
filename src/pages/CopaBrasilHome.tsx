@@ -21,7 +21,7 @@ export default function CopaBrasilHome() {
           name="description"
           content={`Cobertura completa da Copa do Brasil ${season}: jogos por fase, resultados oficiais, artilharia e palpites da IA auditados contra o resultado real.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-do-brasil" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">

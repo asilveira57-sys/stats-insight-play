@@ -9,7 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const SITE = "https://www.aleball.com";
+const SITE = "https://www.aleball.com.br";
 const PAGE_SIZE = 10000; // urls per sub-sitemap (well under 50k cap)
 
 const corsHeaders = {

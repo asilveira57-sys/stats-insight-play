@@ -13,7 +13,7 @@ import { isFocusLiga, ROBOTS_INDEX, ROBOTS_NOINDEX } from "@/lib/seoFocus";
 import { PartidaAlmanaque } from "@/components/partida/PartidaAlmanaque";
 
 
-const BASE = "https://www.aleball.com";
+const BASE = "https://www.aleball.com.br";
 
 function formatDate(d: string | null) {
   if (!d) return "—";

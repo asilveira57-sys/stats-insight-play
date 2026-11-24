@@ -41,7 +41,7 @@ export default function Index() {
         <meta name="description" content={description} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        <meta property="og:url" content="https://www.aleball.com/" />
+        <meta property="og:url" content="https://www.aleball.com.br/" />
       </Helmet>
       {/* BLOCO 1 — HERO */}
       <HeroSection />

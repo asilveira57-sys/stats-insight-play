@@ -26,7 +26,7 @@ export default function CopaBrasilPalpitesIA() {
           name="description"
           content={`Palpites da IA do Aleball para a Copa do Brasil ${season} comparados jogo a jogo com o resultado oficial: acerto de resultado, dupla chance e placar exato.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil/palpites-ia" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-do-brasil/palpites-ia" />
       </Helmet>
 
       <CopaBrasilNav />

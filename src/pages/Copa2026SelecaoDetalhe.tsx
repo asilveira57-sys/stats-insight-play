@@ -19,7 +19,7 @@ export default function Copa2026SelecaoDetalhe() {
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading } = useWC2026Team(slug);
 
-  const url = `https://www.aleball.com/copa-2026/selecoes/${slug}`;
+  const url = `https://www.aleball.com.br/copa-2026/selecoes/${slug}`;
 
   const faqs = useMemo(() => {
     if (!data) return [];

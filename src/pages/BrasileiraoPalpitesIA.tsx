@@ -25,7 +25,7 @@ export default function BrasileiraoPalpitesIA() {
           name="description"
           content={`Palpites da IA do Aleball para o Brasileirão Série A ${season} comparados jogo a jogo com o resultado oficial: taxa de acerto de resultado, dupla chance e placar exato.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/brasileirao/palpites-ia" />
+        <link rel="canonical" href="https://www.aleball.com.br/brasileirao/palpites-ia" />
       </Helmet>
 
       <BrasileiraoNav />

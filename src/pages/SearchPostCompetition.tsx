@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MatchesList } from "@/components/search/MatchesList";
 import type { MatchRow, StructuredAnswer } from "@/hooks/useIntelligentSearch";
 
-const BASE = "https://www.aleball.com";
+const BASE = "https://www.aleball.com.br";
 
 export default function SearchPostCompetition() {
   const { slug, ligaSlug } = useParams<{ slug: string; ligaSlug: string }>();

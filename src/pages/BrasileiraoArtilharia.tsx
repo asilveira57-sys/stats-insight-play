@@ -17,7 +17,7 @@ export default function BrasileiraoArtilharia() {
           name="description"
           content={`Artilheiros do Campeonato Brasileiro Série A ${season} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/brasileirao/artilharia" />
+        <link rel="canonical" href="https://www.aleball.com.br/brasileirao/artilharia" />
       </Helmet>
 
       <BrasileiraoNav />

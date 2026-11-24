@@ -41,7 +41,7 @@ export default function BrasileiraoJogos() {
           name="description"
           content={`Todos os jogos do Campeonato Brasileiro Série A ${season} rodada por rodada, com placar oficial, status ao vivo e palpite da IA em cada partida.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/brasileirao/jogos" />
+        <link rel="canonical" href="https://www.aleball.com.br/brasileirao/jogos" />
       </Helmet>
 
       <BrasileiraoNav />

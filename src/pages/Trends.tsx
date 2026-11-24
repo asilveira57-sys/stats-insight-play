@@ -100,7 +100,7 @@ export default function Trends() {
           name="description"
           content="O que o Brasil está pesquisando sobre futebol no Aleball: times, campeonatos e jogadores mais buscados, além das páginas de pesquisa indexadas no Google."
         />
-        <link rel="canonical" href="https://www.aleball.com/trends" />
+        <link rel="canonical" href="https://www.aleball.com.br/trends" />
       </Helmet>
       <div className="container mx-auto px-4 py-8 space-y-8">
         <header>

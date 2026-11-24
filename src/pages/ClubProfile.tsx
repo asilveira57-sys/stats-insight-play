@@ -77,7 +77,7 @@ export default function ClubProfile() {
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:type" content="website" />
-        <link rel="canonical" href={`https://www.aleball.com/clubes/${club.slug}`} />
+        <link rel="canonical" href={`https://www.aleball.com.br/clubes/${club.slug}`} />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">

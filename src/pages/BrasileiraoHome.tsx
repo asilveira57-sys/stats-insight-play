@@ -28,7 +28,7 @@ export default function BrasileiraoHome() {
           name="description"
           content={`Cobertura completa do Campeonato Brasileiro Série A ${season}: jogos do dia, resultados oficiais, classificação atualizada, artilharia e palpites da IA comparados ao resultado real.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/brasileirao" />
+        <link rel="canonical" href="https://www.aleball.com.br/brasileirao" />
       </Helmet>
 
       <section className="relative overflow-hidden border-b border-border">

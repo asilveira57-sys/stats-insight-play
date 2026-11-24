@@ -1,7 +1,7 @@
 # Plano — Rebranding completo para Aleball
 
 ## Resultado
-Trocar a marca visível e técnica de Statball para **Aleball** em toda a plataforma, adotando **https://www.aleball.com** como endereço oficial.
+Trocar a marca visível e técnica de Statball para **Aleball** em toda a plataforma, adotando **https://www.aleball.com.br** como endereço oficial.
 
 ## 1. Identidade visual
 - Criar um novo símbolo e um novo logotipo Aleball, mantendo o estilo esportivo, o fundo transparente e a paleta atual em azul-escuro, ciano e verde.
@@ -14,7 +14,7 @@ Trocar a marca visível e técnica de Statball para **Aleball** em toda a plataf
 - Preservar os nomes técnicos internos e o histórico de migrações quando renomeá-los puder quebrar dados ou integrações; eles não serão exibidos ao visitante.
 
 ## 3. SEO e endereço oficial
-- Atualizar títulos, descrições, dados estruturados, links canônicos, RSS, sitemap e robots para `https://www.aleball.com`.
+- Atualizar títulos, descrições, dados estruturados, links canônicos, RSS, sitemap e robots para `https://www.aleball.com.br`.
 - Trocar o e-mail público para `contato@aleball.com` nos textos e links.
 - Remover imagens sociais antigas da marca e deixar a hospedagem gerar a prévia até existir uma imagem social Aleball definitiva.
 - Atualizar geradores automáticos de artigos, pesquisa e sitemap para que novos conteúdos já nasçam com a marca e o domínio Aleball.
@@ -24,7 +24,7 @@ Trocar a marca visível e técnica de Statball para **Aleball** em toda a plataf
 - Não renomear identificadores internos, chaves ou registros técnicos que possam afetar a operação.
 
 ## 5. Domínio
-- Solicitar a conexão de `aleball.com` e `www.aleball.com`, definindo `www.aleball.com` como principal quando a configuração do domínio estiver pronta.
+- Solicitar a conexão de `aleball.com` e `www.aleball.com.br`, definindo `www.aleball.com.br` como principal quando a configuração do domínio estiver pronta.
 - O domínio atual continuará funcionando como redirecionamento após a ativação do novo endereço.
 
 ## Verificação

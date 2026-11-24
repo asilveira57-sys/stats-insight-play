@@ -17,7 +17,7 @@ export default function CopaBrasilArtilharia() {
           name="description"
           content={`Artilheiros da Copa do Brasil ${season} com gols e pênaltis convertidos, apurados a partir dos eventos oficiais das partidas.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/copa-do-brasil/artilharia" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-do-brasil/artilharia" />
       </Helmet>
 
       <CopaBrasilNav />

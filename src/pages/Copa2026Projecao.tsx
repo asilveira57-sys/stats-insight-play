@@ -94,7 +94,7 @@ export default function Copa2026Projecao() {
       <Helmet>
         <title>Projeção Oficial Copa 2026 | Aleball</title>
         <meta name="description" content="Projeção automatizada do chaveamento completo da Copa do Mundo 2026: campeão, vice, semifinalistas e probabilidades de título." />
-        <link rel="canonical" href="https://www.aleball.com/copa-2026/projecao" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-2026/projecao" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 space-y-8">

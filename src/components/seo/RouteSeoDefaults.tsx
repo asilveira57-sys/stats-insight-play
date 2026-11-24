@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { canonicalFor, isNoindexPath, ROBOTS_INDEX, ROBOTS_NOINDEX } from "@/lib/seoFocus";
 
 /**
- * Padrões de SEO para toda rota: canonical = endereço atual em www.aleball.com
+ * Padrões de SEO para toda rota: canonical = endereço atual em www.aleball.com.br
  * (sem query string) e robots. Qualquer <Helmet> de página que defina
  * canonical ou robots sobrescreve estes valores (o Helmet mais interno vence).
  * Telas internas (painel, hub, conta, pagamento) recebem noindex.

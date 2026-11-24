@@ -207,7 +207,7 @@ export default function Artilheiros() {
           name="description"
           content={`Ranking de artilheiros ${temporada || ""} com filtros por temporada, região e campeonato: gols, times e líderes de cada competição.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/artilheiros" />
+        <link rel="canonical" href="https://www.aleball.com.br/artilheiros" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">

@@ -160,7 +160,7 @@ export default function Copa2026PalpitesIA() {
       <Helmet>
         <title>Palpites IA em Lote — Copa do Mundo 2026 | Aleball</title>
         <meta name="description" content="Veja em uma única tela os placares previstos pelo Aleball para todos os jogos da Copa 2026 com confiança, taxa de acerto e exportação em CSV." />
-        <link rel="canonical" href="https://www.aleball.com/copa-2026/palpites-ia" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-2026/palpites-ia" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8">

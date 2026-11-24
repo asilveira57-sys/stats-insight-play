@@ -34,7 +34,7 @@ export default function IAPerformance() {
           name="description"
           content="Painel público com a taxa de acerto da IA Aleball: vencedor, tendência, diferença de gols e placar exato, com evolução temporal."
         />
-        <link rel="canonical" href="https://www.aleball.com/ia-performance" />
+        <link rel="canonical" href="https://www.aleball.com.br/ia-performance" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 space-y-8">

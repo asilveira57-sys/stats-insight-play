@@ -21,7 +21,7 @@ export default function BrasileiraoClassificacao() {
           name="description"
           content={`Classificação do Campeonato Brasileiro Série A ${season} calculada a partir dos resultados oficiais: pontos, vitórias, saldo de gols, aproveitamento e últimos 5 jogos.`}
         />
-        <link rel="canonical" href="https://www.aleball.com/brasileirao/classificacao" />
+        <link rel="canonical" href="https://www.aleball.com.br/brasileirao/classificacao" />
       </Helmet>
 
       <BrasileiraoNav />

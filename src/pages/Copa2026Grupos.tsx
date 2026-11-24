@@ -46,7 +46,7 @@ export default function Copa2026Grupos() {
       <Helmet>
         <title>Grupos da Copa do Mundo 2026 — Tabela ao vivo | Aleball</title>
         <meta name="description" content="Tabela completa dos 12 grupos da Copa do Mundo 2026: classificação, jogos e datas de Grupo A a L. Atualizado em tempo real." />
-        <link rel="canonical" href="https://www.aleball.com/copa-2026/grupos" />
+        <link rel="canonical" href="https://www.aleball.com.br/copa-2026/grupos" />
       </Helmet>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-2">Grupos da Copa 2026</h1>

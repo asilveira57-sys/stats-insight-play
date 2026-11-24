@@ -28,9 +28,9 @@ export function Copa2026SelecaoSEO({ team, history, players, faqs = [], url }: P
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Aleball", item: "https://www.aleball.com/" },
-      { "@type": "ListItem", position: 2, name: "Copa 2026", item: "https://www.aleball.com/copa-2026" },
-      { "@type": "ListItem", position: 3, name: "Seleções", item: "https://www.aleball.com/copa-2026/selecoes" },
+      { "@type": "ListItem", position: 1, name: "Aleball", item: "https://www.aleball.com.br/" },
+      { "@type": "ListItem", position: 2, name: "Copa 2026", item: "https://www.aleball.com.br/copa-2026" },
+      { "@type": "ListItem", position: 3, name: "Seleções", item: "https://www.aleball.com.br/copa-2026/selecoes" },
       { "@type": "ListItem", position: 4, name: team.name, item: url },
     ],
   };

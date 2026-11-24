@@ -83,14 +83,14 @@ export function ArticleSEO({
     author: {
       "@type": "Organization",
       name: "Aleball",
-      url: "https://www.aleball.com",
+      url: "https://www.aleball.com.br",
     },
     publisher: {
       "@type": "Organization",
       name: "Aleball",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.aleball.com/icon-512.png",
+        url: "https://www.aleball.com.br/icon-512.png",
       },
     },
   };

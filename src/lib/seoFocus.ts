@@ -3,7 +3,7 @@
 // Páginas fora do foco continuam acessíveis, mas recebem noindex para não
 // diluir a qualidade do site aos olhos do Google/AdSense.
 
-export const SITE = "https://www.aleball.com";
+export const SITE = "https://www.aleball.com.br";
 
 export const FOCUS_LIGA_SLUGS = new Set<string>([
   "campeonato-brasileiro-serie-a",
