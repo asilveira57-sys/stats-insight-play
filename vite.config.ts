@@ -1,4 +1,5 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+import { seoPrerenderPlugin } from "./vite-plugins/seoPrerender";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { writeFileSync } from "fs";
@@ -45,7 +46,9 @@ function sitemapRegenPlugin(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -53,6 +56,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     sitemapRegenPlugin(),
+    seoPrerenderPlugin({ url: env.VITE_SUPABASE_URL, key: env.VITE_SUPABASE_PUBLISHABLE_KEY }),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
@@ -60,4 +64,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+};
+});
