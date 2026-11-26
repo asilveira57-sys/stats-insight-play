@@ -145,9 +145,16 @@ export function useCopaBrasilOverview(season: number = COPA_BRASIL_SEASON) {
     }))
   );
 
-  const fases = Array.from(
-    new Set(matches.map((m) => m.rodada).filter((r): r is number => r != null))
-  ).sort((a, b) => a - b);
+  // Fases na ordem em que aconteceram (o código da fase é o nº de clubes: 128, 64... 2 = final)
+  const primeiraData = new Map<number, string>();
+  matches.forEach((m) => {
+    if (m.rodada == null) return;
+    const d = primeiraData.get(m.rodada);
+    if (!d || m.data < d) primeiraData.set(m.rodada, m.data);
+  });
+  const fases = Array.from(primeiraData.keys()).sort((a, b) =>
+    (primeiraData.get(a)! < primeiraData.get(b)! ? -1 : 1)
+  );
 
   const clubes = new Set<string>();
   matches.forEach((m) => {
@@ -235,4 +242,19 @@ export function useCopaBrasilRealtime() {
       supabase.removeChannel(ch);
     };
   }, [qc]);
+}
+
+/** Nome legível da fase da Copa do Brasil a partir do código gravado em `rodada`. */
+export function nomeFaseCopaBrasil(codigo: number): string {
+  const nomes: Record<number, string> = {
+    1: "1ª fase",
+    128: "Fase de 128",
+    64: "Fase de 64",
+    32: "Fase de 32",
+    16: "Oitavas de final",
+    8: "Quartas de final",
+    4: "Semifinal",
+    2: "Final",
+  };
+  return nomes[codigo] ?? `Fase ${codigo}`;
 }

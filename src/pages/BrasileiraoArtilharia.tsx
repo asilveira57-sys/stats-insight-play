@@ -54,7 +54,7 @@ export default function BrasileiraoArtilharia() {
                     <td className="px-3 py-2 font-medium">{r.jogador}</td>
                     <td className="px-3 py-2 text-muted-foreground">{r.time?.nome ?? "—"}</td>
                     <td className="px-3 py-2 text-center font-bold tabular-nums">{r.gols}</td>
-                    <td className="px-3 py-2 text-center tabular-nums">{r.penaltis}</td>
+                    <td className="px-3 py-2 text-center tabular-nums">{r.penaltis ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

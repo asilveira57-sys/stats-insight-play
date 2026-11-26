@@ -330,7 +330,8 @@ export function useBrasileiraoStandings(season: number = BRASILEIRAO_SEASON) {
 export type BRScorer = {
   jogador: string;
   gols: number;
-  penaltis: number;
+  /** null quando a fonte não informa pênaltis */
+  penaltis: number | null;
   time: BRTeam | null;
 };
 
@@ -357,6 +358,24 @@ export function useBrasileiraoArtilharia(season: number = BRASILEIRAO_SEASON) {
           .in("partida_id", chunk);
         rows.push(...(data ?? []));
       }
+      // Sem gols detalhados por jogo nesta temporada: usa a artilharia consolidada
+      if (rows.length === 0) {
+        const { data: liga } = await supabase.from("ligas").select("id").eq("slug", BRASILEIRAO_SLUG).maybeSingle();
+        if (!liga) return [];
+        const { data: agregada } = await supabase
+          .from("artilharia_agregada")
+          .select("jogador_nome, gols, time_id")
+          .eq("competicao_id", liga.id)
+          .eq("temporada", String(season))
+          .order("gols", { ascending: false })
+          .limit(50);
+        return (agregada ?? []).map((a: any) => ({
+          jogador: a.jogador_nome,
+          gols: a.gols,
+          penaltis: null,
+          time: a.time_id ? teamById.get(a.time_id) ?? null : null,
+        }));
+      }
       const agg = new Map<string, BRScorer>();
       rows.forEach((g) => {
         const nome = (g.jogador_nome ?? "").trim();
@@ -365,7 +384,7 @@ export function useBrasileiraoArtilharia(season: number = BRASILEIRAO_SEASON) {
         const key = `${g.time_id}::${nome.toLowerCase()}`;
         const cur = agg.get(key) ?? { jogador: nome, gols: 0, penaltis: 0, time: teamById.get(g.time_id) ?? null };
         cur.gols++;
-        if (/penal/i.test(g.tipo ?? "")) cur.penaltis++;
+        if (/penal/i.test(g.tipo ?? "")) cur.penaltis = (cur.penaltis ?? 0) + 1;
         agg.set(key, cur);
       });
       return Array.from(agg.values()).sort(

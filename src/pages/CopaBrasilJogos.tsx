@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopaBrasilNav } from "@/components/copabrasil/CopaBrasilNav";
 import { BrasileiraoMatchCard } from "@/components/brasileirao/BrasileiraoMatchCard";
-import { useCopaBrasilOverview, useCopaBrasilRealtime, useCopaBrasilSeason } from "@/hooks/useCopaBrasil";
+import { useCopaBrasilOverview, useCopaBrasilRealtime, useCopaBrasilSeason, nomeFaseCopaBrasil } from "@/hooks/useCopaBrasil";
 import { usePartidasOdds } from "@/hooks/usePartidaOdds";
 
 type StatusFilter = "todos" | "scheduled" | "live" | "finished";
@@ -67,7 +67,7 @@ export default function CopaBrasilJogos() {
               </Button>
               {fases.map((f) => (
                 <Button key={f} size="sm" variant={fase === f ? "secondary" : "ghost"} onClick={() => setFase(f)}>
-                  Fase {f}
+                  {nomeFaseCopaBrasil(f)}
                 </Button>
               ))}
             </div>
@@ -84,7 +84,7 @@ export default function CopaBrasilJogos() {
           <>
             <h2 className="text-lg font-semibold">
               {filtered.length} {filtered.length === 1 ? "jogo" : "jogos"}
-              {effectiveFase != null && ` na fase ${effectiveFase}`}
+              {effectiveFase != null && ` — ${nomeFaseCopaBrasil(effectiveFase)}`}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filtered.map((m) => <BrasileiraoMatchCard key={m.id} match={m} odds={oddsMap?.get(m.id)} />)}
