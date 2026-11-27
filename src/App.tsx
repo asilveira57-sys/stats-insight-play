@@ -112,6 +112,9 @@ import Copa2026Artilharia from "./pages/Copa2026Artilharia";
 import IAPerformance from "./pages/IAPerformance";
 import TransparenciaIA from "./pages/TransparenciaIA";
 import Copa2026Projecao from "./pages/Copa2026Projecao";
+import IntlHome from "./pages/intl/IntlHome";
+import IntlLeague from "./pages/intl/IntlLeague";
+import IntlMatchPage from "./pages/intl/IntlMatchPage";
 
 const queryClient = new QueryClient();
 
@@ -235,6 +238,13 @@ const App = () => (
             <Route path="/pagamento/falha" element={<PagamentoFalha />} />
             <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
             <Route path="/assinatura/callback" element={<PagamentoSucesso />} />
+              {/* Inglês e espanhol (noindex até I18N_PUBLIC = true) */}
+              <Route path="/en" element={<IntlHome locale="en" />} />
+              <Route path="/en/match/:slug" element={<IntlMatchPage locale="en" />} />
+              <Route path="/en/:league" element={<IntlLeague locale="en" />} />
+              <Route path="/es" element={<IntlHome locale="es" />} />
+              <Route path="/es/partido/:slug" element={<IntlMatchPage locale="es" />} />
+              <Route path="/es/:league" element={<IntlLeague locale="es" />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

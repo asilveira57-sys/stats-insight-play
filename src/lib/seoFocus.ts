@@ -1,3 +1,4 @@
+import { I18N_PUBLIC } from "@/i18n/locales";
 // Regras centrais de SEO do Aleball.
 // Foco editorial: futebol brasileiro principal (+ Copa 2026, que tem rotas próprias).
 // Páginas fora do foco continuam acessíveis, mas recebem noindex para não
@@ -33,6 +34,8 @@ const NOINDEX_PREFIXES = [
 ];
 
 export function isNoindexPath(pathname: string): boolean {
+  // Inglês/espanhol: fechados até a chave I18N_PUBLIC ser ligada
+  if (!I18N_PUBLIC && /^\/(en|es)(\/|$)/.test(pathname)) return true;
   return NOINDEX_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
