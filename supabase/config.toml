@@ -213,3 +213,6 @@ verify_jwt = false
 
 [functions.sync-sportmonks]
 verify_jwt = false
+
+[functions.sync-europa-fd]
+verify_jwt = false

@@ -8252,6 +8252,22 @@ export type Database = {
       team_name_key: { Args: { p: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
       update_user_streak: { Args: { p_user_id: string }; Returns: Json }
+      upsert_partida_janela: {
+        Args: {
+          p_casa: string
+          p_data: string
+          p_fim: string
+          p_fora: string
+          p_gols_casa: number
+          p_gols_fora: number
+          p_hora: string
+          p_ini: string
+          p_liga_id: string
+          p_rodada: number
+          p_status: string
+        }
+        Returns: string
+      }
       upsert_partida_temporada: {
         Args: {
           p_casa: string
